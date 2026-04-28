@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import VenueShowcase from './VenueShowcase';
 
 const venues = [
   {
@@ -82,15 +83,55 @@ function VenueIcon({ name }) {
 
 export default function VenueRentalPage() {
   return (
-    <main className="max-w-[1000px] mx-auto px-4 md:px-6 py-14 md:py-20">
-      <h1 className="text-[36px] md:text-[52px] font-extrabold -tracking-[0.02em] mb-[14px] md:mb-[18px] leading-[1.1]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-        VENUE RENTAL
-      </h1>
-      <p className="text-base leading-[1.55] max-w-[620px] mb-10 md:mb-14" style={{ color: '#8a8a8a' }}>
-        You&apos;re not just renting a venue — you&apos;re stepping into a culture. If your event fits, we&apos;ll make it happen.
-      </p>
+    <main className="max-w-[1100px] mx-auto px-6 py-20 md:py-24">
+      {/* Hero */}
+      <header className="mb-12 md:mb-16 max-w-[760px]">
+        <div
+          className="text-[11px] font-semibold tracking-[0.28em] mb-5"
+          style={{ color: 'rgba(255,255,255,0.5)' }}
+        >
+          VENUE RENTAL
+        </div>
+        <h1
+          className="leading-[1.05] -tracking-[0.02em] mb-7"
+          style={{
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            fontWeight: 700,
+            fontSize: 'clamp(28px, 3.4vw, 40px)',
+          }}
+        >
+          Rent the venue.
+        </h1>
+        <p
+          className="text-[15px] md:text-[16px] leading-[1.65] max-w-[600px]"
+          style={{ color: 'rgba(255,255,255,0.6)' }}
+        >
+          The system, the room, and the booth are already here — set up,
+          tuned, and ready. You bring the night.
+        </p>
+      </header>
 
-      <div className="flex flex-col gap-5">
+      {/* Flagship inclusions showcase */}
+      <VenueShowcase />
+
+      {/* Rental options */}
+      <section className="mt-20 md:mt-28">
+        <div className="mb-10 max-w-[640px]">
+          <div
+            className="text-[11px] font-semibold tracking-[0.28em] mb-3"
+            style={{ color: 'rgba(255,255,255,0.5)' }}
+          >
+            OPTIONS
+          </div>
+          <h2
+            className="text-[28px] md:text-[36px] font-extrabold -tracking-[0.02em] leading-[1.05]"
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+          >
+            Rent the room.
+          </h2>
+        </div>
+
+        <div className="flex flex-col gap-5">
         {venues.map((venue) => (
           <div
             key={venue.slug}
@@ -132,35 +173,49 @@ export default function VenueRentalPage() {
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      </section>
 
+      {/* Also included */}
       <div
-        className="rounded-[18px] p-8 md:p-12 mt-12 md:mt-14 mb-12 md:mb-14 border"
+        className="rounded-[18px] p-10 md:p-12 mt-14 mb-14 border"
         style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
       >
-        <h2 className="text-[16px] md:text-[18px] font-bold tracking-[0.14em] mb-6 md:mb-8" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-          WHAT&apos;S INCLUDED
+        <h2
+          className="text-[11px] font-semibold tracking-[0.28em] mb-7"
+          style={{ color: 'rgba(255,255,255,0.5)' }}
+        >
+          ALSO INCLUDED
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           <div>
-            <h3 className="text-base font-bold mb-[14px] md:mb-[18px]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-              Equipment &amp; Staff
+            <h3
+              className="text-base font-bold mb-[14px]"
+              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+            >
+              Staff
             </h3>
-            <ul className="list-none text-sm leading-[2]" style={{ color: '#8a8a8a' }}>
-              <li>4-point L-Acoustics Sound System</li>
-              <li>3 CDJ-3000s</li>
-              <li>V10 Mixer</li>
-              <li>Security personnel (if required)</li>
+            <ul
+              className="list-none text-sm leading-[1.95]"
+              style={{ color: '#8a8a8a' }}
+            >
               <li>Bar staff</li>
+              <li>Security personnel (if required)</li>
+              <li>Setup and breakdown assistance</li>
             </ul>
           </div>
           <div>
-            <h3 className="text-base font-bold mb-[14px] md:mb-[18px]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-              Venue Services
+            <h3
+              className="text-base font-bold mb-[14px]"
+              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+            >
+              Services
             </h3>
-            <ul className="list-none text-sm leading-[2]" style={{ color: '#8a8a8a' }}>
-              <li>Setup and breakdown assistance</li>
-              <li>Coat check service</li>
+            <ul
+              className="list-none text-sm leading-[1.95]"
+              style={{ color: '#8a8a8a' }}
+            >
+              <li>Coat check</li>
               <li>Ticket scanning system</li>
             </ul>
           </div>

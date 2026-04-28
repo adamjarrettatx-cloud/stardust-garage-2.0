@@ -1,171 +1,71 @@
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
 
-export const revalidate = 0;
+export const metadata = {
+  title: 'Events — Stardust Garage',
+};
 
-function formatEventDate(dateString) {
-  const date = new Date(dateString + 'T00:00:00');
-  return date.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-}
-
-function formatShortDate(dateString) {
-  const date = new Date(dateString + 'T00:00:00');
-  return {
-    month: date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
-    day: date.getDate(),
-  };
-}
-
-export default async function EventsPage() {
-  const supabase = await createClient();
-
-  const { data: events } = await supabase
-    .from('events')
-    .select('*')
-    .order('event_date', { ascending: true });
-
-  const eventList = events || [];
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const upcoming = eventList.filter((e) => new Date(e.event_date + 'T00:00:00') >= today);
-  const past = eventList.filter((e) => new Date(e.event_date + 'T00:00:00') < today);
-
+export default function EventsIndexPage() {
   return (
-    <main className="max-w-[900px] mx-auto px-4 md:px-6 py-12 md:py-16">
-      <h1
-        className="text-[36px] md:text-[52px] font-extrabold -tracking-[0.02em] mb-3 leading-[1.1]"
-        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-      >
-        Upcoming Events
-      </h1>
-      <p className="text-[15px] leading-[1.55] mb-10 md:mb-12" style={{ color: '#8a8a8a' }}>
-        All upcoming parties, showcases, and experiences at Stardust Garage.
-      </p>
-
-      {upcoming.length === 0 ? (
-        <div
-          className="rounded-[14px] p-10 md:p-12 text-center border"
-          style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
-        >
-          <p style={{ color: '#8a8a8a' }}>No upcoming events right now. Check back soon.</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {upcoming.map((event) => {
-            const { month, day } = formatShortDate(event.event_date);
-            return (
-              <div
-                key={event.id}
-                className="relative rounded-[14px] border overflow-hidden transition-all hover:-translate-y-0.5"
-                style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
-              >
-                <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] gap-0">
-                  <Link
-                    href={`/events/${event.slug}`}
-                    className="block relative bg-[#1a1a1a] aspect-[16/10] md:aspect-auto md:min-h-[220px]"
-                  >
-                    {event.image_url ? (
-                      <img src={event.image_url} alt={event.title} className="absolute inset-0 w-full h-full object-cover" />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="text-center">
-                          <div className="text-[11px] font-semibold tracking-[0.16em] mb-1" style={{ color: '#666' }}>{month}</div>
-                          <div className="text-[40px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{day}</div>
-                        </div>
-                      </div>
-                    )}
-                  </Link>
-
-                  <div className="p-5 md:p-7 flex flex-col justify-between">
-                    <div>
-                      <div className="text-[12px] font-semibold tracking-[0.14em] mb-3" style={{ color: '#8a8a8a' }}>
-                        {formatEventDate(event.event_date)}
-                        {event.event_time && <span> · {event.event_time}</span>}
-                      </div>
-                      <Link href={`/events/${event.slug}`}>
-                        <h3 className="text-[22px] md:text-[28px] font-bold -tracking-[0.01em] mb-3 leading-[1.1] hover:opacity-80 transition-opacity" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                          {event.title}
-                        </h3>
-                      </Link>
-                      {event.description && (
-                        <p className="text-[14px] leading-[1.55] line-clamp-2" style={{ color: '#a0a0a0' }}>
-                          {event.description}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2 md:gap-3 mt-5 flex-wrap">
-                      {event.ticket_url ? (
-                        <a
-                          href={event.ticket_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-5 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.14em] hover:bg-gray-200 transition-colors"
-                          style={{ background: '#ffffff', color: '#0a0a0a' }}
-                        >
-                          BUY TICKETS
-                        </a>
-                      ) : (
-                        <span className="px-5 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.14em] border" style={{ borderColor: 'rgba(255,255,255,0.2)', color: '#a0a0a0' }}>
-                          PRIVATE EVENT
-                        </span>
-                      )}
-                      <Link
-                        href={`/events/${event.slug}`}
-                        className="px-5 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"
-                        style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
-                      >
-                        DETAILS
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {past.length > 0 && (
-        <div className="mt-16 md:mt-24">
-          <h2
-            className="text-[24px] md:text-[28px] font-extrabold -tracking-[0.02em] mb-6 md:mb-8 leading-[1.1]"
+    <main
+      className="max-w-[1100px] mx-auto px-6 py-20"
+      style={{ viewTransitionName: 'portal-events' }}
+    >
+      <div className="mb-10 flex flex-wrap items-end justify-between gap-6">
+        <div>
+          <div
+            className="text-[11px] font-semibold tracking-[0.28em] mb-4"
+            style={{ color: 'rgba(255,255,255,0.5)' }}
+          >
+            UPCOMING
+          </div>
+          <h1
+            className="text-[28px] md:text-[40px] font-extrabold -tracking-[0.02em] leading-[1.05]"
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
           >
-            Past Events
-          </h2>
-          <div className="space-y-3">
-            {past.slice(0, 10).map((event) => (
-              <Link
-                key={event.id}
-                href={`/events/${event.slug}`}
-                className="block rounded-[14px] border p-4 md:p-5 transition-colors hover:border-white/15"
-                style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)', opacity: 0.7 }}
-              >
-                <div className="flex items-center gap-4 md:gap-5">
-                  <div className="w-14 h-14 md:w-16 md:h-16 rounded-[10px] overflow-hidden flex-shrink-0 bg-[#1a1a1a]">
-                    {event.image_url && <img src={event.image_url} alt={event.title} className="w-full h-full object-cover" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[11px] md:text-[12px] mb-1" style={{ color: '#8a8a8a' }}>
-                      {formatEventDate(event.event_date)}
-                    </div>
-                    <h3 className="text-[15px] md:text-[16px] font-bold truncate" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                      {event.title}
-                    </h3>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+            Events
+          </h1>
         </div>
-      )}
+        <Link
+          href="https://www.tickettailor.com/events/stardustgarageatx"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[11px] font-semibold tracking-[0.2em] inline-flex items-center gap-2 transition-colors hover:text-white"
+          style={{ color: 'rgba(255,255,255,0.7)' }}
+        >
+          OPEN BOX OFFICE
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="7" y1="17" x2="17" y2="7" />
+            <polyline points="7 7 17 7 17 17" />
+          </svg>
+        </Link>
+      </div>
+
+      {/*
+        Tickets are sold and managed through Ticket Tailor. We embed the live
+        box office below so the listing always matches what's actually for
+        sale — no second source of truth to keep in sync.
+      */}
+      <div
+        className="rounded-[16px] overflow-hidden border bg-white"
+        style={{ borderColor: 'rgba(255,255,255,0.08)' }}
+      >
+        <iframe
+          src="https://www.tickettailor.com/events/stardustgarageatx"
+          title="Stardust Garage events on Ticket Tailor"
+          className="w-full block"
+          style={{ height: '1400px', border: 0 }}
+          loading="lazy"
+        />
+      </div>
     </main>
   );
 }

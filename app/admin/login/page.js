@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import Wordmark from '@/app/components/Wordmark';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -34,13 +35,16 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen flex items-center justify-center px-6">
       <div className="w-full max-w-[400px]">
+        <div className="flex justify-center mb-10">
+          <Wordmark size="md" align="center" />
+        </div>
         <h1
-          className="text-[40px] font-extrabold -tracking-[0.02em] mb-2 text-center leading-[1.1]"
+          className="text-[28px] font-extrabold -tracking-[0.02em] mb-2 text-center leading-[1.1]"
           style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
         >
           Admin Login
         </h1>
-        <p className="text-[14px] text-center mb-10" style={{ color: '#8a8a8a' }}>
+        <p className="text-[13px] text-center mb-10" style={{ color: '#8a8a8a' }}>
           Stardust Garage management
         </p>
 
