@@ -10,16 +10,10 @@ export default function SettingsForm({ initialSettings }) {
   const [heroImage, setHeroImage] = useState(initialSettings.homepage_hero_image || '');
   const [heroDate, setHeroDate] = useState(initialSettings.homepage_hero_date || '');
   const [heroTitle, setHeroTitle] = useState(initialSettings.homepage_hero_title || '');
-  const [cardCoworkImage, setCardCoworkImage] = useState(initialSettings.homepage_card_cowork_image || '');
-  const [cardEventsImage, setCardEventsImage] = useState(initialSettings.homepage_card_events_image || '');
-  const [cardStudioImage, setCardStudioImage] = useState(initialSettings.homepage_card_studio_image || '');
   const [splashLogoImage, setSplashLogoImage] = useState(initialSettings.splash_logo_image || '');
 
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingHero, setUploadingHero] = useState(false);
-  const [uploadingCowork, setUploadingCowork] = useState(false);
-  const [uploadingEvents, setUploadingEvents] = useState(false);
-  const [uploadingStudio, setUploadingStudio] = useState(false);
   const [uploadingSplashLogo, setUploadingSplashLogo] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -61,9 +55,6 @@ export default function SettingsForm({ initialSettings }) {
       { key: 'homepage_hero_image', value: heroImage.trim() },
       { key: 'homepage_hero_date', value: heroDate.trim() },
       { key: 'homepage_hero_title', value: heroTitle.trim() },
-      { key: 'homepage_card_cowork_image', value: cardCoworkImage.trim() },
-      { key: 'homepage_card_events_image', value: cardEventsImage.trim() },
-      { key: 'homepage_card_studio_image', value: cardStudioImage.trim() },
       { key: 'splash_logo_image', value: splashLogoImage.trim() },
     ];
 
@@ -223,40 +214,6 @@ export default function SettingsForm({ initialSettings }) {
         </div>
       </section>
 
-      {/* HOMEPAGE CARDS */}
-      <section
-        className="rounded-[14px] p-8 border"
-        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
-      >
-        <h2 className="text-[18px] font-bold mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-          Homepage Cards
-        </h2>
-        <p className="text-[13px] mb-6" style={{ color: '#8a8a8a' }}>
-          The three large cards on the homepage that link to Cowork, Events, and Studio (coming soon).
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div>
-            <h3 className="text-[14px] font-bold mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-              Cowork Card
-            </h3>
-            {renderImageUploader('COWORK CARD IMAGE', cardCoworkImage, setCardCoworkImage, uploadingCowork, setUploadingCowork, '4 / 5', 'Shown as a vertical card on the homepage.')}
-          </div>
-          <div>
-            <h3 className="text-[14px] font-bold mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-              Events Card
-            </h3>
-            {renderImageUploader('EVENTS CARD IMAGE', cardEventsImage, setCardEventsImage, uploadingEvents, setUploadingEvents, '4 / 5', 'Shown as a vertical card on the homepage.')}
-          </div>
-          <div>
-            <h3 className="text-[14px] font-bold mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-              Studio Card
-            </h3>
-            {renderImageUploader('STUDIO CARD IMAGE', cardStudioImage, setCardStudioImage, uploadingStudio, setUploadingStudio, '4 / 5', 'Shown as a vertical card with "Coming Soon" badge.')}
-          </div>
-        </div>
-      </section>
-
       {/* SPLASH PAGE */}
       <section
         className="rounded-[14px] p-8 border"
@@ -287,7 +244,7 @@ export default function SettingsForm({ initialSettings }) {
 
       <button
         type="submit"
-        disabled={saving || uploadingLogo || uploadingHero || uploadingCowork || uploadingEvents || uploadingStudio || uploadingSplashLogo}
+        disabled={saving || uploadingLogo || uploadingHero || uploadingSplashLogo}
         className="w-full py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
         style={{ background: '#ffffff', color: '#0a0a0a' }}
       >

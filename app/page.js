@@ -1,9 +1,9 @@
 import { createClient } from '@/lib/supabase/server';
-import EarlyMemberSplash from './components/EarlyMemberSplash';
+import SplashClient from './components/SplashClient';
 
 export const revalidate = 0;
 
-export default async function Home() {
+export default async function SplashPage() {
   const supabase = await createClient();
   const { data: logoSetting } = await supabase
     .from('site_settings')
@@ -13,5 +13,5 @@ export default async function Home() {
 
   const logoUrl = logoSetting?.value || '';
 
-  return <EarlyMemberSplash logoUrl={logoUrl} />;
+  return <SplashClient logoUrl={logoUrl} />;
 }

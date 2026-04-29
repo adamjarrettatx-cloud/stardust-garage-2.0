@@ -37,3 +37,53 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(0.6);
   cursor: pointer;
 }
+
+@keyframes float-logo {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+.float-logo {
+  animation: float-logo 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .float-logo {
+    animation: none;
+  }
+}
+
+/* ---------- View Transitions (homepage portals → destination pages) ---------- */
+
+/* Smooth, slightly slower-than-default crossfade for any transitioning pair. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 500ms;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* The portal tiles use named transitions so the browser morphs the tile
+   into the matching element on the destination page. */
+::view-transition-old(portal-events),
+::view-transition-new(portal-events),
+::view-transition-old(portal-members),
+::view-transition-new(portal-members) {
+  animation-duration: 600ms;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root),
+  ::view-transition-old(portal-events),
+  ::view-transition-new(portal-events),
+  ::view-transition-old(portal-members),
+  ::view-transition-new(portal-members) {
+    animation-duration: 0.001ms;
+  }
+}
