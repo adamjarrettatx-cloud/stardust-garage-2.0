@@ -283,7 +283,7 @@ export default function MembersPage() {
 
                 <div className="flex items-baseline gap-2 mb-8">
                   <span
-                    className="text-[44px] font-extrabold -tracking-[0.02em] leading-none"
+                    className="text-[36px] md:text-[44px] font-extrabold -tracking-[0.02em] leading-none"
                     style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
                   >
                     {plan.price}

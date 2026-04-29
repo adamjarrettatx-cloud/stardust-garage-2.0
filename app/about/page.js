@@ -42,7 +42,7 @@ function SocialIcon({ name }) {
 export default function AboutPage() {
   return (
     <main className="max-w-[900px] mx-auto px-6 py-20">
-      <h1 className="text-[46px] font-extrabold -tracking-[0.02em] mb-9 leading-[1.1]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+      <h1 className="text-[32px] md:text-[46px] font-extrabold -tracking-[0.02em] mb-9 leading-[1.1]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
         ABOUT STARDUST GARAGE
       </h1>
 
