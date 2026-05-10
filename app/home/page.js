@@ -16,9 +16,18 @@ export default async function HomePage() {
     .order('event_date', { ascending: true });
 
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Compute "today" in Austin/Central Time so events tonight don't
+  // get incorrectly filtered as past.
+  const todayInAustin = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Chicago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(today);
+  const todayDate = new Date(todayInAustin + 'T00:00:00');
+
   const events = (allEvents || [])
-    .filter((e) => new Date(e.event_date + 'T00:00:00') >= today)
+    .filter((e) => new Date(e.event_date + 'T00:00:00') >= todayDate)
     .slice(0, 3);
 
   return (
