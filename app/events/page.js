@@ -23,8 +23,17 @@ export default async function EventsPage() {
 
   const eventList = events || [];
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Compute "today" in Austin/Central Time, not UTC. Otherwise events
+  // happening today get bucketed as "past" once it's after 6-7pm Central
+  // (when UTC has already ticked over to the next day on the server).
+  const todayInAustin = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Chicago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date()); // Returns 'YYYY-MM-DD' format
+  const today = new Date(todayInAustin + 'T00:00:00');
+
   const upcoming = eventList.filter((e) => new Date(e.event_date + 'T00:00:00') >= today);
   const past = eventList.filter((e) => new Date(e.event_date + 'T00:00:00') < today);
 
