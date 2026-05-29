@@ -38,6 +38,19 @@ export default function SignupForm() {
       return;
     }
 
+    // Fire-and-forget email notifications. We don't await this — if
+    // Resend has an issue, the user still sees their success state.
+    const contactType = detectContactType(trimmed);
+    fetch('/api/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        formType: 'signup',
+        data: { contact: trimmed, contact_type: contactType, source: 'homepage' },
+        email: contactType === 'email' ? trimmed : null,
+      }),
+    }).catch(() => {});
+
     setSubmitted(true);
   };
 
