@@ -57,6 +57,28 @@ export default function CollaborateForm({ role, roleLabel, roleSubtitle }) {
       return;
     }
 
+    // Fire-and-forget email notifications
+    fetch('/api/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        formType: 'collaboration',
+        data: {
+          collaborator_type: role,
+          full_name: form.full_name.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim(),
+          company: form.company.trim() || null,
+          instagram_handle: form.instagram_handle.trim() || null,
+          applying_for: form.applying_for,
+          experience: form.experience.trim(),
+          portfolio_link: form.portfolio_link.trim(),
+          additional_info: form.additional_info.trim() || null,
+        },
+        email: form.email.trim(),
+      }),
+    }).catch(() => {});
+
     setSubmitted(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
