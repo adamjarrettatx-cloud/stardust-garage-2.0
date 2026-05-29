@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 const items = [
   {
     eyebrow: 'SOUND',
-    title: 'L-Acoustics 4-Point System',
+    title: 'L-Acoustics Sound',
     desc: 'A reference-grade rig in a purpose-built, acoustically treated warehouse \u2014 broadband absorption, bass trapping, no hot spots in the room.',
     spec: 'L-Acoustics \u00b7 tuned to the room',
     visual: 'sound',
