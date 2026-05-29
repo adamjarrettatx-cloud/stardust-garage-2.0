@@ -14,13 +14,97 @@ function formatDate(dateString) {
   });
 }
 
+// Tile with optional notification badge. When `count > 0`, the tile gets
+// a subtly warmer/lighter background and a small badge in the top-right
+// showing the number of pending items.
+function Tile({ href, eyebrow, title, count = 0 }) {
+  const isHighlighted = count > 0;
+  return (
+    <Link
+      href={href}
+      className="relative rounded-[14px] p-5 border transition-colors hover:border-white/20"
+      style={{
+        background: isHighlighted ? '#1f1c14' : '#141414',
+        borderColor: isHighlighted
+          ? 'rgba(255,200,80,0.25)'
+          : 'rgba(255,255,255,0.05)',
+      }}
+    >
+      <div
+        className="text-[10px] font-semibold tracking-[0.14em] mb-1.5"
+        style={{ color: '#8a8a8a' }}
+      >
+        {eyebrow}
+      </div>
+      <div
+        className="text-[15px] font-bold"
+        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+      >
+        {title}
+      </div>
+
+      {count > 0 && (
+        <span
+          className="absolute top-3 right-3 inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-[11px] font-bold leading-none"
+          style={{
+            background: '#ffb84d',
+            color: '#0a0a0a',
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+          }}
+          aria-label={`${count} new`}
+        >
+          {count > 99 ? '99+' : count}
+        </span>
+      )}
+    </Link>
+  );
+}
+
 export default async function AdminDashboard() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+
+  // Events list (for the section below the tiles)
   const { data: events } = await supabase
     .from('events')
     .select('*')
     .order('event_date', { ascending: true });
+
+  // Pending counts for the four "review" tiles. Run in parallel.
+  // We use `count: 'exact', head: true` so we get just the count, not
+  // the rows themselves — much faster.
+  const [
+    applicationsCount,
+    venueInquiriesCount,
+    microPartiesCount,
+    collaborationsCount,
+    recentSignupsCount,
+  ] = await Promise.all([
+    supabase
+      .from('membership_applications')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending'),
+    supabase
+      .from('venue_inquiries')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending'),
+    supabase
+      .from('micro_party_inquiries')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending'),
+    supabase
+      .from('collaborations')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending'),
+    // Signups don't have a status column — count anything from the last 7 days
+    supabase
+      .from('signups')
+      .select('*', { count: 'exact', head: true })
+      .gte(
+        'created_at',
+        new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+      ),
+  ]);
 
   return (
     <main className="max-w-[1200px] mx-auto px-6 py-16">
@@ -41,78 +125,46 @@ export default async function AdminDashboard() {
 
       {/* Quick links to sub-sections */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4 mb-14">
-        <Link
-          href="/admin"
-          className="rounded-[14px] p-5 border transition-colors"
-          style={{ background: '#1a1a1a', borderColor: 'rgba(255,255,255,0.15)' }}
-        >
-          <div className="text-[10px] font-semibold tracking-[0.14em] mb-1.5" style={{ color: '#8a8a8a' }}>CURRENT</div>
-          <div className="text-[15px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Events</div>
-        </Link>
-        <Link
+        <Tile href="/admin" eyebrow="CURRENT" title="Events" />
+
+        <Tile
           href="/admin/applications"
-          className="rounded-[14px] p-5 border transition-colors hover:border-white/20"
-          style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
-        >
-          <div className="text-[10px] font-semibold tracking-[0.14em] mb-1.5" style={{ color: '#8a8a8a' }}>REVIEW</div>
-          <div className="text-[15px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Applications</div>
-        </Link>
-        <Link
-          href="/admin/early-members"
-          className="rounded-[14px] p-5 border transition-colors hover:border-white/20"
-          style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
-        >
-          <div className="text-[10px] font-semibold tracking-[0.14em] mb-1.5" style={{ color: '#8a8a8a' }}>REVIEW</div>
-          <div className="text-[15px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Early Members</div>
-        </Link>
-        <Link
+          eyebrow="REVIEW"
+          title="Applications"
+          count={applicationsCount?.count || 0}
+        />
+
+        <Tile
           href="/admin/venue-inquiries"
-          className="rounded-[14px] p-5 border transition-colors hover:border-white/20"
-          style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
-        >
-          <div className="text-[10px] font-semibold tracking-[0.14em] mb-1.5" style={{ color: '#8a8a8a' }}>REVIEW</div>
-          <div className="text-[15px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Venue Inquiries</div>
-        </Link>
-        <Link
+          eyebrow="REVIEW"
+          title="Venue Inquiries"
+          count={venueInquiriesCount?.count || 0}
+        />
+
+        <Tile
           href="/admin/micro-parties"
-          className="rounded-[14px] p-5 border transition-colors hover:border-white/20"
-          style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
-        >
-          <div className="text-[10px] font-semibold tracking-[0.14em] mb-1.5" style={{ color: '#8a8a8a' }}>REVIEW</div>
-          <div className="text-[15px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Micro Parties</div>
-        </Link>
-        <Link
+          eyebrow="REVIEW"
+          title="Micro Parties"
+          count={microPartiesCount?.count || 0}
+        />
+
+        <Tile
           href="/admin/collaborations"
-          className="rounded-[14px] p-5 border transition-colors hover:border-white/20"
-          style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
-        >
-          <div className="text-[10px] font-semibold tracking-[0.14em] mb-1.5" style={{ color: '#8a8a8a' }}>REVIEW</div>
-          <div className="text-[15px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Collaborations</div>
-        </Link>
-        <Link
+          eyebrow="REVIEW"
+          title="Collaborations"
+          count={collaborationsCount?.count || 0}
+        />
+
+        <Tile
           href="/admin/signups"
-          className="rounded-[14px] p-5 border transition-colors hover:border-white/20"
-          style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
-        >
-          <div className="text-[10px] font-semibold tracking-[0.14em] mb-1.5" style={{ color: '#8a8a8a' }}>VIEW</div>
-          <div className="text-[15px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Signups</div>
-        </Link>
-        <Link
-          href="/admin/settings"
-          className="rounded-[14px] p-5 border transition-colors hover:border-white/20"
-          style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
-        >
-          <div className="text-[10px] font-semibold tracking-[0.14em] mb-1.5" style={{ color: '#8a8a8a' }}>MANAGE</div>
-          <div className="text-[15px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Settings</div>
-        </Link>
-        <Link
-          href="/admin/galleries"
-          className="rounded-[14px] p-5 border transition-colors hover:border-white/20"
-          style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
-        >
-          <div className="text-[10px] font-semibold tracking-[0.14em] mb-1.5" style={{ color: '#8a8a8a' }}>MANAGE</div>
-          <div className="text-[15px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Galleries</div>
-        </Link>
+          eyebrow="VIEW"
+          title="Signups"
+          count={recentSignupsCount?.count || 0}
+        />
+
+        <Tile href="/admin/settings" eyebrow="MANAGE" title="Settings" />
+
+        <Tile href="/admin/galleries" eyebrow="MANAGE" title="Galleries" />
       </div>
 
       <div className="flex items-center justify-between mb-6">
@@ -136,7 +188,9 @@ export default async function AdminDashboard() {
           className="rounded-[14px] p-12 text-center border"
           style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
         >
-          <p style={{ color: '#8a8a8a' }}>No events yet. Click &quot;+ NEW EVENT&quot; to create one.</p>
+          <p style={{ color: '#8a8a8a' }}>
+            No events yet. Click &quot;+ NEW EVENT&quot; to create one.
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -148,15 +202,23 @@ export default async function AdminDashboard() {
             >
               <div className="w-20 h-20 rounded-[10px] overflow-hidden flex-shrink-0 bg-[#1a1a1a]">
                 {event.image_url && (
-                  <img src={event.image_url} alt={event.title} className="w-full h-full object-cover" />
+                  <img
+                    src={event.image_url}
+                    alt={event.title}
+                    className="w-full h-full object-cover"
+                  />
                 )}
               </div>
 
               <div className="flex-1 min-w-0">
                 <div className="text-[12px] mb-1" style={{ color: '#8a8a8a' }}>
-                  {formatDate(event.event_date)}{event.event_time ? ` · ${event.event_time}` : ''}
+                  {formatDate(event.event_date)}
+                  {event.event_time ? ` · ${event.event_time}` : ''}
                 </div>
-                <h3 className="text-[17px] font-bold truncate" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                <h3
+                  className="text-[17px] font-bold truncate"
+                  style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                >
                   {event.title}
                 </h3>
                 <div className="text-[12px] mt-1" style={{ color: '#555' }}>
