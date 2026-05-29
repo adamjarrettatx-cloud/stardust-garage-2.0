@@ -100,6 +100,33 @@ export default function MicroPartyInquireForm() {
       return;
     }
 
+    // Fire-and-forget email notifications
+    fetch('/api/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        formType: 'micro_party_inquiry',
+        data: {
+          full_name: fullName.trim(),
+          email: email.trim(),
+          phone: phone.trim() || null,
+          is_member: isMember,
+          website_or_social: websiteOrSocial.trim() || null,
+          event_name: eventName.trim() || null,
+          event_type: eventType.trim() || null,
+          event_date: eventDate || null,
+          start_time: startTime || null,
+          duration_hours: durationHours || null,
+          expected_attendance: expectedAttendance || null,
+          selling_tickets: sellingTickets,
+          event_vision: eventVision.trim() || null,
+          special_requests: specialRequests.trim() || null,
+          how_heard: howHeard.trim() || null,
+        },
+        email: email.trim(),
+      }),
+    }).catch(() => {});
+
     setSuccess(true);
     setSubmitting(false);
   };
