@@ -66,6 +66,29 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
       return;
     }
 
+    // Fire-and-forget email notifications
+    fetch('/api/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        formType: 'membership_application',
+        data: {
+          plan: planSlug,
+          full_name: form.full_name.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim(),
+          social_handle: form.social_handle.trim(),
+          website: form.website.trim() || null,
+          birthday: form.birthday,
+          why_stardust: form.why_stardust.trim(),
+          how_did_you_hear: form.how_did_you_hear.trim(),
+          how_contribute: form.how_contribute.trim(),
+          what_experiences: form.what_experiences.trim(),
+        },
+        email: form.email.trim(),
+      }),
+    }).catch(() => {});
+
     setSubmitted(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
