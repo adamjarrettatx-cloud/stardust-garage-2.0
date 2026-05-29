@@ -103,6 +103,30 @@ export default function InquireForm({ inquiryType, typeLabel }) {
       return;
     }
 
+    // Fire-and-forget email notifications
+    fetch('/api/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        formType: 'venue_inquiry',
+        data: {
+          inquiry_type: inquiryType || null,
+          full_name: form.full_name.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim(),
+          company: form.company.trim() || null,
+          event_name: form.event_name.trim(),
+          event_type: form.event_type.trim(),
+          preferred_dates: form.preferred_dates.trim(),
+          expected_attendance: form.expected_attendance.trim(),
+          areas_needed: form.areas_needed.join(', '),
+          event_vision: form.event_vision.trim(),
+          budget_range: form.budget_range.trim(),
+        },
+        email: form.email.trim(),
+      }),
+    }).catch(() => {});
+
     setSubmitted(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
