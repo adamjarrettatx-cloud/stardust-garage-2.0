@@ -4,18 +4,21 @@ import { NextResponse } from 'next/server';
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
 
-  // Only run auth on /admin/* routes
-  if (!pathname.startsWith('/admin')) {
+  // Only run auth logic on /admin/* and /member/* routes
+  const isAdminRoute = pathname.startsWith('/admin');
+  const isMemberRoute = pathname.startsWith('/member');
+
+  if (!isAdminRoute && !isMemberRoute) {
     return NextResponse.next();
   }
 
-  // Allow /admin/login to be accessed without auth
-  if (pathname === '/admin/login') {
+  // Allow login pages to be accessed without auth
+  if (pathname === '/admin/login' || pathname === '/login') {
     return NextResponse.next();
   }
 
-  // Dev safety: if Supabase env vars aren't configured, skip auth so the
-  // admin UI is browsable for layout work. Real deployments must set these.
+  // Dev safety: if Supabase isn't configured, skip auth so the UI is
+  // browsable for layout work.
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
     !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -48,10 +51,19 @@ export async function middleware(request) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Not logged in → bounce to the login page (NOT the homepage)
+  // Not logged in -> bounce to the appropriate login page
   if (!user) {
     const url = request.nextUrl.clone();
-    url.pathname = '/admin/login';
+    url.pathname = isAdminRoute ? '/admin/login' : '/login';
+    return NextResponse.redirect(url);
+  }
+
+  const isAdmin = Boolean(user.user_metadata?.is_admin);
+
+  // Trying to hit /admin/* without admin flag -> send them to /member
+  if (isAdminRoute && !isAdmin) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/member';
     return NextResponse.redirect(url);
   }
 
