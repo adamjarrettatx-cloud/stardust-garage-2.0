@@ -1,130 +1,123 @@
-'use client';
+import Link from 'next/link';
+import { getCurrentUser } from '@/lib/auth-helpers';
+import { createClient } from '@/lib/supabase/server';
+import MemberSignOutButton from './MemberSignOutButton';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import Wordmark from '@/app/components/Wordmark';
+export const revalidate = 0;
 
-export default function MemberLoginPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+export default async function MemberDashboard() {
+  const { user } = await getCurrentUser();
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+  // Try to get their member profile (may not exist yet — Phase B creates it)
+  const supabase = await createClient();
+  const { data: profile } = await supabase
+    .from('member_profiles')
+    .select('full_name')
+    .eq('user_id', user.id)
+    .maybeSingle();
 
-    const supabase = createClient();
-    const { data, error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (authError) {
-      setError(authError.message);
-      setLoading(false);
-      return;
-    }
-
-    // Route based on role — admins land on /admin, members on /member
-    const isAdmin = Boolean(data?.user?.user_metadata?.is_admin);
-    router.push(isAdmin ? '/admin' : '/member');
-    router.refresh();
-  };
+  const displayName =
+    profile?.full_name || user.user_metadata?.full_name || user.email;
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-6 py-12">
-      <div className="w-full max-w-[400px]">
-        <div className="flex justify-center mb-10">
-          <Wordmark size="md" align="center" />
+    <main className="max-w-[900px] mx-auto px-6 py-16">
+      <div className="flex items-center justify-between mb-12">
+        <div>
+          <div
+            className="text-[11px] font-semibold tracking-[0.28em] mb-3"
+            style={{ color: 'rgba(255,255,255,0.5)' }}
+          >
+            MEMBER AREA
+          </div>
+          <h1
+            className="text-[40px] font-extrabold -tracking-[0.02em] leading-[1.1]"
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+          >
+            Welcome, {displayName}.
+          </h1>
         </div>
-        <h1
-          className="text-[28px] font-extrabold -tracking-[0.02em] mb-2 text-center leading-[1.1]"
-          style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-        >
-          Member Login
-        </h1>
-        <p
-          className="text-[13px] text-center mb-10"
-          style={{ color: '#8a8a8a' }}
-        >
-          Sign in to access your member account
-        </p>
-
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label
-              className="block text-[12px] font-semibold tracking-[0.14em] mb-2"
-              style={{ color: '#8a8a8a' }}
-            >
-              EMAIL
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30"
-              style={{
-                background: '#141414',
-                borderColor: 'rgba(255,255,255,0.1)',
-                color: '#f5f5f5',
-              }}
-            />
-          </div>
-
-          <div>
-            <label
-              className="block text-[12px] font-semibold tracking-[0.14em] mb-2"
-              style={{ color: '#8a8a8a' }}
-            >
-              PASSWORD
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full px-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30"
-              style={{
-                background: '#141414',
-                borderColor: 'rgba(255,255,255,0.1)',
-                color: '#f5f5f5',
-              }}
-            />
-          </div>
-
-          {error && (
-            <div className="text-[13px] text-red-400 text-center">{error}</div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
-            style={{ background: '#ffffff', color: '#0a0a0a' }}
-          >
-            {loading ? 'SIGNING IN...' : 'SIGN IN'}
-          </button>
-        </form>
-
-        <p
-          className="text-[12px] text-center mt-8"
-          style={{ color: '#8a8a8a' }}
-        >
-          Not a member yet?{' '}
-          <a
-            href="/members"
-            className="underline hover:text-white transition-colors"
-            style={{ color: '#a0a0a0' }}
-          >
-            Apply for membership
-          </a>
-        </p>
+        <MemberSignOutButton />
       </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Studio Booking - placeholder */}
+        <div
+          className="relative rounded-[14px] p-7 border"
+          style={{
+            background: '#141414',
+            borderColor: 'rgba(255,255,255,0.05)',
+            opacity: 0.6,
+          }}
+        >
+          <div
+            className="text-[10px] font-semibold tracking-[0.18em] mb-3"
+            style={{ color: '#8a8a8a' }}
+          >
+            BOOK
+          </div>
+          <div
+            className="text-[20px] font-bold mb-2"
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+          >
+            Studio Time
+          </div>
+          <p className="text-[13px]" style={{ color: '#8a8a8a' }}>
+            Reserve studio hours — coming soon.
+          </p>
+          <span
+            className="absolute top-4 right-4 text-[9px] font-semibold tracking-[0.18em] px-2.5 py-1 rounded-full"
+            style={{
+              background: 'rgba(255,255,255,0.08)',
+              color: 'rgba(255,255,255,0.6)',
+            }}
+          >
+            COMING SOON
+          </span>
+        </div>
+
+        {/* My Bookings - placeholder */}
+        <div
+          className="relative rounded-[14px] p-7 border"
+          style={{
+            background: '#141414',
+            borderColor: 'rgba(255,255,255,0.05)',
+            opacity: 0.6,
+          }}
+        >
+          <div
+            className="text-[10px] font-semibold tracking-[0.18em] mb-3"
+            style={{ color: '#8a8a8a' }}
+          >
+            VIEW
+          </div>
+          <div
+            className="text-[20px] font-bold mb-2"
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+          >
+            My Bookings
+          </div>
+          <p className="text-[13px]" style={{ color: '#8a8a8a' }}>
+            Your upcoming studio sessions — coming soon.
+          </p>
+          <span
+            className="absolute top-4 right-4 text-[9px] font-semibold tracking-[0.18em] px-2.5 py-1 rounded-full"
+            style={{
+              background: 'rgba(255,255,255,0.08)',
+              color: 'rgba(255,255,255,0.6)',
+            }}
+          >
+            COMING SOON
+          </span>
+        </div>
+      </div>
+
+      <p
+        className="mt-12 text-[13px] leading-[1.6]"
+        style={{ color: '#8a8a8a' }}
+      >
+        You&apos;re signed in as <span style={{ color: '#f5f5f5' }}>{user.email}</span>.
+        Studio booking will be available here once the system is live.
+      </p>
     </main>
   );
 }
