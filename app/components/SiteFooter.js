@@ -6,6 +6,7 @@ const navLinks = [
   { label: 'Venue Rental', href: '/venue-rental' },
   { label: 'DJs', href: '/collaborate/djs' },
   { label: 'Artists', href: '/collaborate/artists' },
+  { label: 'Member Login', href: '/login' },
 ];
 
 function SocialIcon({ name }) {
