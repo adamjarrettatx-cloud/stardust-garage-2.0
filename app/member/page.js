@@ -6,6 +6,68 @@ import { getTodayInAustin } from '@/lib/studio-helpers';
 
 export const revalidate = 0;
 
+function StudioTile({ active, children }) {
+  if (active) {
+    return (
+      <Link
+        href="/member/studio"
+        className="relative rounded-[14px] p-7 border transition-all hover:-translate-y-0.5 hover:border-white/15"
+        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.06)' }}
+      >
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <div
+      className="relative rounded-[14px] p-7 border"
+      style={{
+        background: '#141414',
+        borderColor: 'rgba(255,255,255,0.06)',
+        opacity: 0.4,
+        cursor: 'not-allowed',
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function BookingsTile({ active, upcomingCount, children }) {
+  if (active) {
+    return (
+      <Link
+        href="/member/bookings"
+        className="relative rounded-[14px] p-7 border transition-all hover:-translate-y-0.5 hover:border-white/15"
+        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.06)' }}
+      >
+        {children}
+        {upcomingCount > 0 && (
+          <span
+            className="absolute top-4 right-4 inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-[11px] font-bold leading-none"
+            style={{ background: '#ffb84d', color: '#0a0a0a', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+          >
+            {upcomingCount}
+          </span>
+        )}
+      </Link>
+    );
+  }
+  return (
+    <div
+      className="relative rounded-[14px] p-7 border"
+      style={{
+        background: '#141414',
+        borderColor: 'rgba(255,255,255,0.06)',
+        opacity: 0.4,
+        cursor: 'not-allowed',
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 export default async function MemberDashboard() {
   const { user } = await getCurrentUser();
 
@@ -87,46 +149,21 @@ export default async function MemberDashboard() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Link
-          href={isActive ? '/member/studio' : '#'}
-          onClick={(e) => { if (!isActive) e.preventDefault(); }}
-          className="relative rounded-[14px] p-7 border transition-all hover:-translate-y-0.5 hover:border-white/15"
-          style={{
-            background: '#141414',
-            borderColor: 'rgba(255,255,255,0.06)',
-            opacity: isActive ? 1 : 0.4,
-            cursor: isActive ? 'pointer' : 'not-allowed',
-          }}
-        >
+        <StudioTile active={isActive}>
           <div className="text-[10px] font-semibold tracking-[0.18em] mb-3" style={{ color: '#8a8a8a' }}>BOOK</div>
           <div className="text-[20px] font-bold mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Studio Time</div>
           <p className="text-[13px]" style={{ color: '#8a8a8a' }}>
             {isActive ? 'Reserve studio hours.' : 'Activate membership to book.'}
           </p>
-        </Link>
+        </StudioTile>
 
-        <Link
-          href={isActive ? '/member/bookings' : '#'}
-          onClick={(e) => { if (!isActive) e.preventDefault(); }}
-          className="relative rounded-[14px] p-7 border transition-all hover:-translate-y-0.5 hover:border-white/15"
-          style={{
-            background: '#141414',
-            borderColor: 'rgba(255,255,255,0.06)',
-            opacity: isActive ? 1 : 0.4,
-            cursor: isActive ? 'pointer' : 'not-allowed',
-          }}
-        >
+        <BookingsTile active={isActive} upcomingCount={upcomingCount}>
           <div className="text-[10px] font-semibold tracking-[0.18em] mb-3" style={{ color: '#8a8a8a' }}>VIEW</div>
           <div className="text-[20px] font-bold mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>My Bookings</div>
           <p className="text-[13px]" style={{ color: '#8a8a8a' }}>
             {isActive ? 'Your upcoming studio sessions.' : 'Activate membership to book.'}
           </p>
-          {upcomingCount > 0 && (
-            <span className="absolute top-4 right-4 inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-[11px] font-bold leading-none" style={{ background: '#ffb84d', color: '#0a0a0a', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-              {upcomingCount}
-            </span>
-          )}
-        </Link>
+        </BookingsTile>
       </div>
 
       <div className="mt-12 flex items-center justify-between text-[13px]" style={{ color: '#8a8a8a' }}>
