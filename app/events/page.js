@@ -31,11 +31,10 @@ export default async function EventsPage() {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).format(new Date()); // Returns 'YYYY-MM-DD' format
+  }).format(new Date());
   const today = new Date(todayInAustin + 'T00:00:00');
 
   const upcoming = eventList.filter((e) => new Date(e.event_date + 'T00:00:00') >= today);
-  const past = eventList.filter((e) => new Date(e.event_date + 'T00:00:00') < today);
 
   return (
     <main className="max-w-[1180px] mx-auto px-4 md:px-6 py-12 md:py-16">
@@ -74,42 +73,6 @@ export default async function EventsPage() {
           {upcoming.map((event) => (
             <EventCard key={event.id} event={event} />
           ))}
-        </div>
-      )}
-
-      {/* PAST EVENTS */}
-      {past.length > 0 && (
-        <div className="mt-20 md:mt-28">
-          <h2
-            className="text-[24px] md:text-[28px] font-extrabold -tracking-[0.02em] mb-6 md:mb-8 leading-[1.1]"
-            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-          >
-            Past Events
-          </h2>
-          <div className="space-y-3">
-            {past.slice(0, 10).map((event) => (
-              <Link
-                key={event.id}
-                href={`/events/${event.slug}`}
-                className="block rounded-[14px] border p-4 md:p-5 transition-colors hover:border-white/15"
-                style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)', opacity: 0.7 }}
-              >
-                <div className="flex items-center gap-4 md:gap-5">
-                  <div className="w-14 h-14 md:w-16 md:h-16 rounded-[10px] overflow-hidden flex-shrink-0 bg-[#1a1a1a]">
-                    {event.image_url && <img src={event.image_url} alt={event.title} className="w-full h-full object-cover" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[11px] md:text-[12px] mb-1" style={{ color: '#8a8a8a' }}>
-                      {formatEventDate(event.event_date)}
-                    </div>
-                    <h3 className="text-[15px] md:text-[16px] font-bold truncate" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                      {event.title}
-                    </h3>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
         </div>
       )}
     </main>
@@ -195,7 +158,7 @@ function EventCard({ event }) {
 
         <div className="flex items-center gap-2 mt-auto">
           {event.ticket_url ? (
-            <a
+            
               href={event.ticket_url}
               target="_blank"
               rel="noopener noreferrer"
