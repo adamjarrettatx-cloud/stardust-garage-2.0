@@ -1,19 +1,20 @@
+import Link from 'next/link';
 import { getCurrentUser } from '@/lib/auth-helpers';
 import { createClient } from '@/lib/supabase/server';
 import MemberSignOutButton from './MemberSignOutButton';
+import { getTodayInAustin } from '@/lib/studio-helpers';
 
 export const revalidate = 0;
 
 export default async function MemberDashboard() {
   const { user } = await getCurrentUser();
 
-  // Fail-safe profile lookup. If anything goes wrong (table missing, RLS
-  // denying access, network error), we don't crash — we just fall back
-  // to using the user's email as the display name.
   let displayName = user?.email || 'member';
+  let upcomingCount = 0;
 
   try {
     const supabase = await createClient();
+
     const { data: profile } = await supabase
       .from('member_profiles')
       .select('full_name')
@@ -25,9 +26,18 @@ export default async function MemberDashboard() {
     } else if (user.user_metadata?.full_name) {
       displayName = user.user_metadata.full_name;
     }
+
+    // Count upcoming bookings for this member
+    const today = getTodayInAustin();
+    const { count } = await supabase
+      .from('studio_bookings')
+      .select('*', { count: 'exact', head: true })
+      .eq('member_id', user.id)
+      .eq('status', 'confirmed')
+      .gte('booking_date', today);
+    upcomingCount = count || 0;
   } catch (err) {
-    // Silently fall back to the default displayName. Logged for visibility.
-    console.error('Member profile lookup failed:', err?.message || err);
+    console.error('Member dashboard lookup failed:', err?.message || err);
   }
 
   return (
@@ -51,12 +61,13 @@ export default async function MemberDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div
-          className="relative rounded-[14px] p-7 border"
+        {/* Studio Booking - now active */}
+        <Link
+          href="/member/studio"
+          className="relative rounded-[14px] p-7 border transition-all hover:-translate-y-0.5 hover:border-white/15"
           style={{
             background: '#141414',
-            borderColor: 'rgba(255,255,255,0.05)',
-            opacity: 0.6,
+            borderColor: 'rgba(255,255,255,0.06)',
           }}
         >
           <div
@@ -72,25 +83,17 @@ export default async function MemberDashboard() {
             Studio Time
           </div>
           <p className="text-[13px]" style={{ color: '#8a8a8a' }}>
-            Reserve studio hours — coming soon.
+            Reserve studio hours.
           </p>
-          <span
-            className="absolute top-4 right-4 text-[9px] font-semibold tracking-[0.18em] px-2.5 py-1 rounded-full"
-            style={{
-              background: 'rgba(255,255,255,0.08)',
-              color: 'rgba(255,255,255,0.6)',
-            }}
-          >
-            COMING SOON
-          </span>
-        </div>
+        </Link>
 
-        <div
-          className="relative rounded-[14px] p-7 border"
+        {/* My Bookings - now active */}
+        <Link
+          href="/member/bookings"
+          className="relative rounded-[14px] p-7 border transition-all hover:-translate-y-0.5 hover:border-white/15"
           style={{
             background: '#141414',
-            borderColor: 'rgba(255,255,255,0.05)',
-            opacity: 0.6,
+            borderColor: 'rgba(255,255,255,0.06)',
           }}
         >
           <div
@@ -106,26 +109,28 @@ export default async function MemberDashboard() {
             My Bookings
           </div>
           <p className="text-[13px]" style={{ color: '#8a8a8a' }}>
-            Your upcoming studio sessions — coming soon.
+            Your upcoming studio sessions.
           </p>
-          <span
-            className="absolute top-4 right-4 text-[9px] font-semibold tracking-[0.18em] px-2.5 py-1 rounded-full"
-            style={{
-              background: 'rgba(255,255,255,0.08)',
-              color: 'rgba(255,255,255,0.6)',
-            }}
-          >
-            COMING SOON
-          </span>
-        </div>
+          {upcomingCount > 0 && (
+            <span
+              className="absolute top-4 right-4 inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-[11px] font-bold leading-none"
+              style={{
+                background: '#ffb84d',
+                color: '#0a0a0a',
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
+              }}
+            >
+              {upcomingCount}
+            </span>
+          )}
+        </Link>
       </div>
 
       <p
         className="mt-12 text-[13px] leading-[1.6]"
         style={{ color: '#8a8a8a' }}
       >
-        You&apos;re signed in as <span style={{ color: '#f5f5f5' }}>{user.email}</span>.
-        Studio booking will be available here once the system is live.
+        Signed in as <span style={{ color: '#f5f5f5' }}>{user.email}</span>.
       </p>
     </main>
   );
