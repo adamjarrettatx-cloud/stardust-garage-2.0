@@ -4,10 +4,60 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
-export default function ApplicationActions({ applicationId, currentStatus }) {
+export default function ApplicationActions({
+  applicationId,
+  currentStatus,
+  accountCreated,
+}) {
   const router = useRouter();
   const [working, setWorking] = useState(false);
 
+  // Approving: call the API so we create an auth user + member profile
+  // + send welcome email. The API is idempotent — calling it again on
+  // an already-approved application is safe.
+  const handleApprove = async () => {
+    if (!accountCreated) {
+      const confirmed = window.confirm(
+        'Approve this application and create a member account?\n\n' +
+          'A login email with a temporary password will be sent to the applicant.'
+      );
+      if (!confirmed) return;
+    }
+
+    setWorking(true);
+    try {
+      const res = await fetch('/api/admin/approve-member', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ applicationId }),
+      });
+      const body = await res.json();
+
+      if (!res.ok) {
+        alert('Error: ' + (body?.error || 'Failed to approve'));
+        setWorking(false);
+        return;
+      }
+
+      if (body.alreadyHadAccount) {
+        alert('Application approved. (Member account was already active.)');
+      } else if (body.passwordEmailed) {
+        alert('Approved. Welcome email sent to the new member.');
+      } else {
+        alert(
+          'Approved. The applicant\'s email was already a Supabase user — they keep their existing password.'
+        );
+      }
+
+      router.refresh();
+    } catch (err) {
+      alert('Error: ' + (err?.message || 'Unknown'));
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  // Reject / mark pending: simple status update, no account changes
   const updateStatus = async (newStatus) => {
     setWorking(true);
     const supabase = createClient();
@@ -49,12 +99,22 @@ export default function ApplicationActions({ applicationId, currentStatus }) {
     <div className="flex flex-wrap gap-2">
       {currentStatus !== 'approved' && (
         <button
-          onClick={() => updateStatus('approved')}
+          onClick={handleApprove}
           disabled={working}
           className="px-5 py-2.5 rounded-full text-[12px] font-semibold tracking-[0.12em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
           style={{ background: '#ffffff', color: '#0a0a0a' }}
         >
-          APPROVE
+          {accountCreated ? 'APPROVE' : 'APPROVE & CREATE ACCOUNT'}
+        </button>
+      )}
+      {currentStatus === 'approved' && !accountCreated && (
+        <button
+          onClick={handleApprove}
+          disabled={working}
+          className="px-5 py-2.5 rounded-full text-[12px] font-semibold tracking-[0.12em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
+          style={{ background: '#ffffff', color: '#0a0a0a' }}
+        >
+          CREATE MEMBER ACCOUNT
         </button>
       )}
       {currentStatus !== 'rejected' && (
