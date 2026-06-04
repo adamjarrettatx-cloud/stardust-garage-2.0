@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Wordmark from '@/app/components/Wordmark';
@@ -29,7 +30,6 @@ export default function MemberLoginPage() {
       return;
     }
 
-    // Route based on role — admins land on /admin, members on /member
     const isAdmin = Boolean(data?.user?.user_metadata?.is_admin);
     router.push(isAdmin ? '/admin' : '/member');
     router.refresh();
@@ -41,88 +41,44 @@ export default function MemberLoginPage() {
         <div className="flex justify-center mb-10">
           <Wordmark size="md" align="center" />
         </div>
-        <h1
-          className="text-[28px] font-extrabold -tracking-[0.02em] mb-2 text-center leading-[1.1]"
-          style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-        >
+        <h1 className="text-[28px] font-extrabold -tracking-[0.02em] mb-2 text-center leading-[1.1]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           Member Login
         </h1>
-        <p
-          className="text-[13px] text-center mb-10"
-          style={{ color: '#8a8a8a' }}
-        >
+        <p className="text-[13px] text-center mb-10" style={{ color: '#8a8a8a' }}>
           Sign in to access your member account
         </p>
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label
-              className="block text-[12px] font-semibold tracking-[0.14em] mb-2"
-              style={{ color: '#8a8a8a' }}
-            >
-              EMAIL
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30"
-              style={{
-                background: '#141414',
-                borderColor: 'rgba(255,255,255,0.1)',
-                color: '#f5f5f5',
-              }}
-            />
+            <label className="block text-[12px] font-semibold tracking-[0.14em] mb-2" style={{ color: '#8a8a8a' }}>EMAIL</label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full px-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.1)', color: '#f5f5f5' }} />
           </div>
 
           <div>
-            <label
-              className="block text-[12px] font-semibold tracking-[0.14em] mb-2"
-              style={{ color: '#8a8a8a' }}
-            >
-              PASSWORD
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full px-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30"
-              style={{
-                background: '#141414',
-                borderColor: 'rgba(255,255,255,0.1)',
-                color: '#f5f5f5',
-              }}
-            />
+            <label className="block text-[12px] font-semibold tracking-[0.14em] mb-2" style={{ color: '#8a8a8a' }}>PASSWORD</label>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full px-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.1)', color: '#f5f5f5' }} />
           </div>
 
           {error && (
             <div className="text-[13px] text-red-400 text-center">{error}</div>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
-            style={{ background: '#ffffff', color: '#0a0a0a' }}
-          >
+          <button type="submit" disabled={loading} className="w-full py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50" style={{ background: '#ffffff', color: '#0a0a0a' }}>
             {loading ? 'SIGNING IN...' : 'SIGN IN'}
           </button>
         </form>
 
-        <p
-          className="text-[12px] text-center mt-8"
-          style={{ color: '#8a8a8a' }}
-        >
+        <div className="text-center mt-6">
+          <Link href="/forgot-password" className="text-[12px] underline hover:text-white transition-colors" style={{ color: '#a0a0a0' }}>
+            Forgot password?
+          </Link>
+        </div>
+
+        <p className="text-[12px] text-center mt-8" style={{ color: '#8a8a8a' }}>
           Not a member yet?{' '}
-          <a
-            href="/members"
-            className="underline hover:text-white transition-colors"
-            style={{ color: '#a0a0a0' }}
-          >
+          <Link href="/members" className="underline hover:text-white transition-colors" style={{ color: '#a0a0a0' }}>
             Apply for membership
-          </a>
+          </Link>
         </p>
       </div>
     </main>
