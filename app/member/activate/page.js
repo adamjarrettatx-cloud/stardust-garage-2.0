@@ -16,12 +16,10 @@ export default async function ActivatePage() {
     .eq('user_id', user.id)
     .maybeSingle();
 
-  // If already active, send back to member dashboard
   if (profile?.subscription_status === 'active') {
     redirect('/member');
   }
 
-  // Figure out which plan they applied for from their application
   let appliedPlan = profile?.subscription_plan || null;
   if (!appliedPlan && profile?.application_id) {
     const { data: app } = await supabase
@@ -30,11 +28,9 @@ export default async function ActivatePage() {
       .eq('id', profile.application_id)
       .maybeSingle();
 
-    // App plan slug might be 'cowork' or 'cowork-party' — map to our keys
     if (app?.plan === 'cowork-party') appliedPlan = 'iykyk';
     else if (app?.plan === 'cowork') appliedPlan = 'cowork';
   }
 
-  // Fallback: let them pick the plan if we can't determine it
   return <ActivateClient initialPlan={appliedPlan} />;
 }
