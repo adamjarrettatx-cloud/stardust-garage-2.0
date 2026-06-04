@@ -126,7 +126,7 @@ export async function POST(request) {
           application_id: applicationId,
           full_name: application.full_name,
           email,
-          is_active: true,
+          is_active: false,
         },
         { onConflict: 'user_id' }
       );
