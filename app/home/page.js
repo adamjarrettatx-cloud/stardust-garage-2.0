@@ -45,9 +45,9 @@ export default async function HomePage() {
           </p>
         </section>
 
-        {/* Two portals */}
+        {/* Three portals */}
         <section className="px-6 pb-20">
-          <div className="max-w-[1100px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="max-w-[1280px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <EventsTile events={events} />
 
             <PortalTile
@@ -63,6 +63,21 @@ export default async function HomePage() {
               ]}
               cta="VIEW PLANS"
               tint="radial-gradient(120% 80% at 50% 0%, rgba(180,135,70,0.55) 0%, rgba(40,28,18,0.95) 55%, rgba(14,10,8,1) 100%)"
+            />
+
+            <PortalTile
+              href="/members"
+              transitionName="portal-studio"
+              eyebrow="CREATE"
+              title="Studio"
+              summary="A pro-grade studio space tucked inside Stardust Garage — for production, rehearsal, and recording sessions."
+              bullets={[
+                'Available to active members',
+                'Book hourly through your member portal',
+                'Acoustically treated, ready to record',
+              ]}
+              cta="LEARN MORE"
+              tint="radial-gradient(120% 80% at 50% 0%, rgba(70,130,180,0.55) 0%, rgba(18,28,40,0.95) 55%, rgba(8,10,14,1) 100%)"
             />
           </div>
         </section>
