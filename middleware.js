@@ -6,8 +6,7 @@ export async function middleware(request) {
 
   // Only run auth logic on /admin/* and /member/* routes
   const isAdminRoute = pathname.startsWith('/admin');
-  const isMemberRoute = pathname.startsWith('/member');
-
+const isMemberRoute = pathname === '/member' || pathname.startsWith('/member/');
   if (!isAdminRoute && !isMemberRoute) {
     return NextResponse.next();
   }
