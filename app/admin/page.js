@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import LogoutButton from './components/LogoutButton';
 import DeleteEventButton from './components/DeleteEventButton';
+import { getTodayInAustin } from '@/lib/studio-helpers';
 
 export const revalidate = 0;
 
@@ -14,9 +15,6 @@ function formatDate(dateString) {
   });
 }
 
-// Tile with optional notification badge. When `count > 0`, the tile gets
-// a subtly warmer/lighter background and a small badge in the top-right
-// showing the number of pending items.
 function Tile({ href, eyebrow, title, count = 0 }) {
   const isHighlighted = count > 0;
   return (
@@ -64,21 +62,20 @@ export default async function AdminDashboard() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Events list (for the section below the tiles)
   const { data: events } = await supabase
     .from('events')
     .select('*')
     .order('event_date', { ascending: true });
 
-  // Pending counts for the four "review" tiles. Run in parallel.
-  // We use `count: 'exact', head: true` so we get just the count, not
-  // the rows themselves — much faster.
+  const today = getTodayInAustin();
+
   const [
     applicationsCount,
     venueInquiriesCount,
     microPartiesCount,
     collaborationsCount,
     recentSignupsCount,
+    upcomingBookingsCount,
   ] = await Promise.all([
     supabase
       .from('membership_applications')
@@ -96,7 +93,6 @@ export default async function AdminDashboard() {
       .from('collaborations')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'pending'),
-    // Signups don't have a status column — count anything from the last 7 days
     supabase
       .from('signups')
       .select('*', { count: 'exact', head: true })
@@ -104,6 +100,11 @@ export default async function AdminDashboard() {
         'created_at',
         new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
       ),
+    supabase
+      .from('studio_bookings')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'confirmed')
+      .gte('booking_date', today),
   ]);
 
   return (
@@ -123,7 +124,6 @@ export default async function AdminDashboard() {
         <LogoutButton />
       </div>
 
-      {/* Quick links to sub-sections */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4 mb-14">
         <Tile href="/admin" eyebrow="CURRENT" title="Events" />
 
@@ -160,6 +160,19 @@ export default async function AdminDashboard() {
           eyebrow="VIEW"
           title="Signups"
           count={recentSignupsCount?.count || 0}
+        />
+
+        <Tile
+          href="/admin/studio-bookings"
+          eyebrow="MANAGE"
+          title="Studio Bookings"
+          count={upcomingBookingsCount?.count || 0}
+        />
+
+        <Tile
+          href="/admin/studio-settings"
+          eyebrow="MANAGE"
+          title="Studio Settings"
         />
 
         <Tile href="/admin/settings" eyebrow="MANAGE" title="Settings" />
