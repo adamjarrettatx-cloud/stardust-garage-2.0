@@ -96,7 +96,11 @@ export default async function ApplicationDetail({ params }) {
         </div>
       </div>
 
-      <ApplicationActions applicationId={app.id} currentStatus={app.status || 'pending'} />
+      <ApplicationActions
+        applicationId={app.id}
+        currentStatus={app.status || 'pending'}
+        accountCreated={app.account_created || false}
+      />
 
       <section
         className="rounded-[14px] p-8 border mt-8 mb-6"
