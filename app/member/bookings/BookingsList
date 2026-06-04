@@ -148,22 +148,4 @@ export default function BookingsList({ upcoming, past, minAdvanceHours }) {
       {past.length > 0 && (
         <div>
           <div
-            className="text-[11px] font-semibold tracking-[0.18em] mb-4"
-            style={{ color: '#8a8a8a' }}
-          >
-            PAST & CANCELLED ({past.length})
-          </div>
-          {past.map((b) => (
-            <BookingCard
-              key={b.id}
-              booking={b}
-              canCancel={false}
-              onCancel={handleCancel}
-              working={working}
-            />
-          ))}
-        </div>
-      )}
-    </>
-  );
-}
+            className="text-[11px] font
