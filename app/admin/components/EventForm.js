@@ -1,9 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+
+const CATEGORY_OPTIONS = [
+  { value: 'workshop', label: 'Workshop' },
+  { value: 'yoga', label: 'Yoga' },
+  { value: 'party', label: 'Party (Dance / Music)' },
+  { value: 'other', label: 'Other' },
+];
+
+const QUALIFYING_CATEGORIES = ['workshop', 'yoga', 'party'];
 
 function slugify(text) {
   return text
@@ -29,9 +38,35 @@ export default function EventForm({ event }) {
     event?.ticket_url ? 'public' : isEditing ? 'private' : 'public'
   );
   const [ticketUrl, setTicketUrl] = useState(event?.ticket_url || '');
+  const [category, setCategory] = useState(event?.category || 'other');
+  const [ttEventSeriesId, setTtEventSeriesId] = useState(event?.tt_event_series_id || '');
+  const [ttSeries, setTtSeries] = useState([]);
+  const [ttSeriesError, setTtSeriesError] = useState('');
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // Load TicketTailor event series so admins can pick one for discount codes.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/tt-event-series');
+        const body = await res.json();
+        if (cancelled) return;
+        if (res.ok && Array.isArray(body.series)) {
+          setTtSeries(body.series);
+        } else {
+          setTtSeriesError(body?.error || 'Could not load TicketTailor event series');
+        }
+      } catch (err) {
+        if (!cancelled) setTtSeriesError(err?.message || 'Could not load TicketTailor event series');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleTitleChange = (e) => {
     const newTitle = e.target.value;
@@ -83,16 +118,34 @@ export default function EventForm({ event }) {
       image_url: imageUrl.trim() || null,
       slug: slug.trim() || slugify(title),
       ticket_url: eventType === 'public' ? (ticketUrl.trim() || null) : null,
+      category,
+      tt_event_series_id: ttEventSeriesId.trim() || null,
     };
 
-    const { error: saveError } = isEditing
-      ? await supabase.from('events').update(payload).eq('id', event.id)
-      : await supabase.from('events').insert(payload);
+    const { data: saved, error: saveError } = isEditing
+      ? await supabase.from('events').update(payload).eq('id', event.id).select().single()
+      : await supabase.from('events').insert(payload).select().single();
 
     if (saveError) {
       setError('Save failed: ' + saveError.message);
       setSaving(false);
       return;
+    }
+
+    // Auto-trigger discount code generation for qualifying events that have a
+    // TicketTailor series linked. Non-fatal: a failure here shouldn't block the
+    // save, so we surface a warning but still navigate away.
+    const savedId = saved?.id || event?.id;
+    if (savedId && QUALIFYING_CATEGORIES.includes(category) && payload.tt_event_series_id) {
+      try {
+        await fetch('/api/admin/generate-event-discounts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventId: savedId }),
+        });
+      } catch (err) {
+        console.error('Discount code generation trigger failed:', err);
+      }
     }
 
     router.push('/admin');
@@ -189,6 +242,62 @@ export default function EventForm({ event }) {
             className={inputClass + ' resize-y'}
             style={inputStyle}
           />
+        </div>
+
+        {/* CATEGORY */}
+        <div>
+          <label className={labelClass} style={labelStyle}>CATEGORY</label>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className={inputClass}
+            style={inputStyle}
+          >
+            {CATEGORY_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value} style={{ background: '#141414' }}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+            Workshop, Yoga, and Party events generate member discount codes automatically.
+          </p>
+        </div>
+
+        {/* TICKETTAILOR EVENT SERIES */}
+        <div>
+          <label className={labelClass} style={labelStyle}>TICKETTAILOR EVENT SERIES</label>
+          {ttSeries.length > 0 ? (
+            <select
+              value={ttEventSeriesId}
+              onChange={(e) => setTtEventSeriesId(e.target.value)}
+              className={inputClass}
+              style={inputStyle}
+            >
+              <option value="" style={{ background: '#141414' }}>
+                — None —
+              </option>
+              {ttSeries.map((s) => (
+                <option key={s.id} value={s.id} style={{ background: '#141414' }}>
+                  {s.name} ({s.id})
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              value={ttEventSeriesId}
+              onChange={(e) => setTtEventSeriesId(e.target.value)}
+              placeholder="ev_xxxxxxxx"
+              className={inputClass}
+              style={inputStyle}
+            />
+          )}
+          <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+            {ttSeriesError
+              ? `Could not load series list (${ttSeriesError}). Enter the series ID manually.`
+              : 'Link the TicketTailor event series so member discount codes apply to its tickets.'}
+          </p>
         </div>
 
         {/* EVENT TYPE TOGGLE */}

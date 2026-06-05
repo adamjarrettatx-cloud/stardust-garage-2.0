@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/send-discount-codes",
+      "schedule": "0 14 * * *"
+    }
+  ]
+}
