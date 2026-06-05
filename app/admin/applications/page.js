@@ -14,6 +14,44 @@ function formatDate(iso) {
   });
 }
 
+function initials(name) {
+  if (!name) return '?';
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() || '')
+    .join('') || '?';
+}
+
+function Avatar({ application }) {
+  if (application.photo_url) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return (
+      <img
+        src={application.photo_url}
+        alt={application.full_name}
+        className="w-11 h-11 flex-shrink-0 object-cover"
+        style={{ borderRadius: '50%', border: '1px solid #2a2a2a' }}
+      />
+    );
+  }
+  return (
+    <div
+      className="w-11 h-11 flex-shrink-0 flex items-center justify-center text-[14px] font-bold"
+      style={{
+        borderRadius: '50%',
+        background: '#1a1a1a',
+        border: '1px solid #2a2a2a',
+        color: '#8a8a8a',
+        fontFamily: "'Plus Jakarta Sans', sans-serif",
+      }}
+    >
+      {initials(application.full_name)}
+    </div>
+  );
+}
+
 export default async function ApplicationsPage() {
   const supabase = await createClient();
   const { data: applications } = await supabase
@@ -77,7 +115,9 @@ export default async function ApplicationsPage() {
               style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
             >
               <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
+                <div className="flex items-start gap-4 flex-1 min-w-0">
+                  <Avatar application={a} />
+                  <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-1">
                     <h3 className="text-[18px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                       {a.full_name}
@@ -92,6 +132,7 @@ export default async function ApplicationsPage() {
                     <span>{a.email}</span>
                     <span>{a.phone}</span>
                     <span>{a.social_handle}</span>
+                  </div>
                   </div>
                 </div>
                 <div className="flex-shrink-0 text-right">

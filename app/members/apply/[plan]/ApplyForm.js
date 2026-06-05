@@ -1,13 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+const ACCEPTED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 export default function ApplyForm({ planSlug, planName, planPrice }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+
+  const fileInputRef = useRef(null);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState('');
+  const [photoError, setPhotoError] = useState('');
 
   const [form, setForm] = useState({
     full_name: '',
@@ -28,6 +36,25 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
 
   const update = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
 
+  const handlePhotoChange = (e) => {
+    setPhotoError('');
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!ACCEPTED_PHOTO_TYPES.includes(file.type)) {
+      setPhotoError('Please choose a JPG, PNG or WebP image.');
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      setPhotoError('That photo is over 5MB. Please choose a smaller file.');
+      return;
+    }
+
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -41,8 +68,35 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
     setSubmitting(true);
     const supabase = createClient();
 
+    // If a photo was selected, upload it to storage first and get a public URL.
+    let photoUrl = null;
+    if (photoFile) {
+      const ext = photoFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const sanitized = photoFile.name
+        .replace(/\.[^.]+$/, '')
+        .replace(/[^a-zA-Z0-9-_]/g, '-')
+        .slice(0, 40) || 'photo';
+      const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${sanitized}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('member-photos')
+        .upload(filename, photoFile, { contentType: photoFile.type });
+
+      if (uploadError) {
+        setSubmitting(false);
+        setError('Could not upload your photo. Please try again or submit without one.');
+        return;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('member-photos')
+        .getPublicUrl(filename);
+      photoUrl = publicUrlData?.publicUrl || null;
+    }
+
     const { error: insertError } = await supabase.from('membership_applications').insert({
       plan: planSlug,
+      photo_url: photoUrl,
       full_name: form.full_name.trim(),
       preferred_name: form.preferred_name.trim() || null,
       email: form.email.trim(),
@@ -260,6 +314,49 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
               className={inputClass}
               style={inputStyle}
             />
+          </div>
+
+          <div>
+            <label className={labelClass} style={labelStyle}>PROFILE PHOTO</label>
+            <p className="text-[12px] leading-[1.5] mb-3" style={{ color: '#8a8a8a' }}>
+              Optional now, but required if your application is approved. JPG, PNG or WebP, max 5MB.
+            </p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handlePhotoChange}
+              className="hidden"
+            />
+            <div className="flex items-center gap-4">
+              {photoPreview && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={photoPreview}
+                  alt="Profile preview"
+                  className="w-[72px] h-[72px] flex-shrink-0 object-cover"
+                  style={{ borderRadius: '14px', border: '1px solid #2a2a2a' }}
+                />
+              )}
+              <div className="min-w-0">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-5 py-3 rounded-[10px] text-[12px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5"
+                  style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
+                >
+                  {photoFile ? 'CHANGE PHOTO' : 'CHOOSE PHOTO'}
+                </button>
+                {photoFile && (
+                  <div className="text-[12px] mt-2 truncate" style={{ color: '#8a8a8a' }}>
+                    {photoFile.name}
+                  </div>
+                )}
+              </div>
+            </div>
+            {photoError && (
+              <div className="text-[12px] text-red-400 mt-2">{photoError}</div>
+            )}
           </div>
         </div>
 

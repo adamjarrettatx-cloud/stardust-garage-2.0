@@ -8,14 +8,23 @@ export default function ApplicationActions({
   applicationId,
   currentStatus,
   accountCreated,
+  hasPhoto,
 }) {
   const router = useRouter();
   const [working, setWorking] = useState(false);
+  const [approveError, setApproveError] = useState('');
 
   // Approving: call the API so we create an auth user + member profile
   // + send welcome email. The API is idempotent — calling it again on
   // an already-approved application is safe.
   const handleApprove = async () => {
+    setApproveError('');
+
+    if (!hasPhoto) {
+      setApproveError('A profile photo is required before approving this member.');
+      return;
+    }
+
     if (!accountCreated) {
       const confirmed = window.confirm(
         'Approve this application and create a member account?\n\n' +
@@ -96,6 +105,7 @@ export default function ApplicationActions({
   };
 
   return (
+    <div>
     <div className="flex flex-wrap gap-2">
       {currentStatus !== 'approved' && (
         <button
@@ -145,6 +155,10 @@ export default function ApplicationActions({
       >
         DELETE
       </button>
+    </div>
+    {approveError && (
+      <div className="text-[13px] text-red-400 mt-3">{approveError}</div>
+    )}
     </div>
   );
 }

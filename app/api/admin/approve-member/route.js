@@ -63,6 +63,14 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Application not found' }, { status: 404 });
     }
 
+    // A profile photo is mandatory before a member can be approved.
+    if (!application.photo_url) {
+      return NextResponse.json(
+        { error: 'A profile photo is required before approving this member.' },
+        { status: 400 }
+      );
+    }
+
     // If account already created, refuse to create a duplicate
     if (application.account_created) {
       // Still mark the application approved if it isn't (idempotent)
@@ -126,6 +134,7 @@ export async function POST(request) {
           application_id: applicationId,
           full_name: application.full_name,
           email,
+          photo_url: application.photo_url,
           is_active: false,
         },
         { onConflict: 'user_id' }

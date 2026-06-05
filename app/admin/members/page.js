@@ -14,6 +14,44 @@ function formatDate(isoString) {
   });
 }
 
+function initials(name, email) {
+  const source = (name || email || '').trim();
+  if (!source) return '?';
+  return source
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() || '')
+    .join('') || '?';
+}
+
+function Avatar({ member }) {
+  if (member.photo_url) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return (
+      <img
+        src={member.photo_url}
+        alt={member.full_name || member.email}
+        className="w-11 h-11 flex-shrink-0 object-cover"
+        style={{ borderRadius: '50%', border: '1px solid #2a2a2a' }}
+      />
+    );
+  }
+  return (
+    <div
+      className="w-11 h-11 flex-shrink-0 flex items-center justify-center text-[14px] font-bold"
+      style={{
+        borderRadius: '50%',
+        background: '#1a1a1a',
+        border: '1px solid #2a2a2a',
+        color: '#8a8a8a',
+        fontFamily: "'Plus Jakarta Sans', sans-serif",
+      }}
+    >
+      {initials(member.full_name, member.email)}
+    </div>
+  );
+}
+
 export default async function AdminMembersPage() {
   const supabase = await createClient();
 
@@ -88,6 +126,7 @@ function MemberRow({ member }) {
       className="rounded-[14px] border p-5 mb-3 flex items-center gap-5"
       style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.06)' }}
     >
+      <Avatar member={member} />
       <div className="flex-1 min-w-0">
         <div className="text-[15px] font-bold mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           {member.full_name || member.email}

@@ -22,6 +22,16 @@ function formatBirthday(dateString) {
   return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
+function initials(name) {
+  if (!name) return '?';
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() || '')
+    .join('') || '?';
+}
+
 function Field({ label, children }) {
   return (
     <div className="py-5 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
@@ -56,8 +66,30 @@ export default async function ApplicationDetail({ params }) {
         ← BACK TO APPLICATIONS
       </Link>
 
-      <div className="flex items-start justify-between gap-4 mb-8">
-        <div>
+      <div className="flex items-start gap-5 mb-8">
+        {app.photo_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={app.photo_url}
+            alt={app.full_name}
+            className="w-[120px] h-[120px] flex-shrink-0 object-cover"
+            style={{ borderRadius: '16px', border: '1px solid #2a2a2a' }}
+          />
+        ) : (
+          <div
+            className="w-[120px] h-[120px] flex-shrink-0 flex items-center justify-center text-[32px] font-bold"
+            style={{
+              borderRadius: '16px',
+              background: '#1a1a1a',
+              border: '1px solid #2a2a2a',
+              color: '#8a8a8a',
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+            }}
+          >
+            {initials(app.full_name)}
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-3">
             <div
               className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full"
@@ -96,10 +128,20 @@ export default async function ApplicationDetail({ params }) {
         </div>
       </div>
 
+      {!app.photo_url && (
+        <div
+          className="rounded-[12px] px-5 py-4 mb-6 text-[13px] leading-[1.5]"
+          style={{ background: '#1a1400', border: '1px solid #ffb84d', color: '#ffb84d' }}
+        >
+          ⚠ No profile photo — approval will be blocked until a photo is on file.
+        </div>
+      )}
+
       <ApplicationActions
         applicationId={app.id}
         currentStatus={app.status || 'pending'}
         accountCreated={app.account_created || false}
+        hasPhoto={Boolean(app.photo_url)}
       />
 
       <section
