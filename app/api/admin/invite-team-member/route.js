@@ -18,10 +18,15 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Invalid role.' }, { status: 400 });
   }
 
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    return NextResponse.json({ error: 'Server misconfiguration: SUPABASE_SERVICE_ROLE_KEY is not set. Add it to your Vercel environment variables.' }, { status: 500 });
+  }
+
   // Use service role client to create the auth user
   const adminSupabase = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    serviceRoleKey
   );
 
   // Check if user already exists in team_members
