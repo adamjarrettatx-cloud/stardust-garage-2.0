@@ -55,6 +55,8 @@ export default function EventForm({ event }) {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [generateMessage, setGenerateMessage] = useState('');
 
   // Load TicketTailor event series so admins can pick one for discount codes.
   useEffect(() => {
@@ -177,6 +179,48 @@ export default function EventForm({ event }) {
     router.push('/admin');
     router.refresh();
   };
+
+  const showGenerateMessage = (msg) => {
+    setGenerateMessage(msg);
+    setTimeout(() => setGenerateMessage(''), 5000);
+  };
+
+  const handleGenerateCodes = async () => {
+    setGenerating(true);
+    setGenerateMessage('');
+    try {
+      const res = await fetch('/api/admin/generate-event-discounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId: event.id, force: true }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        showGenerateMessage('Something went wrong. Please try again.');
+      } else if (body.skipped) {
+        if (body.reason === 'already_generated') {
+          showGenerateMessage('Codes already generated for this event');
+        } else if (body.reason === 'no_tt_series') {
+          showGenerateMessage('Please link a TicketTailor event series first');
+        } else if (body.reason === 'category') {
+          showGenerateMessage("This event category doesn't trigger member codes");
+        } else {
+          showGenerateMessage('Something went wrong. Please try again.');
+        }
+      } else if (body.success) {
+        showGenerateMessage(`Done — ${body.codesGenerated} codes generated`);
+      } else {
+        showGenerateMessage('Something went wrong. Please try again.');
+      }
+    } catch (err) {
+      showGenerateMessage('Something went wrong. Please try again.');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const canGenerateCodes =
+    isEditing && QUALIFYING_CATEGORIES.includes(category) && !!ttEventSeriesId.trim();
 
   const inputStyle = {
     background: '#141414',
@@ -459,6 +503,29 @@ export default function EventForm({ event }) {
             CANCEL
           </Link>
         </div>
+
+        {canGenerateCodes && (
+          <div className="flex flex-col gap-2 pt-2">
+            <button
+              type="button"
+              onClick={handleGenerateCodes}
+              disabled={generating}
+              className="self-start px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
+              style={{
+                border: '1px solid #ffb84d',
+                color: '#ffb84d',
+                background: 'transparent',
+              }}
+            >
+              {generating ? 'GENERATING...' : 'GENERATE MEMBER CODES'}
+            </button>
+            {generateMessage && (
+              <p className="text-[13px]" style={{ color: '#ffb84d' }}>
+                {generateMessage}
+              </p>
+            )}
+          </div>
+        )}
       </form>
     </main>
   );

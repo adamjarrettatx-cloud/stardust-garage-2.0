@@ -12,8 +12,11 @@ import {
 export const runtime = 'nodejs';
 
 // POST /api/admin/generate-event-discounts
-// Body: { eventId: string }
-// Generates one single-use 60% TicketTailor discount code per eligible member.
+// Body: { eventId: string, force?: boolean }
+// Generates one single-use TicketTailor discount code per eligible member.
+// When force is true (manual "Generate Member Codes" button), the
+// discount_codes_generated check is skipped so the run only fills in codes for
+// members who don't yet have one — safe to invoke repeatedly.
 export async function POST(request) {
   try {
     const serverClient = await createServerClient();
@@ -22,7 +25,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { eventId } = await request.json();
+    const { eventId, force } = await request.json();
     if (!eventId) {
       return NextResponse.json({ error: 'Missing eventId' }, { status: 400 });
     }
@@ -48,7 +51,7 @@ export async function POST(request) {
     if (!event.tt_event_series_id) {
       return NextResponse.json({ skipped: true, reason: 'no_tt_series' });
     }
-    if (event.discount_codes_generated) {
+    if (!force && event.discount_codes_generated) {
       return NextResponse.json({ skipped: true, reason: 'already_generated' });
     }
 
