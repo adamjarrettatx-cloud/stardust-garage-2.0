@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { lookupPlanByPriceId } from '@/lib/stripe-prices';
+import { getEventSeriesTicketTypes } from '@/lib/tickettailor';
+import {
+  QUALIFYING_CATEGORIES,
+  createCodeForMember,
+  getDiscountPercent,
+} from '@/lib/discountCodeUtils';
 
 // POST /api/stripe/webhook
 //
@@ -10,6 +16,74 @@ import { lookupPlanByPriceId } from '@/lib/stripe-prices';
 
 // Need raw body to verify the signature, so disable body parsing
 export const dynamic = 'force-dynamic';
+// TT discount generation uses Node APIs (crypto), so pin to the Node runtime.
+export const runtime = 'nodejs';
+
+function todayDateString() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Chicago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
+// Back-fills discount codes for a member who just became active, covering all
+// upcoming qualifying events whose 3-day send window hasn't passed yet. Mirrors
+// /api/admin/check-new-member-codes but runs inline (no HTTP round-trip).
+async function generateCodesForNewMember(memberId, supabaseAdmin) {
+  const { data: member, error: memberError } = await supabaseAdmin
+    .from('member_profiles')
+    .select('id, user_id, full_name, email, is_active, subscription_status')
+    .eq('id', memberId)
+    .single();
+  if (memberError || !member) {
+    throw new Error('Member not found for auto code generation: ' + memberId);
+  }
+
+  if (!(member.is_active && member.subscription_status === 'active')) {
+    return;
+  }
+
+  const today = todayDateString();
+
+  const { data: events, error: eventsError } = await supabaseAdmin
+    .from('events')
+    .select('*')
+    .gte('event_date', today)
+    .eq('discount_codes_generated', true)
+    .in('category', QUALIFYING_CATEGORIES);
+  if (eventsError) {
+    throw new Error('Failed to load events: ' + eventsError.message);
+  }
+
+  for (const event of events || []) {
+    if (!event.tt_event_series_id) continue;
+    // Skip events whose send window has already passed (3 days before).
+    const [y, m, d] = String(event.event_date).split('-').map(Number);
+    const sendDt = new Date(Date.UTC(y, m - 1, d));
+    sendDt.setUTCDate(sendDt.getUTCDate() - 3);
+    const sendStr = sendDt.toISOString().slice(0, 10);
+    if (sendStr < today) continue;
+
+    try {
+      const ticketTypeIds = await getEventSeriesTicketTypes(event.tt_event_series_id);
+      const discountPercent = getDiscountPercent(event.category, event.member_discount_percent);
+      await createCodeForMember({
+        supabaseAdmin,
+        event,
+        member,
+        ticketTypeIds,
+        discountPercent,
+      });
+    } catch (err) {
+      console.error(
+        `Auto discount code failed for event ${event.id}:`,
+        err?.message || err
+      );
+    }
+  }
+}
 
 async function verifyStripeSignature(rawBody, signature, secret) {
   // Stripe sends a header: t=1234567890,v1=abc123signature
@@ -96,7 +170,7 @@ export async function POST(request) {
       const profile = await findProfileByCustomer(subscription.customer);
       if (!profile) {
         console.error('No member profile for Stripe customer:', subscription.customer);
-        return;
+        return null;
       }
 
       // Get price ID from subscription
@@ -149,7 +223,13 @@ export async function POST(request) {
         .from('member_profiles')
         .update(updates)
         .eq('id', profile.id);
+
+      return { profileId: profile.id, isActive };
     }
+
+    // If a member becomes active during this event, we capture their profile id
+    // here and kick off discount-code generation after responding to Stripe.
+    let activatedMemberId = null;
 
     // Handle the events we care about
     switch (event.type) {
@@ -168,7 +248,8 @@ export async function POST(request) {
           );
           if (subRes.ok) {
             const subscription = await subRes.json();
-            await syncSubscription(subscription);
+            const result = await syncSubscription(subscription);
+            if (result?.isActive) activatedMemberId = result.profileId;
           }
         }
         break;
@@ -178,7 +259,8 @@ export async function POST(request) {
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted': {
         const subscription = event.data.object;
-        await syncSubscription(subscription);
+        const result = await syncSubscription(subscription);
+        if (result?.isActive) activatedMemberId = result.profileId;
         break;
       }
 
@@ -205,7 +287,15 @@ export async function POST(request) {
         console.log('Ignoring event type:', event.type);
     }
 
-    return NextResponse.json({ received: true });
+    // Respond to Stripe immediately; generate codes fire-and-forget so a slow
+    // or failing TT call can never make the webhook time out or error.
+    const response = NextResponse.json({ received: true });
+    if (activatedMemberId) {
+      generateCodesForNewMember(activatedMemberId, supabaseAdmin).catch((err) =>
+        console.error('Auto discount code error:', err)
+      );
+    }
+    return response;
   } catch (err) {
     console.error('Webhook error:', err);
     return NextResponse.json(
