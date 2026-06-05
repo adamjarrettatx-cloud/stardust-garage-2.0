@@ -252,7 +252,7 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
                       <div
                         key={`pub-${evt.id}`}
                         onClick={(e) => e.stopPropagation()}
-                        className="text-[10px] font-semibold px-1.5 py-0.5 rounded truncate"
+                        className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
                         style={{
                           background: PUBLIC_STYLE.bg,
                           color: PUBLIC_STYLE.color,
@@ -260,7 +260,10 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
                         }}
                         title={evt.title}
                       >
-                        ★ {evt.title}
+                        <div className="truncate">★ {evt.title}</div>
+                        {evt.event_time && (
+                          <div className="text-[9px] font-normal opacity-80 truncate">{evt.event_time}</div>
+                        )}
                       </div>
                     ))}
                     {team.slice(0, 3 - Math.min(pub.length, 2)).map(evt => {
@@ -269,11 +272,16 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
                         <div
                           key={`team-${evt.id}`}
                           onClick={(e) => handleEventClick(e, evt, 'team')}
-                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded truncate cursor-pointer hover:opacity-80 transition-opacity"
+                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded cursor-pointer hover:opacity-80 transition-opacity"
                           style={{ background: cat.color + '33', color: cat.color, border: `1px solid ${cat.color}44` }}
                           title={evt.title}
                         >
-                          {evt.title}
+                          <div className="truncate">{evt.title}</div>
+                          {evt.start_time && (
+                            <div className="text-[9px] font-normal opacity-80 truncate">
+                              {evt.start_time}{evt.end_time ? ` – ${evt.end_time}` : ''}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
