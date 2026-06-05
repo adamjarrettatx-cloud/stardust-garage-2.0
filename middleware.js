@@ -4,20 +4,20 @@ import { NextResponse } from 'next/server';
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
 
-  // Only run auth logic on /admin/* and /member/* routes
-  const isAdminRoute = pathname.startsWith('/admin');
-const isMemberRoute = pathname === '/member' || pathname.startsWith('/member/');
-  if (!isAdminRoute && !isMemberRoute) {
+  const isAdminRoute  = pathname.startsWith('/admin');
+  const isTeamRoute   = pathname === '/team' || pathname.startsWith('/team/');
+  const isMemberRoute = pathname === '/member' || pathname.startsWith('/member/');
+
+  if (!isAdminRoute && !isTeamRoute && !isMemberRoute) {
     return NextResponse.next();
   }
 
-  // Allow login pages to be accessed without auth
-  if (pathname === '/admin/login' || pathname === '/login') {
+  // Allow login pages without auth
+  if (pathname === '/admin/login' || pathname === '/login' || pathname === '/team/login') {
     return NextResponse.next();
   }
 
-  // Dev safety: if Supabase isn't configured, skip auth so the UI is
-  // browsable for layout work.
+  // Dev safety: skip auth if Supabase isn't configured
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
     !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -50,19 +50,40 @@ const isMemberRoute = pathname === '/member' || pathname.startsWith('/member/');
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Not logged in -> bounce to the appropriate login page
+  // Not logged in -> bounce to appropriate login
   if (!user) {
     const url = request.nextUrl.clone();
-    url.pathname = isAdminRoute ? '/admin/login' : '/login';
+    if (isAdminRoute) url.pathname = '/admin/login';
+    else if (isTeamRoute) url.pathname = '/team/login';
+    else url.pathname = '/login';
     return NextResponse.redirect(url);
   }
 
   const isAdmin = Boolean(user.user_metadata?.is_admin);
 
-  // Trying to hit /admin/* without admin flag -> send them to /member
+  // Check team membership from team_members table
+  let teamRole = null;
+  if (!isAdmin) {
+    const { data: tm } = await supabase
+      .from('team_members')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
+    teamRole = tm?.role || null;
+  }
+
+  // /admin/* requires is_admin flag
   if (isAdminRoute && !isAdmin) {
     const url = request.nextUrl.clone();
-    url.pathname = '/member';
+    // Team members go to /team/calendar, others go to /member
+    url.pathname = teamRole === 'team' ? '/team/calendar' : '/member';
+    return NextResponse.redirect(url);
+  }
+
+  // /team/* requires team role (or admin)
+  if (isTeamRoute && !isAdmin && teamRole !== 'team') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/team/login';
     return NextResponse.redirect(url);
   }
 

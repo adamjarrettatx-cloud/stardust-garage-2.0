@@ -91,6 +91,7 @@ export default async function AdminDashboard() {
         <Tile href="/admin/settings" eyebrow="MANAGE" title="Settings" />
         <Tile href="/admin/galleries" eyebrow="MANAGE" title="Galleries" />
         <Tile href="/admin/calendar" eyebrow="TEAM ONLY" title="Team Calendar" />
+        <Tile href="/admin/team" eyebrow="MANAGE" title="Team Members" />
       </div>
 
       <div className="flex items-center justify-between mb-6">
