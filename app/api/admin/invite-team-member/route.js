@@ -2,92 +2,110 @@ import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
+export const runtime = 'nodejs';
+
 export async function POST(request) {
-  // Verify caller is an admin
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !user.user_metadata?.is_admin) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  try {
+    // Verify caller is an admin
+    const supabase = await createClient();
+    const { data: { user }, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !user || !user.user_metadata?.is_admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-  const { email, full_name, role, password } = await request.json();
-  if (!email || !role || !password) {
-    return NextResponse.json({ error: 'Email, role, and password are required.' }, { status: 400 });
-  }
-  if (!['admin', 'team'].includes(role)) {
-    return NextResponse.json({ error: 'Invalid role.' }, { status: 400 });
-  }
+    const body = await request.json();
+    const { email, full_name, role, password } = body;
 
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceRoleKey) {
-    return NextResponse.json({ error: 'Server misconfiguration: SUPABASE_SERVICE_ROLE_KEY is not set. Add it to your Vercel environment variables.' }, { status: 500 });
-  }
+    if (!email || !role || !password) {
+      return NextResponse.json({ error: 'Email, role, and password are required.' }, { status: 400 });
+    }
+    if (!['admin', 'team'].includes(role)) {
+      return NextResponse.json({ error: 'Invalid role.' }, { status: 400 });
+    }
 
-  // Use service role client to create the auth user
-  const adminSupabase = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    serviceRoleKey
-  );
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  // Check if user already exists in team_members
-  const { data: existing } = await adminSupabase
-    .from('team_members')
-    .select('id')
-    .eq('email', email.toLowerCase())
-    .single();
+    if (!supabaseUrl || !serviceRoleKey) {
+      return NextResponse.json({ error: 'Missing environment variables: SUPABASE_SERVICE_ROLE_KEY' }, { status: 500 });
+    }
 
-  if (existing) {
-    return NextResponse.json({ error: 'This email is already a team member.' }, { status: 400 });
-  }
+    // Admin client using service role
+    const admin = createAdminClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
 
-  // Create auth user (or get existing)
-  let authUserId;
-  const { data: newUser, error: createErr } = await adminSupabase.auth.admin.createUser({
-    email: email.toLowerCase(),
-    password,
-    email_confirm: true,
-    user_metadata: {
-      full_name: full_name || '',
-      is_admin: role === 'admin',
-    },
-  });
+    // Check if already a team member
+    const { data: existing } = await admin
+      .from('team_members')
+      .select('id')
+      .eq('email', email.trim().toLowerCase())
+      .maybeSingle();
 
-  if (createErr) {
-    // If user already exists in auth, look them up
-    if (createErr.message?.includes('already been registered') || createErr.code === 'email_exists') {
-      const { data: { users } } = await adminSupabase.auth.admin.listUsers();
-      const found = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+    if (existing) {
+      return NextResponse.json({ error: 'This email is already a team member.' }, { status: 400 });
+    }
+
+    // Try to create the auth user
+    const { data: created, error: createErr } = await admin.auth.admin.createUser({
+      email: email.trim().toLowerCase(),
+      password: password.trim(),
+      email_confirm: true,
+      user_metadata: {
+        full_name: full_name?.trim() || '',
+        is_admin: role === 'admin',
+      },
+    });
+
+    let authUserId;
+
+    if (createErr) {
+      // User might already exist in auth — look them up by email
+      const { data: listData, error: listErr } = await admin.auth.admin.listUsers({ perPage: 1000 });
+      if (listErr) {
+        return NextResponse.json({ error: 'Failed to create user: ' + createErr.message }, { status: 400 });
+      }
+      const found = listData.users.find(u => u.email?.toLowerCase() === email.trim().toLowerCase());
       if (!found) {
         return NextResponse.json({ error: createErr.message }, { status: 400 });
       }
       authUserId = found.id;
-      // Update their metadata
-      await adminSupabase.auth.admin.updateUserById(authUserId, {
-        user_metadata: { full_name: full_name || '', is_admin: role === 'admin' },
+      // Update password and metadata for existing user
+      await admin.auth.admin.updateUserById(authUserId, {
+        password: password.trim(),
+        user_metadata: {
+          full_name: full_name?.trim() || '',
+          is_admin: role === 'admin',
+        },
       });
     } else {
-      return NextResponse.json({ error: createErr.message }, { status: 400 });
+      authUserId = created.user.id;
     }
-  } else {
-    authUserId = newUser.user.id;
+
+    // Insert into team_members
+    const { data: member, error: insertErr } = await admin
+      .from('team_members')
+      .insert({
+        user_id: authUserId,
+        email: email.trim().toLowerCase(),
+        full_name: full_name?.trim() || null,
+        role,
+        invited_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (insertErr) {
+      return NextResponse.json({ error: 'DB insert failed: ' + insertErr.message }, { status: 400 });
+    }
+
+    return NextResponse.json({ member });
+
+  } catch (err) {
+    console.error('invite-team-member error:', err);
+    return NextResponse.json({ error: 'Unexpected error: ' + (err?.message || String(err)) }, { status: 500 });
   }
-
-  // Insert into team_members
-  const { data: member, error: insertErr } = await adminSupabase
-    .from('team_members')
-    .insert({
-      user_id: authUserId,
-      email: email.toLowerCase(),
-      full_name: full_name || null,
-      role,
-      invited_by: user.id,
-    })
-    .select()
-    .single();
-
-  if (insertErr) {
-    return NextResponse.json({ error: insertErr.message }, { status: 400 });
-  }
-
-  return NextResponse.json({ member });
 }

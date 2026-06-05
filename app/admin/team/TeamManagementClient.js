@@ -48,37 +48,27 @@ export default function TeamManagementClient({ members: initialMembers }) {
     setInviteSuccess('');
     setInviting(true);
 
-    // Create the auth user via admin API (service role needed) —
-    // We use a Supabase Edge Function or the signUp flow.
-    // Here we use signUp which sends a confirmation email.
-    // The admin then adds them to team_members with a placeholder user_id.
-    // On first login the middleware will look them up by user_id.
-
-    // Step 1: Create auth user
-    const { data: signUpData, error: signUpErr } = await supabase.auth.admin
-      ? null // can't use admin client on browser
-      : { data: null, error: { message: 'use server action' } };
-
-    // Since we can't call admin.createUser from the browser,
-    // we'll use a different approach: store the invite in team_members
-    // with user_id = null, then when they sign up their first login
-    // will link their user_id. But for immediate access we need to
-    // call our invite API route.
-    const res = await fetch('/api/admin/invite-team-member', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: inviteEmail.trim().toLowerCase(),
-        full_name: inviteName.trim(),
-        role: inviteRole,
-        password: invitePassword.trim(),
-      }),
-    });
-
-    const result = await res.json();
+    let res, result;
+    try {
+      res = await fetch('/api/admin/invite-team-member', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: inviteEmail.trim().toLowerCase(),
+          full_name: inviteName.trim(),
+          role: inviteRole,
+          password: invitePassword.trim(),
+        }),
+      });
+      result = await res.json();
+    } catch (fetchErr) {
+      setInviteError('Network error: ' + fetchErr.message);
+      setInviting(false);
+      return;
+    }
 
     if (!res.ok || result.error) {
-      setInviteError(result.error || 'Failed to add team member.');
+      setInviteError(result?.error || `Server error (${res.status})`);
       setInviting(false);
       return;
     }
