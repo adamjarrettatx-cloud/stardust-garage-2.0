@@ -166,13 +166,18 @@ export default async function MemberDashboard() {
         </BookingsTile>
       </div>
 
-      <div className="mt-12 flex items-center justify-between text-[13px]" style={{ color: '#8a8a8a' }}>
-        <div>
-          Signed in as <span style={{ color: '#f5f5f5' }}>{user.email}</span>.
-        </div>
-        <Link href="/member/account" className="underline hover:text-white transition-colors" style={{ color: '#a0a0a0' }}>
-          Account settings
+      <div className="mt-4">
+        <Link
+          href="/member/account"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5"
+          style={{ borderColor: 'rgba(255,255,255,0.08)', color: '#555' }}
+        >
+          Account Settings
         </Link>
+      </div>
+
+      <div className="mt-8 text-[13px]" style={{ color: '#8a8a8a' }}>
+        Signed in as <span style={{ color: '#f5f5f5' }}>{user.email}</span>.
       </div>
     </main>
   );
