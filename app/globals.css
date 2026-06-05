@@ -36,17 +36,10 @@ body {
   box-sizing: border-box;
 }
 
-/* Prevent long URLs / strings from blowing out the layout on mobile.
-   Forces them to wrap instead of forcing the whole page to scroll horizontally. */
+/* Prevent long URLs / strings from blowing out the layout on mobile. */
 p, a, span, h1, h2, h3, h4, h5, h6, li {
   overflow-wrap: break-word;
   word-wrap: break-word;
-}
-
-/* Images and videos should never exceed their container width on mobile. */
-img, video, iframe {
-  max-width: 100%;
-  height: auto;
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator {
@@ -69,7 +62,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   }
 }
 
-/* ---------- View Transitions (homepage portals → destination pages) ---------- */
+/* ---------- View Transitions ---------- */
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation-duration: 500ms;
