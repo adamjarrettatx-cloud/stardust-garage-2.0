@@ -5,6 +5,7 @@ import { getEventSeriesTicketTypes } from '@/lib/tickettailor';
 import {
   QUALIFYING_CATEGORIES,
   createCodeForMember,
+  getDiscountPercent,
 } from '@/lib/discountCodeUtils';
 
 export const runtime = 'nodejs';
@@ -84,11 +85,13 @@ export async function POST(request) {
 
       try {
         const ticketTypeIds = await getEventSeriesTicketTypes(event.tt_event_series_id);
+        const discountPercent = getDiscountPercent(event.category, event.member_discount_percent);
         const row = await createCodeForMember({
           supabaseAdmin,
           event,
           member,
           ticketTypeIds,
+          discountPercent,
         });
         if (row) codesGenerated++;
       } catch (err) {

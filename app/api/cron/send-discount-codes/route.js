@@ -6,6 +6,7 @@ import {
   QUALIFYING_CATEGORIES,
   getEligibleMembers,
   createCodeForMember,
+  getDiscountPercent,
 } from '@/lib/discountCodeUtils';
 
 export const runtime = 'nodejs';
@@ -88,6 +89,7 @@ export async function GET(request) {
         continue;
       }
       const members = await getEligibleMembers(supabaseAdmin);
+      const discountPercent = getDiscountPercent(event.category, event.member_discount_percent);
       for (const member of members) {
         try {
           const row = await createCodeForMember({
@@ -95,6 +97,7 @@ export async function GET(request) {
             event,
             member,
             ticketTypeIds,
+            discountPercent,
           });
           if (row) {
             // Send immediately since the 3-day window is now.

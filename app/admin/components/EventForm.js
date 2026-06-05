@@ -14,6 +14,13 @@ const CATEGORY_OPTIONS = [
 
 const QUALIFYING_CATEGORIES = ['workshop', 'yoga', 'party'];
 
+const CATEGORY_DISCOUNT_DEFAULTS = {
+  workshop: 60,
+  yoga: 40,
+  party: 60,
+  other: 50,
+};
+
 function slugify(text) {
   return text
     .toLowerCase()
@@ -39,6 +46,9 @@ export default function EventForm({ event }) {
   );
   const [ticketUrl, setTicketUrl] = useState(event?.ticket_url || '');
   const [category, setCategory] = useState(event?.category || 'other');
+  const [memberDiscountPercent, setMemberDiscountPercent] = useState(
+    event?.member_discount_percent != null ? String(event.member_discount_percent) : ''
+  );
   const [ttEventSeriesId, setTtEventSeriesId] = useState(event?.tt_event_series_id || '');
   const [ttSeries, setTtSeries] = useState([]);
   const [ttSeriesError, setTtSeriesError] = useState('');
@@ -73,6 +83,18 @@ export default function EventForm({ event }) {
     setTitle(newTitle);
     if (!isEditing || !slug) {
       setSlug(slugify(newTitle));
+    }
+  };
+
+  const handleCategoryChange = (e) => {
+    const newCategory = e.target.value;
+    setCategory(newCategory);
+    // Auto-fill the discount percent with the category default for qualifying
+    // categories so admins start from the expected value.
+    if (QUALIFYING_CATEGORIES.includes(newCategory)) {
+      setMemberDiscountPercent(String(CATEGORY_DISCOUNT_DEFAULTS[newCategory]));
+    } else {
+      setMemberDiscountPercent('');
     }
   };
 
@@ -120,6 +142,10 @@ export default function EventForm({ event }) {
       ticket_url: eventType === 'public' ? (ticketUrl.trim() || null) : null,
       category,
       tt_event_series_id: ttEventSeriesId.trim() || null,
+      member_discount_percent:
+        QUALIFYING_CATEGORIES.includes(category) && memberDiscountPercent.trim() !== ''
+          ? Number(memberDiscountPercent)
+          : null,
     };
 
     const { data: saved, error: saveError } = isEditing
@@ -249,7 +275,7 @@ export default function EventForm({ event }) {
           <label className={labelClass} style={labelStyle}>CATEGORY</label>
           <select
             value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            onChange={handleCategoryChange}
             className={inputClass}
             style={inputStyle}
           >
@@ -263,6 +289,29 @@ export default function EventForm({ event }) {
             Workshop, Yoga, and Party events generate member discount codes automatically.
           </p>
         </div>
+
+        {/* MEMBER DISCOUNT % - only for qualifying categories */}
+        {QUALIFYING_CATEGORIES.includes(category) && (
+          <div>
+            <label className={labelClass} style={labelStyle}>MEMBER DISCOUNT %</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                min={1}
+                max={100}
+                step={1}
+                value={memberDiscountPercent}
+                onChange={(e) => setMemberDiscountPercent(e.target.value)}
+                className={inputClass + ' max-w-[140px]'}
+                style={inputStyle}
+              />
+              <span className="text-[14px]" style={{ color: '#8a8a8a' }}>%</span>
+            </div>
+            <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+              Default: Workshop 60%, Yoga 40%, Party 60%
+            </p>
+          </div>
+        )}
 
         {/* TICKETTAILOR EVENT SERIES */}
         <div>
