@@ -89,7 +89,6 @@ export default async function AdminDashboard() {
         <Tile href="/admin/studio-bookings" eyebrow="MANAGE" title="Studio Bookings" count={upcomingBookingsCount?.count || 0} />
         <Tile href="/admin/studio-settings" eyebrow="MANAGE" title="Studio Settings" />
         <Tile href="/admin/settings" eyebrow="MANAGE" title="Settings" />
-        <Tile href="/admin/galleries" eyebrow="MANAGE" title="Galleries" />
         <Tile href="/admin/calendar" eyebrow="TEAM ONLY" title="Team Calendar" />
         <Tile href="/admin/team" eyebrow="MANAGE" title="Team Members" />
       </div>
