@@ -103,8 +103,18 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
     router.refresh();
   };
 
-  const handleModalDelete = (id) => {
-    setTeamEvents(prev => prev.filter(e => e.id !== id));
+  const handleModalSaveBatch = (savedEvents) => {
+    setTeamEvents(prev => [...prev, ...savedEvents]);
+    setModalState(null);
+    router.refresh();
+  };
+
+  const handleModalDelete = (id, recurrenceId) => {
+    setTeamEvents(prev =>
+      recurrenceId
+        ? prev.filter(e => e.recurrence_id !== recurrenceId)
+        : prev.filter(e => e.id !== id)
+    );
     setModalState(null);
     router.refresh();
   };
@@ -400,6 +410,7 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
           defaultDate={modalState.date}
           categories={CATEGORIES}
           onSave={handleModalSave}
+          onSaveBatch={handleModalSaveBatch}
           onDelete={handleModalDelete}
           onClose={() => setModalState(null)}
         />
