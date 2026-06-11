@@ -85,8 +85,8 @@ export default function DocumentsClient({ initialDocuments, initialError, events
 
   return (
     <>
-      {/* Toolbar */}
-      <div className="flex flex-wrap gap-3 items-center mb-6">
+      {/* Toolbar — search + status + upload */}
+      <div className="flex flex-wrap gap-3 items-center mb-4">
         <input
           type="search"
           placeholder="Search title, counterparty, description…"
@@ -95,15 +95,6 @@ export default function DocumentsClient({ initialDocuments, initialError, events
           className="flex-1 min-w-[240px] px-4 py-2.5 text-[14px] rounded-[10px] outline-none focus:border-white/30"
           style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
         />
-        <select
-          value={filters.category}
-          onChange={(e) => setFilter('category', e.target.value)}
-          className="px-3 py-2.5 text-[14px] rounded-[10px] outline-none cursor-pointer"
-          style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
-        >
-          <option value="">All categories</option>
-          {categories.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-        </select>
         <select
           value={filters.status || 'active'}
           onChange={(e) => setFilter('status', e.target.value)}
@@ -122,6 +113,34 @@ export default function DocumentsClient({ initialDocuments, initialError, events
         >
           + Upload
         </button>
+      </div>
+
+      {/* Category tabs */}
+      <div
+        className="flex flex-wrap gap-x-1 gap-y-0 mb-6 overflow-x-auto"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+        role="tablist"
+        aria-label="Document categories"
+      >
+        {[{ value: '', label: 'All' }, ...categories].map((c) => {
+          const isActive = (filters.category || '') === c.value;
+          return (
+            <button
+              key={c.value || 'all'}
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => setFilter('category', c.value)}
+              className="px-4 py-3 text-[13px] font-semibold tracking-[0.06em] uppercase whitespace-nowrap transition-colors"
+              style={{
+                color: isActive ? 'white' : '#8a8a8a',
+                borderBottom: isActive ? '2px solid white' : '2px solid transparent',
+                marginBottom: '-1px',
+              }}
+            >
+              {c.label}
+            </button>
+          );
+        })}
       </div>
 
       {error && (
