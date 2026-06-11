@@ -85,6 +85,7 @@ export default async function AdminDashboard() {
         <Tile href="/admin/settings" eyebrow="MANAGE" title="Settings" />
         <Tile href="/admin/calendar" eyebrow="TEAM ONLY" title="Team Calendar" />
         <Tile href="/admin/team" eyebrow="MANAGE" title="Team Members" />
+        <Tile href="/admin/documents" eyebrow="PRIVATE" title="Documents" />
       </div>
 
       <h2 className="text-[18px] font-bold tracking-[0.12em] mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>EVENTS</h2>

@@ -59,18 +59,20 @@ export async function middleware(request) {
     return NextResponse.redirect(url);
   }
 
-  const isAdmin = Boolean(user.user_metadata?.is_admin);
+  // SECURITY: Source of truth for admin status is the server-controlled
+  // `team_members` table, NOT `user_metadata` (which is end-user editable per
+  // Supabase advisor 0015). We still tolerate legacy metadata = true so we
+  // don't lock out existing admins during the rollout, but the new
+  // /admin/documents pages and API routes re-check via team_members in
+  // getCurrentUser() / requireAdmin().
+  const { data: tm } = await supabase
+    .from('team_members')
+    .select('role')
+    .eq('user_id', user.id)
+    .maybeSingle();
 
-  // Check team membership from team_members table
-  let teamRole = null;
-  if (!isAdmin) {
-    const { data: tm } = await supabase
-      .from('team_members')
-      .select('role')
-      .eq('user_id', user.id)
-      .single();
-    teamRole = tm?.role || null;
-  }
+  const teamRole = tm?.role || null;
+  const isAdmin = teamRole === 'admin' || Boolean(user.user_metadata?.is_admin);
 
   // /admin/* requires is_admin flag
   if (isAdminRoute && !isAdmin) {
