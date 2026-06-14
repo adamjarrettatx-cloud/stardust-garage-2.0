@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createClient as createServerClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/auth-helpers';
 import { getEventSeriesTicketTypes } from '@/lib/tickettailor';
 import {
   QUALIFYING_CATEGORIES,
@@ -19,9 +19,8 @@ export const runtime = 'nodejs';
 // members who don't yet have one — safe to invoke repeatedly.
 export async function POST(request) {
   try {
-    const serverClient = await createServerClient();
-    const { data: { user: adminUser } } = await serverClient.auth.getUser();
-    if (!adminUser || !adminUser.user_metadata?.is_admin) {
+    const { unauthorized } = await requireAdmin();
+    if (unauthorized) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

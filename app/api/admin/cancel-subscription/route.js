@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createClient as createServerClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/auth-helpers';
 
 // POST /api/admin/cancel-subscription
 // Body: { memberId: uuid }
@@ -9,9 +9,8 @@ import { createClient as createServerClient } from '@/lib/supabase/server';
 // of their current billing period. The member retains access until then.
 export async function POST(request) {
   try {
-    const serverClient = await createServerClient();
-    const { data: { user } } = await serverClient.auth.getUser();
-    if (!user || !user.user_metadata?.is_admin) {
+    const { unauthorized } = await requireAdmin();
+    if (unauthorized) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

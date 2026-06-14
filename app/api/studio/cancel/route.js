@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createClient as createServerClient } from '@/lib/supabase/server';
+import { getCurrentUser } from '@/lib/auth-helpers';
 import { getNowInAustin, hoursBetween } from '@/lib/studio-helpers';
 
 // POST /api/studio/cancel
@@ -10,8 +10,7 @@ import { getNowInAustin, hoursBetween } from '@/lib/studio-helpers';
 // Admins can cancel any booking at any time.
 export async function POST(request) {
   try {
-    const serverClient = await createServerClient();
-    const { data: { user } } = await serverClient.auth.getUser();
+    const { user, isAdmin } = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -42,7 +41,6 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Booking is already cancelled' }, { status: 400 });
     }
 
-    const isAdmin = Boolean(user.user_metadata?.is_admin);
     const isOwner = booking.member_id === user.id;
 
     if (!isAdmin && !isOwner) {

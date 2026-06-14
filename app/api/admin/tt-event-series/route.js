@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient as createServerClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/auth-helpers';
 import { listEventSeries } from '@/lib/tickettailor';
 
 export const runtime = 'nodejs';
@@ -8,9 +8,8 @@ export const runtime = 'nodejs';
 // Returns [{ id, name }] of TicketTailor event series. Admin only.
 export async function GET() {
   try {
-    const serverClient = await createServerClient();
-    const { data: { user: adminUser } } = await serverClient.auth.getUser();
-    if (!adminUser || !adminUser.user_metadata?.is_admin) {
+    const { unauthorized } = await requireAdmin();
+    if (unauthorized) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
