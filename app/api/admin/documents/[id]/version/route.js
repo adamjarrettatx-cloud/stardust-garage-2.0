@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth-helpers';
+import { requireAdminMfa } from '@/lib/auth-helpers';
 import {
   createAdminClient, audit, buildStoragePath, sha256,
   isAllowedMime, MAX_BYTES, DOCUMENT_BUCKET,
@@ -10,8 +10,8 @@ const UUID = /^[0-9a-f-]{36}$/i;
 
 // POST /api/admin/documents/:id/version  -- multipart: add a new version to an existing doc
 export async function POST(request, { params }) {
-  const { user, unauthorized } = await requireAdmin();
-  if (unauthorized) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { user, unauthorized, reason } = await requireAdminMfa();
+  if (unauthorized) return NextResponse.json({ error: 'Unauthorized', reason }, { status: 401 });
   const { id } = await params;
   if (!UUID.test(id)) return NextResponse.json({ error: 'Bad id' }, { status: 400 });
 

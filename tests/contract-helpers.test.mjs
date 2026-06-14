@@ -6,6 +6,7 @@ import {
   isTerminalContractStatus,
   normalizeSigner,
   validateSigners,
+  buildContractPatch,
 } from '../lib/contract-helpers.js';
 
 test('isValidContractStatus', () => {
@@ -43,4 +44,36 @@ test('validateSigners rejects bad emails and non-arrays', () => {
   const good = validateSigners([{ name: 'A', email: 'a@b.com', order: 2 }]);
   assert.equal(good.ok, true);
   assert.equal(good.signers[0].order, 2);
+});
+
+test('buildContractPatch only includes provided keys', () => {
+  const res = buildContractPatch({ counterparty_name: '  Acme  ', notes: '' });
+  assert.equal(res.ok, true);
+  assert.deepEqual(res.patch, { counterparty_name: 'Acme', notes: null });
+});
+
+test('buildContractPatch validates signature_provider', () => {
+  assert.equal(buildContractPatch({ signature_provider: 'bogus' }).ok, false);
+  assert.equal(buildContractPatch({ signature_provider: 'signnow' }).patch.signature_provider, 'signnow');
+});
+
+test('buildContractPatch validates counterparty_email', () => {
+  assert.equal(buildContractPatch({ counterparty_email: 'nope' }).ok, false);
+  const ok = buildContractPatch({ counterparty_email: 'A@B.COM' });
+  assert.equal(ok.patch.counterparty_email, 'a@b.com');
+  assert.equal(buildContractPatch({ counterparty_email: '' }).patch.counterparty_email, null);
+});
+
+test('buildContractPatch validates dates and event_id', () => {
+  assert.equal(buildContractPatch({ effective_date: '2026/01/01' }).ok, false);
+  assert.equal(buildContractPatch({ effective_date: '2026-01-01' }).patch.effective_date, '2026-01-01');
+  assert.equal(buildContractPatch({ event_id: 'not-a-uuid' }).ok, false);
+  assert.equal(buildContractPatch({ event_id: null }).patch.event_id, null);
+});
+
+test('buildContractPatch validates signers via validateSigners', () => {
+  assert.equal(buildContractPatch({ signers: [{ name: 'A', email: 'bad' }] }).ok, false);
+  const ok = buildContractPatch({ signers: [{ name: 'A', email: 'a@b.com' }] });
+  assert.equal(ok.ok, true);
+  assert.equal(ok.patch.signers.length, 1);
 });

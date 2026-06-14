@@ -17,6 +17,12 @@ function formatDate(s) {
   return new Date(s).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
+const CONTRACT_STATUS_COLOR = {
+  draft: '#8a8a8a', pending_review: '#fbbf24', sent: '#60a5fa',
+  partially_signed: '#a78bfa', signed: '#4ade80', declined: '#f87171',
+  void: '#6b7280', expired: '#f59e0b',
+};
+
 const CATEGORY_COLORS = {
   contracts: { color: '#ffb84d', bg: 'rgba(255,184,77,0.12)', border: 'rgba(255,184,77,0.3)' },
   finance:   { color: '#4ade80', bg: 'rgba(74,222,128,0.10)', border: 'rgba(74,222,128,0.3)' },
@@ -160,6 +166,9 @@ export default function DocumentsClient({ initialDocuments, initialError, events
             const cat = CATEGORY_COLORS[d.category] || CATEGORY_COLORS.other;
             const ver = d.document_versions;
             const tags = (d.document_tags || []).map((t) => t.tag);
+            const contractStatus = Array.isArray(d.document_contracts)
+              ? d.document_contracts[0]?.status
+              : d.document_contracts?.status;
             return (
               <div
                 key={d.id}
@@ -180,6 +189,17 @@ export default function DocumentsClient({ initialDocuments, initialError, events
                     {d.status !== 'active' && (
                       <span className="text-[10px] tracking-[0.10em] uppercase px-2 py-0.5 rounded-[6px]" style={{ background: 'rgba(255,255,255,0.05)', color: '#8a8a8a' }}>
                         {d.status}
+                      </span>
+                    )}
+                    {contractStatus && (
+                      <span
+                        className="text-[10px] tracking-[0.10em] uppercase px-2 py-0.5 rounded-[6px] font-semibold"
+                        style={{
+                          background: `${CONTRACT_STATUS_COLOR[contractStatus] || '#8a8a8a'}22`,
+                          color: CONTRACT_STATUS_COLOR[contractStatus] || '#8a8a8a',
+                        }}
+                      >
+                        {contractStatus.replace('_', ' ')}
                       </span>
                     )}
                   </div>
