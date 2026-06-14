@@ -1,15 +1,14 @@
-import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/auth-helpers';
 
 export const runtime = 'nodejs';
 
 export async function POST(request) {
   try {
-    // Verify caller is an admin
-    const supabase = await createClient();
-    const { data: { user }, error: userErr } = await supabase.auth.getUser();
-    if (userErr || !user || !user.user_metadata?.is_admin) {
+    // Verify caller is an admin via team_members (server-controlled).
+    const { user, unauthorized } = await requireAdmin();
+    if (unauthorized) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
