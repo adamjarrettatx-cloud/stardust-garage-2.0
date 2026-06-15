@@ -126,7 +126,7 @@ export default function TtLinkPanel({ eventId, initialSeriesId }) {
           type="text"
           value={seriesId}
           onChange={(e) => setSeriesId(e.target.value)}
-          placeholder="ev_xxxxxxxx"
+          placeholder="es_xxxxxxxx"
           className={inputClass}
           style={inputStyle}
         />
@@ -135,7 +135,7 @@ export default function TtLinkPanel({ eventId, initialSeriesId }) {
       <p className="text-[11px] mt-2" style={{ color: '#555' }}>
         {ttSeriesError
           ? `Could not load series list (${ttSeriesError}). Enter the series ID manually.`
-          : 'Saved server-side and validated as an "ev_…" series ID. Used by analytics and member discount codes.'}
+          : 'Saved server-side and validated as a TicketTailor series ID (usually "es_…"). Used by analytics and member discount codes.'}
       </p>
 
       <div className="flex flex-wrap gap-3 mt-4">
