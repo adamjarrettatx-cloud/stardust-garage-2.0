@@ -13,6 +13,10 @@ import {
   summarizeMemberCodes,
   groupCodesByEvent,
   buildEventAnalytics,
+  normalizeCachedMetrics,
+  buildEventPerformance,
+  summarizePerformanceTotals,
+  buildMetricsSnapshot,
 } from '../lib/event-analytics.js';
 
 const orders = [
@@ -107,4 +111,86 @@ test('buildEventAnalytics joins events with codes and sorts by date desc', () =>
   assert.equal(rows[1].id, 'e1');
   assert.equal(rows[1].memberCodes.total, 2);
   assert.equal(rows[1].ttSeriesLinked, true);
+});
+
+// ---------------------------------------------------------------------------
+// Cached metrics + performance rollup
+// ---------------------------------------------------------------------------
+
+test('normalizeCachedMetrics returns null for missing row', () => {
+  assert.equal(normalizeCachedMetrics(null), null);
+  assert.equal(normalizeCachedMetrics(undefined), null);
+});
+
+test('normalizeCachedMetrics normalizes an ok row and flags hasData', () => {
+  const n = normalizeCachedMetrics({
+    event_id: 'e1', tickets_sold: 12, orders_count: 9,
+    gross_cents: 50000, fees_cents: 2000, net_cents: 48000,
+    status: 'ok', source: 'tickettailor', fetched_at: '2026-06-15T00:00:00Z',
+  });
+  assert.equal(n.ticketsSold, 12);
+  assert.equal(n.ordersCount, 9);
+  assert.equal(n.netCents, 48000);
+  assert.equal(n.hasData, true);
+  assert.equal(n.attendeesCount, null);
+});
+
+test('normalizeCachedMetrics derives net when missing and treats not_configured as no data', () => {
+  const derived = normalizeCachedMetrics({ tickets_sold: 5, gross_cents: 10000, fees_cents: 1000, net_cents: null, status: 'ok' });
+  assert.equal(derived.netCents, 9000);
+  const placeholder = normalizeCachedMetrics({ status: 'not_configured', gross_cents: 0, tickets_sold: 0 });
+  assert.equal(placeholder.hasData, false);
+});
+
+test('buildEventPerformance joins events, codes, and metrics', () => {
+  const events = [
+    { id: 'e1', title: 'Party', event_date: '2026-01-10', category: 'party', tt_event_series_id: 'ev_x' },
+    { id: 'e2', title: 'Yoga', event_date: '2026-02-10', category: 'yoga', tt_event_series_id: null },
+  ];
+  const metrics = [
+    { event_id: 'e1', tickets_sold: 20, orders_count: 15, gross_cents: 100000, fees_cents: 5000, net_cents: 95000, status: 'ok' },
+  ];
+  const rows = buildEventPerformance({ events, codes: memberCodes, metrics });
+  // Sorted date desc → e2 first.
+  assert.equal(rows[0].id, 'e2');
+  assert.equal(rows[0].metrics, null);
+  assert.equal(rows[1].id, 'e1');
+  assert.equal(rows[1].metrics.grossCents, 100000);
+  assert.equal(rows[1].metrics.hasData, true);
+});
+
+test('summarizePerformanceTotals only sums revenue from rows with data', () => {
+  const events = [
+    { id: 'e1', title: 'A', event_date: '2026-01-10', tt_event_series_id: 'ev_x' },
+    { id: 'e2', title: 'B', event_date: '2026-02-10', tt_event_series_id: null },
+  ];
+  const metrics = [
+    { event_id: 'e1', tickets_sold: 20, orders_count: 15, gross_cents: 100000, fees_cents: 5000, net_cents: 95000, status: 'ok' },
+    { event_id: 'e2', status: 'not_configured', gross_cents: 0, tickets_sold: 0 },
+  ];
+  const rows = buildEventPerformance({ events, codes: memberCodes, metrics });
+  const t = summarizePerformanceTotals(rows);
+  assert.equal(t.events, 2);
+  assert.equal(t.ttLinked, 1);
+  assert.equal(t.eventsWithMetrics, 1);
+  assert.equal(t.grossCents, 100000);
+  assert.equal(t.netCents, 95000);
+  assert.equal(t.ticketsSold, 20);
+  assert.equal(t.memberCodes, 3);
+});
+
+test('buildMetricsSnapshot builds an upsert-ready row from raw TT data', () => {
+  const snap = buildMetricsSnapshot({
+    eventId: 'e1', ttEventSeriesId: 'ev_x', orders, issuedTickets: issued,
+    fetchedAt: '2026-06-15T00:00:00Z',
+  });
+  assert.equal(snap.event_id, 'e1');
+  assert.equal(snap.tt_event_series_id, 'ev_x');
+  assert.equal(snap.tickets_sold, 3);
+  assert.equal(snap.gross_cents, 7500);
+  assert.equal(snap.net_cents, 7200);
+  assert.equal(snap.orders_count, 2); // refunded order excluded
+  assert.equal(snap.status, 'ok');
+  assert.equal(snap.source, 'tickettailor');
+  assert.deepEqual(snap.raw_summary.ticketsByType, { GA: 2, VIP: 1 });
 });
