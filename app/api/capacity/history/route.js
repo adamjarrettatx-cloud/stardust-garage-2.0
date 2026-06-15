@@ -35,7 +35,7 @@ export async function GET(request) {
 
   let query = supabase
     .from('capacity_events')
-    .select('id, session_id, action, delta, count_after, max_capacity, source, note, created_at')
+    .select('id, session_id, action, delta, count_after, max_capacity, source, note, created_at, device_id, capacity_device_tokens(label)')
     .order('created_at', { ascending: false })
     .limit(limit);
   if (sessionId) query = query.eq('session_id', sessionId);
@@ -44,5 +44,11 @@ export async function GET(request) {
   if (error) {
     return NextResponse.json({ error: 'Failed to load history' }, { status: 500 });
   }
-  return NextResponse.json({ events: events || [] });
+  // Flatten the embedded device label (admins see it; team callers get null via
+  // the admin-only RLS on capacity_device_tokens) and drop the nested object.
+  const flattened = (events || []).map(({ capacity_device_tokens, ...row }) => ({
+    ...row,
+    device_label: capacity_device_tokens?.label || null,
+  }));
+  return NextResponse.json({ events: flattened });
 }

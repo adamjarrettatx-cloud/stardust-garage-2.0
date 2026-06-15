@@ -21,8 +21,21 @@ export const viewport = {
   themeColor: '#0a0a0a',
 };
 
-export default async function FrontDoorPage() {
-  const { unauthorized } = await requireTeam();
-  if (unauthorized) redirect('/team/login');
-  return <FrontDoorClient />;
+// Two ways to reach this page:
+//   1. A provisioned Jelly2 with a device token in the URL (?token=...). The
+//      token is verified server-side by /api/capacity/device/* — we do NOT
+//      require a team session in that case (middleware already let it through).
+//   2. A logged-in team member browsing in (no token) — gated as before.
+// We never read/verify the token here; we just pick which API mode the client
+// uses. The raw token stays in the URL/memory and is sent to the device API.
+export default async function FrontDoorPage({ searchParams }) {
+  const sp = await searchParams;
+  const token = typeof sp?.token === 'string' ? sp.token : null;
+
+  if (!token) {
+    const { unauthorized } = await requireTeam();
+    if (unauthorized) redirect('/team/login');
+  }
+
+  return <FrontDoorClient token={token} />;
 }

@@ -21,6 +21,20 @@ export async function middleware(request) {
     return NextResponse.next();
   }
 
+  // Door-device pages (the two Jelly2 stations) may be opened with a device
+  // token instead of a team session — see Phase 1.1 device tokens. When a
+  // ?token= is present we let the request through WITHOUT the team gate; the
+  // page itself verifies the token server-side via /api/capacity/device/* and
+  // shows "Device not authorized" if it is missing/invalid/revoked. This is the
+  // ONLY auth relaxation here and is scoped strictly to the two door pages — it
+  // does NOT loosen the team/admin gate anywhere else (including /capacity and
+  // /capacity/admin). A logged-in team member can still open these pages too.
+  const isDoorPage =
+    pathname === '/capacity/front-door' || pathname === '/capacity/exit-door';
+  if (isDoorPage && request.nextUrl.searchParams.has('token')) {
+    return NextResponse.next();
+  }
+
   // Dev safety: skip auth if Supabase isn't configured
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
