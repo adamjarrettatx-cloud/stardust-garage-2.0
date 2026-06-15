@@ -91,6 +91,18 @@ test('mapRpcError carries appropriate http status codes', () => {
   assert.equal(mapRpcError({ message: 'something weird' }).httpStatus, 500);
 });
 
+test('mapRpcError flags an un-applied migration (missing RPC/table) clearly', () => {
+  // PostgREST: function not found in schema cache (HTTP 404).
+  const missingFn = mapRpcError({ code: 'PGRST202', message: 'Could not find the function public.capacity_device_check_out in the schema cache' });
+  assert.equal(missingFn.code, 'not_provisioned');
+  assert.equal(missingFn.httpStatus, 503);
+  // PostgREST: relation not found in schema cache (HTTP 404).
+  const missingTable = mapRpcError({ code: 'PGRST205' });
+  assert.equal(missingTable.code, 'not_provisioned');
+  // Match on prose alone too, in case the code field is absent.
+  assert.equal(mapRpcError({ message: 'not found in the schema cache' }).code, 'not_provisioned');
+});
+
 test('CAPACITY_OPERATIONS dispatch table enforces correct roles', () => {
   assert.equal(CAPACITY_OPERATIONS.check_in.role, 'team');
   assert.equal(CAPACITY_OPERATIONS.check_out.role, 'team');

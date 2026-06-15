@@ -106,6 +106,15 @@ export async function POST(request) {
     .single();
 
   if (error) {
+    // A missing capacity_device_tokens table (migration not applied to this
+    // database) surfaces as a PostgREST schema-cache 404. Give a clear,
+    // actionable message instead of a raw 400 so a pending migration is
+    // diagnosable rather than looking like a generic "create failed".
+    if (error.code === 'PGRST205' || /schema cache/i.test(error.message || '')) {
+      return NextResponse.json({
+        error: 'Capacity device tokens are not set up on the server yet (database migration pending). Apply the capacity migrations, then create the link again.',
+      }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Failed to create device: ' + error.message }, { status: 400 });
   }
 
