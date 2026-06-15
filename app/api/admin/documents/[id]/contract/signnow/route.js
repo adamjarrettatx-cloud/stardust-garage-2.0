@@ -43,6 +43,17 @@ export async function POST(request, { params }) {
   const { id } = await params;
   if (!UUID.test(id)) return NextResponse.json({ error: 'Bad id' }, { status: 400 });
 
+  const admin = createAdminClient();
+  const { data: doc } = await admin
+    .from('documents')
+    .select('id, category')
+    .eq('id', id)
+    .maybeSingle();
+  if (!doc) return NextResponse.json({ error: 'Document not found' }, { status: 404 });
+  if (doc.category !== 'contracts') {
+    return NextResponse.json({ error: 'Document is not in the contracts category' }, { status: 400 });
+  }
+
   if (!isSignNowConfigured()) {
     return NextResponse.json(
       {

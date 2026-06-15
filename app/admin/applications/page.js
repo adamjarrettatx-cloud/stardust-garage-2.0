@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { adminPageGate } from '@/lib/auth-helpers';
 
 export const revalidate = 0;
 
@@ -53,6 +55,9 @@ function Avatar({ application }) {
 }
 
 export default async function ApplicationsPage() {
+  const { redirect: gate } = await adminPageGate();
+  if (gate) redirect(gate);
+
   const supabase = await createClient();
   const { data: applications } = await supabase
     .from('membership_applications')

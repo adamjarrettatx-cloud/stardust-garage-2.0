@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { adminPageGate } from '@/lib/auth-helpers';
 import { buildEventAnalytics } from '@/lib/event-analytics';
 
@@ -20,7 +20,10 @@ export default async function AnalyticsPage() {
   const { redirect: gate } = await adminPageGate();
   if (gate) redirect(gate);
 
-  const supabase = await createClient();
+  // Access is gated above by adminPageGate(); this is a server component that is
+  // never bundled to the browser, so we read with the service-role client rather
+  // than depending on RLS to confine rows.
+  const supabase = createAdminClient();
 
   const { data: events } = await supabase
     .from('events')
@@ -28,8 +31,7 @@ export default async function AnalyticsPage() {
     .order('event_date', { ascending: false })
     .limit(300);
 
-  // Local member-discount-code rows power the engagement metrics. RLS confines
-  // this to admin-readable rows.
+  // Local member-discount-code rows power the engagement metrics.
   const { data: codes } = await supabase
     .from('member_discount_codes')
     .select('event_id, member_id, discount_percent, sent_at, send_scheduled_for')

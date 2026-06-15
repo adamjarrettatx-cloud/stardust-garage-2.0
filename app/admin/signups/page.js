@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { adminPageGate } from '@/lib/auth-helpers';
 import DeleteSignupButton from './DeleteSignupButton';
 
 export const revalidate = 0;
@@ -16,6 +18,9 @@ function formatDate(iso) {
 }
 
 export default async function SignupsPage() {
+  const { redirect: gate } = await adminPageGate();
+  if (gate) redirect(gate);
+
   const supabase = await createClient();
   const { data: signups } = await supabase
     .from('signups')

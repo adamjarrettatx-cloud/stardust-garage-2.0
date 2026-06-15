@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { adminFetch } from '@/lib/admin-fetch';
 
 export default function ApplicationActions({
   applicationId,
@@ -35,18 +36,11 @@ export default function ApplicationActions({
 
     setWorking(true);
     try {
-      const res = await fetch('/api/admin/approve-member', {
+      const body = await adminFetch('/api/admin/approve-member', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ applicationId }),
       });
-      const body = await res.json();
-
-      if (!res.ok) {
-        alert('Error: ' + (body?.error || 'Failed to approve'));
-        setWorking(false);
-        return;
-      }
 
       if (body.alreadyHadAccount) {
         alert('Application approved. (Member account was already active.)');

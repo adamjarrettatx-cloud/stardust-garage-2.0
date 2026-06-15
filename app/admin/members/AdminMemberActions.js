@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { adminFetch } from '@/lib/admin-fetch';
 
 export default function AdminMemberActions({ memberId }) {
   const router = useRouter();
@@ -15,17 +16,11 @@ export default function AdminMemberActions({ memberId }) {
 
     setWorking(true);
     try {
-      const res = await fetch('/api/admin/cancel-subscription', {
+      await adminFetch('/api/admin/cancel-subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ memberId }),
       });
-      const body = await res.json();
-      if (!res.ok) {
-        alert('Error: ' + (body?.error || 'Failed'));
-        setWorking(false);
-        return;
-      }
       alert('Subscription will be cancelled at the end of the current billing period.');
       router.refresh();
     } catch (err) {

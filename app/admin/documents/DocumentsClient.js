@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { adminFetch } from '@/lib/admin-fetch';
 
 function formatBytes(n) {
   if (!n) return '—';
@@ -66,9 +67,7 @@ export default function DocumentsClient({ initialDocuments, initialError, events
     fd.append('tags', f.tags);
     fd.append('file', f.file);
     try {
-      const res = await fetch('/api/admin/documents', { method: 'POST', body: fd });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Upload failed');
+      await adminFetch('/api/admin/documents', { method: 'POST', body: fd });
       setShowUpload(false);
       setF({ title: '', description: '', category: 'contracts', counterparty: '', event_id: '', tags: '', file: null });
       router.refresh();
@@ -81,12 +80,12 @@ export default function DocumentsClient({ initialDocuments, initialError, events
 
   async function handleDelete(id, title) {
     if (!confirm(`Delete "${title}"? This permanently removes all versions and files.`)) return;
-    const res = await fetch(`/api/admin/documents/${id}`, { method: 'DELETE' });
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
-      return setError(j.error || 'Delete failed');
+    try {
+      await adminFetch(`/api/admin/documents/${id}`, { method: 'DELETE' });
+      setDocuments(documents.filter((d) => d.id !== id));
+    } catch (err) {
+      setError(err.message);
     }
-    setDocuments(documents.filter((d) => d.id !== id));
   }
 
   return (

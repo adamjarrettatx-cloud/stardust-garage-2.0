@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { adminPageGate } from '@/lib/auth-helpers';
 import { PLAN_DISPLAY } from '@/lib/stripe-prices';
 import AdminMemberActions from './AdminMemberActions';
 
@@ -53,6 +55,9 @@ function Avatar({ member }) {
 }
 
 export default async function AdminMembersPage() {
+  const { redirect: gate } = await adminPageGate();
+  if (gate) redirect(gate);
+
   const supabase = await createClient();
 
   const { data: members } = await supabase

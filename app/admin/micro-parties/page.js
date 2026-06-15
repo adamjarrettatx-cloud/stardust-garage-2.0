@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { adminPageGate } from '@/lib/auth-helpers';
 
 export const revalidate = 0;
 
@@ -24,6 +26,9 @@ function formatEventDate(dateString) {
 }
 
 export default async function MicroPartyInquiriesPage() {
+  const { redirect: gate } = await adminPageGate();
+  if (gate) redirect(gate);
+
   const supabase = await createClient();
   const { data: inquiries } = await supabase
     .from('micro_party_inquiries')

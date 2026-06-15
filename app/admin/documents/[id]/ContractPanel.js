@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { adminFetch } from '@/lib/admin-fetch';
 import {
   CONTRACT_STATUSES,
   CONTRACT_TRANSITIONS,
@@ -89,13 +90,11 @@ export default function ContractPanel({ documentId, initialContract, events, sig
           .filter((s) => s.name || s.email)
           .map((s, i) => ({ ...s, order: i + 1 })),
       };
-      const res = await fetch(`/api/admin/documents/${documentId}/contract`, {
+      const json = await adminFetch(`/api/admin/documents/${documentId}/contract`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Save failed');
       setContract(json.contract);
       setSigners(Array.isArray(json.contract?.signers) ? json.contract.signers : []);
       setEditing(false);
@@ -111,13 +110,11 @@ export default function ContractPanel({ documentId, initialContract, events, sig
   async function transition(next) {
     setTransitioning(true); setError(null); setNotice(null);
     try {
-      const res = await fetch(`/api/admin/documents/${documentId}/contract`, {
+      const json = await adminFetch(`/api/admin/documents/${documentId}/contract`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: next }),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Transition failed');
       setContract(json.contract);
       setNotice(`Status changed to ${STATUS_LABEL[next] || next}.`);
       router.refresh();
@@ -131,12 +128,9 @@ export default function ContractPanel({ documentId, initialContract, events, sig
   async function sendViaSignNow() {
     setSending(true); setError(null); setNotice(null);
     try {
-      const res = await fetch(`/api/admin/documents/${documentId}/contract/signnow`, { method: 'POST' });
-      const json = await res.json();
-      if (!res.ok) {
-        // Expected when unconfigured/unimplemented — surface the hint, not a crash.
-        throw new Error(json.hint || json.error || 'SignNow send failed');
-      }
+      // adminFetch throws json.hint || json.error on non-OK, so the expected
+      // unconfigured/unimplemented responses surface as a hint, not a crash.
+      await adminFetch(`/api/admin/documents/${documentId}/contract/signnow`, { method: 'POST' });
       setNotice('Sent for signature via SignNow.');
       router.refresh();
     } catch (err) {

@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { adminPageGate } from '@/lib/auth-helpers';
 import LogoutButton from './components/LogoutButton';
 import EventsSection from './components/EventsSection';
 import { getTodayInAustin } from '@/lib/studio-helpers';
@@ -33,8 +35,10 @@ function Tile({ href, eyebrow, title, count = 0 }) {
 }
 
 export default async function AdminDashboard() {
+  const { user, redirect: gate } = await adminPageGate();
+  if (gate) redirect(gate);
+
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
 
   const { data: events } = await supabase
     .from('events')

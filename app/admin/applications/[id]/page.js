@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { adminPageGate } from '@/lib/auth-helpers';
 import ApplicationActions from './ApplicationActions';
 
 export const revalidate = 0;
@@ -46,6 +47,9 @@ function Field({ label, children }) {
 }
 
 export default async function ApplicationDetail({ params }) {
+  const { redirect: gate } = await adminPageGate();
+  if (gate) redirect(gate);
+
   const { id } = await params;
   const supabase = await createClient();
   const { data: app, error } = await supabase

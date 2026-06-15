@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireAdmin } from '@/lib/auth-helpers';
+import { requireAdminMfa } from '@/lib/auth-helpers';
 import { sendMemberWelcome } from '@/lib/email';
 
 // POST /api/admin/approve-member
@@ -32,9 +32,9 @@ function generateTempPassword() {
 export async function POST(request) {
   try {
     // Verify the caller is an admin via team_members (server-controlled).
-    const { unauthorized } = await requireAdmin();
+    const { unauthorized, reason } = await requireAdminMfa();
     if (unauthorized) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized', reason }, { status: 401 });
     }
 
     const { applicationId } = await request.json();

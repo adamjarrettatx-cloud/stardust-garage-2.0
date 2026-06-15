@@ -1,12 +1,12 @@
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth-helpers';
+import { requireAdminMfa } from '@/lib/auth-helpers';
 
 export async function POST(request) {
   // Verify caller is an admin via team_members (server-controlled).
-  const { unauthorized } = await requireAdmin();
+  const { unauthorized, reason } = await requireAdminMfa();
   if (unauthorized) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized', reason }, { status: 401 });
   }
 
   const { id } = await request.json();

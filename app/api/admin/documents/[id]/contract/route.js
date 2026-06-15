@@ -122,6 +122,12 @@ export async function POST(request, { params }) {
 
   const admin = createAdminClient();
 
+  const doc = await loadContractDocument(admin, id);
+  if (!doc) return NextResponse.json({ error: 'Document not found' }, { status: 404 });
+  if (doc.category !== 'contracts') {
+    return NextResponse.json({ error: 'Document is not in the contracts category' }, { status: 400 });
+  }
+
   const { data: contract } = await admin
     .from('document_contracts')
     .select('*')

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { adminFetch } from '@/lib/admin-fetch';
 import ContractPanel from './ContractPanel';
 
 function formatBytes(n) {
@@ -54,13 +55,11 @@ export default function DocumentDetailClient({ document: doc, versions, audit, e
         status: edit.status,
         tags: edit.tags.split(',').map((t) => t.trim()).filter(Boolean),
       };
-      const res = await fetch(`/api/admin/documents/${doc.id}`, {
+      await adminFetch(`/api/admin/documents/${doc.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Save failed');
       setEditing(false);
       router.refresh();
     } catch (err) {
@@ -77,9 +76,7 @@ export default function DocumentDetailClient({ document: doc, versions, audit, e
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch(`/api/admin/documents/${doc.id}/version`, { method: 'POST', body: fd });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Upload failed');
+      await adminFetch(`/api/admin/documents/${doc.id}/version`, { method: 'POST', body: fd });
       router.refresh();
     } catch (err) {
       setError(err.message);

@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { adminPageGate } from '@/lib/auth-helpers';
 import GalleryManager from './GalleryManager';
 
 export const revalidate = 0;
@@ -9,6 +11,9 @@ const GALLERIES = [
 ];
 
 export default async function GalleriesPage() {
+  const { redirect: gate } = await adminPageGate();
+  if (gate) redirect(gate);
+
   const supabase = await createClient();
   const { data: allImages } = await supabase
     .from('gallery_images')
