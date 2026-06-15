@@ -37,7 +37,6 @@ export default async function CapacityHub() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Tile href="/capacity/front-door" eyebrow="JELLY2 · FRONT" title="Front Door" desc="Big green check-in button" color="#7CFC9B" />
         <Tile href="/capacity/exit-door" eyebrow="JELLY2 · EXIT" title="Exit Door" desc="Big red check-out button" color="#ff8a8a" />
-        <Tile href="/capacity/display" eyebrow="RASPBERRY PI" title="Display" desc="Read-only live count for a monitor/TV" />
         {isAdmin && (
           <Tile href="/capacity/admin" eyebrow="ADMIN" title="Setup & History" desc="Start/end session, set max, reset, audit log" color="#ffb84d" />
         )}

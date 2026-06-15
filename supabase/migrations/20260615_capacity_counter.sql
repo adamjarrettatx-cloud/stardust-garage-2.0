@@ -9,9 +9,10 @@
 -- It does NOT alter or drop any existing column, table, policy, or the paused
 -- POS work. Nothing here touches TicketTailor, Stripe, or documents.
 --
--- Purpose: drive the door-counter web UI on the two Jelly2 devices + a
--- read-only Raspberry Pi display. One "session" represents a night/event with
--- a configurable max_capacity. Every check-in / check-out / reset / adjust is
+-- Purpose: drive the door-counter web UI on the two Jelly2 devices (a
+-- front-door check-in phone and an exit-door check-out phone). One "session"
+-- represents a night/event with a configurable max_capacity. Every check-in /
+-- check-out / reset / adjust is
 -- recorded in capacity_events as an immutable audit log. The current count
 -- lives on the session row and is mutated ONLY through the RPCs below so two
 -- simultaneous door taps can never corrupt it (row lock + atomic update).
@@ -25,7 +26,7 @@
 --     update/delete policy exists, so history is immutable except to
 --     service_role (which bypasses RLS).
 --   * Realtime: both tables are added to the supabase_realtime publication so
---     the door/display pages get live postgres_changes updates.
+--     the two door pages get live postgres_changes updates.
 -- =========================================================
 
 -- ---------------------------------------------------------------------------
@@ -105,7 +106,7 @@ create table if not exists public.capacity_events (
   -- which physical station produced the tap (front_door / exit_door / etc).
   actor_id uuid references auth.users(id) on delete set null,
   source   text not null default 'unknown'
-    check (source in ('front_door', 'exit_door', 'admin', 'display', 'system', 'unknown')),
+    check (source in ('front_door', 'exit_door', 'admin', 'system', 'unknown')),
   note text,
 
   created_at timestamptz not null default now()
@@ -343,7 +344,7 @@ create policy capacity_events_admin_insert on public.capacity_events
   for insert to authenticated with check (public.is_admin());
 
 -- ---------------------------------------------------------------------------
--- Realtime: publish both tables so the door/display pages receive live
+-- Realtime: publish both tables so the two door pages receive live
 -- postgres_changes events. Wrapped so re-running is a no-op if already added.
 -- ---------------------------------------------------------------------------
 do $$

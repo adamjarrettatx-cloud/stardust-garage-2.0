@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { deriveStatus } from '@/lib/capacity-utils';
 
-// Shared client hook powering the front-door, exit-door, and display pages.
+// Shared client hook powering the front-door and exit-door pages.
 //
 // Keeps a live view of the active session by:
 //   1. Subscribing to Supabase realtime postgres_changes on capacity_sessions
