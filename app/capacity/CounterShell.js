@@ -1,9 +1,14 @@
 'use client';
 
-// Shared full-screen presentational shell for the door pages. Renders the big
-// count, labeled max capacity, status banner, connection indicator, last-action
-// line, and a single huge action button. Designed for the tiny Jelly2 screen:
-// one giant tap target, high contrast, no small controls.
+// Shared full-screen presentational shell for the two Jelly2 door pages.
+// Renders the big count, labeled max capacity, status banner, connection
+// indicator, a single-line last-action note, and one huge action button.
+//
+// Tuned for the Unihertz Jelly2 kiosk: a 3.0" 480x854 screen that reports a
+// very narrow AND very short CSS viewport. The layout is a height-aware flex
+// column locked to the dynamic viewport (100dvh) with safe-area padding, so it
+// never scrolls or overflows. The count scales on `vmin` (not `vw`) so it
+// shrinks with the short height as well as the narrow width.
 
 const STATUS_BG = {
   none:  '#141414',
@@ -47,17 +52,17 @@ export default function CounterShell({
 
   return (
     <main
-      className="fixed inset-0 flex flex-col select-none"
+      className="kiosk-shell fixed inset-0 flex flex-col select-none overflow-hidden"
       style={{ background: STATUS_BG[s] || '#0a0a0a', color: '#f5f5f5', touchAction: 'manipulation' }}
     >
       {/* Header: station name + connection dot */}
-      <div className="flex items-center justify-between px-5 pt-5">
-        <div className="text-[13px] font-bold tracking-[0.18em] uppercase" style={{ color: '#8a8a8a' }}>
+      <div className="flex items-center justify-between gap-2 px-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
+        <div className="kiosk-title font-bold tracking-[0.16em] uppercase truncate" style={{ color: '#8a8a8a' }}>
           {title}
         </div>
-        <div className="flex items-center gap-2 text-[11px]" style={{ color: connected ? '#7CFC9B' : '#8a8a8a' }}>
+        <div className="flex items-center gap-1.5 shrink-0 kiosk-conn" style={{ color: connected ? '#7CFC9B' : '#8a8a8a' }}>
           <span
-            className="inline-block w-2.5 h-2.5 rounded-full"
+            className="inline-block w-2 h-2 rounded-full"
             style={{ background: connected ? '#7CFC9B' : '#555' }}
             aria-hidden
           />
@@ -65,33 +70,33 @@ export default function CounterShell({
         </div>
       </div>
 
-      {/* Count block */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4">
+      {/* Count block — flex-1 + min-h-0 lets it shrink instead of pushing the
+          button off a short screen. */}
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center px-3 overflow-hidden">
         {s === 'none' ? (
-          <div className="text-center">
-            <div className="text-[22px] font-bold mb-2">No active session</div>
-            <div className="text-[14px]" style={{ color: '#8a8a8a' }}>
+          <div className="text-center px-2">
+            <div className="kiosk-nosession font-bold mb-1">No active session</div>
+            <div className="kiosk-note" style={{ color: '#8a8a8a' }}>
               An admin needs to start a session.
             </div>
           </div>
         ) : (
           <>
             <div
-              className="font-extrabold leading-none tabular-nums"
+              className="kiosk-count font-extrabold leading-none tabular-nums"
               style={{
                 fontFamily: "'Plus Jakarta Sans', sans-serif",
-                fontSize: 'clamp(96px, 38vw, 260px)',
                 color: STATUS_COLOR[s] || '#f5f5f5',
               }}
               aria-live="polite"
             >
               {status.count}
             </div>
-            <div className="text-[16px] mt-1 font-semibold tracking-wide" style={{ color: '#8a8a8a' }}>
+            <div className="kiosk-max mt-0.5 font-semibold tracking-wide" style={{ color: '#8a8a8a' }}>
               of {status.max} max
             </div>
             <div
-              className="mt-3 px-4 py-1.5 rounded-full text-[13px] font-bold tracking-[0.1em] uppercase"
+              className="kiosk-pill mt-2 rounded-full font-bold tracking-[0.1em] uppercase truncate max-w-full"
               style={{ background: 'rgba(255,255,255,0.06)', color: STATUS_COLOR[s] }}
             >
               {STATUS_LABEL[s]}
@@ -100,25 +105,27 @@ export default function CounterShell({
         )}
       </div>
 
-      {/* Status / error line */}
-      <div className="px-5 min-h-[24px] text-center text-[13px]" style={{ color: error ? '#ff8a8a' : '#8a8a8a' }}>
+      {/* Status / error line — single line, truncates so a long note never
+          wraps or forces the layout taller on the tiny screen. */}
+      <div
+        className="kiosk-status px-3 text-center truncate"
+        style={{ color: error ? '#ff8a8a' : '#8a8a8a' }}
+      >
         {error || lastAction || (loading ? 'Loading…' : ' ')}
       </div>
 
       {/* Giant action button */}
-      <div className="px-4 pb-6 pt-2">
+      <div className="px-3 pt-1 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <button
           type="button"
           onClick={onAction}
           disabled={buttonDisabled}
-          className="w-full rounded-3xl font-extrabold active:scale-[0.98] transition-transform"
+          className="kiosk-button w-full rounded-3xl font-extrabold active:scale-[0.98] transition-transform"
           style={{
-            height: 'min(34vh, 220px)',
-            fontSize: 'clamp(28px, 9vw, 56px)',
             background: buttonDisabled ? '#3a3a3a' : accentColor,
             color: buttonDisabled ? '#777' : '#fff',
             fontFamily: "'Plus Jakarta Sans', sans-serif",
-            boxShadow: buttonDisabled ? 'none' : `0 8px 0 ${accentColorActive}`,
+            boxShadow: buttonDisabled ? 'none' : `0 6px 0 ${accentColorActive}`,
           }}
         >
           {buttonLabel}
