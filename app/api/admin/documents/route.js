@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth-helpers';
+import { requireAdminMfa } from '@/lib/auth-helpers';
 import {
   createAdminClient,
   audit,
@@ -18,8 +18,8 @@ const VALID_CATEGORIES = new Set(DOCUMENT_CATEGORIES.map((c) => c.value));
 
 // POST /api/admin/documents  -- multipart/form-data: create new document + first version
 export async function POST(request) {
-  const { user, unauthorized } = await requireAdmin();
-  if (unauthorized) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { user, unauthorized, reason } = await requireAdminMfa();
+  if (unauthorized) return NextResponse.json({ error: 'Unauthorized', reason }, { status: 401 });
 
   let form;
   try {

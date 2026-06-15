@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { adminFetch } from '@/lib/admin-fetch';
 
 function formatBytes(n) {
   if (!n) return '—';
@@ -16,6 +17,12 @@ function formatDate(s) {
   if (!s) return '—';
   return new Date(s).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
+
+const CONTRACT_STATUS_COLOR = {
+  draft: '#8a8a8a', pending_review: '#fbbf24', sent: '#60a5fa',
+  partially_signed: '#a78bfa', signed: '#4ade80', declined: '#f87171',
+  void: '#6b7280', expired: '#f59e0b',
+};
 
 const CATEGORY_COLORS = {
   contracts: { color: '#ffb84d', bg: 'rgba(255,184,77,0.12)', border: 'rgba(255,184,77,0.3)' },
@@ -60,9 +67,7 @@ export default function DocumentsClient({ initialDocuments, initialError, events
     fd.append('tags', f.tags);
     fd.append('file', f.file);
     try {
-      const res = await fetch('/api/admin/documents', { method: 'POST', body: fd });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Upload failed');
+      await adminFetch('/api/admin/documents', { method: 'POST', body: fd });
       setShowUpload(false);
       setF({ title: '', description: '', category: 'contracts', counterparty: '', event_id: '', tags: '', file: null });
       router.refresh();
@@ -75,12 +80,12 @@ export default function DocumentsClient({ initialDocuments, initialError, events
 
   async function handleDelete(id, title) {
     if (!confirm(`Delete "${title}"? This permanently removes all versions and files.`)) return;
-    const res = await fetch(`/api/admin/documents/${id}`, { method: 'DELETE' });
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
-      return setError(j.error || 'Delete failed');
+    try {
+      await adminFetch(`/api/admin/documents/${id}`, { method: 'DELETE' });
+      setDocuments(documents.filter((d) => d.id !== id));
+    } catch (err) {
+      setError(err.message);
     }
-    setDocuments(documents.filter((d) => d.id !== id));
   }
 
   return (
@@ -160,6 +165,9 @@ export default function DocumentsClient({ initialDocuments, initialError, events
             const cat = CATEGORY_COLORS[d.category] || CATEGORY_COLORS.other;
             const ver = d.document_versions;
             const tags = (d.document_tags || []).map((t) => t.tag);
+            const contractStatus = Array.isArray(d.document_contracts)
+              ? d.document_contracts[0]?.status
+              : d.document_contracts?.status;
             return (
               <div
                 key={d.id}
@@ -180,6 +188,17 @@ export default function DocumentsClient({ initialDocuments, initialError, events
                     {d.status !== 'active' && (
                       <span className="text-[10px] tracking-[0.10em] uppercase px-2 py-0.5 rounded-[6px]" style={{ background: 'rgba(255,255,255,0.05)', color: '#8a8a8a' }}>
                         {d.status}
+                      </span>
+                    )}
+                    {contractStatus && (
+                      <span
+                        className="text-[10px] tracking-[0.10em] uppercase px-2 py-0.5 rounded-[6px] font-semibold"
+                        style={{
+                          background: `${CONTRACT_STATUS_COLOR[contractStatus] || '#8a8a8a'}22`,
+                          color: CONTRACT_STATUS_COLOR[contractStatus] || '#8a8a8a',
+                        }}
+                      >
+                        {contractStatus.replace('_', ' ')}
                       </span>
                     )}
                   </div>

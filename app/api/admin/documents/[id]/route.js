@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth-helpers';
+import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient, audit, DOCUMENT_BUCKET, DOCUMENT_CATEGORIES } from '@/lib/document-helpers';
 
 export const runtime = 'nodejs';
@@ -9,8 +9,8 @@ const VALID_CATEGORIES = new Set(DOCUMENT_CATEGORIES.map((c) => c.value));
 
 // PATCH /api/admin/documents/:id  -- update metadata and tags
 export async function PATCH(request, { params }) {
-  const { user, unauthorized } = await requireAdmin();
-  if (unauthorized) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { user, unauthorized, reason } = await requireAdminMfa();
+  if (unauthorized) return NextResponse.json({ error: 'Unauthorized', reason }, { status: 401 });
   const { id } = await params;
   if (!UUID.test(id)) return NextResponse.json({ error: 'Bad id' }, { status: 400 });
 
@@ -58,8 +58,8 @@ export async function PATCH(request, { params }) {
 
 // DELETE /api/admin/documents/:id  -- hard delete with cascade + storage cleanup
 export async function DELETE(request, { params }) {
-  const { user, unauthorized } = await requireAdmin();
-  if (unauthorized) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { user, unauthorized, reason } = await requireAdminMfa();
+  if (unauthorized) return NextResponse.json({ error: 'Unauthorized', reason }, { status: 401 });
   const { id } = await params;
   if (!UUID.test(id)) return NextResponse.json({ error: 'Bad id' }, { status: 400 });
 

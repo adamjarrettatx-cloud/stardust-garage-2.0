@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireAdmin } from '@/lib/auth-helpers';
+import { requireAdminMfa } from '@/lib/auth-helpers';
 import { getEventSeriesTicketTypes } from '@/lib/tickettailor';
 import {
   QUALIFYING_CATEGORIES,
@@ -19,9 +19,9 @@ export const runtime = 'nodejs';
 // members who don't yet have one — safe to invoke repeatedly.
 export async function POST(request) {
   try {
-    const { unauthorized } = await requireAdmin();
+    const { unauthorized, reason } = await requireAdminMfa();
     if (unauthorized) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized', reason }, { status: 401 });
     }
 
     const { eventId, force } = await request.json();

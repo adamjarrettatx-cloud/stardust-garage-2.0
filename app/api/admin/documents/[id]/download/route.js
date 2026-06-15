@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth-helpers';
+import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient, audit, DOCUMENT_BUCKET } from '@/lib/document-helpers';
 
 export const runtime = 'nodejs';
@@ -16,8 +16,8 @@ const UUID = /^[0-9a-f-]{36}$/i;
 // validates admin status, fetches the file via the service role, and streams
 // the bytes through Next.js. The signed URL never leaves the server.
 export async function GET(request, { params }) {
-  const { user, unauthorized } = await requireAdmin();
-  if (unauthorized) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { user, unauthorized, reason } = await requireAdminMfa();
+  if (unauthorized) return NextResponse.json({ error: 'Unauthorized', reason }, { status: 401 });
   const { id } = await params;
   if (!UUID.test(id)) return NextResponse.json({ error: 'Bad id' }, { status: 400 });
 

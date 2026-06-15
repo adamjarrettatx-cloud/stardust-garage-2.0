@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth-helpers';
+import { requireAdminMfa } from '@/lib/auth-helpers';
 import { listEventSeries } from '@/lib/tickettailor';
 
 export const runtime = 'nodejs';
@@ -8,9 +8,9 @@ export const runtime = 'nodejs';
 // Returns [{ id, name }] of TicketTailor event series. Admin only.
 export async function GET() {
   try {
-    const { unauthorized } = await requireAdmin();
+    const { unauthorized, reason } = await requireAdminMfa();
     if (unauthorized) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized', reason }, { status: 401 });
     }
 
     const series = await listEventSeries();

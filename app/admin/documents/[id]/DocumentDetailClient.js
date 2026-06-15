@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { adminFetch } from '@/lib/admin-fetch';
+import ContractPanel from './ContractPanel';
 
 function formatBytes(n) {
   if (!n) return '—';
@@ -20,9 +22,11 @@ const ACTION_LABEL = {
   upload: 'Uploaded', view: 'Viewed', download: 'Downloaded',
   update_metadata: 'Edited', delete: 'Deleted', restore: 'Restored',
   new_version: 'New version',
+  contract_create: 'Contract created', contract_status_change: 'Contract status',
+  contract_send: 'Contract sent', contract_signed: 'Contract signed', contract_void: 'Contract voided',
 };
 
-export default function DocumentDetailClient({ document: doc, versions, audit, events, categories }) {
+export default function DocumentDetailClient({ document: doc, versions, audit, events, categories, contract, signNowConfigured }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -51,13 +55,11 @@ export default function DocumentDetailClient({ document: doc, versions, audit, e
         status: edit.status,
         tags: edit.tags.split(',').map((t) => t.trim()).filter(Boolean),
       };
-      const res = await fetch(`/api/admin/documents/${doc.id}`, {
+      await adminFetch(`/api/admin/documents/${doc.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Save failed');
       setEditing(false);
       router.refresh();
     } catch (err) {
@@ -74,9 +76,7 @@ export default function DocumentDetailClient({ document: doc, versions, audit, e
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch(`/api/admin/documents/${doc.id}/version`, { method: 'POST', body: fd });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Upload failed');
+      await adminFetch(`/api/admin/documents/${doc.id}/version`, { method: 'POST', body: fd });
       router.refresh();
     } catch (err) {
       setError(err.message);
@@ -187,6 +187,16 @@ export default function DocumentDetailClient({ document: doc, versions, audit, e
           </dl>
         )}
       </div>
+
+      {/* Contract lifecycle — only for contract-category documents */}
+      {doc.category === 'contracts' && (
+        <ContractPanel
+          documentId={doc.id}
+          initialContract={contract}
+          events={events}
+          signNowConfigured={signNowConfigured}
+        />
+      )}
 
       {/* Versions */}
       <div className="mb-6">

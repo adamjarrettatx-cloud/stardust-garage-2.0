@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { adminPageGate } from '@/lib/auth-helpers';
 import {
   formatHour,
   formatMoney,
@@ -11,6 +13,9 @@ import AdminBookingActions from './AdminBookingActions';
 export const revalidate = 0;
 
 export default async function AdminStudioBookingsPage() {
+  const { redirect: gate } = await adminPageGate();
+  if (gate) redirect(gate);
+
   const supabase = await createClient();
 
   // Pull all bookings, joined with member info

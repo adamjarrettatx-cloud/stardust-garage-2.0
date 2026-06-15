@@ -10,6 +10,9 @@ import {
   projectFinalSales,
   summarizeEvent,
   centsToUsd,
+  summarizeMemberCodes,
+  groupCodesByEvent,
+  buildEventAnalytics,
 } from '../lib/event-analytics.js';
 
 const orders = [
@@ -67,4 +70,41 @@ test('summarizeEvent rolls up a coherent object', () => {
 test('centsToUsd formats and handles null', () => {
   assert.equal(centsToUsd(7500), '$75.00');
   assert.equal(centsToUsd(null), '—');
+});
+
+const memberCodes = [
+  { event_id: 'e1', member_id: 'm1', discount_percent: 60, sent_at: '2026-01-01' },
+  { event_id: 'e1', member_id: 'm2', discount_percent: 40, sent_at: null },
+  { event_id: 'e2', member_id: 'm1', discount_percent: 50, sent_at: '2026-02-01' },
+];
+
+test('summarizeMemberCodes rolls up totals and average', () => {
+  const s = summarizeMemberCodes(memberCodes.filter((c) => c.event_id === 'e1'));
+  assert.equal(s.total, 2);
+  assert.equal(s.sent, 1);
+  assert.equal(s.pending, 1);
+  assert.equal(s.avgDiscountPercent, 50);
+});
+
+test('summarizeMemberCodes handles empty', () => {
+  assert.deepEqual(summarizeMemberCodes([]), { total: 0, sent: 0, pending: 0, avgDiscountPercent: null });
+});
+
+test('groupCodesByEvent buckets by event_id', () => {
+  const g = groupCodesByEvent(memberCodes);
+  assert.equal(g.e1.length, 2);
+  assert.equal(g.e2.length, 1);
+});
+
+test('buildEventAnalytics joins events with codes and sorts by date desc', () => {
+  const events = [
+    { id: 'e1', title: 'Older', event_date: '2026-01-10', category: 'party', tt_event_series_id: 'ev_x', discount_codes_generated: true },
+    { id: 'e2', title: 'Newer', event_date: '2026-02-10', category: 'yoga', tt_event_series_id: null, discount_codes_generated: false },
+  ];
+  const rows = buildEventAnalytics({ events, codes: memberCodes });
+  assert.equal(rows[0].id, 'e2');
+  assert.equal(rows[0].ttSeriesLinked, false);
+  assert.equal(rows[1].id, 'e1');
+  assert.equal(rows[1].memberCodes.total, 2);
+  assert.equal(rows[1].ttSeriesLinked, true);
 });

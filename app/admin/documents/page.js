@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getCurrentUser } from '@/lib/auth-helpers';
+import { adminPageGate } from '@/lib/auth-helpers';
 import { DOCUMENT_CATEGORIES } from '@/lib/document-helpers';
 import DocumentsClient from './DocumentsClient';
 
@@ -10,9 +10,10 @@ export const dynamic = 'force-dynamic';
 
 export default async function DocumentsPage({ searchParams }) {
   // Defense-in-depth: middleware already gated /admin/*, but verify here too.
-  const { user, isAdmin } = await getCurrentUser();
-  if (!user) redirect('/admin/login');
-  if (!isAdmin) redirect('/member');
+  // adminPageGate also routes to /admin/security when MFA is enforced but the
+  // session hasn't stepped up — avoids a dead end for un-enrolled admins.
+  const { redirect: gate } = await adminPageGate();
+  if (gate) redirect(gate);
 
   const sp = await searchParams;
   const q        = (sp?.q || '').toString().trim();
@@ -30,7 +31,8 @@ export default async function DocumentsPage({ searchParams }) {
       current_version_id, created_at, updated_at,
       events:event_id ( id, title, event_date ),
       document_versions:current_version_id ( filename, mime_type, size_bytes, version_number, uploaded_at ),
-      document_tags ( tag )
+      document_tags ( tag ),
+      document_contracts ( status )
     `)
     .order('updated_at', { ascending: false });
 

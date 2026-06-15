@@ -1,17 +1,17 @@
 import Link from 'next/link';
 import { redirect, notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getCurrentUser } from '@/lib/auth-helpers';
+import { adminPageGate } from '@/lib/auth-helpers';
 import { DOCUMENT_CATEGORIES } from '@/lib/document-helpers';
+import { isSignNowConfigured } from '@/lib/signnow';
 import DocumentDetailClient from './DocumentDetailClient';
 
 export const revalidate = 0;
 export const dynamic = 'force-dynamic';
 
 export default async function DocumentDetailPage({ params }) {
-  const { user, isAdmin } = await getCurrentUser();
-  if (!user) redirect('/admin/login');
-  if (!isAdmin) redirect('/member');
+  const { redirect: gate } = await adminPageGate();
+  if (gate) redirect(gate);
 
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
@@ -49,6 +49,17 @@ export default async function DocumentDetailPage({ params }) {
     .order('event_date', { ascending: false })
     .limit(200);
 
+  // Contract lifecycle record is optional and only relevant for contract docs.
+  let contract = null;
+  if (doc.category === 'contracts') {
+    const { data: c } = await supabase
+      .from('document_contracts')
+      .select('*')
+      .eq('document_id', id)
+      .maybeSingle();
+    contract = c || null;
+  }
+
   return (
     <main className="max-w-[900px] mx-auto px-6 py-16">
       <Link
@@ -64,6 +75,8 @@ export default async function DocumentDetailPage({ params }) {
         audit={audit || []}
         events={events || []}
         categories={DOCUMENT_CATEGORIES}
+        contract={contract}
+        signNowConfigured={isSignNowConfigured()}
       />
     </main>
   );

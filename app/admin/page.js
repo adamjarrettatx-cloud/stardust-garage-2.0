@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { adminPageGate } from '@/lib/auth-helpers';
 import LogoutButton from './components/LogoutButton';
 import EventsSection from './components/EventsSection';
 import { getTodayInAustin } from '@/lib/studio-helpers';
@@ -33,8 +35,10 @@ function Tile({ href, eyebrow, title, count = 0 }) {
 }
 
 export default async function AdminDashboard() {
+  const { user, redirect: gate } = await adminPageGate();
+  if (gate) redirect(gate);
+
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
 
   const { data: events } = await supabase
     .from('events')
@@ -86,6 +90,7 @@ export default async function AdminDashboard() {
         <Tile href="/admin/calendar" eyebrow="TEAM ONLY" title="Team Calendar" />
         <Tile href="/admin/team" eyebrow="MANAGE" title="Team Members" />
         <Tile href="/admin/documents" eyebrow="PRIVATE" title="Documents" />
+        <Tile href="/admin/analytics" eyebrow="INSIGHTS" title="Event Analytics" />
         <Tile href="/admin/security" eyebrow="ACCOUNT" title="Security / MFA" />
       </div>
 

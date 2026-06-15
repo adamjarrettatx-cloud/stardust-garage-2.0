@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { adminPageGate } from '@/lib/auth-helpers';
 
 export const revalidate = 0;
 
@@ -20,6 +22,9 @@ const ROLE_LABELS = {
 };
 
 export default async function CollaborationsPage() {
+  const { redirect: gate } = await adminPageGate();
+  if (gate) redirect(gate);
+
   const supabase = await createClient();
   const { data: collabs } = await supabase
     .from('collaborations')

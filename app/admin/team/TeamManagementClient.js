@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { adminFetch } from '@/lib/admin-fetch';
 
 const ROLE_CONFIG = {
   admin: {
@@ -48,9 +49,9 @@ export default function TeamManagementClient({ members: initialMembers }) {
     setInviteSuccess('');
     setInviting(true);
 
-    let res, result;
+    let result;
     try {
-      res = await fetch('/api/admin/invite-team-member', {
+      result = await adminFetch('/api/admin/invite-team-member', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -60,15 +61,8 @@ export default function TeamManagementClient({ members: initialMembers }) {
           password: invitePassword.trim(),
         }),
       });
-      result = await res.json();
     } catch (fetchErr) {
-      setInviteError('Network error: ' + fetchErr.message);
-      setInviting(false);
-      return;
-    }
-
-    if (!res.ok || result.error) {
-      setInviteError(result?.error || `Server error (${res.status})`);
+      setInviteError(fetchErr.message);
       setInviting(false);
       return;
     }
@@ -91,14 +85,16 @@ export default function TeamManagementClient({ members: initialMembers }) {
     }
     setDeletingId(id);
 
-    const res = await fetch('/api/admin/remove-team-member', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    });
-
-    if (res.ok) {
+    try {
+      await adminFetch('/api/admin/remove-team-member', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
       setMembers(prev => prev.filter(m => m.id !== id));
+    } catch {
+      // Leave the member in place on failure; adminFetch handles the
+      // mfa_required redirect itself.
     }
     setDeletingId(null);
     setConfirmDeleteId(null);
