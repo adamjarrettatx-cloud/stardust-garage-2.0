@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import TtLinkPanel from './TtLinkPanel';
 
 const CATEGORY_OPTIONS = [
   { value: 'workshop', label: 'Workshop' },
@@ -358,40 +359,46 @@ export default function EventForm({ event }) {
         )}
 
         {/* TICKETTAILOR EVENT SERIES */}
-        <div>
-          <label className={labelClass} style={labelStyle}>TICKETTAILOR EVENT SERIES</label>
-          {ttSeries.length > 0 ? (
-            <select
-              value={ttEventSeriesId}
-              onChange={(e) => setTtEventSeriesId(e.target.value)}
-              className={inputClass}
-              style={inputStyle}
-            >
-              <option value="" style={{ background: '#141414' }}>
-                — None —
-              </option>
-              {ttSeries.map((s) => (
-                <option key={s.id} value={s.id} style={{ background: '#141414' }}>
-                  {s.name} ({s.id})
+        {isEditing ? (
+          // For an existing event, link/unlink goes through the server route
+          // (requireAdminMfa + server-side validation), not the client save.
+          <TtLinkPanel eventId={event.id} initialSeriesId={ttEventSeriesId} />
+        ) : (
+          <div>
+            <label className={labelClass} style={labelStyle}>TICKETTAILOR EVENT SERIES</label>
+            {ttSeries.length > 0 ? (
+              <select
+                value={ttEventSeriesId}
+                onChange={(e) => setTtEventSeriesId(e.target.value)}
+                className={inputClass}
+                style={inputStyle}
+              >
+                <option value="" style={{ background: '#141414' }}>
+                  — None —
                 </option>
-              ))}
-            </select>
-          ) : (
-            <input
-              type="text"
-              value={ttEventSeriesId}
-              onChange={(e) => setTtEventSeriesId(e.target.value)}
-              placeholder="ev_xxxxxxxx"
-              className={inputClass}
-              style={inputStyle}
-            />
-          )}
-          <p className="text-[11px] mt-2" style={{ color: '#555' }}>
-            {ttSeriesError
-              ? `Could not load series list (${ttSeriesError}). Enter the series ID manually.`
-              : 'Link the TicketTailor event series so member discount codes apply to its tickets.'}
-          </p>
-        </div>
+                {ttSeries.map((s) => (
+                  <option key={s.id} value={s.id} style={{ background: '#141414' }}>
+                    {s.name} ({s.id})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={ttEventSeriesId}
+                onChange={(e) => setTtEventSeriesId(e.target.value)}
+                placeholder="ev_xxxxxxxx"
+                className={inputClass}
+                style={inputStyle}
+              />
+            )}
+            <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+              {ttSeriesError
+                ? `Could not load series list (${ttSeriesError}). Enter the series ID manually.`
+                : 'Link the TicketTailor event series so member discount codes apply to its tickets. You can verify the link after creating the event.'}
+            </p>
+          </div>
+        )}
 
         {/* EVENT TYPE TOGGLE */}
         <div>
