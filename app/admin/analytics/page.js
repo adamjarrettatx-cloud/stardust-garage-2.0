@@ -175,7 +175,18 @@ export default async function AnalyticsPage() {
                 <span title={`${r.memberCodes.sent} sent / ${r.memberCodes.total} total`}>
                   {r.memberCodes.sent}/{r.memberCodes.total}
                 </span>
-                <span style={{ color: r.ttSeriesLinked ? '#4ade80' : '#6a6a6a' }}>{r.ttSeriesLinked ? 'linked' : '—'}</span>
+                {r.ttSeriesLinked ? (
+                  <span style={{ color: '#4ade80' }}>linked</span>
+                ) : (
+                  <Link
+                    href={`/admin/events/${r.id}`}
+                    className="hover:underline"
+                    style={{ color: '#ffb84d' }}
+                    title="Link this event to a TicketTailor series"
+                  >
+                    Link →
+                  </Link>
+                )}
               </div>
             );
           })}
