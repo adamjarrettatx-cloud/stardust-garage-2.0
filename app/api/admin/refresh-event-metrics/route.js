@@ -1,19 +1,11 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { requireAdminMfa } from '@/lib/auth-helpers';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { listOrders, listIssuedTickets } from '@/lib/tickettailor';
-import { buildMetricsSnapshot } from '@/lib/event-analytics';
+import { buildMetricsSnapshot, buildPlaceholderMetricsRow } from '@/lib/event-analytics';
 import { classifyCronAuth } from '@/lib/event-metrics-auth';
 
 export const runtime = 'nodejs';
-
-function serviceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  );
-}
 
 // Core refresh routine. READ-ONLY against TicketTailor: it only ever GETs via
 // listOrders()/listIssuedTickets(). Events without a TT series are recorded as
@@ -38,14 +30,14 @@ async function refreshMetrics(supabase) {
     // No TT series → we cannot pull real numbers. Record a clear, honest
     // placeholder rather than guessing.
     if (!event.tt_event_series_id) {
-      rows.push({
-        event_id: event.id,
-        tt_event_series_id: null,
-        source: 'placeholder',
-        status: 'not_configured',
-        error_detail: 'Event is not linked to a TicketTailor event series.',
-        fetched_at: fetchedAt,
-      });
+      rows.push(
+        buildPlaceholderMetricsRow({
+          eventId: event.id,
+          ttEventSeriesId: null,
+          errorDetail: 'Event is not linked to a TicketTailor event series.',
+          fetchedAt,
+        }),
+      );
       skipped++;
       continue;
     }
@@ -53,14 +45,14 @@ async function refreshMetrics(supabase) {
     // API key missing → cannot make read calls; record not_configured so the
     // dashboard explains *why* there are no numbers instead of showing zeros.
     if (!ttConfigured) {
-      rows.push({
-        event_id: event.id,
-        tt_event_series_id: event.tt_event_series_id,
-        source: 'placeholder',
-        status: 'not_configured',
-        error_detail: 'TICKETTAILOR_API_KEY is not configured in this environment.',
-        fetched_at: fetchedAt,
-      });
+      rows.push(
+        buildPlaceholderMetricsRow({
+          eventId: event.id,
+          ttEventSeriesId: event.tt_event_series_id,
+          errorDetail: 'TICKETTAILOR_API_KEY is not configured in this environment.',
+          fetchedAt,
+        }),
+      );
       skipped++;
       continue;
     }
@@ -81,14 +73,16 @@ async function refreshMetrics(supabase) {
       );
       refreshed++;
     } catch (err) {
-      rows.push({
-        event_id: event.id,
-        tt_event_series_id: event.tt_event_series_id,
-        source: 'tickettailor',
-        status: 'error',
-        error_detail: String(err?.message || err).slice(0, 500),
-        fetched_at: fetchedAt,
-      });
+      rows.push(
+        buildPlaceholderMetricsRow({
+          eventId: event.id,
+          ttEventSeriesId: event.tt_event_series_id,
+          status: 'error',
+          source: 'tickettailor',
+          errorDetail: String(err?.message || err).slice(0, 500),
+          fetchedAt,
+        }),
+      );
       failed++;
     }
   }
@@ -111,7 +105,7 @@ export async function POST() {
     if (unauthorized) {
       return NextResponse.json({ error: 'Unauthorized', reason }, { status: 401 });
     }
-    const result = await refreshMetrics(serviceClient());
+    const result = await refreshMetrics(createAdminClient());
     return NextResponse.json({ success: true, via: 'admin', ...result });
   } catch (err) {
     console.error('refresh-event-metrics (admin) error:', err);
@@ -130,7 +124,7 @@ export async function GET(request) {
     if (via !== 'cron') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const result = await refreshMetrics(serviceClient());
+    const result = await refreshMetrics(createAdminClient());
     return NextResponse.json({ success: true, via: 'cron', ...result });
   } catch (err) {
     console.error('refresh-event-metrics (cron) error:', err);

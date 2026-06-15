@@ -17,6 +17,7 @@ import {
   buildEventPerformance,
   summarizePerformanceTotals,
   buildMetricsSnapshot,
+  buildPlaceholderMetricsRow,
 } from '../lib/event-analytics.js';
 
 const orders = [
@@ -193,4 +194,57 @@ test('buildMetricsSnapshot builds an upsert-ready row from raw TT data', () => {
   assert.equal(snap.status, 'ok');
   assert.equal(snap.source, 'tickettailor');
   assert.deepEqual(snap.raw_summary.ticketsByType, { GA: 2, VIP: 1 });
+});
+
+test('buildPlaceholderMetricsRow includes all NOT NULL columns with zero/empty defaults', () => {
+  const row = buildPlaceholderMetricsRow({
+    eventId: 'e2', errorDetail: 'no series', fetchedAt: '2026-06-15T00:00:00Z',
+  });
+  assert.equal(row.event_id, 'e2');
+  assert.equal(row.status, 'not_configured');
+  assert.equal(row.source, 'placeholder');
+  assert.equal(row.tickets_sold, 0);
+  assert.equal(row.orders_count, 0);
+  assert.equal(row.gross_cents, 0);
+  assert.equal(row.fees_cents, 0);
+  assert.equal(row.net_cents, 0);
+  assert.deepEqual(row.raw_summary, {});
+});
+
+// Regression for the mixed-batch upsert bug: an ok row and a placeholder row
+// MUST expose the identical key set, or PostgREST's union-of-keys column list
+// writes NULL into NOT NULL columns for whichever row omits them.
+test('ok and placeholder rows share an identical key set (uniform upsert batch)', () => {
+  const ok = buildMetricsSnapshot({
+    eventId: 'e1', ttEventSeriesId: 'ev_x', orders, issuedTickets: issued,
+    fetchedAt: '2026-06-15T00:00:00Z',
+  });
+  const placeholder = buildPlaceholderMetricsRow({
+    eventId: 'e2', errorDetail: 'no series', fetchedAt: '2026-06-15T00:00:00Z',
+  });
+  const errorRow = buildPlaceholderMetricsRow({
+    eventId: 'e3', status: 'error', source: 'tickettailor', errorDetail: 'boom',
+    fetchedAt: '2026-06-15T00:00:00Z',
+  });
+
+  const okKeys = Object.keys(ok).sort();
+  assert.deepEqual(Object.keys(placeholder).sort(), okKeys);
+  assert.deepEqual(Object.keys(errorRow).sort(), okKeys);
+
+  // No NOT NULL column may be null/undefined in any row of a mixed batch.
+  const notNullCols = ['event_id', 'tickets_sold', 'orders_count', 'gross_cents', 'fees_cents', 'net_cents', 'source', 'status', 'raw_summary'];
+  for (const row of [ok, placeholder, errorRow]) {
+    for (const col of notNullCols) {
+      assert.ok(row[col] != null, `${col} must not be null in ${row.status} row`);
+    }
+  }
+});
+
+test('normalizeCachedMetrics clamps derived net at 0 and flags refreshed-but-zero', () => {
+  const anomaly = normalizeCachedMetrics({ status: 'ok', gross_cents: 1000, fees_cents: 1500, net_cents: null });
+  assert.equal(anomaly.netCents, 0); // would be -500 without the clamp
+
+  const zeroSales = normalizeCachedMetrics({ status: 'ok', gross_cents: 0, tickets_sold: 0, net_cents: 0 });
+  assert.equal(zeroSales.refreshed, true);  // a successful pull that found nothing
+  assert.equal(zeroSales.hasData, false);   // but contributes no revenue to totals
 });

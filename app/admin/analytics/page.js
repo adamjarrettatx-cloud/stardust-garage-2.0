@@ -159,7 +159,9 @@ export default async function AnalyticsPage() {
           </div>
           {rows.map((r) => {
             const m = r.metrics;
-            const hasData = m && m.hasData;
+            // A refreshed event shows real figures (incl. a genuine $0.00 / 0);
+            // an un-refreshed or not_configured event shows "—".
+            const refreshed = m && m.refreshed;
             return (
               <div key={r.id} className="grid grid-cols-[1fr_100px_90px_90px_70px_70px_80px] gap-2 px-4 py-3 text-[13px] items-center" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
                 <span className="truncate flex items-center gap-2">
@@ -167,9 +169,9 @@ export default async function AnalyticsPage() {
                   <Link href={`/admin/events/${r.id}`} className="truncate hover:underline">{r.title}</Link>
                 </span>
                 <span style={{ color: '#c8c8c8' }}>{fmtDate(r.eventDate)}</span>
-                <span style={{ color: hasData ? '#e8e8e8' : '#6a6a6a' }}>{hasData ? centsToUsd(m.grossCents) : '—'}</span>
-                <span style={{ color: hasData ? '#4ade80' : '#6a6a6a' }}>{hasData ? centsToUsd(m.netCents) : '—'}</span>
-                <span style={{ color: hasData ? '#e8e8e8' : '#6a6a6a' }}>{hasData ? m.ticketsSold : '—'}</span>
+                <span style={{ color: refreshed ? '#e8e8e8' : '#6a6a6a' }}>{refreshed ? centsToUsd(m.grossCents) : '—'}</span>
+                <span style={{ color: refreshed ? '#4ade80' : '#6a6a6a' }}>{refreshed ? centsToUsd(m.netCents) : '—'}</span>
+                <span style={{ color: refreshed ? '#e8e8e8' : '#6a6a6a' }}>{refreshed ? m.ticketsSold : '—'}</span>
                 <span title={`${r.memberCodes.sent} sent / ${r.memberCodes.total} total`}>
                   {r.memberCodes.sent}/{r.memberCodes.total}
                 </span>
