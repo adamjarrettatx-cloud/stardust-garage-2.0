@@ -7,7 +7,7 @@ export async function middleware(request) {
   const isAdminRoute  = pathname.startsWith('/admin');
   const isTeamRoute   = pathname === '/team' || pathname.startsWith('/team/');
   const isMemberRoute = pathname === '/member' || pathname.startsWith('/member/');
-  // Capacity counter pages (Jelly2 doors + Pi display) are staff-only. The
+  // Capacity counter pages (the two Jelly2 door devices) are staff-only. The
   // /capacity/admin sub-route additionally requires admin (re-checked on the
   // page via requireAdmin); here we enforce at least the team gate.
   const isCapacityRoute = pathname === '/capacity' || pathname.startsWith('/capacity/');
