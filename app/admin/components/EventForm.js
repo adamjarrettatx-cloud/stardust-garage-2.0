@@ -31,7 +31,7 @@ function slugify(text) {
     .replace(/^-+|-+$/g, '');
 }
 
-export default function EventForm({ event }) {
+export default function EventForm({ event, metrics = null }) {
   const router = useRouter();
   const isEditing = !!event;
 
@@ -372,7 +372,7 @@ export default function EventForm({ event }) {
         {isEditing ? (
           // For an existing event, link/unlink goes through the server route
           // (requireAdminMfa + server-side validation), not the client save.
-          <TtLinkPanel eventId={event.id} initialSeriesId={ttEventSeriesId} />
+          <TtLinkPanel eventId={event.id} initialSeriesId={ttEventSeriesId} metrics={metrics} />
         ) : (
           <div>
             <label className={labelClass} style={labelStyle}>TICKETTAILOR EVENT SERIES</label>

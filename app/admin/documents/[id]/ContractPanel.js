@@ -49,6 +49,7 @@ export default function ContractPanel({ documentId, initialContract, events, sig
   const [notice, setNotice] = useState(null);
   const [transitioning, setTransitioning] = useState(false);
   const [sending, setSending] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const [form, setForm] = useState({
     counterparty_name: initialContract?.counterparty_name || '',
@@ -66,6 +67,20 @@ export default function ContractPanel({ documentId, initialContract, events, sig
 
   const status = contract?.status || 'draft';
   const allowedNext = CONTRACT_TRANSITIONS[status] || [];
+
+  // SignNow send prerequisites, mirrored from the server route so the UI can
+  // explain *why* the button is disabled instead of failing on click.
+  const savedSigners = Array.isArray(contract?.signers) ? contract.signers : [];
+  const isTerminal = (CONTRACT_STATUSES.find((s) => s.value === status)?.terminal) ?? false;
+  const hasEnvelope = Boolean(contract?.external_envelope_id);
+  const sendBlockedReason = !signNowConfigured
+    ? 'Set SIGNNOW_API_KEY (server-only) to enable sending.'
+    : isTerminal
+      ? `Contract is ${STATUS_LABEL[status] || status}; cannot send.`
+      : savedSigners.length === 0
+        ? 'Add and save at least one signer before sending.'
+        : null;
+  const canSend = sendBlockedReason === null;
 
   function updateSigner(i, field, value) {
     setSigners((prev) => prev.map((s, idx) => (idx === i ? { ...s, [field]: value } : s)));
@@ -131,14 +146,31 @@ export default function ContractPanel({ documentId, initialContract, events, sig
     setSending(true); setError(null); setNotice(null);
     try {
       // adminFetch throws json.hint || json.error on non-OK, so the expected
-      // unconfigured/unimplemented responses surface as a hint, not a crash.
-      await adminFetch(`/api/admin/documents/${documentId}/contract/signnow`, { method: 'POST' });
-      setNotice('Sent for signature via SignNow.');
+      // unconfigured responses surface as a hint, not a crash.
+      const json = await adminFetch(`/api/admin/documents/${documentId}/contract/signnow`, { method: 'POST' });
+      if (json.contract) setContract(json.contract);
+      setNotice(`Sent for signature via SignNow${json.envelopeId ? ` (envelope ${json.envelopeId})` : ''}.`);
       router.refresh();
     } catch (err) {
       setError(err.message);
     } finally {
       setSending(false);
+    }
+  }
+
+  async function syncSignNowStatus() {
+    setSyncing(true); setError(null); setNotice(null);
+    try {
+      const json = await adminFetch(`/api/admin/documents/${documentId}/contract/signnow?sync=1`);
+      if (json.contract) setContract((c) => ({ ...c, ...json.contract }));
+      setNotice(json.changed
+        ? `Status synced — now ${STATUS_LABEL[json.contract?.status] || json.contract?.status}.`
+        : 'Status synced — no change.');
+      router.refresh();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -274,6 +306,7 @@ export default function ContractPanel({ documentId, initialContract, events, sig
             {contract.counterparty_name && (<><dt style={{ color: '#8a8a8a' }}>Counterparty</dt><dd>{contract.counterparty_name}{contract.counterparty_email ? ` · ${contract.counterparty_email}` : ''}</dd></>)}
             {contract.effective_date && (<><dt style={{ color: '#8a8a8a' }}>Effective</dt><dd>{formatVenueDateTime(contract.effective_date)}</dd></>)}
             {contract.expiration_date && (<><dt style={{ color: '#8a8a8a' }}>Expires</dt><dd>{formatVenueDateTime(contract.expiration_date)}</dd></>)}
+            {contract.external_envelope_id && (<><dt style={{ color: '#8a8a8a' }}>SignNow envelope</dt><dd className="font-mono text-[12px]">{contract.external_envelope_id}</dd></>)}
             {contract.sent_at && (<><dt style={{ color: '#8a8a8a' }}>Sent</dt><dd>{new Date(contract.sent_at).toLocaleString()}</dd></>)}
             {contract.completed_at && (<><dt style={{ color: '#8a8a8a' }}>Completed</dt><dd>{new Date(contract.completed_at).toLocaleString()}</dd></>)}
             {Array.isArray(contract.signers) && contract.signers.length > 0 && (
@@ -308,30 +341,54 @@ export default function ContractPanel({ documentId, initialContract, events, sig
 
           {/* SignNow readiness — degrades gracefully when unconfigured */}
           <div className="pt-3 mt-1 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="text-[12px]" style={{ color: '#8a8a8a' }}>
                 SignNow:{' '}
                 <span style={{ color: signNowConfigured ? '#86efac' : '#fbbf24' }}>
                   {signNowConfigured ? 'configured' : 'not configured'}
                 </span>
+                {hasEnvelope && (
+                  <span style={{ color: '#60a5fa' }}> · envelope sent</span>
+                )}
               </div>
-              <button
-                onClick={sendViaSignNow}
-                disabled={sending || !signNowConfigured}
-                title={signNowConfigured ? 'Send this contract for e-signature' : 'Set SIGNNOW_API_KEY to enable'}
-                className="text-[12px] px-3 py-1.5 rounded-[8px]"
-                style={{
-                  border: '1px solid rgba(255,255,255,0.10)',
-                  color: signNowConfigured ? 'white' : '#6a6a6a',
-                  cursor: signNowConfigured ? 'pointer' : 'not-allowed',
-                  opacity: sending ? 0.6 : 1,
-                }}>
-                {sending ? 'Sending…' : 'Send via SignNow'}
-              </button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={sendViaSignNow}
+                  disabled={sending || !canSend}
+                  title={canSend ? 'Send this contract for e-signature' : sendBlockedReason}
+                  className="text-[12px] px-3 py-1.5 rounded-[8px]"
+                  style={{
+                    border: '1px solid rgba(255,255,255,0.10)',
+                    color: canSend ? 'white' : '#6a6a6a',
+                    cursor: canSend ? 'pointer' : 'not-allowed',
+                    opacity: sending ? 0.6 : 1,
+                  }}>
+                  {sending ? 'Sending…' : hasEnvelope ? 'Resend via SignNow' : 'Send via SignNow'}
+                </button>
+                {signNowConfigured && hasEnvelope && (
+                  <>
+                    <button
+                      onClick={syncSignNowStatus}
+                      disabled={syncing}
+                      title="Pull the latest signature status from SignNow (read-only)"
+                      className="text-[12px] px-3 py-1.5 rounded-[8px]"
+                      style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white', opacity: syncing ? 0.6 : 1 }}>
+                      {syncing ? 'Checking…' : 'Check status'}
+                    </button>
+                    <a
+                      href={`/api/admin/documents/${documentId}/contract/signnow?download=1`}
+                      className="text-[12px] px-3 py-1.5 rounded-[8px] inline-block"
+                      style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}>
+                      Download signed
+                    </a>
+                  </>
+                )}
+              </div>
             </div>
-            {!signNowConfigured && (
+            {!canSend && (
               <p className="text-[11px] mt-2" style={{ color: '#6a6a6a' }}>
-                Add <code>SIGNNOW_API_KEY</code> (server-only) to enable sending. Until then, advance status manually as signatures complete offline.
+                {sendBlockedReason}
+                {!signNowConfigured && ' Until then, advance status manually as signatures complete offline.'}
               </p>
             )}
           </div>

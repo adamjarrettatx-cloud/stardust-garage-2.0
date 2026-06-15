@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation';
 import { adminFetch } from '@/lib/admin-fetch';
 
 // Triggers a manual, read-only TicketTailor metrics refresh. Calls the admin
-// POST route (which never writes to TicketTailor) and refreshes the page so
-// the newly cached numbers render.
-export default function RefreshMetricsButton() {
+// POST route (which never writes to TicketTailor) and refreshes the page so the
+// newly cached numbers render. With an `eventId` it scopes the refresh to a
+// single event; without one it refreshes the whole portfolio.
+export default function RefreshMetricsButton({ eventId = null, label = 'Refresh metrics', compact = false }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -16,7 +17,11 @@ export default function RefreshMetricsButton() {
     setBusy(true);
     setMsg(null);
     try {
-      const res = await adminFetch('/api/admin/refresh-event-metrics', { method: 'POST' });
+      const res = await adminFetch('/api/admin/refresh-event-metrics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventId ? { eventId } : {}),
+      });
       const parts = [`${res.refreshed} refreshed`];
       if (res.skipped) parts.push(`${res.skipped} not configured`);
       if (res.failed) parts.push(`${res.failed} failed`);
@@ -35,10 +40,14 @@ export default function RefreshMetricsButton() {
         type="button"
         onClick={onClick}
         disabled={busy}
-        className="text-[12px] font-semibold tracking-[0.10em] uppercase rounded-[10px] px-4 py-2 transition-colors disabled:opacity-50"
+        className={
+          compact
+            ? 'text-[11px] font-semibold tracking-[0.10em] uppercase rounded-[8px] px-3 py-1.5 transition-colors disabled:opacity-50'
+            : 'text-[12px] font-semibold tracking-[0.10em] uppercase rounded-[10px] px-4 py-2 transition-colors disabled:opacity-50'
+        }
         style={{ background: '#ffb84d', color: '#141414' }}
       >
-        {busy ? 'Refreshing…' : 'Refresh metrics'}
+        {busy ? 'Refreshing…' : label}
       </button>
       {msg && (
         <span className="text-[12px]" style={{ color: '#8a8a8a' }}>{msg}</span>

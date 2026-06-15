@@ -4,6 +4,19 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { adminFetch } from '@/lib/admin-fetch';
+import RefreshMetricsButton from '../analytics/RefreshMetricsButton';
+
+function fmtFetched(iso) {
+  if (!iso) return 'never';
+  return new Date(iso).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+const METRICS_STATUS_LABEL = {
+  ok: 'up to date',
+  pending: 'not yet fetched',
+  not_configured: 'not configured',
+  error: 'last refresh errored',
+};
 
 // Admin panel for linking/unlinking a local event to a TicketTailor event
 // series. Unlike the rest of EventForm (which writes via the client Supabase
@@ -14,7 +27,7 @@ import { adminFetch } from '@/lib/admin-fetch';
 //
 // Rendered only for an existing event (needs an id). `initialSeriesId` seeds
 // the current link state.
-export default function TtLinkPanel({ eventId, initialSeriesId }) {
+export default function TtLinkPanel({ eventId, initialSeriesId, metrics = null }) {
   const router = useRouter();
   const [seriesId, setSeriesId] = useState(initialSeriesId || '');
   const [savedSeriesId, setSavedSeriesId] = useState(initialSeriesId || '');
@@ -169,12 +182,33 @@ export default function TtLinkPanel({ eventId, initialSeriesId }) {
 
       {showRefreshHint && (
         <p className="text-[12px] mt-2" style={{ color: '#ffb84d' }}>
-          Link changed — open{' '}
+          Link changed — refresh metrics below (or from{' '}
           <Link href="/admin/analytics" className="underline">
             Event Analytics
-          </Link>{' '}
-          and click <strong>Refresh metrics</strong> to populate sales figures.
+          </Link>
+          ) to populate sales figures.
         </p>
+      )}
+
+      {/* Per-event metrics refresh. Read-only against TicketTailor — it only
+          re-pulls THIS event's cached sales numbers. Shown once linked. */}
+      {isLinked && (
+        <div className="mt-4 pt-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="text-[12px]" style={{ color: '#8a8a8a' }}>
+              Metrics:{' '}
+              <span style={{ color: metrics?.status === 'ok' ? '#86efac' : '#c8c8c8' }}>
+                {METRICS_STATUS_LABEL[metrics?.status] || 'not yet fetched'}
+              </span>
+              {' · last fetched '}
+              <span style={{ color: '#c8c8c8' }}>{fmtFetched(metrics?.fetched_at)}</span>
+            </div>
+            <RefreshMetricsButton eventId={eventId} label="Refresh metrics" compact />
+          </div>
+          <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+            Pulls this event&apos;s ticket sales from TicketTailor (read-only) into the analytics cache.
+          </p>
+        </div>
       )}
     </div>
   );
