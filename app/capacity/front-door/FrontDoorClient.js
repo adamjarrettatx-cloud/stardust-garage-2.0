@@ -3,10 +3,15 @@
 import { useState } from 'react';
 import { useCapacity } from '../useCapacity';
 import CounterShell from '../CounterShell';
+import DeviceUnauthorized from '../DeviceUnauthorized';
 
-export default function FrontDoorClient() {
-  const { status, connected, loading, error, runOp } = useCapacity();
+export default function FrontDoorClient({ token = null }) {
+  const { status, connected, loading, error, unauthorized, runOp } = useCapacity({ token });
   const [lastAction, setLastAction] = useState('');
+
+  if (unauthorized) {
+    return <DeviceUnauthorized door="Front Door" />;
+  }
 
   const noSession = status.status === 'none';
   const atMax = status.atMax;

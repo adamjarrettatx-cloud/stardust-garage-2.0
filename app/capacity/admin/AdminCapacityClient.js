@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useCapacity } from '../useCapacity';
+import DeviceManager from './DeviceManager';
 
 const ACTION_LABEL = {
   check_in: 'Check in', check_out: 'Check out', reset: 'Reset', adjust: 'Adjust',
@@ -134,6 +135,9 @@ export default function AdminCapacityClient() {
         </Section>
       )}
 
+      {/* Door device provisioning (Jelly2 setup links) */}
+      <DeviceManager />
+
       {/* Audit history */}
       <Section title="Recent history">
         {history.length === 0 ? (
@@ -144,7 +148,7 @@ export default function AdminCapacityClient() {
               <div key={h.id} className="flex items-center justify-between py-2 text-[13px]">
                 <span style={{ color: h.action.startsWith('blocked') ? '#ff8a8a' : '#cfcfcf' }}>
                   {ACTION_LABEL[h.action] || h.action}
-                  <span style={{ color: '#666' }}> · {h.source}</span>
+                  <span style={{ color: '#666' }}> · {h.device_label || h.source}</span>
                 </span>
                 <span className="tabular-nums" style={{ color: '#8a8a8a' }}>
                   {h.delta > 0 ? `+${h.delta}` : h.delta} → {h.count_after} · {fmt(h.created_at)}

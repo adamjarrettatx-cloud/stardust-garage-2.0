@@ -21,8 +21,17 @@ export const viewport = {
   themeColor: '#0a0a0a',
 };
 
-export default async function ExitDoorPage() {
-  const { unauthorized } = await requireTeam();
-  if (unauthorized) redirect('/team/login');
-  return <ExitDoorClient />;
+// Reachable either with a device token in the URL (?token=...), verified
+// server-side by /api/capacity/device/*, or by a logged-in team member (no
+// token). See app/capacity/front-door/page.js for the full rationale.
+export default async function ExitDoorPage({ searchParams }) {
+  const sp = await searchParams;
+  const token = typeof sp?.token === 'string' ? sp.token : null;
+
+  if (!token) {
+    const { unauthorized } = await requireTeam();
+    if (unauthorized) redirect('/team/login');
+  }
+
+  return <ExitDoorClient token={token} />;
 }

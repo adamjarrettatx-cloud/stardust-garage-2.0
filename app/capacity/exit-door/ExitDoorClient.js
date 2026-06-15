@@ -3,10 +3,15 @@
 import { useState } from 'react';
 import { useCapacity } from '../useCapacity';
 import CounterShell from '../CounterShell';
+import DeviceUnauthorized from '../DeviceUnauthorized';
 
-export default function ExitDoorClient() {
-  const { status, connected, loading, error, runOp } = useCapacity();
+export default function ExitDoorClient({ token = null }) {
+  const { status, connected, loading, error, unauthorized, runOp } = useCapacity({ token });
   const [lastAction, setLastAction] = useState('');
+
+  if (unauthorized) {
+    return <DeviceUnauthorized door="Exit Door" />;
+  }
 
   const noSession = status.status === 'none';
   const atZero = status.atZero;
