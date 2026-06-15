@@ -8,6 +8,8 @@ import {
   validateSigners,
   buildContractPatch,
   normalizeContractDateTime,
+  isoToVenueInputValue,
+  formatVenueDateTime,
 } from '../lib/contract-helpers.js';
 
 test('isValidContractStatus', () => {
@@ -67,12 +69,13 @@ test('buildContractPatch validates counterparty_email', () => {
 
 test('buildContractPatch validates date-times and event_id', () => {
   assert.equal(buildContractPatch({ effective_date: 'not-a-date' }).ok, false);
-  // A date-only value is accepted and normalized to start-of-day UTC.
+  // A date-only value is venue-local (America/Chicago) start-of-day. Jan is CST
+  // (UTC-6), so midnight CT -> 06:00 UTC.
   assert.equal(
     buildContractPatch({ effective_date: '2026-01-01' }).patch.effective_date,
-    '2026-01-01T00:00:00.000Z',
+    '2026-01-01T06:00:00.000Z',
   );
-  // A full ISO timestamp round-trips to a canonical ISO string.
+  // A full ISO timestamp carries its own zone and round-trips to canonical UTC.
   assert.equal(
     buildContractPatch({ expiration_date: '2026-01-01T14:30:00.000Z' }).patch.expiration_date,
     '2026-01-01T14:30:00.000Z',
@@ -83,13 +86,46 @@ test('buildContractPatch validates date-times and event_id', () => {
   assert.equal(buildContractPatch({ event_id: null }).patch.event_id, null);
 });
 
-test('normalizeContractDateTime handles dates, datetimes, and empties', () => {
+test('normalizeContractDateTime treats zoneless input as venue-local (America/Chicago)', () => {
   assert.deepEqual(normalizeContractDateTime(''), { ok: true, value: null });
   assert.deepEqual(normalizeContractDateTime(null), { ok: true, value: null });
-  assert.deepEqual(normalizeContractDateTime('2026-03-04'), { ok: true, value: '2026-03-04T00:00:00.000Z' });
+
+  // Date-only, winter (CST, UTC-6): midnight CT -> 06:00 UTC.
+  assert.equal(normalizeContractDateTime('2026-01-15').value, '2026-01-15T06:00:00.000Z');
+  // Date-only, summer (CDT, UTC-5): midnight CT -> 05:00 UTC. Confirms DST is
+  // applied, not a fixed offset.
+  assert.equal(normalizeContractDateTime('2026-07-15').value, '2026-07-15T05:00:00.000Z');
+
+  // datetime-local, winter: 09:00 CT -> 15:00 UTC.
+  assert.equal(normalizeContractDateTime('2026-01-15T09:00').value, '2026-01-15T15:00:00.000Z');
+  // datetime-local, summer: 09:00 CT -> 14:00 UTC.
+  assert.equal(normalizeContractDateTime('2026-07-15T09:00').value, '2026-07-15T14:00:00.000Z');
+  // datetime-local with seconds is accepted.
+  assert.equal(normalizeContractDateTime('2026-01-15T09:00:30').value, '2026-01-15T15:00:30.000Z');
+
+  // Explicit-zone ISO is taken as an absolute instant, unchanged.
   assert.equal(normalizeContractDateTime('2026-03-04T09:15:00.000Z').value, '2026-03-04T09:15:00.000Z');
+
   assert.equal(normalizeContractDateTime('garbage').ok, false);
   assert.equal(normalizeContractDateTime(42).ok, false);
+});
+
+test('isoToVenueInputValue / formatVenueDateTime round-trip in venue tz, TZ-independent', () => {
+  // A stored winter instant renders to its venue wall clock regardless of the
+  // process TZ (these assertions hold under UTC, America/Chicago, and PT).
+  assert.equal(isoToVenueInputValue('2026-01-15T15:00:00.000Z'), '2026-01-15T09:00');
+  // Summer instant (CDT).
+  assert.equal(isoToVenueInputValue('2026-07-15T14:00:00.000Z'), '2026-07-15T09:00');
+  // Round-trip: parse the input value back and get the same instant.
+  const iso = '2026-01-15T15:00:00.000Z';
+  assert.equal(normalizeContractDateTime(isoToVenueInputValue(iso)).value, iso);
+
+  assert.equal(isoToVenueInputValue(''), '');
+  assert.equal(isoToVenueInputValue('garbage'), '');
+
+  // Display includes a Central timezone abbreviation.
+  assert.match(formatVenueDateTime('2026-01-15T15:00:00.000Z'), /C[SD]T/);
+  assert.equal(formatVenueDateTime(''), '');
 });
 
 test('buildContractPatch validates signers via validateSigners', () => {
