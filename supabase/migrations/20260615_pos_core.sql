@@ -170,9 +170,16 @@ create table if not exists public.pos_orders (
   -- orders list flag restricted sales without re-scanning line items.
   restricted_items_present boolean not null default false,
   notes text,
+  -- Required justification when status/tender is a comp (admin-authorized free
+  -- sale). NULL for ordinary sales.
+  comp_reason text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Additive for re-runs against an environment that created pos_orders before
+-- comp_reason existed. No-op when the column is already present.
+alter table public.pos_orders add column if not exists comp_reason text;
 
 create index if not exists pos_orders_status_idx   on public.pos_orders(status);
 create index if not exists pos_orders_terminal_idx on public.pos_orders(terminal_id);
@@ -183,6 +190,31 @@ drop trigger if exists pos_orders_set_updated_trg on public.pos_orders;
 create trigger pos_orders_set_updated_trg
 before update on public.pos_orders
 for each row execute function public.pos_set_updated();
+
+-- ---------------------------------------------------------------------------
+-- Order-number allocation (race-safe).
+--
+-- The previous approach (count(*)+1 in the route) races: two concurrent
+-- checkouts read the same count and try to insert the same order_number. A
+-- dedicated sequence hands out a gap-free-enough monotonic counter atomically,
+-- so concurrent callers always get distinct values without a transaction
+-- retry loop. The unique index on order_number remains as a backstop.
+-- ---------------------------------------------------------------------------
+create sequence if not exists public.pos_order_number_seq;
+
+-- Returns the next human-friendly order number, e.g. SG-2026-000123. The year
+-- prefix is informational; the sequence guarantees uniqueness on its own.
+create or replace function public.pos_next_order_number()
+returns text language plpgsql security definer
+set search_path = public as $$
+declare
+  n bigint;
+begin
+  n := nextval('public.pos_order_number_seq');
+  return 'SG-' || to_char(now() at time zone 'utc', 'YYYY') || '-' || lpad(n::text, 6, '0');
+end; $$;
+revoke all on function public.pos_next_order_number() from public;
+grant execute on function public.pos_next_order_number() to authenticated, service_role;
 
 -- ===========================================================================
 -- pos_order_items
@@ -214,7 +246,7 @@ create table if not exists public.pos_payments (
   id uuid primary key default gen_random_uuid(),
   order_id uuid not null references public.pos_orders(id) on delete cascade,
   tender_type text not null
-    check (tender_type in ('cash', 'card', 'manual_external', 'ach', 'comp', 'other')),
+    check (tender_type in ('cash', 'card', 'manual_external', 'ach', 'comp')),
   -- Opaque processor adapter key. NULL for cash/comp/manual_external in Phase 1.
   processor_key text,
   status text not null default 'pending'

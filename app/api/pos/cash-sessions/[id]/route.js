@@ -42,6 +42,10 @@ export async function PATCH(request, { params }) {
   const expected = (session.opening_cash_cents || 0) + cashSales;
   const closingCash = Math.max(0, Math.trunc(Number(body.closing_cash_cents ?? 0)));
 
+  // Conditional update: only transition a session that is STILL open. If a
+  // concurrent close already happened between our read and this write, the
+  // status='open' filter matches zero rows and we report the conflict instead
+  // of overwriting the first close's reconciliation figures.
   const { data, error } = await admin
     .from('pos_cash_sessions')
     .update({
@@ -53,10 +57,12 @@ export async function PATCH(request, { params }) {
       closed_at: new Date().toISOString(),
     })
     .eq('id', id)
+    .eq('status', 'open')
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) return NextResponse.json({ error: 'Failed to close session.' }, { status: 500 });
+  if (!data) return NextResponse.json({ error: 'Session already closed.' }, { status: 409 });
   return NextResponse.json({
     session: data,
     expected_cash_cents: expected,

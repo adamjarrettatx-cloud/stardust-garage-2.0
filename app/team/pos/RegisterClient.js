@@ -75,7 +75,9 @@ export default function RegisterClient({ products, terminals, cashierName }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           terminal_id: terminalId || null,
-          items: cartItems,
+          // The server loads canonical price/tax/policy from pos_products; we
+          // only send which product and how many.
+          items: cart.map(({ product, quantity }) => ({ product_id: product.id, quantity })),
           tender: { type: tenderType, reference: tenderType === 'manual_external' ? reference : null },
         }),
       });

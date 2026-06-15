@@ -5,6 +5,8 @@ import {
   calcCart,
   validateTenderForCart,
   allowedTendersForCart,
+  buildCanonicalCartItems,
+  requiresAdminTender,
   effectiveTaxBps,
   isValidTender,
   isValidRestrictedPolicy,
@@ -175,4 +177,96 @@ test('isPhase1Tender only true for cash/manual_external/comp', () => {
   assert.equal(isPhase1Tender('comp'), true);
   assert.equal(isPhase1Tender('card'), false);
   assert.equal(isPhase1Tender('ach'), false);
+});
+
+// ---------------------------------------------------------------------------
+// Tender surface — comp is admin-only and not on the register; 'other' is gone
+// ---------------------------------------------------------------------------
+test("'other' tender no longer exists", () => {
+  assert.equal(isValidTender('other'), false);
+});
+
+test('comp requires admin authorization; cash/card do not', () => {
+  assert.equal(requiresAdminTender('comp'), true);
+  assert.equal(requiresAdminTender('cash'), false);
+  assert.equal(requiresAdminTender('manual_external'), false);
+});
+
+test('register never surfaces comp (admin-only) or removed tenders', () => {
+  const tenders = allowedTendersForCart([{ price_cents: 100, quantity: 1 }]);
+  const values = tenders.map((t) => t.value);
+  assert.deepEqual(values.sort(), ['cash', 'manual_external']);
+  assert.equal(values.includes('comp'), false);
+  assert.equal(values.includes('other'), false);
+});
+
+// ---------------------------------------------------------------------------
+// Server-owned cart assembly — canonical price/policy enforcement
+// ---------------------------------------------------------------------------
+const PID_A = '11111111-1111-1111-1111-111111111111';
+const PID_B = '22222222-2222-2222-2222-222222222222';
+
+const DB_PRODUCTS = [
+  { id: PID_A, name: 'Coffee', sku: 'COF-1', price_cents: 400, tax_rate_bps: 825, taxable: true, active: true, restricted_tender_policy: 'none' },
+  { id: PID_B, name: 'THCA Flower', sku: 'THCA-1', price_cents: 2000, tax_rate_bps: 0, taxable: false, active: true, restricted_tender_policy: 'cash_only' },
+];
+
+test('buildCanonicalCartItems uses DB price/tax/name, ignoring client values', () => {
+  // Client tries to send a $0.01 price and a 'none' policy for the THCA item.
+  const { items, error } = buildCanonicalCartItems(
+    [{ product_id: PID_B, quantity: 2, price_cents: 1, tax_rate_bps: 0, name: 'Hacked', restricted_tender_policy: 'none' }],
+    DB_PRODUCTS
+  );
+  assert.equal(error, null);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].price_cents, 2000);          // canonical, not 1
+  assert.equal(items[0].name, 'THCA Flower');         // canonical, not 'Hacked'
+  assert.equal(items[0].restricted_tender_policy, 'cash_only'); // canonical, not 'none'
+});
+
+test('restricted-tender bypass attempt fails: client cannot relabel a cash_only item', () => {
+  // Attacker submits product_id for the cash_only item but a forged 'none'
+  // policy, then tries to pay by card. Canonical assembly + validation block it.
+  const { items } = buildCanonicalCartItems(
+    [{ product_id: PID_B, quantity: 1, restricted_tender_policy: 'none' }],
+    DB_PRODUCTS
+  );
+  const check = validateTenderForCart(items, 'card');
+  assert.equal(check.allowed, false);
+  assert.match(check.reason, /THCA Flower/);
+});
+
+test('buildCanonicalCartItems rejects unknown product ids', () => {
+  const { items, error } = buildCanonicalCartItems(
+    [{ product_id: '99999999-9999-9999-9999-999999999999', quantity: 1 }],
+    DB_PRODUCTS
+  );
+  assert.equal(items, null);
+  assert.match(error, /Unknown product/);
+});
+
+test('buildCanonicalCartItems rejects inactive products', () => {
+  const inactive = [{ ...DB_PRODUCTS[0], active: false }];
+  const { items, error } = buildCanonicalCartItems([{ product_id: PID_A, quantity: 1 }], inactive);
+  assert.equal(items, null);
+  assert.match(error, /not available/);
+});
+
+test('buildCanonicalCartItems rejects non-positive quantity and missing id', () => {
+  assert.match(buildCanonicalCartItems([{ product_id: PID_A, quantity: 0 }], DB_PRODUCTS).error, /positive quantity/);
+  assert.match(buildCanonicalCartItems([{ quantity: 1 }], DB_PRODUCTS).error, /product_id/);
+  assert.match(buildCanonicalCartItems([], DB_PRODUCTS).error, /empty/);
+});
+
+test('buildCanonicalCartItems totals match canonical DB calc', () => {
+  const { items } = buildCanonicalCartItems(
+    [{ product_id: PID_A, quantity: 3 }, { product_id: PID_B, quantity: 1 }],
+    DB_PRODUCTS
+  );
+  const totals = calcCart(items);
+  // Coffee: 400*3=1200 + tax 1200*0.0825=99 ; THCA: 2000 untaxed
+  assert.equal(totals.subtotal_cents, 3200);
+  assert.equal(totals.tax_cents, 99);
+  assert.equal(totals.total_cents, 3299);
+  assert.equal(totals.restricted_items_present, true);
 });
