@@ -21,6 +21,23 @@ const STATUS_COLOR = {
   expired: '#f59e0b',
 };
 
+// Convert a stored ISO timestamp into the value a <input type="datetime-local">
+// expects (`YYYY-MM-DDTHH:MM`, in the browser's local time). Returns '' for
+// empty/invalid input so the field renders blank.
+function toLocalInputValue(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function formatDateTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
+}
+
 function StatusBadge({ status }) {
   const color = STATUS_COLOR[status] || '#8a8a8a';
   return (
@@ -53,8 +70,8 @@ export default function ContractPanel({ documentId, initialContract, events, sig
     counterparty_email: initialContract?.counterparty_email || '',
     signature_provider: initialContract?.signature_provider || 'none',
     event_id: initialContract?.event_id || '',
-    effective_date: initialContract?.effective_date || '',
-    expiration_date: initialContract?.expiration_date || '',
+    effective_date: toLocalInputValue(initialContract?.effective_date),
+    expiration_date: toLocalInputValue(initialContract?.expiration_date),
     notes: initialContract?.notes || '',
   });
 
@@ -187,14 +204,14 @@ export default function ContractPanel({ documentId, initialContract, events, sig
           </div>
           <div className="grid grid-cols-2 gap-3">
             <label className="text-[12px]" style={{ color: '#8a8a8a' }}>
-              Effective date
-              <input type="date" value={form.effective_date}
+              Effective date &amp; time
+              <input type="datetime-local" value={form.effective_date}
                 onChange={(e) => setForm({ ...form, effective_date: e.target.value })}
                 className="mt-1 w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none" style={inputStyle} />
             </label>
             <label className="text-[12px]" style={{ color: '#8a8a8a' }}>
-              Expiration date
-              <input type="date" value={form.expiration_date}
+              Expiration date &amp; time
+              <input type="datetime-local" value={form.expiration_date}
                 onChange={(e) => setForm({ ...form, expiration_date: e.target.value })}
                 className="mt-1 w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none" style={inputStyle} />
             </label>
@@ -270,8 +287,8 @@ export default function ContractPanel({ documentId, initialContract, events, sig
           <dl className="grid grid-cols-[140px_1fr] gap-y-2 text-[13px] mb-4">
             <dt style={{ color: '#8a8a8a' }}>Provider</dt><dd>{contract.signature_provider}</dd>
             {contract.counterparty_name && (<><dt style={{ color: '#8a8a8a' }}>Counterparty</dt><dd>{contract.counterparty_name}{contract.counterparty_email ? ` · ${contract.counterparty_email}` : ''}</dd></>)}
-            {contract.effective_date && (<><dt style={{ color: '#8a8a8a' }}>Effective</dt><dd>{contract.effective_date}</dd></>)}
-            {contract.expiration_date && (<><dt style={{ color: '#8a8a8a' }}>Expires</dt><dd>{contract.expiration_date}</dd></>)}
+            {contract.effective_date && (<><dt style={{ color: '#8a8a8a' }}>Effective</dt><dd>{formatDateTime(contract.effective_date)}</dd></>)}
+            {contract.expiration_date && (<><dt style={{ color: '#8a8a8a' }}>Expires</dt><dd>{formatDateTime(contract.expiration_date)}</dd></>)}
             {contract.sent_at && (<><dt style={{ color: '#8a8a8a' }}>Sent</dt><dd>{new Date(contract.sent_at).toLocaleString()}</dd></>)}
             {contract.completed_at && (<><dt style={{ color: '#8a8a8a' }}>Completed</dt><dd>{new Date(contract.completed_at).toLocaleString()}</dd></>)}
             {Array.isArray(contract.signers) && contract.signers.length > 0 && (

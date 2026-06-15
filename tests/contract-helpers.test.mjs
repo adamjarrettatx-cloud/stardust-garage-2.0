@@ -7,6 +7,7 @@ import {
   normalizeSigner,
   validateSigners,
   buildContractPatch,
+  normalizeContractDateTime,
 } from '../lib/contract-helpers.js';
 
 test('isValidContractStatus', () => {
@@ -64,11 +65,31 @@ test('buildContractPatch validates counterparty_email', () => {
   assert.equal(buildContractPatch({ counterparty_email: '' }).patch.counterparty_email, null);
 });
 
-test('buildContractPatch validates dates and event_id', () => {
-  assert.equal(buildContractPatch({ effective_date: '2026/01/01' }).ok, false);
-  assert.equal(buildContractPatch({ effective_date: '2026-01-01' }).patch.effective_date, '2026-01-01');
+test('buildContractPatch validates date-times and event_id', () => {
+  assert.equal(buildContractPatch({ effective_date: 'not-a-date' }).ok, false);
+  // A date-only value is accepted and normalized to start-of-day UTC.
+  assert.equal(
+    buildContractPatch({ effective_date: '2026-01-01' }).patch.effective_date,
+    '2026-01-01T00:00:00.000Z',
+  );
+  // A full ISO timestamp round-trips to a canonical ISO string.
+  assert.equal(
+    buildContractPatch({ expiration_date: '2026-01-01T14:30:00.000Z' }).patch.expiration_date,
+    '2026-01-01T14:30:00.000Z',
+  );
+  // Empty clears the field.
+  assert.equal(buildContractPatch({ effective_date: '' }).patch.effective_date, null);
   assert.equal(buildContractPatch({ event_id: 'not-a-uuid' }).ok, false);
   assert.equal(buildContractPatch({ event_id: null }).patch.event_id, null);
+});
+
+test('normalizeContractDateTime handles dates, datetimes, and empties', () => {
+  assert.deepEqual(normalizeContractDateTime(''), { ok: true, value: null });
+  assert.deepEqual(normalizeContractDateTime(null), { ok: true, value: null });
+  assert.deepEqual(normalizeContractDateTime('2026-03-04'), { ok: true, value: '2026-03-04T00:00:00.000Z' });
+  assert.equal(normalizeContractDateTime('2026-03-04T09:15:00.000Z').value, '2026-03-04T09:15:00.000Z');
+  assert.equal(normalizeContractDateTime('garbage').ok, false);
+  assert.equal(normalizeContractDateTime(42).ok, false);
 });
 
 test('buildContractPatch validates signers via validateSigners', () => {
