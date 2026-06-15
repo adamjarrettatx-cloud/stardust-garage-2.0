@@ -124,9 +124,12 @@ begin
   s := public._capacity_lock_active();
 
   if s.current_count >= s.max_capacity then
+    -- NOTE: this audit insert (and any last_used_at touch) is rolled back by
+    -- the RAISE below — the function aborts the whole statement. We intentionally
+    -- do NOT stamp last_used_at here: it would be discarded anyway, and the
+    -- ~4s status poll (capacity_device_touch) keeps last_used_at fresh.
     insert into public.capacity_events(session_id, action, delta, count_after, max_capacity, actor_id, source, note, device_id)
       values (s.id, 'blocked_full', 0, s.current_count, s.max_capacity, null, 'front_door', p_note, d.id);
-    update public.capacity_device_tokens set last_used_at = now() where id = d.id;
     raise exception 'At capacity' using errcode = 'P0001';
   end if;
 
@@ -148,9 +151,12 @@ begin
   s := public._capacity_lock_active();
 
   if s.current_count <= 0 then
+    -- NOTE: this audit insert (and any last_used_at touch) is rolled back by
+    -- the RAISE below — the function aborts the whole statement. We intentionally
+    -- do NOT stamp last_used_at here: it would be discarded anyway, and the
+    -- ~4s status poll (capacity_device_touch) keeps last_used_at fresh.
     insert into public.capacity_events(session_id, action, delta, count_after, max_capacity, actor_id, source, note, device_id)
       values (s.id, 'blocked_empty', 0, s.current_count, s.max_capacity, null, 'exit_door', p_note, d.id);
-    update public.capacity_device_tokens set last_used_at = now() where id = d.id;
     raise exception 'Already empty' using errcode = 'P0001';
   end if;
 

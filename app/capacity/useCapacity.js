@@ -128,7 +128,14 @@ export function useCapacity({ pollMs = 4000, token = null } = {}) {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        if (res.status === 401 && isDevice) setUnauthorized(true);
+        // In device mode, a 401 (token missing/invalid) or 403 (token revoked
+        // or scope-rejected by the device RPC) means this device is no longer
+        // authorized — show the clean lockout screen instead of a transient
+        // error so a revoked Jelly2 stops dead rather than flashing "Action
+        // failed." on every tap.
+        if (isDevice && (res.status === 401 || res.status === 403)) {
+          setUnauthorized(true);
+        }
         setError(json.error || 'Action failed.');
         return { ok: false, code: json.code, error: json.error };
       }
