@@ -7,8 +7,12 @@ export async function middleware(request) {
   const isAdminRoute  = pathname.startsWith('/admin');
   const isTeamRoute   = pathname === '/team' || pathname.startsWith('/team/');
   const isMemberRoute = pathname === '/member' || pathname.startsWith('/member/');
+  // Capacity counter pages (the two Jelly2 door devices) are staff-only. The
+  // /capacity/admin sub-route additionally requires admin (re-checked on the
+  // page via requireAdmin); here we enforce at least the team gate.
+  const isCapacityRoute = pathname === '/capacity' || pathname.startsWith('/capacity/');
 
-  if (!isAdminRoute && !isTeamRoute && !isMemberRoute) {
+  if (!isAdminRoute && !isTeamRoute && !isMemberRoute && !isCapacityRoute) {
     return NextResponse.next();
   }
 
@@ -54,7 +58,7 @@ export async function middleware(request) {
   if (!user) {
     const url = request.nextUrl.clone();
     if (isAdminRoute) url.pathname = '/admin/login';
-    else if (isTeamRoute) url.pathname = '/team/login';
+    else if (isTeamRoute || isCapacityRoute) url.pathname = '/team/login';
     else url.pathname = '/login';
     return NextResponse.redirect(url);
   }
@@ -84,6 +88,14 @@ export async function middleware(request) {
 
   // /team/* requires team role (or admin)
   if (isTeamRoute && !isAdmin && teamRole !== 'team') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/team/login';
+    return NextResponse.redirect(url);
+  }
+
+  // /capacity/* requires team role (or admin). The page-level requireAdmin()
+  // further restricts /capacity/admin.
+  if (isCapacityRoute && !isAdmin && teamRole !== 'team') {
     const url = request.nextUrl.clone();
     url.pathname = '/team/login';
     return NextResponse.redirect(url);
