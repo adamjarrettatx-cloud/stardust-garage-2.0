@@ -144,12 +144,18 @@ export default function EventForm({ event }) {
       slug: slug.trim() || slugify(title),
       ticket_url: eventType === 'public' ? (ticketUrl.trim() || null) : null,
       category,
-      tt_event_series_id: ttEventSeriesId.trim() || null,
       member_discount_percent:
         QUALIFYING_CATEGORIES.includes(category) && memberDiscountPercent.trim() !== ''
           ? Number(memberDiscountPercent)
           : null,
     };
+
+    // For an existing event the TT link is owned by <TtLinkPanel> (server route).
+    // Writing tt_event_series_id from this form's frozen state would clobber a
+    // link the panel just set, so only include it when creating a new event.
+    if (!isEditing) {
+      payload.tt_event_series_id = ttEventSeriesId.trim() || null;
+    }
 
     const { data: saved, error: saveError } = isEditing
       ? await supabase.from('events').update(payload).eq('id', event.id).select().single()
@@ -163,9 +169,13 @@ export default function EventForm({ event }) {
 
     // Auto-trigger discount code generation for qualifying events that have a
     // TicketTailor series linked. Non-fatal: a failure here shouldn't block the
-    // save, so we surface a warning but still navigate away.
+    // save, so we surface a warning but still navigate away. For an existing
+    // event the link lives on the saved row (panel-owned), not the payload.
     const savedId = saved?.id || event?.id;
-    if (savedId && QUALIFYING_CATEGORIES.includes(category) && payload.tt_event_series_id) {
+    const linkedSeriesId = isEditing
+      ? saved?.tt_event_series_id || event?.tt_event_series_id
+      : payload.tt_event_series_id;
+    if (savedId && QUALIFYING_CATEGORIES.includes(category) && linkedSeriesId) {
       try {
         await fetch('/api/admin/generate-event-discounts', {
           method: 'POST',
