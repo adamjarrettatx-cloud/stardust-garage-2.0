@@ -14,7 +14,7 @@ export default function ExitDoorClient() {
   async function handleCheckOut() {
     const res = await runOp('check_out', { source: 'exit_door' });
     if (res.ok) {
-      setLastAction(`Checked out · ${res.status?.count}/${res.status?.max} · ${time()}`);
+      setLastAction(`Out · ${res.status?.count}/${res.status?.max} · ${time()}`);
     } else if (res.code === 'empty') {
       setLastAction('Count already at zero.');
     }

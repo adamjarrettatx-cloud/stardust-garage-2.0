@@ -14,7 +14,7 @@ export default function FrontDoorClient() {
   async function handleCheckIn() {
     const res = await runOp('check_in', { source: 'front_door' });
     if (res.ok) {
-      setLastAction(`Checked in · ${res.status?.count}/${res.status?.max} · ${time()}`);
+      setLastAction(`In · ${res.status?.count}/${res.status?.max} · ${time()}`);
     } else if (res.code === 'full') {
       setLastAction('At capacity — cannot check in.');
     }
