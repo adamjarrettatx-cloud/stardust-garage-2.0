@@ -91,6 +91,7 @@ export default async function AdminDashboard() {
         <Tile href="/admin/team" eyebrow="MANAGE" title="Team Members" />
         <Tile href="/admin/documents" eyebrow="PRIVATE" title="Documents" />
         <Tile href="/admin/analytics" eyebrow="INSIGHTS" title="Event Analytics" />
+        <Tile href="/admin/pos" eyebrow="MANAGE" title="Point of Sale" />
         <Tile href="/admin/security" eyebrow="ACCOUNT" title="Security / MFA" />
       </div>
 
