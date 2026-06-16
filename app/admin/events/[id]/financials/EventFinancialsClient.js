@@ -117,10 +117,51 @@ export default function EventFinancialsClient({ eventId, initial, contracts }) {
     }
   }
 
+  const [snapshotting, setSnapshotting] = useState(false);
+  const [snapshotMsg, setSnapshotMsg] = useState(null);
+
+  async function takeSnapshot() {
+    setSnapshotting(true);
+    setSnapshotMsg(null);
+    try {
+      const res = await adminFetch(`/api/admin/events/${eventId}/financials`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'snapshot' }),
+      });
+      setData(res);
+      setSnapshotMsg('Snapshot saved');
+    } catch (err) {
+      setSnapshotMsg(err?.message || 'Snapshot failed');
+    } finally {
+      setSnapshotting(false);
+    }
+  }
+
   const noMetrics = !data.metrics || data.metricsStatus !== 'ok';
+  const warning = data.warning;
+  const canSnapshot = !!data.contract && (
+    data.contract.stardust_split_percent != null || data.contract.flat_fee_cents != null
+  );
 
   return (
     <div className="space-y-10">
+      {/* Contract-terms warning — surfaces when no resolved contract terms are
+          driving the split (e.g. the linked contract was deleted), so the calc
+          is silently defaulting to 100% Stardust. */}
+      {warning && (
+        <div
+          className="rounded-[12px] border p-4 text-[13px]"
+          style={{ background: '#1f1410', borderColor: 'rgba(248,113,113,0.35)', color: '#fca5a5' }}
+          role="alert"
+        >
+          <span className="font-semibold tracking-[0.04em] uppercase text-[11px] block mb-1" style={{ color: '#f87171' }}>
+            {warning.kind === 'missing_contract_link' ? 'Contract missing' : 'No contract terms'}
+          </span>
+          {warning.message}
+        </div>
+      )}
+
       {/* Headline split */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
@@ -174,6 +215,34 @@ export default function EventFinancialsClient({ eventId, initial, contracts }) {
             <p className="mt-3 text-[11px]" style={{ color: '#6a6a6a' }}>
               Terms source: {data.contract.financial_terms_source}. Edit on the{' '}
               <a href={`/admin/documents/${data.contract.document_id}`} className="underline" style={{ color: '#ffb84d' }}>contract page</a>.
+            </p>
+            {canSnapshot && (
+              <div className="mt-3 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={takeSnapshot}
+                  disabled={snapshotting}
+                  className="text-[11px] font-semibold tracking-[0.10em] uppercase rounded-[8px] px-3 py-1.5 disabled:opacity-50"
+                  style={{ border: '1px solid rgba(255,184,77,0.4)', color: '#ffb84d' }}
+                >
+                  {snapshotting ? 'Saving…' : data.snapshot ? 'Re-save terms snapshot' : 'Save terms snapshot'}
+                </button>
+                {snapshotMsg && <span className="text-[11px]" style={{ color: '#8a8a8a' }}>{snapshotMsg}</span>}
+                <span className="text-[11px]" style={{ color: '#6a6a6a' }}>
+                  Preserves these terms so deleting the contract won’t change this event’s books.
+                </span>
+              </div>
+            )}
+          </>
+        ) : data.snapshot ? (
+          <>
+            <Row label="Stardust split %" value={`${summary.split.stardustPercent}%`} />
+            <Row label="Flat fee to counterparty" value={usd(summary.split.flatFeeCents)} />
+            <Row label="Stardust ticket share" value={usd(summary.split.ticketStardustShareCents)} accent="#4ade80" />
+            <Row label="Counterparty ticket share" value={usd(summary.split.ticketCounterpartyShareCents)} accent="#f472b6" />
+            <p className="mt-3 text-[11px]" style={{ color: '#6a6a6a' }}>
+              Using a saved snapshot of reviewed contract terms (no live contract linked). Re-link a
+              contract below to resume live terms.
             </p>
           </>
         ) : (

@@ -81,7 +81,40 @@ export default function DocumentsClient({ initialDocuments, initialError, events
   async function handleDelete(id, title) {
     if (!confirm(`Delete "${title}"? This permanently removes all versions and files.`)) return;
     try {
-      await adminFetch(`/api/admin/documents/${id}`, { method: 'DELETE' });
+      // First attempt. The server returns 409 with impact details when this is
+      // a contract feeding event financial calculations.
+      const res = await fetch(`/api/admin/documents/${id}`, { method: 'DELETE' });
+      if (res.status === 401) {
+        const j = await res.json().catch(() => null);
+        if (j?.reason === 'mfa_required' && typeof window !== 'undefined') {
+          window.location.href = '/admin/security?mfa=required';
+          return;
+        }
+        throw new Error(j?.error || 'Unauthorized');
+      }
+      if (res.status === 409) {
+        const j = await res.json().catch(() => null);
+        const impact = j?.impact;
+        const reasons = (impact?.reasons || []).map((r) => `• ${r}`).join('\n');
+        const proceed = confirm(
+          `WARNING: "${title}" is a contract linked to event financials.\n\n${reasons}\n\n` +
+          'Deleting it removes these split/flat-fee terms. Affected events will fall back to ' +
+          'the 100% Stardust default unless a terms snapshot has been saved.\n\n' +
+          'Delete anyway?',
+        );
+        if (!proceed) return;
+        const forced = await fetch(`/api/admin/documents/${id}?confirmFinancial=1`, { method: 'DELETE' });
+        if (!forced.ok) {
+          const fj = await forced.json().catch(() => null);
+          throw new Error(fj?.error || 'Delete failed');
+        }
+        setDocuments(documents.filter((d) => d.id !== id));
+        return;
+      }
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        throw new Error(j?.error || 'Delete failed');
+      }
       setDocuments(documents.filter((d) => d.id !== id));
     } catch (err) {
       setError(err.message);
