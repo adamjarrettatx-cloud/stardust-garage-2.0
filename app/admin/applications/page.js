@@ -65,7 +65,7 @@ export default async function ApplicationsPage() {
     .order('created_at', { ascending: false });
 
   const total = applications?.length || 0;
-  const pending = applications?.filter((a) => a.status === 'pending').length || 0;
+  const newCount = applications?.filter((a) => a.status === 'new').length || 0;
   const approved = applications?.filter((a) => a.status === 'approved').length || 0;
 
   return (
@@ -94,8 +94,8 @@ export default async function ApplicationsPage() {
           <div className="text-[32px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{total}</div>
         </div>
         <div className="rounded-[14px] p-6 border" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}>
-          <div className="text-[11px] font-semibold tracking-[0.14em] mb-1.5" style={{ color: '#8a8a8a' }}>PENDING</div>
-          <div className="text-[32px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{pending}</div>
+          <div className="text-[11px] font-semibold tracking-[0.14em] mb-1.5" style={{ color: '#8a8a8a' }}>NEW</div>
+          <div className="text-[32px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{newCount}</div>
         </div>
         <div className="rounded-[14px] p-6 border" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}>
           <div className="text-[11px] font-semibold tracking-[0.14em] mb-1.5" style={{ color: '#8a8a8a' }}>APPROVED</div>
@@ -117,7 +117,10 @@ export default async function ApplicationsPage() {
               key={a.id}
               href={`/admin/applications/${a.id}`}
               className="block rounded-[14px] p-6 border transition-colors hover:border-white/20"
-              style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
+              style={{
+                background: a.status === 'new' ? '#1a1814' : '#141414',
+                borderColor: a.status === 'new' ? 'rgba(255,184,77,0.2)' : 'rgba(255,255,255,0.05)',
+              }}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-4 flex-1 min-w-0">
@@ -141,15 +144,44 @@ export default async function ApplicationsPage() {
                   </div>
                 </div>
                 <div className="flex-shrink-0 text-right">
+                  <div className="flex items-center justify-end gap-2 mb-2">
+                    {a.status === 'new' && (
+                      <span
+                        className="text-[10px] font-bold tracking-[0.14em] px-2.5 py-1 rounded-full"
+                        style={{ background: '#ffb84d', color: '#0a0a0a' }}
+                      >
+                        NEW
+                      </span>
+                    )}
+                    <div
+                      className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full"
+                      style={{
+                        background: a.plan === 'cowork-party' ? '#f5f5f5' : '#1a1a1a',
+                        color: a.plan === 'cowork-party' ? '#0a0a0a' : '#f5f5f5',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                      }}
+                    >
+                      {a.plan === 'cowork-party' ? 'COWORK + PARTY' : 'COWORK'}
+                    </div>
+                  </div>
                   <div
-                    className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full mb-2"
+                    className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full mb-1 uppercase"
                     style={{
-                      background: a.plan === 'cowork-party' ? '#f5f5f5' : '#1a1a1a',
-                      color: a.plan === 'cowork-party' ? '#0a0a0a' : '#f5f5f5',
-                      border: '1px solid rgba(255,255,255,0.1)',
+                      background:
+                        a.status === 'approved' ? 'rgba(34,197,94,0.15)' :
+                        a.status === 'rejected' ? 'rgba(239,68,68,0.15)' :
+                        a.status === 'reviewed' ? 'rgba(168,85,247,0.12)' :
+                        a.status === 'pending' ? 'rgba(255,255,255,0.06)' :
+                        'rgba(255,184,77,0.15)',
+                      color:
+                        a.status === 'approved' ? '#4ade80' :
+                        a.status === 'rejected' ? '#f87171' :
+                        a.status === 'reviewed' ? '#c084fc' :
+                        a.status === 'pending' ? '#a0a0a0' :
+                        '#ffb84d',
                     }}
                   >
-                    {a.plan === 'cowork-party' ? 'COWORK + PARTY' : 'COWORK'}
+                    {a.status || 'new'}
                   </div>
                   <div className="text-[11px]" style={{ color: '#666' }}>
                     {formatDate(a.created_at)}

@@ -78,11 +78,21 @@ export default async function InquiryDetail({ params }) {
             <div
               className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full uppercase"
               style={{
-                background: i.status === 'approved' ? 'rgba(34,197,94,0.15)' : i.status === 'rejected' ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.06)',
-                color: i.status === 'approved' ? '#4ade80' : i.status === 'rejected' ? '#f87171' : '#a0a0a0',
+                background:
+                  i.status === 'approved' ? 'rgba(34,197,94,0.15)' :
+                  i.status === 'rejected' ? 'rgba(239,68,68,0.15)' :
+                  i.status === 'reviewed' ? 'rgba(168,85,247,0.12)' :
+                  i.status === 'pending' ? 'rgba(255,255,255,0.06)' :
+                  'rgba(255,184,77,0.15)',
+                color:
+                  i.status === 'approved' ? '#4ade80' :
+                  i.status === 'rejected' ? '#f87171' :
+                  i.status === 'reviewed' ? '#c084fc' :
+                  i.status === 'pending' ? '#a0a0a0' :
+                  '#ffb84d',
               }}
             >
-              {i.status || 'pending'}
+              {i.status || 'new'}
             </div>
           </div>
           <h1
@@ -100,7 +110,7 @@ export default async function InquiryDetail({ params }) {
         </div>
       </div>
 
-      <InquiryActions inquiryId={i.id} currentStatus={i.status || 'pending'} />
+      <InquiryActions inquiryId={i.id} currentStatus={i.status || 'new'} />
 
       <section
         className="rounded-[14px] p-8 border mt-8 mb-6"

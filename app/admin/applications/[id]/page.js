@@ -108,11 +108,21 @@ export default async function ApplicationDetail({ params }) {
             <div
               className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full uppercase"
               style={{
-                background: app.status === 'approved' ? 'rgba(34,197,94,0.15)' : app.status === 'rejected' ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.06)',
-                color: app.status === 'approved' ? '#4ade80' : app.status === 'rejected' ? '#f87171' : '#a0a0a0',
+                background:
+                  app.status === 'approved' ? 'rgba(34,197,94,0.15)' :
+                  app.status === 'rejected' ? 'rgba(239,68,68,0.15)' :
+                  app.status === 'reviewed' ? 'rgba(168,85,247,0.12)' :
+                  app.status === 'pending' ? 'rgba(255,255,255,0.06)' :
+                  'rgba(255,184,77,0.15)',
+                color:
+                  app.status === 'approved' ? '#4ade80' :
+                  app.status === 'rejected' ? '#f87171' :
+                  app.status === 'reviewed' ? '#c084fc' :
+                  app.status === 'pending' ? '#a0a0a0' :
+                  '#ffb84d',
               }}
             >
-              {app.status || 'pending'}
+              {app.status || 'new'}
             </div>
           </div>
           <h1
@@ -143,7 +153,7 @@ export default async function ApplicationDetail({ params }) {
 
       <ApplicationActions
         applicationId={app.id}
-        currentStatus={app.status || 'pending'}
+        currentStatus={app.status || 'new'}
         accountCreated={app.account_created || false}
         hasPhoto={Boolean(app.photo_url)}
       />
