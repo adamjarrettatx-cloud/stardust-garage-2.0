@@ -7,6 +7,8 @@ import {
   buildEventSeriesBody,
   buildTicketTypeBody,
   extractSeriesPublicUrl,
+  endTimeIsAfterStart,
+  addOneDay,
 } from '../lib/tt-event-create.js';
 
 test('dollarsToCents converts major units to integer cents', () => {
@@ -65,6 +67,7 @@ function basePayload(overrides = {}) {
     slug: 'cosmic-disco',
     event_date: '2026-07-04',
     event_time: '10:00 PM',
+    event_end_time: '11:30 PM',
     description: 'A party',
     category: 'party',
     ticket_types: [{ name: 'GA', price: '20', quantity: '150' }],
@@ -87,6 +90,54 @@ test('validateCreatePayload requires title, slug, date', () => {
   assert.equal(validateCreatePayload(basePayload({ slug: 'Bad Slug!' })).ok, false);
   assert.equal(validateCreatePayload(basePayload({ event_date: '07/04/2026' })).ok, false);
   assert.equal(validateCreatePayload(basePayload({ event_date: '' })).ok, false);
+});
+
+test('validateCreatePayload requires both start and end time', () => {
+  assert.equal(validateCreatePayload(basePayload({ event_time: '' })).ok, false);
+  assert.equal(validateCreatePayload(basePayload({ event_time: null })).ok, false);
+  const noEnd = validateCreatePayload(basePayload({ event_end_time: '' }));
+  assert.equal(noEnd.ok, false);
+  assert.match(noEnd.error, /End time is required/);
+});
+
+test('validateCreatePayload rejects only an end time equal to the start time', () => {
+  const equal = validateCreatePayload(basePayload({ event_time: '8:00 PM', event_end_time: '8:00 PM' }));
+  assert.equal(equal.ok, false);
+  assert.match(equal.error, /End time cannot be the same as the start time/);
+});
+
+test('validateCreatePayload accepts past-midnight (overnight) end times', () => {
+  // Stardust is a late-night venue; evening start + after-midnight end is the
+  // common case and must NOT be rejected.
+  assert.equal(
+    validateCreatePayload(basePayload({ event_time: '10:00 PM', event_end_time: '12:00 AM' })).ok,
+    true,
+  );
+  assert.equal(
+    validateCreatePayload(basePayload({ event_time: '11:00 PM', event_end_time: '1:00 AM' })).ok,
+    true,
+  );
+  // An "earlier-looking" end clock is also accepted as overnight.
+  assert.equal(
+    validateCreatePayload(basePayload({ event_time: '10:00 PM', event_end_time: '9:00 PM' })).ok,
+    true,
+  );
+});
+
+test('validateCreatePayload allows free-text times it cannot compare', () => {
+  // Neither value is a simple clock string, so ordering can't be checked and
+  // the payload is accepted rather than wrongly rejected.
+  const res = validateCreatePayload(
+    basePayload({ event_time: 'doors at dusk', event_end_time: 'late' }),
+  );
+  assert.equal(res.ok, true);
+  assert.equal(res.value.eventEndTime, 'late');
+});
+
+test('validateCreatePayload exposes the normalized end time', () => {
+  const res = validateCreatePayload(basePayload());
+  assert.equal(res.ok, true);
+  assert.equal(res.value.eventEndTime, '11:30 PM');
 });
 
 test('validateCreatePayload requires at least one ticket type', () => {
@@ -115,6 +166,7 @@ test('buildEventSeriesBody always creates a draft with name/currency/date', () =
     title: 'Cosmic Disco',
     eventDate: '2026-07-04',
     eventTime: '10:00 PM',
+    eventEndTime: '11:30 PM',
     description: 'A party',
   });
   assert.equal(body.get('name'), 'Cosmic Disco');
@@ -125,9 +177,101 @@ test('buildEventSeriesBody always creates a draft with name/currency/date', () =
   assert.equal(body.get('start_date[time]'), '10:00 PM');
 });
 
-test('buildEventSeriesBody omits time when not provided', () => {
+test('buildEventSeriesBody keeps end_date on the start date for a same-day range', () => {
+  const body = buildEventSeriesBody({
+    title: 'Cosmic Disco',
+    eventDate: '2026-07-04',
+    eventTime: '10:00 PM',
+    eventEndTime: '11:30 PM',
+  });
+  assert.equal(body.get('end_date[date]'), '2026-07-04');
+  assert.equal(body.get('end_date[time]'), '11:30 PM');
+});
+
+test('buildEventSeriesBody rolls end_date to the next day for overnight ranges', () => {
+  const midnight = buildEventSeriesBody({
+    title: 'Cosmic Disco',
+    eventDate: '2026-07-04',
+    eventTime: '10:00 PM',
+    eventEndTime: '12:00 AM',
+  });
+  assert.equal(midnight.get('start_date[date]'), '2026-07-04');
+  assert.equal(midnight.get('end_date[date]'), '2026-07-05');
+  assert.equal(midnight.get('end_date[time]'), '12:00 AM');
+
+  const oneAm = buildEventSeriesBody({
+    title: 'Cosmic Disco',
+    eventDate: '2026-07-04',
+    eventTime: '11:00 PM',
+    eventEndTime: '1:00 AM',
+  });
+  assert.equal(oneAm.get('end_date[date]'), '2026-07-05');
+  assert.equal(oneAm.get('end_date[time]'), '1:00 AM');
+});
+
+test('buildEventSeriesBody rolls across a month boundary for overnight ranges', () => {
+  const body = buildEventSeriesBody({
+    title: 'NYE',
+    eventDate: '2026-07-31',
+    eventTime: '10:00 PM',
+    eventEndTime: '2:00 AM',
+  });
+  assert.equal(body.get('end_date[date]'), '2026-08-01');
+});
+
+test('buildEventSeriesBody does not infer a next-day end for free-text times', () => {
+  // Unparseable end → keep the same-day mirror, no risky date math.
+  const body = buildEventSeriesBody({
+    title: 'X',
+    eventDate: '2026-07-04',
+    eventTime: '10:00 PM',
+    eventEndTime: 'late',
+  });
+  assert.equal(body.get('end_date[date]'), '2026-07-04');
+  assert.equal(body.get('end_date[time]'), 'late');
+});
+
+test('buildEventSeriesBody omits times when not provided but still sends end_date', () => {
   const body = buildEventSeriesBody({ title: 'X', eventDate: '2026-07-04', eventTime: null });
   assert.equal(body.get('start_date[time]'), null);
+  assert.equal(body.get('end_date[date]'), '2026-07-04');
+  assert.equal(body.get('end_date[time]'), null);
+});
+
+test('addOneDay advances a date and handles month/year rollover (UTC, no TZ drift)', () => {
+  assert.equal(addOneDay('2026-07-04'), '2026-07-05');
+  assert.equal(addOneDay('2026-07-31'), '2026-08-01');
+  assert.equal(addOneDay('2026-12-31'), '2027-01-01');
+  assert.equal(addOneDay('2028-02-28'), '2028-02-29'); // leap year
+  // Non-date input is returned unchanged.
+  assert.equal(addOneDay('not-a-date'), 'not-a-date');
+  assert.equal(addOneDay(''), '');
+});
+
+test('endTimeIsAfterStart accepts same-day ends after the start', () => {
+  assert.equal(endTimeIsAfterStart('10:00 PM', '11:30 PM'), true);
+  assert.equal(endTimeIsAfterStart('22:00', '23:15'), true);
+  assert.equal(endTimeIsAfterStart('11 AM', '2 PM'), true);
+});
+
+test('endTimeIsAfterStart accepts past-midnight (overnight) ends', () => {
+  // The venue's common case: evening start, after-midnight end. A parsed end
+  // at or before the start is treated as next-day, not rejected.
+  assert.equal(endTimeIsAfterStart('10:00 PM', '12:00 AM'), true);
+  assert.equal(endTimeIsAfterStart('11:00 PM', '1:00 AM'), true);
+  assert.equal(endTimeIsAfterStart('9:00 PM', '8:00 PM'), true);
+  assert.equal(endTimeIsAfterStart('22:00', '02:00'), true);
+});
+
+test('endTimeIsAfterStart rejects only an end equal to the start', () => {
+  assert.equal(endTimeIsAfterStart('8:00 PM', '8:00 PM'), false);
+  assert.equal(endTimeIsAfterStart('20:00', '8:00 PM'), false);
+});
+
+test('endTimeIsAfterStart fails open for unparseable free text', () => {
+  assert.equal(endTimeIsAfterStart('doors at dusk', 'late'), true);
+  assert.equal(endTimeIsAfterStart('10:00 PM', 'midnight'), true);
+  assert.equal(endTimeIsAfterStart('', '11:00 PM'), true);
 });
 
 test('buildTicketTypeBody sends price in cents and omits unlimited quantity', () => {

@@ -47,6 +47,7 @@ export default function TtEventCreator() {
   const [slug, setSlug] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [eventTime, setEventTime] = useState('');
+  const [eventEndTime, setEventEndTime] = useState('');
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [category, setCategory] = useState('party');
@@ -114,6 +115,7 @@ export default function TtEventCreator() {
       slug: slug.trim() || slugify(title),
       event_date: eventDate,
       event_time: eventTime.trim() || null,
+      event_end_time: eventEndTime.trim() || null,
       description: description.trim() || null,
       image_url: imageUrl.trim() || null,
       category,
@@ -202,14 +204,19 @@ export default function TtEventCreator() {
           </p>
         </div>
 
+        <div>
+          <label className={labelClass} style={labelStyle}>DATE</label>
+          <input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} required className={inputClass} style={inputStyle} />
+        </div>
+
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={labelClass} style={labelStyle}>DATE</label>
-            <input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} required className={inputClass} style={inputStyle} />
+            <label className={labelClass} style={labelStyle}>START TIME</label>
+            <input type="text" value={eventTime} onChange={(e) => setEventTime(e.target.value)} required placeholder="e.g. 10:00 PM" className={inputClass} style={inputStyle} />
           </div>
           <div>
-            <label className={labelClass} style={labelStyle}>TIME</label>
-            <input type="text" value={eventTime} onChange={(e) => setEventTime(e.target.value)} placeholder="e.g. 10:00 PM" className={inputClass} style={inputStyle} />
+            <label className={labelClass} style={labelStyle}>END TIME</label>
+            <input type="text" value={eventEndTime} onChange={(e) => setEventEndTime(e.target.value)} required placeholder="e.g. 11:30 PM" className={inputClass} style={inputStyle} />
           </div>
         </div>
 
@@ -371,6 +378,11 @@ export default function TtEventCreator() {
               style={inputStyle}
             />
           </div>
+          <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+            This image is saved on the Stardust website event page. TicketTailor&rsquo;s
+            event image isn&rsquo;t set automatically yet — add it in the TicketTailor
+            dashboard if you want it on the box office page too.
+          </p>
         </div>
 
         {error && (

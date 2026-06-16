@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { memberDiscountCallout } from '@/lib/event-discount-display';
 
 export const revalidate = 0;
 
@@ -28,6 +29,8 @@ export default async function EventPage({ params }) {
   if (error || !event || event.status === 'draft') {
     notFound();
   }
+
+  const discountCallout = memberDiscountCallout(event.member_discount_percent);
 
   return (
     <main className="max-w-[1100px] mx-auto px-4 md:px-6 py-8 md:py-10">
@@ -72,11 +75,31 @@ export default async function EventPage({ params }) {
             </div>
           )}
 
+          {discountCallout.show && (
+            <div
+              className="flex items-center gap-2.5 px-4 py-3 rounded-[10px] mb-8 -mt-3"
+              style={{
+                background: 'rgba(255,184,77,0.1)',
+                border: '1px solid rgba(255,184,77,0.35)',
+              }}
+            >
+              <span
+                className="text-[11px] font-extrabold tracking-[0.1em] px-2 py-1 rounded-full"
+                style={{ background: '#ffb84d', color: '#0a0a0a' }}
+              >
+                MEMBERS
+              </span>
+              <span className="text-[13px] font-bold tracking-[0.02em]" style={{ color: '#ffb84d' }}>
+                Get {discountCallout.percent}% OFF
+              </span>
+            </div>
+          )}
+
           {event.event_time && (
             <div className="py-5 border-t" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
               <div className="text-[13px] font-bold mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Time</div>
               <div className="text-sm leading-[1.6]" style={{ color: '#8a8a8a' }}>
-                {event.event_time}
+                {event.event_end_time ? `${event.event_time} – ${event.event_end_time}` : event.event_time}
               </div>
             </div>
           )}
