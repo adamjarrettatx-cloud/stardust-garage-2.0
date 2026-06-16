@@ -205,6 +205,29 @@ export async function POST(request) {
       );
     }
 
+    // 2b) Link the series id onto the hidden draft NOW, before publishing. This
+    // is what makes every later failure recoverable: if anything from here on
+    // fails — including the final draft->published flip after the series is
+    // already live — the draft is already linked to the series, so the error
+    // message is true and the editor's tt-publish path (which branches on
+    // tt_event_series_id) can finish the job. The event stays a hidden draft
+    // throughout; only its link is set. A failure here is pre-publish (nothing
+    // is selling yet), so we abort and leave the unpublished draft series.
+    {
+      const { error: linkError } = await supabase
+        .from('events')
+        .update({ tt_event_series_id: ttEventSeriesId })
+        .eq('id', eventId);
+      if (linkError) {
+        return ttPrePublishFailure(
+          `Created the TicketTailor series (${ttEventSeriesId}) but failed to link it to the website event: ${
+            linkError.message
+          }. The website event is a hidden draft and the series is unpublished (nothing is on sale); delete the draft series in TicketTailor and retry.`,
+          ttEventSeriesId,
+        );
+      }
+    }
+
     // 3) Create the occurrence that carries the event date and start/end time.
     // This is the step that actually puts the website's date/time onto
     // TicketTailor; the series itself holds no date.
@@ -304,12 +327,15 @@ export async function POST(request) {
     }
 
     // 6) Everything succeeded and we have a working buy link — flip the local
-    // event to PUBLISHED with the resolved ticket URL. If THIS update fails the
-    // series is live but the website event stays a hidden draft (not public), so
-    // the admin can publish it from the editor; nothing is publicly broken.
+    // event to PUBLISHED with the resolved ticket URL. The draft is already
+    // linked to the series (step 2b), so if THIS update fails the series is live
+    // but the website event stays a hidden draft that IS linked to it: the admin
+    // can publish from the editor and the tt-publish recovery path (which keys
+    // off tt_event_series_id) will backfill the ticket URL. Nothing is publicly
+    // broken — the event is never visible without a resolved buy link.
     const { data: published, error: publishError } = await supabase
       .from('events')
-      .update({ status: 'published', ticket_url: ttTicketUrl, tt_event_series_id: ttEventSeriesId })
+      .update({ status: 'published', ticket_url: ttTicketUrl })
       .eq('id', eventId)
       .select()
       .single();
@@ -320,7 +346,7 @@ export async function POST(request) {
           error:
             'The TicketTailor series was published, but saving the published website event failed: ' +
             publishError.message +
-            '. The event is a hidden draft linked to the live series; publish it from the event editor.',
+            '. The event is a hidden draft already linked to the live series; publish it from the event editor to finish (it will backfill the ticket link).',
           eventId,
           tt_event_series_id: ttEventSeriesId,
           ticket_url: ttTicketUrl,
