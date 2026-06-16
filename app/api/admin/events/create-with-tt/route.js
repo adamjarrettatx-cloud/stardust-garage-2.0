@@ -13,7 +13,7 @@ export const runtime = 'nodejs';
 
 // POST /api/admin/events/create-with-tt
 // Body: {
-//   title, slug, event_date, event_time?, description?, image_url?,
+//   title, slug, event_date, event_time, event_end_time, description?, image_url?,
 //   category?, member_discount_percent?,
 //   ticket_types: [{ name, price, quantity?, description? }]
 // }
@@ -66,6 +66,7 @@ export async function POST(request) {
             title: v.title,
             eventDate: v.eventDate,
             eventTime: v.eventTime,
+            eventEndTime: v.eventEndTime,
             description: v.description,
           }),
         );
@@ -127,6 +128,7 @@ export async function POST(request) {
       slug: v.slug,
       event_date: v.eventDate,
       event_time: v.eventTime,
+      event_end_time: v.eventEndTime,
       description: v.description,
       image_url: v.imageUrl,
       category: v.category,

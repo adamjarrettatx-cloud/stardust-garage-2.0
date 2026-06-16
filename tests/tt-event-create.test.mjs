@@ -7,6 +7,7 @@ import {
   buildEventSeriesBody,
   buildTicketTypeBody,
   extractSeriesPublicUrl,
+  endTimeIsAfterStart,
 } from '../lib/tt-event-create.js';
 
 test('dollarsToCents converts major units to integer cents', () => {
@@ -65,6 +66,7 @@ function basePayload(overrides = {}) {
     slug: 'cosmic-disco',
     event_date: '2026-07-04',
     event_time: '10:00 PM',
+    event_end_time: '11:30 PM',
     description: 'A party',
     category: 'party',
     ticket_types: [{ name: 'GA', price: '20', quantity: '150' }],
@@ -87,6 +89,39 @@ test('validateCreatePayload requires title, slug, date', () => {
   assert.equal(validateCreatePayload(basePayload({ slug: 'Bad Slug!' })).ok, false);
   assert.equal(validateCreatePayload(basePayload({ event_date: '07/04/2026' })).ok, false);
   assert.equal(validateCreatePayload(basePayload({ event_date: '' })).ok, false);
+});
+
+test('validateCreatePayload requires both start and end time', () => {
+  assert.equal(validateCreatePayload(basePayload({ event_time: '' })).ok, false);
+  assert.equal(validateCreatePayload(basePayload({ event_time: null })).ok, false);
+  const noEnd = validateCreatePayload(basePayload({ event_end_time: '' }));
+  assert.equal(noEnd.ok, false);
+  assert.match(noEnd.error, /End time is required/);
+});
+
+test('validateCreatePayload rejects an end time at or before the start time', () => {
+  const before = validateCreatePayload(basePayload({ event_time: '10:00 PM', event_end_time: '9:00 PM' }));
+  assert.equal(before.ok, false);
+  assert.match(before.error, /End time must be after the start time/);
+
+  const equal = validateCreatePayload(basePayload({ event_time: '8:00 PM', event_end_time: '8:00 PM' }));
+  assert.equal(equal.ok, false);
+});
+
+test('validateCreatePayload allows free-text times it cannot compare', () => {
+  // Neither value is a simple clock string, so ordering can't be checked and
+  // the payload is accepted rather than wrongly rejected.
+  const res = validateCreatePayload(
+    basePayload({ event_time: 'doors at dusk', event_end_time: 'late' }),
+  );
+  assert.equal(res.ok, true);
+  assert.equal(res.value.eventEndTime, 'late');
+});
+
+test('validateCreatePayload exposes the normalized end time', () => {
+  const res = validateCreatePayload(basePayload());
+  assert.equal(res.ok, true);
+  assert.equal(res.value.eventEndTime, '11:30 PM');
 });
 
 test('validateCreatePayload requires at least one ticket type', () => {
@@ -115,6 +150,7 @@ test('buildEventSeriesBody always creates a draft with name/currency/date', () =
     title: 'Cosmic Disco',
     eventDate: '2026-07-04',
     eventTime: '10:00 PM',
+    eventEndTime: '11:30 PM',
     description: 'A party',
   });
   assert.equal(body.get('name'), 'Cosmic Disco');
@@ -125,9 +161,36 @@ test('buildEventSeriesBody always creates a draft with name/currency/date', () =
   assert.equal(body.get('start_date[time]'), '10:00 PM');
 });
 
-test('buildEventSeriesBody omits time when not provided', () => {
+test('buildEventSeriesBody sends end_date mirroring the start date with the end time', () => {
+  const body = buildEventSeriesBody({
+    title: 'Cosmic Disco',
+    eventDate: '2026-07-04',
+    eventTime: '10:00 PM',
+    eventEndTime: '11:30 PM',
+  });
+  assert.equal(body.get('end_date[date]'), '2026-07-04');
+  assert.equal(body.get('end_date[time]'), '11:30 PM');
+});
+
+test('buildEventSeriesBody omits times when not provided but still sends end_date', () => {
   const body = buildEventSeriesBody({ title: 'X', eventDate: '2026-07-04', eventTime: null });
   assert.equal(body.get('start_date[time]'), null);
+  assert.equal(body.get('end_date[date]'), '2026-07-04');
+  assert.equal(body.get('end_date[time]'), null);
+});
+
+test('endTimeIsAfterStart compares simple clock strings', () => {
+  assert.equal(endTimeIsAfterStart('10:00 PM', '11:30 PM'), true);
+  assert.equal(endTimeIsAfterStart('9:00 PM', '8:00 PM'), false);
+  assert.equal(endTimeIsAfterStart('8:00 PM', '8:00 PM'), false);
+  assert.equal(endTimeIsAfterStart('22:00', '23:15'), true);
+  assert.equal(endTimeIsAfterStart('11 AM', '2 PM'), true);
+});
+
+test('endTimeIsAfterStart fails open for unparseable free text', () => {
+  assert.equal(endTimeIsAfterStart('doors at dusk', 'late'), true);
+  assert.equal(endTimeIsAfterStart('10:00 PM', 'midnight'), true);
+  assert.equal(endTimeIsAfterStart('', '11:00 PM'), true);
 });
 
 test('buildTicketTypeBody sends price in cents and omits unlimited quantity', () => {
