@@ -19,10 +19,12 @@ export default async function TeamCalendarPage() {
 
   if (!teamMember) redirect('/team/login');
 
-  // Public events (read-only)
+  // Website events (read-only). Includes internal micro-party events so the
+  // team can see them on the calendar; they are visually distinguished and are
+  // never shown on the public /events page.
   const { data: publicEvents } = await supabase
     .from('events')
-    .select('id, title, event_date, event_time, slug')
+    .select('id, title, event_date, event_time, slug, visibility, event_type')
     .order('event_date', { ascending: true });
 
   // Team events — RLS already filters to readable ones

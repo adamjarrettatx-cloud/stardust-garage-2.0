@@ -94,6 +94,15 @@ export default function EventsSection({ upcoming, past }) {
                       DRAFT
                     </span>
                   )}
+                  {event.visibility === 'internal' && (
+                    <span
+                      className="flex-shrink-0 text-[10px] font-semibold tracking-[0.12em] px-2 py-0.5 rounded-full"
+                      style={{ color: '#0a0a0a', background: '#f59e0b' }}
+                      title="Internal micro party — hidden from the public events page"
+                    >
+                      INTERNAL
+                    </span>
+                  )}
                 </div>
                 <div className="text-[12px] mt-1" style={{ color: '#555' }}>/events/{event.slug}</div>
               </div>

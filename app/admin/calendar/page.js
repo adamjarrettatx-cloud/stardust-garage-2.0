@@ -11,10 +11,13 @@ export default async function TeamCalendarPage() {
 
   const supabase = await createClient();
 
-  // Fetch public events (read-only, synced)
+  // Fetch website events (read-only, synced). Includes internal micro-party
+  // events — the calendar distinguishes them via visibility/event_type. The
+  // public /events page filters these out; the team calendar deliberately
+  // shows them.
   const { data: publicEvents } = await supabase
     .from('events')
-    .select('id, title, event_date, event_time, slug')
+    .select('id, title, event_date, event_time, slug, visibility, event_type')
     .order('event_date', { ascending: true });
 
   // Fetch internal team events
