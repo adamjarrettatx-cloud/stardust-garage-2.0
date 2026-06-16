@@ -21,5 +21,15 @@ export default async function EditEventPage({ params }) {
     notFound();
   }
 
-  return <EventForm event={event} />;
+  // Cached metrics row (if any) so the editor can show when this event's sales
+  // figures were last refreshed. Degrades gracefully if the table is absent.
+  let metrics = null;
+  const metricsRes = await supabase
+    .from('event_ticket_metrics')
+    .select('status, fetched_at, source')
+    .eq('event_id', id)
+    .maybeSingle();
+  if (!metricsRes.error) metrics = metricsRes.data || null;
+
+  return <EventForm event={event} metrics={metrics} />;
 }

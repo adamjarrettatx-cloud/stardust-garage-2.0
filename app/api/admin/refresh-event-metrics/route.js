@@ -11,12 +11,14 @@ export const runtime = 'nodejs';
 // listOrders()/listIssuedTickets(). Events without a TT series are recorded as
 // `not_configured` so we never guess or write fabricated numbers. The only
 // writes are upserts into our own public.event_ticket_metrics cache.
-async function refreshMetrics(supabase) {
-  const { data: events, error } = await supabase
-    .from('events')
-    .select('id, title, tt_event_series_id')
-    .order('event_date', { ascending: false })
-    .limit(300);
+async function refreshMetrics(supabase, { eventId = null } = {}) {
+  let query = supabase.from('events').select('id, title, tt_event_series_id');
+  // Optional single-event scope. Used by the per-event "Refresh metrics" button
+  // so an admin can update one row without re-pulling the whole portfolio.
+  query = eventId
+    ? query.eq('id', eventId)
+    : query.order('event_date', { ascending: false }).limit(300);
+  const { data: events, error } = await query;
   if (error) throw new Error('Failed to load events: ' + error.message);
 
   const ttConfigured = Boolean(process.env.TICKETTAILOR_API_KEY);
@@ -97,16 +99,31 @@ async function refreshMetrics(supabase) {
   return { refreshed, skipped, failed, total: rows.length, ttConfigured, fetchedAt };
 }
 
+const UUID = /^[0-9a-f-]{36}$/i;
+
 // POST /api/admin/refresh-event-metrics
 // Manual refresh by a signed-in admin. Read-only against TicketTailor.
-export async function POST() {
+// Optional body { eventId } scopes the refresh to a single event.
+export async function POST(request) {
   try {
     const { unauthorized, reason } = await requireAdminMfa();
     if (unauthorized) {
       return NextResponse.json({ error: 'Unauthorized', reason }, { status: 401 });
     }
-    const result = await refreshMetrics(createAdminClient());
-    return NextResponse.json({ success: true, via: 'admin', ...result });
+    let eventId = null;
+    try {
+      const body = await request.json();
+      if (body?.eventId != null) {
+        if (typeof body.eventId !== 'string' || !UUID.test(body.eventId)) {
+          return NextResponse.json({ error: 'Invalid eventId' }, { status: 400 });
+        }
+        eventId = body.eventId;
+      }
+    } catch {
+      // No/invalid JSON body → full refresh (back-compat with the bare POST).
+    }
+    const result = await refreshMetrics(createAdminClient(), { eventId });
+    return NextResponse.json({ success: true, via: 'admin', scope: eventId ? 'event' : 'all', ...result });
   } catch (err) {
     console.error('refresh-event-metrics (admin) error:', err);
     return NextResponse.json(

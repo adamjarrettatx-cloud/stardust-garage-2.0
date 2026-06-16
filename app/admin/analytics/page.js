@@ -8,6 +8,7 @@ import {
   centsToUsd,
 } from '@/lib/event-analytics';
 import RefreshMetricsButton from './RefreshMetricsButton';
+import RowRefreshButton from './RowRefreshButton';
 
 export const revalidate = 0;
 export const dynamic = 'force-dynamic';
@@ -176,7 +177,10 @@ export default async function AnalyticsPage() {
                   {r.memberCodes.sent}/{r.memberCodes.total}
                 </span>
                 {r.ttSeriesLinked ? (
-                  <span style={{ color: '#4ade80' }}>linked</span>
+                  <span className="flex items-center gap-1.5">
+                    <span style={{ color: '#4ade80' }}>linked</span>
+                    <RowRefreshButton eventId={r.id} />
+                  </span>
                 ) : (
                   <Link
                     href={`/admin/events/${r.id}`}
