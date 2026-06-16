@@ -43,6 +43,22 @@ test('a public events list filtered by isPublicEvent excludes internal micro par
   assert.deepEqual(publicIds, ['a', 'c']);
 });
 
+test('every public event surface excludes internal micro parties', () => {
+  // The public surfaces are /home (EventsTile), /events (list), and
+  // /events/[slug] (detail). All three filter published rows down to
+  // visibility = 'public'. A micro party created via EventForm defaults to
+  // status='published' + visibility='internal', so the visibility filter is
+  // the only thing keeping it off these pages — this test locks that rule in.
+  const published = [
+    { id: 'show', status: 'published', visibility: 'public' },
+    { id: 'micro', status: 'published', visibility: 'internal', event_type: 'micro_party' },
+    { id: 'legacy', status: 'published' }, // pre-migration row, no visibility
+  ];
+  const publicFacing = published.filter(isPublicEvent).map((e) => e.id);
+  assert.deepEqual(publicFacing, ['show', 'legacy']);
+  assert.ok(!publicFacing.includes('micro'), 'micro party must never reach a public surface');
+});
+
 test('isInternalEvent / isMicroParty classify correctly', () => {
   const mp = { visibility: 'internal', event_type: 'micro_party' };
   assert.equal(isInternalEvent(mp), true);
