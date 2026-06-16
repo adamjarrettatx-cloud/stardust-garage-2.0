@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { qrMatrixToSvg } from '@/lib/qr-code';
 
 // Admin-only door-device provisioning UI. Lets Adam mint a revocable setup link
 // for each Jelly2 (Front Door / Exit Door), copy it once, open it on the phone,
@@ -19,6 +20,30 @@ export default function DeviceManager() {
   const [error, setError] = useState('');
   const [justCreated, setJustCreated] = useState(null); // { setup_url, device }
   const [copied, setCopied] = useState(false);
+
+  // Encode the full setup URL (including ?token=...) into a scannable QR so the
+  // Jelly2 never has to type it. Built client-side from the URL already shown —
+  // the token is not persisted anywhere new. Memoized on the URL string.
+  const qrSvg = useMemo(
+    () => (justCreated?.setup_url
+      ? qrMatrixToSvg(justCreated.setup_url, { size: 220, dark: '#0a0a0a', light: '#ffffff' })
+      : null),
+    [justCreated?.setup_url],
+  );
+
+  // Short manual-fallback alias of the setup URL (origin + /c/f|/c/e + token),
+  // matching the redirects in next.config.mjs. Shown so the token can be typed
+  // by hand on the Jelly2 if scanning fails — the token still rides along.
+  const shortUrl = useMemo(() => {
+    if (!justCreated?.setup_url) return null;
+    try {
+      const u = new URL(justCreated.setup_url);
+      const seg = justCreated.device?.device_role === 'exit_door' ? 'e' : 'f';
+      // searchParams.get() decodes the token; re-encode so the displayed short
+      // URL stays valid even if the token alphabet ever stops being base64url.
+      return `${u.origin}/c/${seg}?token=${encodeURIComponent(u.searchParams.get('token') ?? '')}`;
+    } catch { return null; }
+  }, [justCreated?.setup_url, justCreated?.device?.device_role]);
 
   const load = useCallback(async () => {
     try {
@@ -45,7 +70,7 @@ export default function DeviceManager() {
         setError(json.error || 'Failed to create device link.');
       } else {
         setJustCreated({ setup_url: json.setup_url, device: json.device, token: json.token });
-        setMsg(`${ROLE_LABEL[role]} link created. Copy it now — it won’t be shown again.`);
+        setMsg(`${ROLE_LABEL[role]} link created. Scan the QR or copy it now — it won’t be shown again.`);
         setLabel('');
         load();
       }
@@ -97,35 +122,84 @@ export default function DeviceManager() {
       {/* Setup steps */}
       <ol className="text-[12px] mb-5 pl-4 list-decimal space-y-1" style={{ color: '#9a9a9a' }}>
         <li>Pick <strong>Front Door</strong>, give it a label, and create the link.</li>
-        <li>Copy the link and open it in Chrome on the <strong>front</strong> phone. Leave that tab open / add to home screen.</li>
-        <li>Pick <strong>Exit Door</strong>, create its link, and open it on the <strong>exit</strong> phone.</li>
+        <li><strong>Scan the QR</strong> with the <strong>front</strong> phone’s camera (or Copy link). Leave that tab open / add to home screen.</li>
+        <li>Pick <strong>Exit Door</strong>, create its link, and scan it on the <strong>exit</strong> phone.</li>
       </ol>
 
       {(msg || error) && (
         <div className="mb-4 text-[13px]" style={{ color: error ? '#ff8a8a' : '#7CFC9B' }}>{error || msg}</div>
       )}
 
-      {/* One-time setup URL */}
+      {/* One-time setup URL + QR. Shown ONCE, right after creation. The raw
+          token lives only in this block (client memory) and is never fetchable
+          again — dismissing with Done clears it. */}
       {justCreated?.setup_url && (
         <div className="mb-5 rounded-xl p-4 border" style={{ background: '#0e0e0e', borderColor: 'rgba(124,252,155,0.3)' }}>
-          <div className="text-[12px] font-bold mb-2" style={{ color: '#7CFC9B' }}>
-            {ROLE_LABEL[justCreated.device?.device_role]} setup link — copy now, shown once
+          <div className="text-[12px] font-bold mb-3" style={{ color: '#7CFC9B' }}>
+            {ROLE_LABEL[justCreated.device?.device_role]} setup — scan this once, shown only now
           </div>
+
+          {/* Loud warning: typing this by hand drops the token and 404s. */}
           <div
-            className="text-[12px] break-all mb-3 p-2 rounded"
+            className="text-[12px] mb-4 p-2.5 rounded leading-snug"
+            style={{ background: '#2a1d05', border: '1px solid rgba(245,158,11,0.4)', color: '#fbbf24' }}
+          >
+            <strong>Don’t type this URL by hand.</strong> Scan the QR on the phone, or use
+            “Copy link”. The whole link — including the <code style={{ color: '#fde68a' }}>?token=…</code> part —
+            must stay attached, or the page will show 404 / not authorized.
+            {shortUrl && (
+              <>
+                {' '}If you must type it, the short form is{' '}
+                <code className="break-all" style={{ color: '#fde68a' }}>{shortUrl}</code> — keep the
+                <code style={{ color: '#fde68a' }}> ?token=…</code> on the end.
+              </>
+            )}
+          </div>
+
+          {/* Scannable QR of the exact setup URL. */}
+          {qrSvg ? (
+            <div className="flex flex-col items-center mb-4">
+              <div
+                className="rounded-lg p-3"
+                style={{ background: '#fff' }}
+                aria-label={`${ROLE_LABEL[justCreated.device?.device_role]} setup QR code`}
+                dangerouslySetInnerHTML={{ __html: qrSvg }}
+              />
+              <div className="text-[11px] mt-2 text-center" style={{ color: '#8a8a8a' }}>
+                Point the {ROLE_LABEL[justCreated.device?.device_role]?.toLowerCase()} phone’s camera here.
+              </div>
+            </div>
+          ) : (
+            <div className="text-[12px] mb-3" style={{ color: '#ff8a8a' }}>
+              Couldn’t render a QR — use “Copy link” below instead.
+            </div>
+          )}
+
+          {/* Raw URL, easy to select/copy as a fallback. */}
+          <div
+            className="text-[12px] break-all mb-3 p-2 rounded select-all"
             style={{ background: '#000', color: '#cfcfcf', fontFamily: 'monospace' }}
           >
             {justCreated.setup_url}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => copyUrl(justCreated.setup_url)}
               className="px-4 py-2 rounded-lg font-bold text-[13px]"
               style={{ background: '#16a34a', color: '#fff' }}
             >
-              {copied ? 'Copied!' : 'Copy link'}
+              {copied ? 'Copied!' : 'Copy full link'}
             </button>
+            <a
+              href={justCreated.setup_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 rounded-lg font-bold text-[13px] inline-block"
+              style={{ background: '#2563eb', color: '#fff' }}
+            >
+              Open link
+            </a>
             <button
               type="button"
               onClick={() => setJustCreated(null)}
