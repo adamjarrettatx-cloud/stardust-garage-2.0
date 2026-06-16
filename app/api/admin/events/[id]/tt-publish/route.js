@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { setEventSeriesStatus } from '@/lib/tickettailor';
+import { setEventSeriesStatus, getEventSeries } from '@/lib/tickettailor';
+import { extractSeriesPublicUrl } from '@/lib/tt-event-create';
 
 export const runtime = 'nodejs';
 
@@ -36,7 +37,7 @@ export async function POST(request, { params }) {
 
     const { data: event, error: eventError } = await supabase
       .from('events')
-      .select('id, title, status, tt_event_series_id')
+      .select('id, title, status, tt_event_series_id, ticket_url')
       .eq('id', id)
       .single();
     if (eventError || !event) {
@@ -45,14 +46,19 @@ export async function POST(request, { params }) {
 
     let ttPublished = false;
     let ttNote = null;
+    // Backfill ticket_url only when the event doesn't already have one, so we
+    // never clobber a URL an admin set by hand on the manual flow.
+    let resolvedTicketUrl = event.ticket_url || null;
 
     if (event.tt_event_series_id) {
       if (!process.env.TICKETTAILOR_API_KEY) {
         ttNote =
           'TICKETTAILOR_API_KEY is not configured; the website event was published but the TicketTailor series status was not changed.';
       } else {
+        let series;
         try {
-          await setEventSeriesStatus(event.tt_event_series_id, 'published');
+          // Returns the updated series object, which carries the public URL.
+          series = await setEventSeriesStatus(event.tt_event_series_id, 'published');
           ttPublished = true;
         } catch (err) {
           // Do not flip the local event if TT publish failed — keep both sides
@@ -68,14 +74,46 @@ export async function POST(request, { params }) {
             { status: 502 },
           );
         }
+
+        // Resolve the public box-office URL so the "Buy tickets" link works on
+        // the now-public event page. Prefer the status-update response; if it
+        // didn't carry a URL, re-read the series (read-only). Only fill it when
+        // the event has no ticket_url yet. A missing URL is non-fatal: publish
+        // still succeeds, we just log it.
+        if (!resolvedTicketUrl) {
+          let url = extractSeriesPublicUrl(series);
+          if (!url) {
+            try {
+              url = extractSeriesPublicUrl(await getEventSeries(event.tt_event_series_id));
+            } catch (err) {
+              console.warn(
+                `tt-publish: could not re-read series ${event.tt_event_series_id} for its URL: ${err?.message || err}`,
+              );
+            }
+          }
+          if (url) {
+            resolvedTicketUrl = url;
+          } else {
+            ttNote =
+              'Published, but TicketTailor did not return a public ticket URL — set the ticket link manually on the event if needed.';
+            console.warn(
+              `tt-publish: TicketTailor series ${event.tt_event_series_id} returned no public URL; ticket_url left unset.`,
+            );
+          }
+        }
       }
     } else {
       ttNote = 'This event has no linked TicketTailor series; published the website event only.';
     }
 
+    const updateFields = { status: 'published' };
+    if (resolvedTicketUrl && resolvedTicketUrl !== event.ticket_url) {
+      updateFields.ticket_url = resolvedTicketUrl;
+    }
+
     const { data: updated, error: updateError } = await supabase
       .from('events')
-      .update({ status: 'published' })
+      .update(updateFields)
       .eq('id', id)
       .select()
       .single();
@@ -91,6 +129,7 @@ export async function POST(request, { params }) {
       eventId: id,
       status: updated.status,
       tt_event_series_id: event.tt_event_series_id,
+      ticket_url: updated.ticket_url || null,
       ttPublished,
       ttNote,
     });

@@ -6,6 +6,7 @@ import {
   validateCreatePayload,
   buildEventSeriesBody,
   buildTicketTypeBody,
+  extractSeriesPublicUrl,
 } from '../lib/tt-event-create.js';
 
 test('dollarsToCents converts major units to integer cents', () => {
@@ -138,4 +139,44 @@ test('buildTicketTypeBody sends price in cents and omits unlimited quantity', ()
   const capped = buildTicketTypeBody({ name: 'VIP', priceCents: 5000, quantity: 50, description: 'd' });
   assert.equal(capped.get('quantity'), '50');
   assert.equal(capped.get('description'), 'd');
+});
+
+test('extractSeriesPublicUrl reads the url field from a series object', () => {
+  assert.equal(
+    extractSeriesPublicUrl({ id: 'es_1', url: 'https://buytickets.at/x/y' }),
+    'https://buytickets.at/x/y',
+  );
+});
+
+test('extractSeriesPublicUrl accepts documented aliases', () => {
+  assert.equal(
+    extractSeriesPublicUrl({ checkout_url: 'https://www.tickettailor.com/events/x' }),
+    'https://www.tickettailor.com/events/x',
+  );
+  assert.equal(
+    extractSeriesPublicUrl({ public_url: 'http://example.com/e' }),
+    'http://example.com/e',
+  );
+});
+
+test('extractSeriesPublicUrl trims surrounding whitespace', () => {
+  assert.equal(extractSeriesPublicUrl({ url: '  https://x.com/e  ' }), 'https://x.com/e');
+});
+
+test('extractSeriesPublicUrl returns null for missing/non-object/non-http values', () => {
+  assert.equal(extractSeriesPublicUrl(null), null);
+  assert.equal(extractSeriesPublicUrl(undefined), null);
+  assert.equal(extractSeriesPublicUrl('https://x.com'), null); // not an object
+  assert.equal(extractSeriesPublicUrl({ id: 'es_1' }), null); // no url field
+  assert.equal(extractSeriesPublicUrl({ url: '' }), null);
+  assert.equal(extractSeriesPublicUrl({ url: 'es_1234567' }), null); // not a URL
+  assert.equal(extractSeriesPublicUrl({ url: 'javascript:alert(1)' }), null); // non-http scheme
+  assert.equal(extractSeriesPublicUrl({ url: 123 }), null); // non-string
+});
+
+test('extractSeriesPublicUrl prefers url over aliases', () => {
+  assert.equal(
+    extractSeriesPublicUrl({ url: 'https://a.com', checkout_url: 'https://b.com' }),
+    'https://a.com',
+  );
 });

@@ -6,6 +6,7 @@ import {
   validateCreatePayload,
   buildEventSeriesBody,
   buildTicketTypeBody,
+  extractSeriesPublicUrl,
 } from '@/lib/tt-event-create';
 
 export const runtime = 'nodejs';
@@ -52,6 +53,7 @@ export async function POST(request) {
     const ttConfigured = Boolean(process.env.TICKETTAILOR_API_KEY);
 
     let ttEventSeriesId = null;
+    let ttTicketUrl = null;
     let ttNote = null;
     let ticketTypesCreated = 0;
 
@@ -79,6 +81,18 @@ export async function POST(request) {
         return NextResponse.json(
           { error: 'TicketTailor did not return an event series id.' },
           { status: 502 },
+        );
+      }
+
+      // Capture the public box-office URL from the TicketTailor response so the
+      // public event page can show a working "Buy tickets" link once published.
+      // We only ever use a URL TicketTailor actually returned — never a guessed
+      // pattern. If it's absent, ticket_url stays null and we log it; the
+      // publish step will try again from the (re-fetched) series object.
+      ttTicketUrl = extractSeriesPublicUrl(series);
+      if (!ttTicketUrl) {
+        console.warn(
+          `create-with-tt: TicketTailor series ${ttEventSeriesId} returned no public URL; ticket_url left null (will retry on publish).`,
         );
       }
 
@@ -118,6 +132,7 @@ export async function POST(request) {
       category: v.category,
       member_discount_percent: v.memberDiscountPercent,
       tt_event_series_id: ttEventSeriesId,
+      ticket_url: ttTicketUrl,
       status: 'draft',
     };
 
@@ -143,6 +158,7 @@ export async function POST(request) {
       event: saved,
       eventId: saved.id,
       tt_event_series_id: ttEventSeriesId,
+      ticket_url: ttTicketUrl,
       ticketTypesCreated,
       ttConfigured,
       ttNote,
