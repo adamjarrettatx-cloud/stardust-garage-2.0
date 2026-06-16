@@ -22,6 +22,12 @@ const CATEGORIES = {
 };
 
 const PUBLIC_STYLE = { color: '#ffb84d', bg: 'rgba(255,184,77,0.12)', border: 'rgba(255,184,77,0.3)' };
+// INTERNAL micro-party marker style — shown to the team, never to the public.
+const INTERNAL_STYLE = { color: '#f59e0b', bg: 'rgba(245,158,11,0.14)', border: 'rgba(245,158,11,0.4)' };
+
+function eventStyle(evt) {
+  return evt?.visibility === 'internal' ? INTERNAL_STYLE : PUBLIC_STYLE;
+}
 
 function isSameDay(a, b) {
   return a.getFullYear() === b.getFullYear() &&
@@ -161,6 +167,10 @@ export default function TeamCalendarClient({ publicEvents, teamEvents: initialTe
           <span className="w-2.5 h-2.5 rounded-sm" style={{ background: PUBLIC_STYLE.color }} />
           <span style={{ color: '#aaa' }}>Public Event</span>
         </span>
+        <span className="flex items-center gap-1.5 text-[11px]">
+          <span className="w-2.5 h-2.5 rounded-sm" style={{ background: INTERNAL_STYLE.color }} />
+          <span style={{ color: '#aaa' }}>Micro Party (Internal)</span>
+        </span>
         {Object.entries(CATEGORIES).map(([key, cat]) => (
           <span key={key} className="flex items-center gap-1.5 text-[11px]">
             <span className="w-2.5 h-2.5 rounded-sm" style={{ background: cat.color }} />
@@ -225,12 +235,16 @@ export default function TeamCalendarClient({ publicEvents, teamEvents: initialTe
                     </span>
                   </div>
                   <div className="space-y-0.5">
-                    {pub.slice(0, 2).map(evt => (
-                      <div key={`pub-${evt.id}`} onClick={(e) => e.stopPropagation()} className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: PUBLIC_STYLE.bg, color: PUBLIC_STYLE.color, border: `1px solid ${PUBLIC_STYLE.border}` }}>
-                        <div className="truncate">★ {evt.title}</div>
-                        {evt.event_time && <div className="text-[9px] font-normal opacity-80 truncate">{evt.event_time}</div>}
-                      </div>
-                    ))}
+                    {pub.slice(0, 2).map(evt => {
+                      const st = eventStyle(evt);
+                      const internal = evt.visibility === 'internal';
+                      return (
+                        <div key={`pub-${evt.id}`} onClick={(e) => e.stopPropagation()} className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: st.bg, color: st.color, border: `1px solid ${st.border}` }} title={internal ? `${evt.title} (internal micro party)` : evt.title}>
+                          <div className="truncate">{internal ? '🔒' : '★'} {evt.title}</div>
+                          {evt.event_time && <div className="text-[9px] font-normal opacity-80 truncate">{evt.event_time}</div>}
+                        </div>
+                      );
+                    })}
                     {team.slice(0, 3 - Math.min(pub.length, 2)).map(evt => {
                       const cat = CATEGORIES[evt.category] || CATEGORIES.other;
                       const mine = canEdit(evt);
@@ -283,14 +297,25 @@ export default function TeamCalendarClient({ publicEvents, teamEvents: initialTe
 
             {selectedEvents.pub.length > 0 && (
               <div className="mb-4">
-                <div className="text-[10px] font-semibold tracking-[0.12em] mb-2" style={{ color: '#8a8a8a' }}>PUBLIC EVENTS</div>
+                <div className="text-[10px] font-semibold tracking-[0.12em] mb-2" style={{ color: '#8a8a8a' }}>WEBSITE EVENTS</div>
                 <div className="space-y-2">
-                  {selectedEvents.pub.map(evt => (
-                    <div key={evt.id} className="rounded-[8px] p-3" style={{ background: PUBLIC_STYLE.bg, border: `1px solid ${PUBLIC_STYLE.border}` }}>
-                      <div className="text-[13px] font-bold" style={{ color: PUBLIC_STYLE.color }}>{evt.title}</div>
-                      {evt.event_time && <div className="text-[11px] mt-0.5" style={{ color: '#aaa' }}>{evt.event_time}</div>}
-                    </div>
-                  ))}
+                  {selectedEvents.pub.map(evt => {
+                    const st = eventStyle(evt);
+                    const internal = evt.visibility === 'internal';
+                    return (
+                      <div key={evt.id} className="rounded-[8px] p-3" style={{ background: st.bg, border: `1px solid ${st.border}` }}>
+                        <div className="flex items-center gap-2">
+                          <div className="text-[13px] font-bold" style={{ color: st.color }}>{evt.title}</div>
+                          {internal && (
+                            <span className="text-[9px] font-bold tracking-[0.1em] px-1.5 py-0.5 rounded-full uppercase" style={{ background: st.color, color: '#0a0a0a' }}>
+                              Internal
+                            </span>
+                          )}
+                        </div>
+                        {evt.event_time && <div className="text-[11px] mt-0.5" style={{ color: '#aaa' }}>{evt.event_time}</div>}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

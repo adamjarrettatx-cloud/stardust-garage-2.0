@@ -24,9 +24,9 @@ export default async function EventPage({ params }) {
     .eq('slug', slug)
     .single();
 
-  // Draft events are not public — treat them as missing so a draft slug can't
-  // be reached directly before it's published.
-  if (error || !event || event.status === 'draft') {
+  // Draft events and internal micro-party events are not public — treat them as
+  // missing so neither a draft slug nor an internal slug can be reached directly.
+  if (error || !event || event.status === 'draft' || event.visibility === 'internal') {
     notFound();
   }
 

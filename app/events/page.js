@@ -16,12 +16,14 @@ function formatEventDate(dateString) {
 export default async function EventsPage() {
   const supabase = await createClient();
 
-  // Only published events are public. Draft events (created via the admin
-  // "create with TicketTailor" flow before publishing) are hidden here.
+  // Only published, public-visibility events are public. Draft events (created
+  // via the admin "create with TicketTailor" flow before publishing) and
+  // internal micro-party events (visibility = 'internal') are hidden here.
   const { data: events } = await supabase
     .from('events')
     .select('*')
     .eq('status', 'published')
+    .eq('visibility', 'public')
     .order('event_date', { ascending: true });
 
   const eventList = events || [];

@@ -45,6 +45,10 @@ export default function EventForm({ event, metrics = null }) {
   const [eventType, setEventType] = useState(
     event?.ticket_url ? 'public' : isEditing ? 'private' : 'public'
   );
+  // Visibility: 'public' (shown on the public /events page and member surfaces)
+  // or 'internal' (a "micro party" — known only to admin/team; appears on the
+  // team calendar and admin dashboard but never publicly). Defaults to public.
+  const [isInternal, setIsInternal] = useState(event?.visibility === 'internal');
   const [ticketUrl, setTicketUrl] = useState(event?.ticket_url || '');
   const [category, setCategory] = useState(event?.category || 'other');
   const [memberDiscountPercent, setMemberDiscountPercent] = useState(
@@ -148,6 +152,12 @@ export default function EventForm({ event, metrics = null }) {
         QUALIFYING_CATEGORIES.includes(category) && memberDiscountPercent.trim() !== ''
           ? Number(memberDiscountPercent)
           : null,
+      // Internal micro-party events are hidden from the public /events page and
+      // member surfaces but keep all internal capabilities (contracts, SignNow,
+      // financials, POS). event_type labels the internal kind; visibility is the
+      // access gate the public queries filter on.
+      visibility: isInternal ? 'internal' : 'public',
+      event_type: isInternal ? 'micro_party' : 'standard',
     };
 
     // For an existing event the TT link is owned by <TtLinkPanel> (server route).
@@ -409,6 +419,53 @@ export default function EventForm({ event, metrics = null }) {
             </p>
           </div>
         )}
+
+        {/* VISIBILITY TOGGLE — public vs internal micro party */}
+        <div>
+          <label className={labelClass} style={labelStyle}>VISIBILITY</label>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setIsInternal(false)}
+              className="py-4 px-5 rounded-[10px] border text-left transition-all"
+              style={{
+                background: !isInternal ? '#ffffff' : '#141414',
+                borderColor: !isInternal ? '#ffffff' : 'rgba(255,255,255,0.1)',
+                color: !isInternal ? '#0a0a0a' : '#f5f5f5',
+              }}
+            >
+              <div className="text-[14px] font-bold mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                Public
+              </div>
+              <div className="text-[12px]" style={{ color: !isInternal ? '#555' : '#8a8a8a' }}>
+                Shown on the public events page
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsInternal(true)}
+              className="py-4 px-5 rounded-[10px] border text-left transition-all"
+              style={{
+                background: isInternal ? '#f59e0b' : '#141414',
+                borderColor: isInternal ? '#f59e0b' : 'rgba(255,255,255,0.1)',
+                color: isInternal ? '#0a0a0a' : '#f5f5f5',
+              }}
+            >
+              <div className="text-[14px] font-bold mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                Micro Party (Internal)
+              </div>
+              <div className="text-[12px]" style={{ color: isInternal ? '#5a3d00' : '#8a8a8a' }}>
+                Hidden from public · team calendar only
+              </div>
+            </button>
+          </div>
+          {isInternal && (
+            <p className="text-[11px] mt-2" style={{ color: '#f59e0b' }}>
+              Internal micro party: never appears on the public events page or member surfaces. It still
+              supports contracts, SignNow, financials, and POS imports, and shows on the team calendar.
+            </p>
+          )}
+        </div>
 
         {/* EVENT TYPE TOGGLE */}
         <div>
