@@ -235,12 +235,12 @@ export default function EventFinancialsClient({ eventId, initial, contracts }) {
           className="block text-[13px]" style={{ color: '#c8c8c8' }} />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label className="block text-[12px]" style={{ color: '#c8c8c8' }}>
-            Window start (event local)
+            Window start <span style={{ color: '#6a6a6a' }}>(venue time, CT — inclusive)</span>
             <input type="datetime-local" value={winStart} onChange={(e) => setWinStart(e.target.value)}
               className="mt-1 w-full rounded-[8px] px-3 py-2 text-[14px]" style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }} />
           </label>
           <label className="block text-[12px]" style={{ color: '#c8c8c8' }}>
-            Window end
+            Window end <span style={{ color: '#6a6a6a' }}>(venue time, CT — exclusive)</span>
             <input type="datetime-local" value={winEnd} onChange={(e) => setWinEnd(e.target.value)}
               className="mt-1 w-full rounded-[8px] px-3 py-2 text-[14px]" style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }} />
           </label>
@@ -254,7 +254,9 @@ export default function EventFinancialsClient({ eventId, initial, contracts }) {
         </div>
         <p className="text-[11px]" style={{ color: '#6a6a6a' }}>
           Recognized columns (case-insensitive): timestamp/date, gross/total, tax, fees, net, description.
-          Only rows whose timestamp falls inside the window count toward the event. Leave the window blank to count all rows.
+          Window times are interpreted as venue-local (Central). The window is half-open — a row exactly on the
+          end time is excluded — so back-to-back events never double-count a boundary transaction. Leave the window
+          blank to count all rows.
         </p>
       </form>
 

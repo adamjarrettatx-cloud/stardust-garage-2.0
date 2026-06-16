@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { parseCsv, mapPosRows } from '@/lib/pos-csv';
-import { summarizePosRows } from '@/lib/event-financials';
+import { summarizePosRows, isRowInWindow, posRowTaxFee } from '@/lib/event-financials';
+import { normalizeContractDateTime } from '@/lib/contract-helpers';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -50,10 +51,15 @@ export async function POST(request, { params }) {
   if (!csv.trim()) return NextResponse.json({ error: 'csv is required' }, { status: 400 });
   if (csv.length > MAX_CSV_BYTES) return NextResponse.json({ error: 'CSV too large' }, { status: 413 });
 
-  const windowStart = normalizeIso(body.windowStart);
-  const windowEnd = normalizeIso(body.windowEnd);
-  if (body.windowStart && !windowStart) return NextResponse.json({ error: 'invalid windowStart' }, { status: 400 });
-  if (body.windowEnd && !windowEnd) return NextResponse.json({ error: 'invalid windowEnd' }, { status: 400 });
+  // Window pickers are venue-local wall clock (datetime-local, zoneless). Anchor
+  // them to the venue timezone (America/Chicago, DST-aware) before comparing to
+  // the UTC instants on POS rows — same convention as contract dates.
+  const startParse = normalizeContractDateTime(body.windowStart);
+  const endParse = normalizeContractDateTime(body.windowEnd);
+  if (!startParse.ok) return NextResponse.json({ error: 'invalid windowStart' }, { status: 400 });
+  if (!endParse.ok) return NextResponse.json({ error: 'invalid windowEnd' }, { status: 400 });
+  const windowStart = startParse.value;
+  const windowEnd = endParse.value;
 
   const salesTaxBps = clampBps(body.salesTaxBps);
   const ccFeeBps = clampBps(body.ccFeeBps);
@@ -95,24 +101,21 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: 'Failed to save import batch' }, { status: 500 });
   }
 
-  // Build row records. Per-row tax/fee fall back to config rates on gross when
-  // the CSV had no explicit columns, mirroring summarizePosRows.
-  const taxRate = salesTaxBps / 10000;
-  const ccRate = ccFeeBps / 10000;
+  // Build row records using the same shared helpers the roll-up uses, so the
+  // stored per-row tax/fee/net reconcile exactly to the batch totals
+  // (summarizePosRows) the calc consumes. Per-row net is NOT clamped here, so
+  // refund losses survive at the row level for audit.
   const rowRecords = rows.map((r) => {
-    const inWindow = isInWindow(r.occurredAt, windowStart, windowEnd);
-    const hasTax = r.taxCents != null && r.taxCents !== 0;
-    const hasCc = r.ccFeeCents != null && r.ccFeeCents !== 0;
-    const tax = hasTax ? r.taxCents : Math.round(r.grossCents * taxRate);
-    const cc = hasCc ? r.ccFeeCents : Math.round(r.grossCents * ccRate);
+    const inWindow = isRowInWindow(r.occurredAt, windowStart, windowEnd);
+    const { grossCents, taxCents, ccFeeCents, netCents } = posRowTaxFee(r, { salesTaxBps, ccFeeBps });
     return {
       batch_id: batch.id,
       occurred_at: r.occurredAt,
       in_window: inWindow,
-      gross_cents: r.grossCents,
-      tax_cents: tax,
-      cc_fee_cents: cc,
-      net_cents: r.grossCents - tax - cc,
+      gross_cents: grossCents,
+      tax_cents: taxCents,
+      cc_fee_cents: ccFeeCents,
+      net_cents: netCents,
       description: r.description,
       raw: r.raw,
     };
@@ -161,23 +164,8 @@ export async function DELETE(request, { params }) {
   return NextResponse.json({ ok: true });
 }
 
-function normalizeIso(v) {
-  if (v == null || v === '') return null;
-  const ms = Date.parse(String(v));
-  return Number.isNaN(ms) ? null : new Date(ms).toISOString();
-}
-
 function clampBps(v) {
   const n = Number(v);
   if (!Number.isFinite(n) || n < 0) return 0;
   return Math.min(10000, Math.round(n));
-}
-
-function isInWindow(iso, start, end) {
-  if (!iso) return false;
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return false;
-  if (start && t < Date.parse(start)) return false;
-  if (end && t > Date.parse(end)) return false;
-  return true;
 }

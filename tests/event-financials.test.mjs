@@ -5,6 +5,7 @@ import {
   computeTicketTailorFinancials,
   isRowInWindow,
   summarizePosRows,
+  posRowTaxFee,
   normalizeSplitTerms,
   splitTicketNet,
   buildEventFinancialSummary,
@@ -48,6 +49,80 @@ test('isRowInWindow respects bounds and rejects undated rows', () => {
 
 test('isRowInWindow treats null bounds as open', () => {
   assert.equal(isRowInWindow('2026-06-01T20:00:00Z', null, null), true);
+});
+
+test('isRowInWindow window is half-open: start inclusive, end exclusive', () => {
+  const start = '2026-06-01T18:00:00Z';
+  const end = '2026-06-01T23:00:00Z';
+  // Exactly on the start boundary is in-window.
+  assert.equal(isRowInWindow(start, start, end), true);
+  // Exactly on the end boundary is OUT (exclusive) so back-to-back windows
+  // (endA == startB) never double-count a boundary transaction.
+  assert.equal(isRowInWindow(end, start, end), false);
+  // It IS in-window for the adjacent window that starts at that instant.
+  assert.equal(isRowInWindow(end, end, '2026-06-02T02:00:00Z'), true);
+});
+
+test('isRowInWindow handles an evening cross-midnight UTC window', () => {
+  // A late Austin show: 8pm CDT June 1 -> 1am CDT June 2 is 01:00Z -> 06:00Z
+  // June 2 in UTC. A 11:30pm-local sale (04:30Z June 2) is in-window; a sale
+  // at 06:00Z June 2 (the exclusive end) is out.
+  const start = '2026-06-02T01:00:00Z';
+  const end = '2026-06-02T06:00:00Z';
+  assert.equal(isRowInWindow('2026-06-02T04:30:00Z', start, end), true);
+  assert.equal(isRowInWindow('2026-06-02T00:59:59Z', start, end), false);
+  assert.equal(isRowInWindow('2026-06-02T06:00:00Z', start, end), false);
+});
+
+test('posRowTaxFee: explicit 0 stays 0; missing falls back to config rate', () => {
+  // Explicit 0 tax/fee is honored even when config rates are non-zero.
+  const explicitZero = posRowTaxFee(
+    { gross_cents: 10000, tax_cents: 0, cc_fee_cents: 0 },
+    { salesTaxBps: 825, ccFeeBps: 290 },
+  );
+  assert.equal(explicitZero.taxCents, 0);
+  assert.equal(explicitZero.ccFeeCents, 0);
+  assert.equal(explicitZero.netCents, 10000);
+
+  // Missing tax/fee falls back to config rates on gross.
+  const missing = posRowTaxFee({ gross_cents: 10000 }, { salesTaxBps: 825, ccFeeBps: 290 });
+  assert.equal(missing.taxCents, 825);
+  assert.equal(missing.ccFeeCents, 290);
+  assert.equal(missing.netCents, 10000 - 825 - 290);
+});
+
+test('posRowTaxFee per-row reconciles to summarizePosRows roll-up (explicit 0)', () => {
+  // Regression for the divergence: a row with explicit 0 tax/fee + non-zero
+  // config rates must produce the SAME tax/fee in the per-row record and the
+  // batch roll-up. Previously the roll-up kept 0 while the row applied the rate.
+  const rows = [
+    { occurred_at: '2026-06-01T20:00:00Z', gross_cents: 10000, tax_cents: 0, cc_fee_cents: 0 },
+    { occurred_at: '2026-06-01T21:00:00Z', gross_cents: 5000 }, // missing -> config fallback
+  ];
+  const opts = { windowStart: '2026-06-01T18:00:00Z', windowEnd: '2026-06-01T23:00:00Z', salesTaxBps: 825, ccFeeBps: 290 };
+  const summary = summarizePosRows(rows, opts);
+
+  // Recompute per-row exactly as the route stores them, then sum the in-window rows.
+  const perRow = rows
+    .filter((r) => isRowInWindow(r.occurred_at, opts.windowStart, opts.windowEnd))
+    .map((r) => posRowTaxFee(r, opts));
+  const rolledTax = perRow.reduce((a, r) => a + r.taxCents, 0);
+  const rolledCc = perRow.reduce((a, r) => a + r.ccFeeCents, 0);
+  const rolledGross = perRow.reduce((a, r) => a + r.grossCents, 0);
+
+  assert.equal(summary.taxCents, rolledTax);
+  assert.equal(summary.ccFeeCents, rolledCc);
+  assert.equal(summary.grossCents, rolledGross);
+  // Row 1: 0 tax/fee; Row 2: 5000 * 0.0825 = 412.5 -> 413 tax, 5000*0.029=145 cc.
+  assert.equal(summary.taxCents, 413);
+  assert.equal(summary.ccFeeCents, 145);
+});
+
+test('posRowTaxFee per-row net preserves refund loss (not clamped)', () => {
+  // A refund row (negative gross) keeps its negative net at the row level.
+  const r = posRowTaxFee({ gross_cents: -5000, tax_cents: -412, cc_fee_cents: 0 });
+  assert.equal(r.netCents, -5000 - -412 - 0);
+  assert.ok(r.netCents < 0);
 });
 
 test('summarizePosRows filters to window and sums explicit tax/fees', () => {
