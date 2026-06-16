@@ -78,10 +78,44 @@ export default function DocumentsClient({ initialDocuments, initialError, events
     }
   }
 
+  // If a response is a 401/mfa_required, redirect to the security page (mirrors
+  // adminFetch) and return true so the caller can stop. We can't use adminFetch
+  // directly here because the impact preflight needs to read the JSON body.
+  function maybeMfaRedirect(res, json) {
+    if (res.status === 401 && json?.reason === 'mfa_required' && typeof window !== 'undefined') {
+      window.location.href = '/admin/security?mfa=required';
+      return true;
+    }
+    return false;
+  }
+
   async function handleDelete(id, title) {
     if (!confirm(`Delete "${title}"? This permanently removes all versions and files.`)) return;
     try {
-      await adminFetch(`/api/admin/documents/${id}`, { method: 'DELETE' });
+      // Pre-flight: ask the server whether this delete affects event financials.
+      const probe = await fetch(`/api/admin/documents/${id}?impact=1`, { method: 'GET' });
+      const probeJson = await probe.json().catch(() => null);
+      if (maybeMfaRedirect(probe, probeJson)) return;
+      if (!probe.ok) throw new Error(probeJson?.error || 'Could not check delete impact');
+
+      const impact = probeJson?.impact;
+      let url = `/api/admin/documents/${id}`;
+      if (impact?.financiallyLinked) {
+        const reasons = (impact.reasons || []).map((r) => `• ${r}`).join('\n');
+        const proceed = confirm(
+          `WARNING: "${title}" is a contract linked to event financials.\n\n${reasons}\n\n` +
+          'Deleting it removes these split/flat-fee terms. Affected events will fall back to ' +
+          'the 100% Stardust default unless a terms snapshot has been saved.\n\n' +
+          'Delete anyway?',
+        );
+        if (!proceed) return;
+        url += '?confirmFinancial=1';
+      }
+
+      const res = await fetch(url, { method: 'DELETE' });
+      const json = await res.json().catch(() => null);
+      if (maybeMfaRedirect(res, json)) return;
+      if (!res.ok) throw new Error(json?.error || 'Delete failed');
       setDocuments(documents.filter((d) => d.id !== id));
     } catch (err) {
       setError(err.message);
