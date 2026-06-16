@@ -6,8 +6,8 @@ import EventForm from '../../components/EventForm';
 import TtEventCreator from '../../components/TtEventCreator';
 
 // Lets the admin pick how to create a new event:
-//   - "ticketed": create the website event AND a TicketTailor draft series with
-//     ticket types together (both drafts), then publish both from the editor.
+//   - "ticketed": create AND publish the website event together with a
+//     TicketTailor event series (date/time occurrence + ticket types) in one go.
 //   - "manual": the existing form (website event only, link an existing TT
 //     series or external ticket URL by hand).
 export default function NewEventChooser() {
@@ -49,8 +49,8 @@ export default function NewEventChooser() {
             Ticketed event (TicketTailor)
           </div>
           <div className="text-[13px] leading-[1.6]" style={{ color: '#8a8a8a' }}>
-            Creates the website event and a TicketTailor event series together, as drafts, with one or
-            more ticket types. Publish both at once from the editor.
+            Creates and publishes the website event and a TicketTailor event series together — date,
+            times and ticket types included. Both go live immediately.
           </div>
         </button>
 

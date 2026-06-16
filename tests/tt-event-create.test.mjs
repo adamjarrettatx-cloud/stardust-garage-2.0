@@ -5,10 +5,13 @@ import {
   validateTicketType,
   validateCreatePayload,
   buildEventSeriesBody,
+  buildOccurrenceBody,
   buildTicketTypeBody,
   extractSeriesPublicUrl,
   endTimeIsAfterStart,
   addOneDay,
+  toTtClockTime,
+  shouldPublishLocalEvent,
 } from '../lib/tt-event-create.js';
 
 test('dollarsToCents converts major units to integer cents', () => {
@@ -161,81 +164,109 @@ test('validateCreatePayload validates member discount percent range', () => {
   assert.equal(validateCreatePayload(basePayload({ member_discount_percent: '' })).ok, true);
 });
 
-test('buildEventSeriesBody always creates a draft with name/currency/date', () => {
-  const body = buildEventSeriesBody({
-    title: 'Cosmic Disco',
-    eventDate: '2026-07-04',
-    eventTime: '10:00 PM',
-    eventEndTime: '11:30 PM',
-    description: 'A party',
-  });
+test('buildEventSeriesBody sends ONLY series-level metadata (no date/time/status)', () => {
+  // The event_series endpoint accepts no date/time/status fields — sending them
+  // is the bug that left TicketTailor with no date. Guard against regressions.
+  const body = buildEventSeriesBody({ title: 'Cosmic Disco', description: 'A party' });
   assert.equal(body.get('name'), 'Cosmic Disco');
-  assert.equal(body.get('status'), 'draft');
-  assert.equal(body.get('currency'), 'USD');
+  assert.equal(body.get('currency'), 'usd'); // lowercase enum
   assert.equal(body.get('description'), 'A party');
-  assert.equal(body.get('start_date[date]'), '2026-07-04');
-  assert.equal(body.get('start_date[time]'), '10:00 PM');
+  assert.equal(body.get('status'), null);
+  assert.equal(body.get('start_date'), null);
+  assert.equal(body.get('start_date[date]'), null);
+  assert.equal(body.get('end_date'), null);
+  assert.equal(body.get('end_date[date]'), null);
 });
 
-test('buildEventSeriesBody keeps end_date on the start date for a same-day range', () => {
-  const body = buildEventSeriesBody({
-    title: 'Cosmic Disco',
+test('buildEventSeriesBody omits description when blank', () => {
+  const body = buildEventSeriesBody({ title: 'X' });
+  assert.equal(body.get('name'), 'X');
+  assert.equal(body.get('description'), null);
+});
+
+test('toTtClockTime converts free-text clocks to 24h HH:MM:SS', () => {
+  assert.equal(toTtClockTime('10:00 PM'), '22:00:00');
+  assert.equal(toTtClockTime('7pm'), '19:00:00');
+  assert.equal(toTtClockTime('9:30am'), '09:30:00');
+  assert.equal(toTtClockTime('22:00'), '22:00:00');
+  assert.equal(toTtClockTime('12:00 AM'), '00:00:00');
+  assert.equal(toTtClockTime('12:00 PM'), '12:00:00');
+});
+
+test('toTtClockTime returns null for unparseable free text', () => {
+  assert.equal(toTtClockTime('doors at dusk'), null);
+  assert.equal(toTtClockTime('late'), null);
+  assert.equal(toTtClockTime('midnight'), null);
+  assert.equal(toTtClockTime(''), null);
+  assert.equal(toTtClockTime(null), null);
+});
+
+test('buildOccurrenceBody sends flat snake_case date/time on the start date', () => {
+  const body = buildOccurrenceBody({
     eventDate: '2026-07-04',
     eventTime: '10:00 PM',
     eventEndTime: '11:30 PM',
   });
-  assert.equal(body.get('end_date[date]'), '2026-07-04');
-  assert.equal(body.get('end_date[time]'), '11:30 PM');
+  assert.equal(body.get('start_date'), '2026-07-04');
+  assert.equal(body.get('start_time'), '22:00:00');
+  assert.equal(body.get('end_date'), '2026-07-04');
+  assert.equal(body.get('end_time'), '23:30:00');
+  // Must NOT use the old nested form.
+  assert.equal(body.get('start_date[date]'), null);
+  assert.equal(body.get('start_date[time]'), null);
 });
 
-test('buildEventSeriesBody rolls end_date to the next day for overnight ranges', () => {
-  const midnight = buildEventSeriesBody({
-    title: 'Cosmic Disco',
+test('buildOccurrenceBody rolls end_date to the next day for overnight ranges', () => {
+  const midnight = buildOccurrenceBody({
     eventDate: '2026-07-04',
     eventTime: '10:00 PM',
     eventEndTime: '12:00 AM',
   });
-  assert.equal(midnight.get('start_date[date]'), '2026-07-04');
-  assert.equal(midnight.get('end_date[date]'), '2026-07-05');
-  assert.equal(midnight.get('end_date[time]'), '12:00 AM');
+  assert.equal(midnight.get('start_date'), '2026-07-04');
+  assert.equal(midnight.get('end_date'), '2026-07-05');
+  assert.equal(midnight.get('end_time'), '00:00:00');
 
-  const oneAm = buildEventSeriesBody({
-    title: 'Cosmic Disco',
+  const oneAm = buildOccurrenceBody({
     eventDate: '2026-07-04',
     eventTime: '11:00 PM',
     eventEndTime: '1:00 AM',
   });
-  assert.equal(oneAm.get('end_date[date]'), '2026-07-05');
-  assert.equal(oneAm.get('end_date[time]'), '1:00 AM');
+  assert.equal(oneAm.get('end_date'), '2026-07-05');
+  assert.equal(oneAm.get('end_time'), '01:00:00');
 });
 
-test('buildEventSeriesBody rolls across a month boundary for overnight ranges', () => {
-  const body = buildEventSeriesBody({
-    title: 'NYE',
+test('buildOccurrenceBody rolls across a month boundary for overnight ranges', () => {
+  const body = buildOccurrenceBody({
     eventDate: '2026-07-31',
     eventTime: '10:00 PM',
     eventEndTime: '2:00 AM',
   });
-  assert.equal(body.get('end_date[date]'), '2026-08-01');
+  assert.equal(body.get('end_date'), '2026-08-01');
+  assert.equal(body.get('end_time'), '02:00:00');
 });
 
-test('buildEventSeriesBody does not infer a next-day end for free-text times', () => {
-  // Unparseable end → keep the same-day mirror, no risky date math.
-  const body = buildEventSeriesBody({
-    title: 'X',
+test('buildOccurrenceBody does not infer a next-day end for free-text times', () => {
+  // Unparseable end → keep the same-day mirror, omit the unsendable time.
+  const body = buildOccurrenceBody({
     eventDate: '2026-07-04',
     eventTime: '10:00 PM',
     eventEndTime: 'late',
   });
-  assert.equal(body.get('end_date[date]'), '2026-07-04');
-  assert.equal(body.get('end_date[time]'), 'late');
+  assert.equal(body.get('end_date'), '2026-07-04');
+  assert.equal(body.get('end_time'), null);
+  assert.equal(body.get('start_time'), '22:00:00');
 });
 
-test('buildEventSeriesBody omits times when not provided but still sends end_date', () => {
-  const body = buildEventSeriesBody({ title: 'X', eventDate: '2026-07-04', eventTime: null });
-  assert.equal(body.get('start_date[time]'), null);
-  assert.equal(body.get('end_date[date]'), '2026-07-04');
-  assert.equal(body.get('end_date[time]'), null);
+test('buildOccurrenceBody omits times it cannot parse but always sends dates', () => {
+  const body = buildOccurrenceBody({
+    eventDate: '2026-07-04',
+    eventTime: 'doors at dusk',
+    eventEndTime: 'late',
+  });
+  assert.equal(body.get('start_date'), '2026-07-04');
+  assert.equal(body.get('start_time'), null);
+  assert.equal(body.get('end_date'), '2026-07-04');
+  assert.equal(body.get('end_time'), null);
 });
 
 test('addOneDay advances a date and handles month/year rollover (UTC, no TZ drift)', () => {
@@ -322,5 +353,51 @@ test('extractSeriesPublicUrl prefers url over aliases', () => {
   assert.equal(
     extractSeriesPublicUrl({ url: 'https://a.com', checkout_url: 'https://b.com' }),
     'https://a.com',
+  );
+});
+
+test('shouldPublishLocalEvent publishes only when TT published AND a URL resolved', () => {
+  // The happy path: configured, published, has a buy link → go public.
+  assert.deepEqual(
+    shouldPublishLocalEvent({
+      ttConfigured: true,
+      ttPublished: true,
+      ticketUrl: 'https://buytickets.at/x/y',
+    }),
+    { publish: true, reason: 'ok' },
+  );
+});
+
+test('shouldPublishLocalEvent keeps event a draft when TT published but no URL', () => {
+  // Blocking #2: a published series with no public URL would render as a
+  // "PRIVATE EVENT" with no buy link, so the event must stay a hidden draft.
+  for (const ticketUrl of [null, undefined, '', '   ']) {
+    assert.deepEqual(
+      shouldPublishLocalEvent({ ttConfigured: true, ttPublished: true, ticketUrl }),
+      { publish: false, reason: 'no_ticket_url' },
+      `ticketUrl=${JSON.stringify(ticketUrl)} must not publish`,
+    );
+  }
+});
+
+test('shouldPublishLocalEvent keeps event a draft when TT did not publish', () => {
+  // If the series never published, the website event must not go live (it would
+  // link to an unsellable box office).
+  assert.deepEqual(
+    shouldPublishLocalEvent({
+      ttConfigured: true,
+      ttPublished: false,
+      ticketUrl: 'https://buytickets.at/x/y',
+    }),
+    { publish: false, reason: 'not_published' },
+  );
+});
+
+test('shouldPublishLocalEvent publishes directly when TicketTailor is not configured', () => {
+  // No ticketing in this environment is a valid private/no-ticket event, so the
+  // missing URL does not block publishing.
+  assert.deepEqual(
+    shouldPublishLocalEvent({ ttConfigured: false, ttPublished: false, ticketUrl: null }),
+    { publish: true, reason: 'ok' },
   );
 });
