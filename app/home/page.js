@@ -9,7 +9,9 @@ export const revalidate = 0;
 
 export default async function HomePage() {
   const supabase = await createClient();
-  const { data: allEvents } = await supabase.from('events').select('*').order('event_date', { ascending: true });
+  // Only published events are public. Draft events (created via the admin
+  // "create with TicketTailor" flow before publishing) must not surface here.
+  const { data: allEvents } = await supabase.from('events').select('*').eq('status', 'published').order('event_date', { ascending: true });
 
   const today = new Date();
   const todayInAustin = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(today);

@@ -84,7 +84,17 @@ export default function EventsSection({ upcoming, past }) {
                 <div className="text-[12px] mb-1" style={{ color: '#8a8a8a' }}>
                   {formatDate(event.event_date)}{event.event_time ? ` · ${event.event_time}` : ''}
                 </div>
-                <h3 className="text-[17px] font-bold truncate" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{event.title}</h3>
+                <div className="flex items-center gap-2 min-w-0">
+                  <h3 className="text-[17px] font-bold truncate" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{event.title}</h3>
+                  {event.status === 'draft' && (
+                    <span
+                      className="flex-shrink-0 text-[10px] font-semibold tracking-[0.12em] px-2 py-0.5 rounded-full"
+                      style={{ color: '#0a0a0a', background: '#ffb84d' }}
+                    >
+                      DRAFT
+                    </span>
+                  )}
+                </div>
                 <div className="text-[12px] mt-1" style={{ color: '#555' }}>/events/{event.slug}</div>
               </div>
               <div className="flex gap-2 flex-shrink-0">

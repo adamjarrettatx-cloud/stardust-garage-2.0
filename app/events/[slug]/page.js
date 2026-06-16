@@ -23,7 +23,9 @@ export default async function EventPage({ params }) {
     .eq('slug', slug)
     .single();
 
-  if (error || !event) {
+  // Draft events are not public — treat them as missing so a draft slug can't
+  // be reached directly before it's published.
+  if (error || !event || event.status === 'draft') {
     notFound();
   }
 

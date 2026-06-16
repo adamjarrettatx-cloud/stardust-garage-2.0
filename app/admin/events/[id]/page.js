@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
 import EventForm from '../../components/EventForm';
+import PublishEventButton from '../../components/PublishEventButton';
 
 export const revalidate = 0;
 
@@ -31,5 +32,16 @@ export default async function EditEventPage({ params }) {
     .maybeSingle();
   if (!metricsRes.error) metrics = metricsRes.data || null;
 
-  return <EventForm event={event} metrics={metrics} />;
+  return (
+    <>
+      <div className="max-w-[700px] mx-auto px-6 pt-16 -mb-10">
+        <PublishEventButton
+          eventId={event.id}
+          status={event.status}
+          ttEventSeriesId={event.tt_event_series_id}
+        />
+      </div>
+      <EventForm event={event} metrics={metrics} />
+    </>
+  );
 }
