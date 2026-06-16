@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { adminPageGate } from '@/lib/auth-helpers';
+import { ownerPageGate } from '@/lib/auth-helpers';
 import {
   buildEventPerformance,
   summarizePerformanceTotals,
@@ -28,7 +28,7 @@ function fmtFetched(iso) {
 }
 
 export default async function AnalyticsPage() {
-  const { redirect: gate } = await adminPageGate();
+  const { redirect: gate } = await ownerPageGate();
   if (gate) redirect(gate);
 
   // Access is gated above by adminPageGate(); this is a server component that is
