@@ -94,6 +94,9 @@ export default function TeamEventModal({
     setError('');
     setSaving(true);
 
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) { setError('Not signed in.'); setSaving(false); return; }
+
     const basePayload = {
       title: title.trim(),
       start_time: startTime.trim() || null,
@@ -104,13 +107,16 @@ export default function TeamEventModal({
       recurrence_freq: recurring ? recurrenceFreq : null,
       recurrence_end: recurring ? recurrenceEnd || null : null,
       updated_at: new Date().toISOString(),
+      created_by: currentUser.id,
     };
 
     // ── EDIT ──────────────────────────────────────────────────────────────────
     if (isEdit) {
       // If this event is part of a series and user is editing just one,
       // we only update this row. The date stays as-is.
-      const payload = { ...basePayload, event_date: eventDate };
+      // Exclude created_by from updates — ownership never changes after creation.
+      const { created_by: _cb, ...updateBase } = basePayload;
+      const payload = { ...updateBase, event_date: eventDate };
       const { data, error: saveErr } = await supabase
         .from('team_events')
         .update(payload)
