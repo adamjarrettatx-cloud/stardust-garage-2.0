@@ -378,6 +378,11 @@ export default function TtEventCreator() {
               style={inputStyle}
             />
           </div>
+          <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+            This image is saved on the Stardust website event page. TicketTailor&rsquo;s
+            event image isn&rsquo;t set automatically yet — add it in the TicketTailor
+            dashboard if you want it on the box office page too.
+          </p>
         </div>
 
         {error && (
