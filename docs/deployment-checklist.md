@@ -4,8 +4,10 @@ This runbook prevents a repeat of the **PR #28 incident**: code that filtered
 events by `visibility = 'public'` was merged and deployed to Vercel **before**
 the matching Supabase migration (`20260616_event_visibility_micro_party.sql`)
 was applied to production. Every existing event lacked the `visibility` column,
-the filter matched nothing, and the public `/events` page and the team calendar
-went blank until the migration was applied by hand.
+so the `.eq('visibility', 'public')` query errored at the database (PostgREST
+returns an "undefined column" error, not an empty result), and the public
+`/events` page and the team calendar went blank until the migration was applied
+by hand.
 
 The root cause is structural: **the build and the database are two separate
 systems.** `npm run build` and the test suite can be perfectly green while
@@ -27,9 +29,11 @@ SUPABASE_SERVICE_ROLE_KEY="<prod-service-role-key>" \
 npm run check:schema
 ```
 
-- Exit `0` — all required objects present.
+- Exit `0` — all required objects present (or env absent and the check is not
+  required; see CI integration below).
 - Exit `1` — one or more required objects missing (apply the migration!).
-- Exit `2` — could not run the check (missing env, connection/permission error).
+- Exit `2` — could not run the check (connection/permission error, or env
+  absent while `REQUIRE_SCHEMA_CHECK` is enabled).
 
 **Never hardcode the project ref or keys.** Pass them via environment. The
 production project is `stardust-garage`; its ref and keys live in your
@@ -52,7 +56,7 @@ The required-objects list lives in [`lib/schema-requirements.js`](../lib/schema-
 
 ### In-app health view
 
-Admins can also open **Admin → Settings → Schema Health**
+Admins can also open **Admin → Team → Schema Health**
 (`/admin/schema-health`) for the same check from inside the app. Use it for a
 quick post-deploy confirmation without shell access.
 
@@ -60,16 +64,27 @@ quick post-deploy confirmation without shell access.
 
 The check is **not** run automatically during `npm run build`, so local dev and
 Vercel preview builds without Supabase env vars are never blocked. To enforce it
-in a pipeline that *does* have production credentials, run it as its own step:
+in a pipeline, run it as its own step with `check:schema:ci`:
 
 ```bash
-REQUIRE_SCHEMA_CHECK=1 npm run check:schema
+# In CI, with production credentials in the environment:
+NEXT_PUBLIC_SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... npm run check:schema:ci
 ```
 
-Wire that into a GitHub Actions job or a Vercel "ignored build step" gated on
-the presence of `SUPABASE_SERVICE_ROLE_KEY`. Keep it a discrete step, not part
-of `build`, so a missing-env environment fails loudly rather than silently
-skipping or breaking unrelated builds.
+`check:schema:ci` sets `REQUIRE_SCHEMA_CHECK=1`, which changes ONLY what happens
+when the Supabase env vars are **absent**:
+
+- **`npm run check:schema`** (flag off) — missing env is a **soft skip** (exit
+  `0`). Safe to invoke in a build step that may run without credentials; it
+  never fails a normal build for lack of env.
+- **`npm run check:schema:ci`** (flag on) — missing env is a **hard failure**
+  (exit `2`). Use it where credentials are *supposed* to be present, so a
+  misconfigured pipeline fails loudly instead of silently skipping the gate.
+
+When the env vars **are** present, the flag has no effect — the check runs
+either way and the exit code reflects the schema (`0` ok / `1` missing). Keep
+this a discrete CI step, never part of `build`, so unrelated builds are never
+coupled to schema verification.
 
 ---
 

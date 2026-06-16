@@ -7,6 +7,9 @@ import {
   diffSchema,
   requiredTableNames,
   formatMissing,
+  classifyProbeError,
+  presenceFromProbeError,
+  probeSelect,
 } from '../lib/schema-requirements.js';
 
 // The guard's whole value is that it would have caught the PR #28 incident:
@@ -133,4 +136,56 @@ test('end-to-end: information_schema-shaped rows flow through to a clean report'
   const present = buildPresentSet({ columnRows, tableRows });
   const report = diffSchema(present);
   assert.equal(report.ok, true, 'fully-migrated DB should pass');
+});
+
+// ---- Error classification (the network layer's only real false-negative path)
+// These guard against a misclassified missing-column error surfacing as
+// "cannot verify" instead of "missing". The error shapes mirror what
+// supabase-js / PostgREST return.
+
+test('probeSelect: columns are quoted by name, tables select *', () => {
+  assert.equal(probeSelect({ kind: 'column', table: 'events', column: 'visibility' }), '"visibility"');
+  assert.equal(probeSelect({ kind: 'table', table: 'pos_import_rows' }), '*');
+});
+
+test('classifyProbeError: undefined column by Postgres code 42703', () => {
+  assert.equal(classifyProbeError({ code: '42703', message: 'column events.visibility does not exist' }), 'missing_column');
+});
+
+test('classifyProbeError: undefined column by PostgREST schema-cache code PGRST204', () => {
+  assert.equal(
+    classifyProbeError({ code: 'PGRST204', message: "Could not find the 'visibility' column of 'events' in the schema cache" }),
+    'missing_column'
+  );
+});
+
+test('classifyProbeError: undefined table by Postgres code 42P01', () => {
+  assert.equal(classifyProbeError({ code: '42P01', message: 'relation "public.pos_import_rows" does not exist' }), 'missing_table');
+});
+
+test('classifyProbeError: undefined table by PostgREST code PGRST205', () => {
+  assert.equal(
+    classifyProbeError({ code: 'PGRST205', message: "Could not find the table 'public.pos_import_rows' in the schema cache" }),
+    'missing_table'
+  );
+});
+
+test('classifyProbeError: message-only fallback (no code) still classifies', () => {
+  assert.equal(classifyProbeError({ message: 'relation "events" does not exist' }), 'missing_table');
+  assert.equal(classifyProbeError({ message: 'column "event_type" does not exist' }), 'missing_column');
+});
+
+test('classifyProbeError: unrecognized / transient errors are NOT treated as missing', () => {
+  // A permission/connection error must not be read as "object absent".
+  assert.equal(classifyProbeError({ code: '42501', message: 'permission denied for table events' }), null);
+  assert.equal(classifyProbeError({ message: 'fetch failed' }), null);
+  assert.equal(classifyProbeError(null), null);
+  assert.equal(classifyProbeError(undefined), null);
+});
+
+test('presenceFromProbeError: maps probe outcome to true / false / null', () => {
+  assert.equal(presenceFromProbeError(null), true, 'no error => present');
+  assert.equal(presenceFromProbeError({ code: '42703', message: 'column x does not exist' }), false, 'missing column => absent');
+  assert.equal(presenceFromProbeError({ code: '42P01', message: 'relation x does not exist' }), false, 'missing table => absent');
+  assert.equal(presenceFromProbeError({ code: '42501', message: 'permission denied' }), null, 'unknown error => cannot determine');
 });

@@ -8,7 +8,8 @@
     "start": "next start -H 0.0.0.0 -p 3000",
     "lint": "eslint",
     "test": "TZ=UTC node --test tests/",
-    "check:schema": "node scripts/check-required-schema.mjs"
+    "check:schema": "node scripts/check-required-schema.mjs",
+    "check:schema:ci": "REQUIRE_SCHEMA_CHECK=1 node scripts/check-required-schema.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",

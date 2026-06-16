@@ -15,13 +15,16 @@
 // may not exist), it asks PostgREST for each required object directly:
 //   * column check  -> select "<column>" from "<table>" limit 0
 //   * table check   -> select * from "<table>" limit 0
-// PostgREST returns a structured error when the table (42P01 / PGRST205) or
-// column (42703 / PGRST204) is absent, which we map to "missing". A normal
-// (empty) result means the object exists. RLS does not matter here because we
-// use the service-role key, which bypasses RLS, and we never read row data.
+// Selecting a column by name forces PostgREST to validate it: when the table
+// (42P01 / PGRST205) or column (42703 / PGRST204) is absent it returns a
+// structured ERROR, which we map to "missing" — it does NOT silently return an
+// empty result set. A successful (no-error) head response means the object
+// exists. RLS does not matter here because we use the service-role key, which
+// bypasses RLS, and we never read row data (`head: true`).
 //
 // USAGE:
-//   npm run check:schema                 # check production
+//   npm run check:schema                 # explicit run; missing env => exit 2
+//   npm run check:schema:ci              # CI-friendly; honors REQUIRE_SCHEMA_CHECK
 //   node scripts/check-required-schema.mjs
 //
 // ENV (server-side; never hardcode secrets):
@@ -29,21 +32,33 @@
 //   SUPABASE_SERVICE_ROLE_KEY      preferred (bypasses RLS)
 //   NEXT_PUBLIC_SUPABASE_ANON_KEY  fallback if service role is unavailable
 //
-// EXIT CODES:
-//   0  all required objects present
-//   1  one or more required objects missing
-//   2  could not run the check (missing env / connection error)
+// REQUIRE_SCHEMA_CHECK controls what happens when Supabase env is ABSENT, so a
+// CI/build step can invoke this unconditionally without breaking envless local
+// or preview builds:
+//   * unset / "0" / "false"  => missing env is a SOFT SKIP (exit 0). Safe to
+//                               wire into a build step that may run without
+//                               credentials.
+//   * "1" / "true"           => missing env is a HARD FAILURE (exit 2). Use in
+//                               an environment that is SUPPOSED to have prod
+//                               credentials, so a misconfigured pipeline fails
+//                               loudly instead of silently skipping the gate.
+// When env IS present the flag has no effect — the check always runs and its
+// exit code reflects the schema (0 ok / 1 missing). The flag never makes a
+// normal build fail for lack of credentials unless you opt in by setting it.
 //
-// In CI/build, gate this behind an explicit flag (REQUIRE_SCHEMA_CHECK=1) so
-// local dev and preview builds without Supabase env vars are never blocked.
+// EXIT CODES:
+//   0  all required objects present (or env absent and check not required)
+//   1  one or more required objects missing
+//   2  could not run the check (env required-but-absent, or connection error)
 
 import { createClient } from '@supabase/supabase-js';
 import {
   REQUIRED_SCHEMA,
   diffSchema,
-  buildPresentSet,
   formatMissing,
   requirementKey,
+  presenceFromProbeError,
+  probeSelect,
 } from '../lib/schema-requirements.js';
 
 const SCHEMA = 'public';
@@ -56,24 +71,11 @@ function getEnv() {
   return { url, key, usingServiceRole: Boolean(serviceKey) };
 }
 
-// Map a PostgREST/Postgres error to one of: 'missing_table', 'missing_column',
-// or null (not a "missing object" error — treat as a hard failure to probe).
-function classifyError(error) {
-  if (!error) return null;
-  const code = error.code || '';
-  const msg = (error.message || '').toLowerCase();
-
-  // Undefined table.
-  if (code === '42P01' || code === 'PGRST205') return 'missing_table';
-  if (msg.includes('does not exist') && msg.includes('relation')) return 'missing_table';
-  if (msg.includes('could not find the table')) return 'missing_table';
-
-  // Undefined column.
-  if (code === '42703' || code === 'PGRST204') return 'missing_column';
-  if (msg.includes('column') && msg.includes('does not exist')) return 'missing_column';
-  if (msg.includes('could not find the') && msg.includes('column')) return 'missing_column';
-
-  return null;
+// True when the operator has explicitly required the check to run (so missing
+// env is a failure rather than a skip). Anything other than 1/true is "off".
+function schemaCheckRequired() {
+  const v = (process.env.REQUIRE_SCHEMA_CHECK || '').trim().toLowerCase();
+  return v === '1' || v === 'true';
 }
 
 // Probe a single requirement against the live DB. Returns:
@@ -81,30 +83,34 @@ function classifyError(error) {
 //   { present: false }                       object is absent
 //   { present: null, error }                 couldn't determine (probe failed)
 async function probe(supabase, req) {
-  const selectExpr = req.kind === 'column' ? `"${req.column}"` : '*';
   const { error } = await supabase
     .from(req.table)
-    .select(selectExpr, { head: true, count: 'exact' })
+    .select(probeSelect(req), { head: true })
     .limit(0);
 
-  if (!error) return { present: true };
-
-  const cls = classifyError(error);
-  if (cls === 'missing_table' || cls === 'missing_column') {
-    return { present: false };
-  }
-  return { present: null, error };
+  const present = presenceFromProbeError(error);
+  return present === null ? { present: null, error } : { present };
 }
 
 async function main() {
   const { url, key, usingServiceRole } = getEnv();
 
   if (!url || !key) {
+    if (!schemaCheckRequired()) {
+      console.warn(
+        '[check:schema] Supabase env not set — skipping schema check ' +
+          '(REQUIRE_SCHEMA_CHECK is not enabled). Safe to ignore in local/preview builds.'
+      );
+      process.exit(0);
+    }
     console.error(
       '[check:schema] Missing Supabase env. Need NEXT_PUBLIC_SUPABASE_URL and ' +
         'SUPABASE_SERVICE_ROLE_KEY (preferred) or NEXT_PUBLIC_SUPABASE_ANON_KEY.'
     );
-    console.error('[check:schema] Set them to point at the environment you want to verify (e.g. production).');
+    console.error(
+      '[check:schema] REQUIRE_SCHEMA_CHECK is enabled, so this is a hard failure. ' +
+        'Set the env vars to point at the environment you want to verify (e.g. production).'
+    );
     process.exit(2);
   }
 

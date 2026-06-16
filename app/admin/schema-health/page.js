@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth-helpers';
+import { adminPageGate } from '@/lib/auth-helpers';
 import { getSchemaHealth } from '@/lib/schema-health';
 
 export const revalidate = 0;
@@ -11,10 +11,12 @@ export const dynamic = 'force-dynamic';
 // exists for the same reason: PR #28 deployed visibility-dependent code before
 // the migration was applied, blanking public events. An admin can glance here
 // after a deploy to confirm the DB caught up.
+//
+// Gated with adminPageGate() (same as /admin) so it honors admin-MFA
+// enforcement when ENFORCE_ADMIN_MFA is on, rather than a bare admin check.
 export default async function SchemaHealthPage() {
-  const { user, isAdmin } = await getCurrentUser();
-  if (!user) redirect('/admin/login');
-  if (!isAdmin) redirect('/member');
+  const { redirect: gateRedirect } = await adminPageGate();
+  if (gateRedirect) redirect(gateRedirect);
 
   const health = await getSchemaHealth();
 
