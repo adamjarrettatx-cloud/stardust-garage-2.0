@@ -11,6 +11,7 @@ import {
   endTimeIsAfterStart,
   addOneDay,
   toTtClockTime,
+  shouldPublishLocalEvent,
 } from '../lib/tt-event-create.js';
 
 test('dollarsToCents converts major units to integer cents', () => {
@@ -352,5 +353,51 @@ test('extractSeriesPublicUrl prefers url over aliases', () => {
   assert.equal(
     extractSeriesPublicUrl({ url: 'https://a.com', checkout_url: 'https://b.com' }),
     'https://a.com',
+  );
+});
+
+test('shouldPublishLocalEvent publishes only when TT published AND a URL resolved', () => {
+  // The happy path: configured, published, has a buy link → go public.
+  assert.deepEqual(
+    shouldPublishLocalEvent({
+      ttConfigured: true,
+      ttPublished: true,
+      ticketUrl: 'https://buytickets.at/x/y',
+    }),
+    { publish: true, reason: 'ok' },
+  );
+});
+
+test('shouldPublishLocalEvent keeps event a draft when TT published but no URL', () => {
+  // Blocking #2: a published series with no public URL would render as a
+  // "PRIVATE EVENT" with no buy link, so the event must stay a hidden draft.
+  for (const ticketUrl of [null, undefined, '', '   ']) {
+    assert.deepEqual(
+      shouldPublishLocalEvent({ ttConfigured: true, ttPublished: true, ticketUrl }),
+      { publish: false, reason: 'no_ticket_url' },
+      `ticketUrl=${JSON.stringify(ticketUrl)} must not publish`,
+    );
+  }
+});
+
+test('shouldPublishLocalEvent keeps event a draft when TT did not publish', () => {
+  // If the series never published, the website event must not go live (it would
+  // link to an unsellable box office).
+  assert.deepEqual(
+    shouldPublishLocalEvent({
+      ttConfigured: true,
+      ttPublished: false,
+      ticketUrl: 'https://buytickets.at/x/y',
+    }),
+    { publish: false, reason: 'not_published' },
+  );
+});
+
+test('shouldPublishLocalEvent publishes directly when TicketTailor is not configured', () => {
+  // No ticketing in this environment is a valid private/no-ticket event, so the
+  // missing URL does not block publishing.
+  assert.deepEqual(
+    shouldPublishLocalEvent({ ttConfigured: false, ttPublished: false, ticketUrl: null }),
+    { publish: true, reason: 'ok' },
   );
 });

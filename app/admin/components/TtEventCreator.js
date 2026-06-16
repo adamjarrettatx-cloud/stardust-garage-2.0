@@ -179,7 +179,9 @@ export default function TtEventCreator() {
       </h1>
       <p className="text-[13px] mb-10" style={{ color: '#8a8a8a' }}>
         Creates and publishes a website event and a TicketTailor event series together — date, times
-        and ticket types included. Both go live immediately.
+        and ticket types included. Both go live as soon as TicketTailor confirms the box office and
+        returns a ticket link; if anything fails, the website event is kept as a hidden draft so the
+        public page never shows an event you can&rsquo;t buy tickets for.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
