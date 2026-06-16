@@ -85,11 +85,21 @@ export default async function CollaborationDetail({ params }) {
             <div
               className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full uppercase"
               style={{
-                background: c.status === 'approved' ? 'rgba(34,197,94,0.15)' : c.status === 'rejected' ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.06)',
-                color: c.status === 'approved' ? '#4ade80' : c.status === 'rejected' ? '#f87171' : '#a0a0a0',
+                background:
+                  c.status === 'approved' ? 'rgba(34,197,94,0.15)' :
+                  c.status === 'rejected' ? 'rgba(239,68,68,0.15)' :
+                  c.status === 'reviewed' ? 'rgba(168,85,247,0.12)' :
+                  c.status === 'pending' ? 'rgba(255,255,255,0.06)' :
+                  'rgba(255,184,77,0.15)',
+                color:
+                  c.status === 'approved' ? '#4ade80' :
+                  c.status === 'rejected' ? '#f87171' :
+                  c.status === 'reviewed' ? '#c084fc' :
+                  c.status === 'pending' ? '#a0a0a0' :
+                  '#ffb84d',
               }}
             >
-              {c.status || 'pending'}
+              {c.status || 'new'}
             </div>
           </div>
           <h1
@@ -104,7 +114,7 @@ export default async function CollaborationDetail({ params }) {
         </div>
       </div>
 
-      <CollaborationActions collaborationId={c.id} currentStatus={c.status || 'pending'} />
+      <CollaborationActions collaborationId={c.id} currentStatus={c.status || 'new'} />
 
       <section
         className="rounded-[14px] p-8 border mt-8 mb-6"

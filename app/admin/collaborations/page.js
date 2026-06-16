@@ -32,7 +32,7 @@ export default async function CollaborationsPage() {
     .order('created_at', { ascending: false });
 
   const total = collabs?.length || 0;
-  const pending = collabs?.filter((c) => c.status === 'pending').length || 0;
+  const newCount = collabs?.filter((c) => c.status === 'new').length || 0;
   const approved = collabs?.filter((c) => c.status === 'approved').length || 0;
   const djCount = collabs?.filter((c) => c.collaborator_type === 'djs').length || 0;
   const artistCount = collabs?.filter((c) => c.collaborator_type === 'artists').length || 0;
@@ -71,8 +71,8 @@ export default async function CollaborationsPage() {
           <div className="text-[32px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{artistCount}</div>
         </div>
         <div className="rounded-[14px] p-6 border" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}>
-          <div className="text-[11px] font-semibold tracking-[0.14em] mb-1.5" style={{ color: '#8a8a8a' }}>PENDING</div>
-          <div className="text-[32px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{pending}</div>
+          <div className="text-[11px] font-semibold tracking-[0.14em] mb-1.5" style={{ color: '#8a8a8a' }}>NEW</div>
+          <div className="text-[32px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{newCount}</div>
         </div>
         <div className="rounded-[14px] p-6 border" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}>
           <div className="text-[11px] font-semibold tracking-[0.14em] mb-1.5" style={{ color: '#8a8a8a' }}>APPROVED</div>
@@ -94,7 +94,10 @@ export default async function CollaborationsPage() {
               key={c.id}
               href={`/admin/collaborations/${c.id}`}
               className="block rounded-[14px] p-6 border transition-colors hover:border-white/20"
-              style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
+              style={{
+                background: c.status === 'new' ? '#1a1814' : '#141414',
+                borderColor: c.status === 'new' ? 'rgba(255,184,77,0.2)' : 'rgba(255,255,255,0.05)',
+              }}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
@@ -124,14 +127,32 @@ export default async function CollaborationsPage() {
                     >
                       {ROLE_LABELS[c.collaborator_type] || c.collaborator_type?.toUpperCase()}
                     </div>
+                    {c.status === 'new' && (
+                      <span
+                        className="text-[10px] font-bold tracking-[0.14em] px-2.5 py-1 rounded-full"
+                        style={{ background: '#ffb84d', color: '#0a0a0a' }}
+                      >
+                        NEW
+                      </span>
+                    )}
                     <div
                       className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full uppercase"
                       style={{
-                        background: c.status === 'approved' ? 'rgba(34,197,94,0.15)' : c.status === 'rejected' ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.06)',
-                        color: c.status === 'approved' ? '#4ade80' : c.status === 'rejected' ? '#f87171' : '#a0a0a0',
+                        background:
+                          c.status === 'approved' ? 'rgba(34,197,94,0.15)' :
+                          c.status === 'rejected' ? 'rgba(239,68,68,0.15)' :
+                          c.status === 'reviewed' ? 'rgba(168,85,247,0.12)' :
+                          c.status === 'pending' ? 'rgba(255,255,255,0.06)' :
+                          'rgba(255,184,77,0.15)',
+                        color:
+                          c.status === 'approved' ? '#4ade80' :
+                          c.status === 'rejected' ? '#f87171' :
+                          c.status === 'reviewed' ? '#c084fc' :
+                          c.status === 'pending' ? '#a0a0a0' :
+                          '#ffb84d',
                       }}
                     >
-                      {c.status || 'pending'}
+                      {c.status || 'new'}
                     </div>
                   </div>
                   <div className="text-[11px]" style={{ color: '#666' }}>

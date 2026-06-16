@@ -33,7 +33,7 @@ export default async function VenueInquiriesPage() {
     .order('created_at', { ascending: false });
 
   const total = inquiries?.length || 0;
-  const pending = inquiries?.filter((i) => i.status === 'pending').length || 0;
+  const newCount = inquiries?.filter((i) => i.status === 'new').length || 0;
   const approved = inquiries?.filter((i) => i.status === 'approved').length || 0;
 
   return (
@@ -62,8 +62,8 @@ export default async function VenueInquiriesPage() {
           <div className="text-[32px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{total}</div>
         </div>
         <div className="rounded-[14px] p-6 border" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}>
-          <div className="text-[11px] font-semibold tracking-[0.14em] mb-1.5" style={{ color: '#8a8a8a' }}>PENDING</div>
-          <div className="text-[32px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{pending}</div>
+          <div className="text-[11px] font-semibold tracking-[0.14em] mb-1.5" style={{ color: '#8a8a8a' }}>NEW</div>
+          <div className="text-[32px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{newCount}</div>
         </div>
         <div className="rounded-[14px] p-6 border" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}>
           <div className="text-[11px] font-semibold tracking-[0.14em] mb-1.5" style={{ color: '#8a8a8a' }}>APPROVED</div>
@@ -85,7 +85,10 @@ export default async function VenueInquiriesPage() {
               key={i.id}
               href={`/admin/venue-inquiries/${i.id}`}
               className="block rounded-[14px] p-6 border transition-colors hover:border-white/20"
-              style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
+              style={{
+                background: i.status === 'new' ? '#1a1814' : '#141414',
+                borderColor: i.status === 'new' ? 'rgba(255,184,77,0.2)' : 'rgba(255,255,255,0.05)',
+              }}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
@@ -117,14 +120,32 @@ export default async function VenueInquiriesPage() {
                       {TYPE_LABELS[i.inquiry_type]}
                     </div>
                   )}
+                  {i.status === 'new' && (
+                    <span
+                      className="text-[10px] font-bold tracking-[0.14em] px-2.5 py-1 rounded-full ml-2"
+                      style={{ background: '#ffb84d', color: '#0a0a0a' }}
+                    >
+                      NEW
+                    </span>
+                  )}
                   <div
                     className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full ml-2 uppercase"
                     style={{
-                      background: i.status === 'approved' ? 'rgba(34,197,94,0.15)' : i.status === 'rejected' ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.06)',
-                      color: i.status === 'approved' ? '#4ade80' : i.status === 'rejected' ? '#f87171' : '#a0a0a0',
+                      background:
+                        i.status === 'approved' ? 'rgba(34,197,94,0.15)' :
+                        i.status === 'rejected' ? 'rgba(239,68,68,0.15)' :
+                        i.status === 'reviewed' ? 'rgba(168,85,247,0.12)' :
+                        i.status === 'pending' ? 'rgba(255,255,255,0.06)' :
+                        'rgba(255,184,77,0.15)',
+                      color:
+                        i.status === 'approved' ? '#4ade80' :
+                        i.status === 'rejected' ? '#f87171' :
+                        i.status === 'reviewed' ? '#c084fc' :
+                        i.status === 'pending' ? '#a0a0a0' :
+                        '#ffb84d',
                     }}
                   >
-                    {i.status || 'pending'}
+                    {i.status || 'new'}
                   </div>
                   <div className="text-[11px] mt-2" style={{ color: '#666' }}>
                     {formatDate(i.created_at)}
