@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server';
 import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createEventSeries, createTicketType } from '@/lib/tickettailor';
+import {
+  createEventSeries,
+  createEventOccurrence,
+  createTicketType,
+  setEventSeriesStatus,
+  getEventSeries,
+} from '@/lib/tickettailor';
 import {
   validateCreatePayload,
   buildEventSeriesBody,
+  buildOccurrenceBody,
   buildTicketTypeBody,
   extractSeriesPublicUrl,
 } from '@/lib/tt-event-create';
@@ -18,16 +25,21 @@ export const runtime = 'nodejs';
 //   ticket_types: [{ name, price, quantity?, description? }]
 // }
 //
-// Creates BOTH a local website event (status='draft') and a TicketTailor
-// event series (status=draft) with the requested ticket types, then links the
-// local event to the returned series id. Admin only, gated by requireAdminMfa()
-// — admin status is derived server-side from team_members. The
-// TICKETTAILOR_API_KEY is never exposed to the client; all TicketTailor calls
-// happen here, server-side.
+// Creates and PUBLISHES an event on both sides in one flow:
+//   1) create the TicketTailor event series (series-level metadata only),
+//   2) create the occurrence that carries the event date/start/end time,
+//   3) create each ticket type on the series,
+//   4) publish the TicketTailor series,
+//   5) insert the local website event as status='published', linked to the
+//      series id with the resolved public ticket URL.
+// Admin only, gated by requireAdminMfa() — admin status is derived server-side
+// from team_members. The TICKETTAILOR_API_KEY is never exposed to the client;
+// all TicketTailor calls happen here, server-side.
 //
-// Ordering is deliberate: create the TicketTailor series FIRST so we never
-// store a local event pointing at a series that failed to create. If the API
-// key is not configured we still create the local draft (so the admin isn't
+// Ordering is deliberate: every TicketTailor step (including PUBLISH) runs and
+// must succeed BEFORE the local event is inserted as published, so the website
+// never advertises an event whose tickets aren't actually on sale. If the API
+// key is not configured we still publish the local event (so the admin isn't
 // blocked) and report that the TicketTailor side was skipped.
 export async function POST(request) {
   try {
@@ -55,20 +67,15 @@ export async function POST(request) {
     let ttEventSeriesId = null;
     let ttTicketUrl = null;
     let ttNote = null;
+    let ttPublished = false;
     let ticketTypesCreated = 0;
 
     if (ttConfigured) {
-      // 1) Create the draft event series.
+      // 1) Create the event series (series-level metadata only — no date/time).
       let series;
       try {
         series = await createEventSeries(
-          buildEventSeriesBody({
-            title: v.title,
-            eventDate: v.eventDate,
-            eventTime: v.eventTime,
-            eventEndTime: v.eventEndTime,
-            description: v.description,
-          }),
+          buildEventSeriesBody({ title: v.title, description: v.description }),
         );
       } catch (err) {
         return NextResponse.json(
@@ -85,22 +92,31 @@ export async function POST(request) {
         );
       }
 
-      // Capture the public box-office URL from the TicketTailor response so the
-      // public event page can show a working "Buy tickets" link once published.
-      // We only ever use a URL TicketTailor actually returned — never a guessed
-      // pattern. If it's absent, ticket_url stays null and we log it; the
-      // publish step will try again from the (re-fetched) series object.
-      ttTicketUrl = extractSeriesPublicUrl(series);
-      if (!ttTicketUrl) {
-        console.warn(
-          `create-with-tt: TicketTailor series ${ttEventSeriesId} returned no public URL; ticket_url left null (will retry on publish).`,
+      // 2) Create the occurrence that carries the event date and start/end time.
+      // This is the step that actually puts the website's date/time onto
+      // TicketTailor; the series itself holds no date.
+      try {
+        await createEventOccurrence(
+          ttEventSeriesId,
+          buildOccurrenceBody({
+            eventDate: v.eventDate,
+            eventTime: v.eventTime,
+            eventEndTime: v.eventEndTime,
+          }),
+        );
+      } catch (err) {
+        return NextResponse.json(
+          {
+            error: `Created the TicketTailor series (${ttEventSeriesId}) but failed to add its date/time: ${
+              err?.message || 'unknown'
+            }. Delete the empty draft series in TicketTailor and retry.`,
+            tt_event_series_id: ttEventSeriesId,
+          },
+          { status: 502 },
         );
       }
 
-      // 2) Create each ticket type on the new series. A failure here leaves a
-      // draft series behind in TicketTailor, but since both sides are drafts
-      // that is recoverable by the admin; we surface a clear error and stop
-      // rather than create a half-configured local event.
+      // 3) Create each ticket type on the new series.
       for (const tt of v.ticketTypes) {
         try {
           await createTicketType(ttEventSeriesId, buildTicketTypeBody(tt));
@@ -117,12 +133,53 @@ export async function POST(request) {
           );
         }
       }
+
+      // 4) Publish the series. Must succeed before we publish the local event,
+      // so the website never links to an unpublished (unsellable) box office.
+      let publishedSeries;
+      try {
+        publishedSeries = await setEventSeriesStatus(ttEventSeriesId, 'published');
+        ttPublished = true;
+      } catch (err) {
+        return NextResponse.json(
+          {
+            error: `Created the TicketTailor series (${ttEventSeriesId}) with its date and ticket types, but publishing it failed: ${
+              err?.message || 'unknown'
+            }. The draft exists in TicketTailor; publish it there or delete and retry. The website event was NOT created.`,
+            tt_event_series_id: ttEventSeriesId,
+          },
+          { status: 502 },
+        );
+      }
+
+      // Resolve the public box-office URL so the published event page shows a
+      // working "Buy tickets" link. Prefer the publish response; if it carried
+      // no URL, re-read the series (read-only). We only ever use a URL
+      // TicketTailor actually returned — never a guessed pattern. A missing URL
+      // is non-fatal: publish still succeeded, we just record it honestly.
+      ttTicketUrl = extractSeriesPublicUrl(publishedSeries);
+      if (!ttTicketUrl) {
+        try {
+          ttTicketUrl = extractSeriesPublicUrl(await getEventSeries(ttEventSeriesId));
+        } catch (err) {
+          console.warn(
+            `create-with-tt: could not re-read series ${ttEventSeriesId} for its URL: ${err?.message || err}`,
+          );
+        }
+      }
+      if (!ttTicketUrl) {
+        ttNote =
+          'Published on TicketTailor, but it did not return a public ticket URL — set the ticket link manually on the event if needed.';
+        console.warn(
+          `create-with-tt: TicketTailor series ${ttEventSeriesId} returned no public URL; ticket_url left null.`,
+        );
+      }
     } else {
       ttNote =
-        'TICKETTAILOR_API_KEY is not configured in this environment, so no TicketTailor event series was created. The website event was saved as a draft; link a series later from the event editor.';
+        'TICKETTAILOR_API_KEY is not configured in this environment, so no TicketTailor event series was created. The website event was still published; link and publish a series later from the event editor.';
     }
 
-    // 3) Insert the local website event as a DRAFT, linked to the TT series.
+    // 5) Insert the local website event as PUBLISHED, linked to the TT series.
     const insertRow = {
       title: v.title,
       slug: v.slug,
@@ -135,7 +192,7 @@ export async function POST(request) {
       member_discount_percent: v.memberDiscountPercent,
       tt_event_series_id: ttEventSeriesId,
       ticket_url: ttTicketUrl,
-      status: 'draft',
+      status: 'published',
     };
 
     const { data: saved, error: insertError } = await supabase
@@ -148,7 +205,7 @@ export async function POST(request) {
       return NextResponse.json(
         {
           error: 'Failed to save the website event: ' + insertError.message,
-          // Report the orphaned draft series so the admin can recover it.
+          // Report the (already published) series so the admin can recover it.
           tt_event_series_id: ttEventSeriesId,
         },
         { status: 500 },
@@ -163,9 +220,10 @@ export async function POST(request) {
       ticket_url: ttTicketUrl,
       ticketTypesCreated,
       ttConfigured,
+      ttPublished,
       ttNote,
-      // Both sides are drafts; the publish action takes them live together.
-      status: 'draft',
+      // Both sides are live.
+      status: 'published',
     });
   } catch (err) {
     console.error('events/create-with-tt route error:', err);

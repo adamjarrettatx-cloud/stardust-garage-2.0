@@ -35,10 +35,10 @@ function emptyTicketType() {
   return { name: '', price: '', quantity: '', description: '' };
 }
 
-// New-event form that creates the website event AND a TicketTailor draft event
-// series together (both as drafts), with one or more ticket types. On success
-// it sends the admin to the event editor, where the "Publish" action takes both
-// sides live at once. All TicketTailor work happens server-side in
+// New-event form that creates AND publishes the website event together with a
+// TicketTailor event series (date/time occurrence + ticket types), with one or
+// more ticket types. On success both sides are already live and it sends the
+// admin to the event editor. All TicketTailor work happens server-side in
 // /api/admin/events/create-with-tt — the API key is never seen by the browser.
 export default function TtEventCreator() {
   const router = useRouter();
@@ -137,8 +137,8 @@ export default function TtEventCreator() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      // Both sides saved as drafts. Send the admin to the editor to review and
-      // publish. If TicketTailor was skipped (no key), surface that briefly.
+      // Both sides are now live. Send the admin to the editor. If TicketTailor
+      // was skipped (no key), surface that briefly first.
       if (res.ttNote) {
         setNote(res.ttNote);
         setTimeout(() => {
@@ -178,8 +178,8 @@ export default function TtEventCreator() {
         New Ticketed Event
       </h1>
       <p className="text-[13px] mb-10" style={{ color: '#8a8a8a' }}>
-        Creates a website event and a TicketTailor event series together, both as drafts. Review on the
-        next screen, then publish both at once.
+        Creates and publishes a website event and a TicketTailor event series together — date, times
+        and ticket types included. Both go live immediately.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -403,7 +403,7 @@ export default function TtEventCreator() {
             className="flex-1 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
             style={{ background: '#ffffff', color: '#0a0a0a' }}
           >
-            {saving ? 'CREATING DRAFTS…' : 'CREATE DRAFTS'}
+            {saving ? 'PUBLISHING…' : 'CREATE & PUBLISH'}
           </button>
           <Link
             href="/admin"
