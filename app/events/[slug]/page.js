@@ -99,7 +99,7 @@ export default async function EventPage({ params }) {
             <div className="py-5 border-t" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
               <div className="text-[13px] font-bold mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Time</div>
               <div className="text-sm leading-[1.6]" style={{ color: '#8a8a8a' }}>
-                {event.event_time}
+                {event.event_end_time ? `${event.event_time} – ${event.event_end_time}` : event.event_time}
               </div>
             </div>
           )}

@@ -99,13 +99,28 @@ test('validateCreatePayload requires both start and end time', () => {
   assert.match(noEnd.error, /End time is required/);
 });
 
-test('validateCreatePayload rejects an end time at or before the start time', () => {
-  const before = validateCreatePayload(basePayload({ event_time: '10:00 PM', event_end_time: '9:00 PM' }));
-  assert.equal(before.ok, false);
-  assert.match(before.error, /End time must be after the start time/);
-
+test('validateCreatePayload rejects only an end time equal to the start time', () => {
   const equal = validateCreatePayload(basePayload({ event_time: '8:00 PM', event_end_time: '8:00 PM' }));
   assert.equal(equal.ok, false);
+  assert.match(equal.error, /End time cannot be the same as the start time/);
+});
+
+test('validateCreatePayload accepts past-midnight (overnight) end times', () => {
+  // Stardust is a late-night venue; evening start + after-midnight end is the
+  // common case and must NOT be rejected.
+  assert.equal(
+    validateCreatePayload(basePayload({ event_time: '10:00 PM', event_end_time: '12:00 AM' })).ok,
+    true,
+  );
+  assert.equal(
+    validateCreatePayload(basePayload({ event_time: '11:00 PM', event_end_time: '1:00 AM' })).ok,
+    true,
+  );
+  // An "earlier-looking" end clock is also accepted as overnight.
+  assert.equal(
+    validateCreatePayload(basePayload({ event_time: '10:00 PM', event_end_time: '9:00 PM' })).ok,
+    true,
+  );
 });
 
 test('validateCreatePayload allows free-text times it cannot compare', () => {
@@ -179,12 +194,24 @@ test('buildEventSeriesBody omits times when not provided but still sends end_dat
   assert.equal(body.get('end_date[time]'), null);
 });
 
-test('endTimeIsAfterStart compares simple clock strings', () => {
+test('endTimeIsAfterStart accepts same-day ends after the start', () => {
   assert.equal(endTimeIsAfterStart('10:00 PM', '11:30 PM'), true);
-  assert.equal(endTimeIsAfterStart('9:00 PM', '8:00 PM'), false);
-  assert.equal(endTimeIsAfterStart('8:00 PM', '8:00 PM'), false);
   assert.equal(endTimeIsAfterStart('22:00', '23:15'), true);
   assert.equal(endTimeIsAfterStart('11 AM', '2 PM'), true);
+});
+
+test('endTimeIsAfterStart accepts past-midnight (overnight) ends', () => {
+  // The venue's common case: evening start, after-midnight end. A parsed end
+  // at or before the start is treated as next-day, not rejected.
+  assert.equal(endTimeIsAfterStart('10:00 PM', '12:00 AM'), true);
+  assert.equal(endTimeIsAfterStart('11:00 PM', '1:00 AM'), true);
+  assert.equal(endTimeIsAfterStart('9:00 PM', '8:00 PM'), true);
+  assert.equal(endTimeIsAfterStart('22:00', '02:00'), true);
+});
+
+test('endTimeIsAfterStart rejects only an end equal to the start', () => {
+  assert.equal(endTimeIsAfterStart('8:00 PM', '8:00 PM'), false);
+  assert.equal(endTimeIsAfterStart('20:00', '8:00 PM'), false);
 });
 
 test('endTimeIsAfterStart fails open for unparseable free text', () => {
