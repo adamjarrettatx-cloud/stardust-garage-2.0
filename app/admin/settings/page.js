@@ -1,13 +1,13 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { adminPageGate } from '@/lib/auth-helpers';
+import { ownerPageGate } from '@/lib/auth-helpers';
 import SettingsForm from './SettingsForm';
 
 export const revalidate = 0;
 
 export default async function SettingsPage() {
-  const { redirect: gate } = await adminPageGate();
+  const { redirect: gate } = await ownerPageGate();
   if (gate) redirect(gate);
 
   const supabase = await createClient();

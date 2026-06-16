@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { adminPageGate } from '@/lib/auth-helpers';
+import { ownerPageGate } from '@/lib/auth-helpers';
 import { DOCUMENT_CATEGORIES } from '@/lib/document-helpers';
 import DocumentsClient from './DocumentsClient';
 
@@ -12,7 +12,7 @@ export default async function DocumentsPage({ searchParams }) {
   // Defense-in-depth: middleware already gated /admin/*, but verify here too.
   // adminPageGate also routes to /admin/security when MFA is enforced but the
   // session hasn't stepped up — avoids a dead end for un-enrolled admins.
-  const { redirect: gate } = await adminPageGate();
+  const { redirect: gate } = await ownerPageGate();
   if (gate) redirect(gate);
 
   const sp = await searchParams;
