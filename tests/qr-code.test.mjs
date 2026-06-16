@@ -12,15 +12,14 @@ import {
 // data region, de-interleaves the blocks, and parses the byte-mode segment. If
 // this decodes back to the original text, the encoder's masking, format BCH,
 // Reed-Solomon layout, and module placement are all internally consistent.
+// Versions 1..6 only — the encoder caps at v6 (v7+ would need a version-info
+// block neither the encoder nor this decoder implements).
 const VERSIONS_M = {
   1: { g: [[1, 16]] }, 2: { g: [[1, 28]] }, 3: { g: [[1, 44]] },
   4: { g: [[2, 32]] }, 5: { g: [[2, 43]] }, 6: { g: [[4, 27]] },
-  7: { g: [[4, 31]] }, 8: { g: [[2, 38], [2, 39]] },
-  9: { g: [[3, 36], [2, 37]] }, 10: { g: [[4, 43], [1, 44]] },
 };
 const ALIGN = {
-  1: [], 2: [6, 18], 3: [6, 22], 4: [6, 26], 5: [6, 30],
-  6: [6, 34], 7: [6, 22, 38], 8: [6, 24, 42], 9: [6, 26, 46], 10: [6, 28, 50],
+  1: [], 2: [6, 18], 3: [6, 22], 4: [6, 26], 5: [6, 30], 6: [6, 34],
 };
 
 function reservedMask(version) {
@@ -163,6 +162,42 @@ test('encodeQrMatrix rejects empty/invalid input', () => {
 
 test('encodeQrMatrix throws when payload exceeds the supported range', () => {
   assert.throws(() => encodeQrMatrix('x'.repeat(2000)), /too long/);
+});
+
+test('encoder caps at version 6 — v7-sized payloads fall back, not silently broken', () => {
+  // v6 (level M, byte mode) holds 106 data bytes. We must NOT emit a version >=7
+  // QR, because this encoder omits the spec-required version-information block,
+  // which would produce a silently unscannable code. So anything that would need
+  // v7+ must throw (and qrMatrixToSvg must return null for the UI fallback),
+  // never return a larger matrix.
+  const fits = 'x'.repeat(106);    // largest v6 payload
+  const overflows = 'x'.repeat(107); // first byte that would need v7
+
+  // The largest fitting payload still encodes to v6 (size 41) and round-trips.
+  const m = encodeQrMatrix(fits);
+  assert.equal(m.length, 41);
+  assert.equal(decodeQr(m), fits);
+
+  // One byte more: no v7 matrix — throw + SVG fallback to null.
+  assert.throws(() => encodeQrMatrix(overflows), /too long/);
+  assert.equal(qrMatrixToSvg(overflows), null);
+
+  // A realistic long origin (e.g. a Vercel preview URL) that previously selected
+  // the broken v8 must now fall back cleanly rather than render an unscannable QR.
+  const longPreview =
+    'https://stardust-garage-2-0-git-feat-capacity-qr-adamjarrettatx.vercel.app' +
+    '/capacity/exit-door?token=abcDEF123_-xyzABCdefGHIjklMNOpqrSTUvwx012345';
+  assert.ok(longPreview.length > 106);
+  assert.throws(() => encodeQrMatrix(longPreview), /too long/);
+  assert.equal(qrMatrixToSvg(longPreview), null);
+});
+
+test('the real capacity setup URL fits in v6 and still produces a scannable QR', () => {
+  const url = 'https://stardustgarage.com/capacity/exit-door?token=abcDEF123_-xyzABCdefGHIjklMNOpqrSTUvwx012345';
+  const m = encodeQrMatrix(url);
+  assert.equal(m.length, 41); // version 6
+  assert.equal(decodeQr(m), url);
+  assert.ok(qrMatrixToSvg(url)?.startsWith('<svg'));
 });
 
 test('qrMatrixToSvgPath emits one unit square per dark module', () => {

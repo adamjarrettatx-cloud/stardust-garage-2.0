@@ -39,7 +39,9 @@ export default function DeviceManager() {
     try {
       const u = new URL(justCreated.setup_url);
       const seg = justCreated.device?.device_role === 'exit_door' ? 'e' : 'f';
-      return `${u.origin}/c/${seg}?token=${u.searchParams.get('token') ?? ''}`;
+      // searchParams.get() decodes the token; re-encode so the displayed short
+      // URL stays valid even if the token alphabet ever stops being base64url.
+      return `${u.origin}/c/${seg}?token=${encodeURIComponent(u.searchParams.get('token') ?? '')}`;
     } catch { return null; }
   }, [justCreated?.setup_url, justCreated?.device?.device_role]);
 
