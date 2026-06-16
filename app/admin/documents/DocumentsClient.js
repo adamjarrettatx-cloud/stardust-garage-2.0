@@ -78,24 +78,30 @@ export default function DocumentsClient({ initialDocuments, initialError, events
     }
   }
 
+  // If a response is a 401/mfa_required, redirect to the security page (mirrors
+  // adminFetch) and return true so the caller can stop. We can't use adminFetch
+  // directly here because the impact preflight needs to read the JSON body.
+  function maybeMfaRedirect(res, json) {
+    if (res.status === 401 && json?.reason === 'mfa_required' && typeof window !== 'undefined') {
+      window.location.href = '/admin/security?mfa=required';
+      return true;
+    }
+    return false;
+  }
+
   async function handleDelete(id, title) {
     if (!confirm(`Delete "${title}"? This permanently removes all versions and files.`)) return;
     try {
-      // First attempt. The server returns 409 with impact details when this is
-      // a contract feeding event financial calculations.
-      const res = await fetch(`/api/admin/documents/${id}`, { method: 'DELETE' });
-      if (res.status === 401) {
-        const j = await res.json().catch(() => null);
-        if (j?.reason === 'mfa_required' && typeof window !== 'undefined') {
-          window.location.href = '/admin/security?mfa=required';
-          return;
-        }
-        throw new Error(j?.error || 'Unauthorized');
-      }
-      if (res.status === 409) {
-        const j = await res.json().catch(() => null);
-        const impact = j?.impact;
-        const reasons = (impact?.reasons || []).map((r) => `• ${r}`).join('\n');
+      // Pre-flight: ask the server whether this delete affects event financials.
+      const probe = await fetch(`/api/admin/documents/${id}?impact=1`, { method: 'GET' });
+      const probeJson = await probe.json().catch(() => null);
+      if (maybeMfaRedirect(probe, probeJson)) return;
+      if (!probe.ok) throw new Error(probeJson?.error || 'Could not check delete impact');
+
+      const impact = probeJson?.impact;
+      let url = `/api/admin/documents/${id}`;
+      if (impact?.financiallyLinked) {
+        const reasons = (impact.reasons || []).map((r) => `• ${r}`).join('\n');
         const proceed = confirm(
           `WARNING: "${title}" is a contract linked to event financials.\n\n${reasons}\n\n` +
           'Deleting it removes these split/flat-fee terms. Affected events will fall back to ' +
@@ -103,18 +109,13 @@ export default function DocumentsClient({ initialDocuments, initialError, events
           'Delete anyway?',
         );
         if (!proceed) return;
-        const forced = await fetch(`/api/admin/documents/${id}?confirmFinancial=1`, { method: 'DELETE' });
-        if (!forced.ok) {
-          const fj = await forced.json().catch(() => null);
-          throw new Error(fj?.error || 'Delete failed');
-        }
-        setDocuments(documents.filter((d) => d.id !== id));
-        return;
+        url += '?confirmFinancial=1';
       }
-      if (!res.ok) {
-        const j = await res.json().catch(() => null);
-        throw new Error(j?.error || 'Delete failed');
-      }
+
+      const res = await fetch(url, { method: 'DELETE' });
+      const json = await res.json().catch(() => null);
+      if (maybeMfaRedirect(res, json)) return;
+      if (!res.ok) throw new Error(json?.error || 'Delete failed');
       setDocuments(documents.filter((d) => d.id !== id));
     } catch (err) {
       setError(err.message);

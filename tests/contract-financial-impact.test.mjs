@@ -6,6 +6,7 @@ import {
   eventHasFinancialInputs,
   buildFinancialsWarning,
 } from '../lib/contract-financial-impact.js';
+import { pickContractForSplit } from '../lib/event-financials-select.js';
 
 // ---------------------------------------------------------------------------
 // contractHasFinancialTerms
@@ -37,7 +38,7 @@ test('contract with no terms and no links is not financially linked', () => {
   const r = assessContractDeletionImpact({
     contract: { id: 'c1', event_id: null, financial_terms_source: 'none' },
     linkingConfigs: [],
-    eventInputsById: {},
+    autoResolvesForEventIds: [],
   });
   assert.equal(r.financiallyLinked, false);
 });
@@ -48,34 +49,53 @@ test('an explicit config link makes deletion financially linked even without ter
   const r = assessContractDeletionImpact({
     contract: { id: 'c1', event_id: null, financial_terms_source: 'none' },
     linkingConfigs: [{ event_id: 'e1' }],
-    eventInputsById: {},
+    autoResolvesForEventIds: [],
   });
   assert.equal(r.financiallyLinked, true);
   assert.deepEqual(r.explicitlyLinkedEventIds, ['e1']);
   assert.ok(r.reasons.length >= 1);
 });
 
-test('auto-resolve link matters only with terms AND event inputs', () => {
+test('auto-resolve link is driven by the caller-resolved event id list', () => {
+  // The caller (route) resolves via pickContractForSplit and passes only the
+  // events this contract actually drives. The helper trusts that precise list.
   const base = { id: 'c1', event_id: 'e1', stardust_split_percent: 50, financial_terms_source: 'manual' };
 
-  // Has terms + event has inputs => linked.
+  // This contract is the resolved split source for e1 => linked.
   const linked = assessContractDeletionImpact({
-    contract: base, linkingConfigs: [], eventInputsById: { e1: true },
+    contract: base, linkingConfigs: [], autoResolvesForEventIds: ['e1'],
   });
   assert.equal(linked.financiallyLinked, true);
+  assert.deepEqual(linked.autoResolvedEventIds, ['e1']);
 
-  // Has terms but event has no inputs => not linked (nothing to change yet).
-  const noInputs = assessContractDeletionImpact({
-    contract: base, linkingConfigs: [], eventInputsById: { e1: false },
+  // Shares e1 but is NOT the resolved contract (e.g. a dead/superseded contract
+  // behind a live signed one) => caller passes an empty list => not linked.
+  const notResolved = assessContractDeletionImpact({
+    contract: base, linkingConfigs: [], autoResolvesForEventIds: [],
   });
-  assert.equal(noInputs.financiallyLinked, false);
+  assert.equal(notResolved.financiallyLinked, false);
+  assert.deepEqual(notResolved.autoResolvedEventIds, []);
+});
 
-  // No terms but event has inputs => not linked via auto-resolve.
-  const noTerms = assessContractDeletionImpact({
-    contract: { id: 'c1', event_id: 'e1', financial_terms_source: 'none' },
-    linkingConfigs: [], eventInputsById: { e1: true },
+test('deletion guard resolver: a dead contract sharing an event with a signed one is not the split source', () => {
+  // This is the false-positive scenario from review. The route resolves the
+  // event's split contract via pickContractForSplit before flagging an
+  // auto-resolve link; a declined contract loses to a signed one, so deleting
+  // it would resolve to a different id and the route passes NO event id.
+  const linked = [
+    { id: 'signed', status: 'signed' },
+    { id: 'declined', status: 'declined' },
+  ];
+  const resolved = pickContractForSplit(linked);
+  assert.equal(resolved.id, 'signed');
+  // The contract being deleted (declined) is not the resolved one =>
+  // autoResolvesForEventIds stays empty => not flagged.
+  const r = assessContractDeletionImpact({
+    contract: { id: 'declined', event_id: 'e1', status: 'declined' },
+    linkingConfigs: [],
+    autoResolvesForEventIds: resolved.id === 'declined' ? ['e1'] : [],
   });
-  assert.equal(noTerms.financiallyLinked, false);
+  assert.equal(r.financiallyLinked, false);
 });
 
 // ---------------------------------------------------------------------------

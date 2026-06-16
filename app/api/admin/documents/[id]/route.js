@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient, audit, DOCUMENT_BUCKET, DOCUMENT_CATEGORIES } from '@/lib/document-helpers';
 import { assessContractDeletionImpact, eventHasFinancialInputs } from '@/lib/contract-financial-impact';
+import { resolveEventContract } from '@/lib/event-financials-data';
 
 export const runtime = 'nodejs';
 
@@ -26,24 +27,31 @@ async function loadDeletionImpact(admin, documentId) {
   // Event financial configs that explicitly pin this contract for split terms.
   const { data: linkingConfigs } = await admin
     .from('event_financial_config')
-    .select('event_id')
+    .select('event_id, contract_id')
     .eq('contract_id', contract.id);
 
-  // Does the contract's auto-resolve event have any financial inputs? Cheap
-  // existence checks keep this lightweight.
-  const eventInputsById = {};
+  // Auto-resolve impact: this contract matters to its linked event only when it
+  // is the contract the split resolver (resolveEventContract -> pickContractForSplit)
+  // would actually select for that event AND the event has financial inputs.
+  // This mirrors the loader exactly, so deleting a dead/superseded contract
+  // that merely shares an event with a live signed one is NOT flagged.
+  const autoResolvesForEventIds = [];
   if (contract.event_id) {
     const [{ data: cfg }, { data: metrics }, { data: pos }] = await Promise.all([
-      admin.from('event_financial_config').select('id').eq('event_id', contract.event_id).maybeSingle(),
+      admin.from('event_financial_config').select('id, contract_id').eq('event_id', contract.event_id).maybeSingle(),
       admin.from('event_ticket_metrics').select('tickets_sold, gross_cents, net_cents').eq('event_id', contract.event_id).maybeSingle(),
       admin.from('pos_import_batches').select('in_window_count, gross_cents, net_cents').eq('event_id', contract.event_id),
     ]);
-    eventInputsById[contract.event_id] = eventHasFinancialInputs({ metrics, posBatches: pos || [], config: cfg });
+    const hasInputs = eventHasFinancialInputs({ metrics, posBatches: pos || [], config: cfg });
+    if (hasInputs) {
+      const resolved = await resolveEventContract(admin, contract.event_id, cfg?.contract_id ?? null);
+      if (resolved && resolved.id === contract.id) autoResolvesForEventIds.push(contract.event_id);
+    }
   }
 
   return {
     contractId: contract.id,
-    ...assessContractDeletionImpact({ contract, linkingConfigs: linkingConfigs || [], eventInputsById }),
+    ...assessContractDeletionImpact({ contract, linkingConfigs: linkingConfigs || [], autoResolvesForEventIds }),
   };
 }
 
