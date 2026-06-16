@@ -103,7 +103,7 @@ export default function AdminDashboardClient({ isOwner, counts }) {
     { id: 'submissions', label: 'Submissions', ownerOnly: false, badge: submissionsBadge },
     { id: 'studio', label: 'Studio', ownerOnly: false, badge: counts.upcomingBookings },
     { id: 'team', label: 'Team', ownerOnly: false, badge: 0 },
-    { id: 'documents', label: 'Documents', ownerOnly: true, badge: 0 },
+    { id: 'documents', label: 'Documents', ownerOnly: false, badge: 0 },
     { id: 'analytics', label: 'Analytics', ownerOnly: true, badge: 0 },
     { id: 'settings', label: 'Settings', ownerOnly: true, badge: 0 },
   ];
