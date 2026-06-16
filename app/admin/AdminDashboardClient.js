@@ -203,6 +203,7 @@ export default function AdminDashboardClient({ isOwner, counts }) {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           <Tile href="/admin/settings" eyebrow="MANAGE" title="Settings" />
           <Tile href="/admin/security" eyebrow="ACCOUNT" title="Security / MFA" />
+          <Tile href="/admin/schema-health" eyebrow="DEPLOY" title="Schema Health" />
         </div>
       )}
     </div>
