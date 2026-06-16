@@ -8,6 +8,7 @@ import {
   buildTicketTypeBody,
   extractSeriesPublicUrl,
   endTimeIsAfterStart,
+  addOneDay,
 } from '../lib/tt-event-create.js';
 
 test('dollarsToCents converts major units to integer cents', () => {
@@ -176,7 +177,7 @@ test('buildEventSeriesBody always creates a draft with name/currency/date', () =
   assert.equal(body.get('start_date[time]'), '10:00 PM');
 });
 
-test('buildEventSeriesBody sends end_date mirroring the start date with the end time', () => {
+test('buildEventSeriesBody keeps end_date on the start date for a same-day range', () => {
   const body = buildEventSeriesBody({
     title: 'Cosmic Disco',
     eventDate: '2026-07-04',
@@ -187,11 +188,64 @@ test('buildEventSeriesBody sends end_date mirroring the start date with the end 
   assert.equal(body.get('end_date[time]'), '11:30 PM');
 });
 
+test('buildEventSeriesBody rolls end_date to the next day for overnight ranges', () => {
+  const midnight = buildEventSeriesBody({
+    title: 'Cosmic Disco',
+    eventDate: '2026-07-04',
+    eventTime: '10:00 PM',
+    eventEndTime: '12:00 AM',
+  });
+  assert.equal(midnight.get('start_date[date]'), '2026-07-04');
+  assert.equal(midnight.get('end_date[date]'), '2026-07-05');
+  assert.equal(midnight.get('end_date[time]'), '12:00 AM');
+
+  const oneAm = buildEventSeriesBody({
+    title: 'Cosmic Disco',
+    eventDate: '2026-07-04',
+    eventTime: '11:00 PM',
+    eventEndTime: '1:00 AM',
+  });
+  assert.equal(oneAm.get('end_date[date]'), '2026-07-05');
+  assert.equal(oneAm.get('end_date[time]'), '1:00 AM');
+});
+
+test('buildEventSeriesBody rolls across a month boundary for overnight ranges', () => {
+  const body = buildEventSeriesBody({
+    title: 'NYE',
+    eventDate: '2026-07-31',
+    eventTime: '10:00 PM',
+    eventEndTime: '2:00 AM',
+  });
+  assert.equal(body.get('end_date[date]'), '2026-08-01');
+});
+
+test('buildEventSeriesBody does not infer a next-day end for free-text times', () => {
+  // Unparseable end → keep the same-day mirror, no risky date math.
+  const body = buildEventSeriesBody({
+    title: 'X',
+    eventDate: '2026-07-04',
+    eventTime: '10:00 PM',
+    eventEndTime: 'late',
+  });
+  assert.equal(body.get('end_date[date]'), '2026-07-04');
+  assert.equal(body.get('end_date[time]'), 'late');
+});
+
 test('buildEventSeriesBody omits times when not provided but still sends end_date', () => {
   const body = buildEventSeriesBody({ title: 'X', eventDate: '2026-07-04', eventTime: null });
   assert.equal(body.get('start_date[time]'), null);
   assert.equal(body.get('end_date[date]'), '2026-07-04');
   assert.equal(body.get('end_date[time]'), null);
+});
+
+test('addOneDay advances a date and handles month/year rollover (UTC, no TZ drift)', () => {
+  assert.equal(addOneDay('2026-07-04'), '2026-07-05');
+  assert.equal(addOneDay('2026-07-31'), '2026-08-01');
+  assert.equal(addOneDay('2026-12-31'), '2027-01-01');
+  assert.equal(addOneDay('2028-02-28'), '2028-02-29'); // leap year
+  // Non-date input is returned unchanged.
+  assert.equal(addOneDay('not-a-date'), 'not-a-date');
+  assert.equal(addOneDay(''), '');
 });
 
 test('endTimeIsAfterStart accepts same-day ends after the start', () => {
