@@ -50,9 +50,26 @@ them to the browser bundle).
    `document.update`, decline/expire events) to that URL.
 4. Configure the webhook to sign the request body with the same secret you put
    in `SIGNNOW_WEBHOOK_SECRET`. The handler recomputes
-   `HMAC-SHA256(rawBody, SIGNNOW_WEBHOOK_SECRET)` (base64) and constant-time
-   compares it against the signature header. Accepted header names:
-   `x-signnow-signature`, `signnow-signature`, `x-signature`, `signature`.
+   `HMAC-SHA256(rawBody, SIGNNOW_WEBHOOK_SECRET)` and constant-time compares it
+   against the signature header.
+
+   **Signature header — verify in live QA.** SignNow's exact header name and
+   digest encoding are account/version dependent, so the handler is tolerant:
+   - **Header name** — it reads the first present of (in order):
+     `x-signnow-signature`, `signnow-signature`, `x-signature`, `signature`.
+     If SignNow uses a different name, the request is rejected (fail closed). On
+     rejection the handler logs the header *name* it read (never the value) so a
+     name mismatch is diagnosable from logs.
+   - **Digest encoding** — it accepts the digest as **base64**, **base64url**, or
+     **hex**, with an optional `sha256=` / `sha-256=` / `v1=` prefix (and
+     surrounding whitespace). You do **not** need to match one exact encoding.
+   - To confirm the real format during QA, send one test event and check the
+     server logs: a success means the name+encoding are covered; a
+     `rejected: invalid or missing signature (header=...)` line tells you the
+     name we saw — compare it against SignNow's webhook docs/dashboard. If the
+     name is outside the accepted list, add it to `SIGNATURE_HEADERS` in
+     `app/api/webhooks/signnow/route.js`; if the encoding is exotic (not
+     base64/base64url/hex), extend the candidate list in `verifyWebhook`.
 
 ### Webhook behavior
 
@@ -61,6 +78,15 @@ them to the browser bundle).
   SignNow does not retry forever.
 - **Status only advances through valid forward transitions** — a stale/replayed
   event can never move a contract backwards.
+- **Per-signer "signed" events do not complete the contract on their own.** A
+  document-level completion event (e.g. `document.complete`/`document.fulfilled`),
+  or a payload carrying a full `field_invites` array, is required to mark the
+  contract terminal `signed`. For an ambiguous per-signer event with no
+  `field_invites`, the handler re-fetches the authoritative status from SignNow
+  (`getSignatureStatus`) before deciding — so one signer can't prematurely
+  complete, lock, and archive an unfinished contract. (If SignNow isn't
+  configured to re-fetch, the status change is skipped and the next
+  completion/manual sync reconciles.)
 - **On fully-signed**, the signed PDF is archived into the document's version
   history. Archival is idempotent (canonical envelope-derived filename), so
   repeated `complete` events store exactly one signed copy.
@@ -77,7 +103,13 @@ them to the browser bundle).
 3. **Manual sync:** after signing one recipient, click **Check status**. Confirm
    the status advances (e.g. `partially_signed`).
 4. **Webhook:** complete all signatures. Without clicking anything, confirm the
-   status flips to **Fully Signed** (webhook-driven) within a few seconds.
+   status flips to **Fully Signed** (webhook-driven) within a few seconds. **If
+   the status does NOT flip automatically, suspect the signature header
+   name/format first** — check the server logs for a `rejected: invalid or
+   missing signature (header=...)` line and reconcile against the
+   "Signature header" notes above. (Manual **Check status** still works
+   regardless, so a stuck auto-flip points at the webhook signature, not the
+   sync logic.)
 5. **Archive:** confirm a new document version named
    `signnow-signed-<envelopeId>.pdf` appears in the version history (auto on
    webhook/sync). Click **Archive signed PDF** again and confirm **no duplicate**

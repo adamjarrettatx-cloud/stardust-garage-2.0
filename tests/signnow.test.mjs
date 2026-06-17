@@ -15,6 +15,7 @@ import {
   parseWebhookContractStatus,
   archivedSignedFilename,
   decideSignedArchive,
+  WEBHOOK_STATUS_RECHECK,
 } from '../lib/signnow.js';
 
 // Snapshot + restore the SignNow env so tests don't leak into each other.
@@ -93,6 +94,36 @@ test('verifyWebhook does real HMAC and rejects without a secret', async () => {
   });
 });
 
+test('verifyWebhook accepts hex/base64/base64url + optional prefix (H1)', async () => {
+  await withEnv({ SIGNNOW_WEBHOOK_SECRET: 'shh' }, () => {
+    const body = '{"event":"document.complete"}';
+    const hmac = crypto.createHmac('sha256', 'shh').update(body, 'utf8').digest();
+    const b64 = hmac.toString('base64');
+    const b64url = hmac.toString('base64url');
+    const hex = hmac.toString('hex');
+
+    // Bare encodings.
+    assert.equal(verifyWebhook(body, b64), true);
+    assert.equal(verifyWebhook(body, b64url), true);
+    assert.equal(verifyWebhook(body, hex), true);
+
+    // Whitespace is trimmed.
+    assert.equal(verifyWebhook(body, `  ${hex}  `), true);
+
+    // Common vendor prefixes are stripped.
+    assert.equal(verifyWebhook(body, `sha256=${hex}`), true);
+    assert.equal(verifyWebhook(body, `sha-256=${b64}`), true);
+    assert.equal(verifyWebhook(body, `v1=${b64url}`), true);
+    assert.equal(verifyWebhook(body, `sha256 ${hex}`), true);
+
+    // Still fails closed on a wrong digest / wrong body, in any encoding.
+    assert.equal(verifyWebhook(body, crypto.createHmac('sha256', 'nope').update(body).digest('hex')), false);
+    assert.equal(verifyWebhook('tampered', hex), false);
+    assert.equal(verifyWebhook(body, 'sha256='), false); // empty after prefix
+    assert.equal(verifyWebhook(body, ''), false);
+  });
+});
+
 test('parseWebhookEnvelopeId pulls the document id from varied payload shapes', () => {
   assert.equal(parseWebhookEnvelopeId({ document_id: 'doc_1' }), 'doc_1');
   assert.equal(parseWebhookEnvelopeId({ documentId: 'doc_2' }), 'doc_2');
@@ -118,16 +149,42 @@ test('parseWebhookContractStatus maps event names and field_invites to our vocab
     parseWebhookContractStatus({ content: { field_invites: [{ status: 'fulfilled' }, { status: 'pending' }] } }),
     'partially_signed',
   );
-  // Event-name fallbacks.
+  // Document-level completion events map straight to terminal 'signed'.
   assert.equal(parseWebhookContractStatus({ event: 'document.complete' }), 'signed');
-  assert.equal(parseWebhookContractStatus({ event_type: 'invite.signer.signed' }), 'signed');
   assert.equal(parseWebhookContractStatus({ event: 'document.fulfilled' }), 'signed');
+  assert.equal(parseWebhookContractStatus({ event: 'document.completed' }), 'signed');
+  // Declines/expirations map directly (forward-only guard handles misuse).
   assert.equal(parseWebhookContractStatus({ event: 'invite.declined' }), 'declined');
   assert.equal(parseWebhookContractStatus({ event: 'document.expired' }), 'expired');
   // Untracked / missing events return null.
   assert.equal(parseWebhookContractStatus({ event: 'document.update' }), null);
   assert.equal(parseWebhookContractStatus({}), null);
   assert.equal(parseWebhookContractStatus(null), null);
+});
+
+test('parseWebhookContractStatus defers per-signer signed events to a recheck (M2)', () => {
+  // A single signer finishing must NOT be mapped to terminal 'signed' from the
+  // event name alone — it returns the recheck sentinel so the caller re-fetches
+  // the authoritative status before completing/archiving the whole contract.
+  assert.equal(parseWebhookContractStatus({ event_type: 'invite.signer.signed' }), WEBHOOK_STATUS_RECHECK);
+  assert.equal(parseWebhookContractStatus({ event: 'invite.fulfilled' }), WEBHOOK_STATUS_RECHECK);
+  assert.equal(parseWebhookContractStatus({ event: 'signer.signed' }), WEBHOOK_STATUS_RECHECK);
+  // But if the payload carries field_invites, we trust that authoritative view
+  // directly even on a per-signer event — no recheck needed.
+  assert.equal(
+    parseWebhookContractStatus({
+      event_type: 'invite.signer.signed',
+      field_invites: [{ status: 'fulfilled' }, { status: 'pending' }],
+    }),
+    'partially_signed',
+  );
+  assert.equal(
+    parseWebhookContractStatus({
+      event_type: 'invite.signer.signed',
+      field_invites: [{ status: 'signed' }, { status: 'signed' }],
+    }),
+    'signed',
+  );
 });
 
 test('archivedSignedFilename is canonical + filesystem-safe per envelope', () => {

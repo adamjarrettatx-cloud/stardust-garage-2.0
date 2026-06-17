@@ -4,6 +4,9 @@ import {
   verifyWebhook,
   parseWebhookEnvelopeId,
   parseWebhookContractStatus,
+  getSignatureStatus,
+  isSignNowConfigured,
+  WEBHOOK_STATUS_RECHECK,
 } from '@/lib/signnow';
 import { canTransitionContract, isTerminalContractStatus } from '@/lib/contract-helpers';
 
@@ -39,12 +42,15 @@ const SIGNATURE_HEADERS = [
   'signature',
 ];
 
+// Returns { name, value } for the first signature header present, or
+// { name: null, value: null }. The name (never the value) is safe to log so a
+// misconfigured header name/format is diagnosable during live QA.
 function readSignatureHeader(request) {
   for (const h of SIGNATURE_HEADERS) {
     const v = request.headers.get(h);
-    if (v) return v;
+    if (v) return { name: h, value: v };
   }
-  return null;
+  return { name: null, value: null };
 }
 
 export async function POST(request) {
@@ -57,10 +63,15 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Bad body' }, { status: 400 });
   }
 
-  const signature = readSignatureHeader(request);
+  const { name: sigHeaderName, value: signature } = readSignatureHeader(request);
   if (!verifyWebhook(rawBody, signature)) {
-    // Fail closed: bad/missing signature OR no secret configured.
-    console.warn('[signnow.webhook] rejected: invalid or missing signature');
+    // Fail closed: bad/missing signature OR no secret configured. Log the header
+    // NAME we read (never the value) so a header-name/format mismatch — the most
+    // likely live-QA failure — is diagnosable from logs. See H1 in the runbook.
+    console.warn(
+      `[signnow.webhook] rejected: invalid or missing signature ` +
+      `(header=${sigHeaderName || 'none of: ' + SIGNATURE_HEADERS.join(',')})`,
+    );
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
 
@@ -90,7 +101,26 @@ export async function POST(request) {
   }
 
   const documentId = contract.document_id;
-  const nextStatus = parseWebhookContractStatus(payload);
+
+  // Resolve the inbound event to a contract status. A per-signer "signed" event
+  // can't be trusted to mean the whole contract is done — parseWebhookContractStatus
+  // returns WEBHOOK_STATUS_RECHECK for those. When we get that sentinel we re-fetch
+  // the AUTHORITATIVE signer-by-signer status from SignNow (same source the manual
+  // sync uses) instead of guessing, so one signer can't prematurely complete/lock/
+  // archive an unfinished contract. If SignNow isn't configured (can't re-fetch) or
+  // the fetch fails, we skip the status change rather than risk a wrong terminal.
+  let nextStatus = parseWebhookContractStatus(payload);
+  if (nextStatus === WEBHOOK_STATUS_RECHECK) {
+    nextStatus = null;
+    if (isSignNowConfigured()) {
+      try {
+        const authoritative = await getSignatureStatus(envelopeId);
+        nextStatus = authoritative?.status || null;
+      } catch (err) {
+        console.warn('[signnow.webhook] recheck getSignatureStatus failed', err);
+      }
+    }
+  }
 
   // 1) Reconcile lifecycle status (forward-only).
   let changed = false;
@@ -113,11 +143,15 @@ export async function POST(request) {
     contract.status = nextStatus;
   }
 
-  // 2) When fully signed, archive the signed PDF into the document hub. This is
-  //    idempotent and best-effort: a failure here must NOT make us return 5xx,
-  //    or SignNow will retry the whole event. We log + report instead.
+  // 2) When fully signed, archive the signed PDF into the document hub. We only
+  //    attempt this when THIS event actually advanced the contract to signed
+  //    (`changed`) or explicitly resolved to signed — not on every unrelated
+  //    event for an already-signed contract, which would re-hit SignNow's
+  //    download API needlessly (L3). The archive itself is still idempotent and
+  //    best-effort: a failure here must NOT make us return 5xx, or SignNow will
+  //    retry the whole event. We log + report instead.
   let archived = null;
-  if (contract.status === 'signed') {
+  if (contract.status === 'signed' && (changed || nextStatus === 'signed')) {
     try {
       const result = await archiveSignedContractPdf({
         admin, documentId, envelopeId,
