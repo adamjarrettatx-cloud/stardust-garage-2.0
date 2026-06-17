@@ -50,6 +50,7 @@ export default function ContractPanel({ documentId, initialContract, events, sig
   const [transitioning, setTransitioning] = useState(false);
   const [sending, setSending] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [archiving, setArchiving] = useState(false);
 
   const [form, setForm] = useState({
     counterparty_name: initialContract?.counterparty_name || '',
@@ -163,14 +164,42 @@ export default function ContractPanel({ documentId, initialContract, events, sig
     try {
       const json = await adminFetch(`/api/admin/documents/${documentId}/contract/signnow?sync=1`);
       if (json.contract) setContract((c) => ({ ...c, ...json.contract }));
-      setNotice(json.changed
+      const base = json.changed
         ? `Status synced — now ${STATUS_LABEL[json.contract?.status] || json.contract?.status}.`
-        : 'Status synced — no change.');
+        : 'Status synced — no change.';
+      let archiveMsg = '';
+      if (json.archived?.ok) {
+        archiveMsg = ` Signed PDF archived as version ${json.archived.versionNumber}.`;
+      } else if (json.archived && !json.archived.ok && json.archived.reason !== 'signed PDF already archived') {
+        archiveMsg = ` (Signed PDF not archived: ${json.archived.reason}.)`;
+      } else if (json.archived?.reason === 'signed PDF already archived') {
+        archiveMsg = ' Signed PDF already on file.';
+      }
+      setNotice(base + archiveMsg);
       router.refresh();
     } catch (err) {
       setError(err.message);
     } finally {
       setSyncing(false);
+    }
+  }
+
+  async function archiveSignedPdf() {
+    setArchiving(true); setError(null); setNotice(null);
+    try {
+      const json = await adminFetch(`/api/admin/documents/${documentId}/contract/signnow?archive=1`);
+      if (json.archived) {
+        setNotice(`Signed PDF archived as version ${json.versionNumber}. It now appears in this document's version history.`);
+      } else {
+        setNotice(json.reason === 'signed PDF already archived'
+          ? 'Signed PDF is already on file — no duplicate created.'
+          : `Signed PDF not archived: ${json.reason}.`);
+      }
+      router.refresh();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setArchiving(false);
     }
   }
 
@@ -350,6 +379,9 @@ export default function ContractPanel({ documentId, initialContract, events, sig
                 {hasEnvelope && (
                   <span style={{ color: '#60a5fa' }}> · envelope sent</span>
                 )}
+                {status === 'signed' && (
+                  <span style={{ color: '#4ade80' }}> · fully signed</span>
+                )}
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <button
@@ -381,6 +413,16 @@ export default function ContractPanel({ documentId, initialContract, events, sig
                       style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}>
                       Download signed
                     </a>
+                    {status === 'signed' && (
+                      <button
+                        onClick={archiveSignedPdf}
+                        disabled={archiving}
+                        title="Store the signed PDF as a new private version of this document (idempotent)"
+                        className="text-[12px] px-3 py-1.5 rounded-[8px]"
+                        style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white', opacity: archiving ? 0.6 : 1 }}>
+                        {archiving ? 'Archiving…' : 'Archive signed PDF'}
+                      </button>
+                    )}
                   </>
                 )}
               </div>
@@ -389,6 +431,15 @@ export default function ContractPanel({ documentId, initialContract, events, sig
               <p className="text-[11px] mt-2" style={{ color: '#6a6a6a' }}>
                 {sendBlockedReason}
                 {!signNowConfigured && ' Until then, advance status manually as signatures complete offline.'}
+              </p>
+            )}
+            {signNowConfigured && hasEnvelope && (
+              <p className="text-[11px] mt-2 leading-relaxed" style={{ color: '#6a6a6a' }}>
+                Status updates arrive automatically when the SignNow webhook is configured;
+                use <span style={{ color: '#8a8a8a' }}>Check status</span> to pull on demand.
+                {status === 'signed'
+                  ? ' Once fully signed, the signed PDF is archived as a new version of this document (auto on sync, or via Archive signed PDF). Archival is idempotent — it never creates duplicates.'
+                  : ' When fully signed, the signed PDF is archived into this document’s version history automatically.'}
               </p>
             )}
           </div>
