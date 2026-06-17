@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAdminMfa } from '@/lib/auth-helpers';
-import { createAdminClient, audit, DOCUMENT_BUCKET } from '@/lib/document-helpers';
+import { createAdminClient, audit, DOCUMENT_BUCKET, archiveSignedContractPdf } from '@/lib/document-helpers';
 import {
   isSignNowConfigured,
   sendForSignature,
@@ -56,6 +56,44 @@ export async function GET(request, { params }) {
   const search = new URL(request.url).searchParams;
   const wantSync = search.get('sync') === '1';
   const wantDownload = search.get('download') === '1';
+  const wantArchive = search.get('archive') === '1';
+
+  // Explicit "Archive signed PDF" action: download the signed copy from SignNow
+  // and store it as a new private document version. Idempotent — repeated clicks
+  // do not create duplicate versions. Requires a live integration, an envelope,
+  // and a fully-signed contract.
+  if (wantArchive) {
+    if (!isSignNowConfigured()) {
+      return NextResponse.json(
+        { error: 'SignNow is not configured.', code: 'SIGNNOW_NOT_CONFIGURED' },
+        { status: 503 },
+      );
+    }
+    if (!contract?.external_envelope_id) {
+      return NextResponse.json({ error: 'No SignNow envelope on this contract yet.', code: 'NO_ENVELOPE' }, { status: 400 });
+    }
+    if (contract.status !== 'signed') {
+      return NextResponse.json(
+        { error: `Contract is ${contract.status}; only fully-signed contracts can be archived.`, code: 'NOT_SIGNED' },
+        { status: 400 },
+      );
+    }
+    let result;
+    try {
+      result = await archiveSignedContractPdf({
+        admin, documentId: id, envelopeId: contract.external_envelope_id,
+        actor: { id: user.id, email: user.email }, request,
+      });
+    } catch (err) {
+      if (err instanceof SignNowNotConfiguredError) {
+        return NextResponse.json({ error: err.message, code: err.code }, { status: 503 });
+      }
+      console.error('[signnow.archive] error', err);
+      const status = err instanceof SignNowApiError ? 502 : 500;
+      return NextResponse.json({ error: 'SignNow archive failed.', detail: String(err?.message || err) }, { status });
+    }
+    return NextResponse.json({ ok: true, ...result });
+  }
 
   // Download the (signed) document straight from SignNow and stream it back.
   // Requires a live, configured integration and an existing envelope. Never
@@ -157,6 +195,26 @@ export async function GET(request, { params }) {
     .eq('document_id', id)
     .maybeSingle();
 
+  // When the contract is now fully signed, auto-archive the signed PDF into the
+  // document hub. Idempotent + best-effort: a failure here is reported but never
+  // fails the status sync (the admin can retry via the Archive button).
+  let archived = null;
+  const effectiveStatus = updated?.status || contract.status;
+  if (effectiveStatus === 'signed') {
+    try {
+      const result = await archiveSignedContractPdf({
+        admin, documentId: id, envelopeId: contract.external_envelope_id,
+        actor: { id: user.id, email: user.email }, request,
+      });
+      archived = result.archived
+        ? { ok: true, versionNumber: result.versionNumber }
+        : { ok: false, reason: result.reason };
+    } catch (err) {
+      console.error('[signnow.sync] auto-archive failed', err);
+      archived = { ok: false, reason: 'archive_error' };
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     configured: true,
@@ -164,6 +222,7 @@ export async function GET(request, { params }) {
     changed: Boolean(patch.status),
     remote,
     contract: updated || contract,
+    archived,
   });
 }
 
