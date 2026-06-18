@@ -180,6 +180,7 @@ export default function AdminDashboardClient({ isOwner, counts }) {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           <Tile href="/admin/calendar" eyebrow="TEAM ONLY" title="Team Calendar" />
           <Tile href="/admin/team" eyebrow="MANAGE" title="Team Members" />
+          <Tile href="/admin/schema-health" eyebrow="DEPLOY" title="Schema Health" />
         </div>
       )}
 
