@@ -128,7 +128,7 @@ export default function DocumentsClient({ initialDocuments, initialError, events
       <div className="flex flex-wrap gap-3 items-center mb-4">
         <input
           type="search"
-          placeholder="Search title, counterparty, description…"
+          placeholder="Search titles and document contents…"
           defaultValue={filters.q}
           onKeyDown={(e) => { if (e.key === 'Enter') setFilter('q', e.currentTarget.value); }}
           className="flex-1 min-w-[240px] px-4 py-2.5 text-[14px] rounded-[10px] outline-none focus:border-white/30"
