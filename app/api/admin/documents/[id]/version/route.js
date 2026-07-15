@@ -4,6 +4,7 @@ import {
   createAdminClient, audit, buildStoragePath, sha256,
   isAllowedMime, MAX_BYTES, DOCUMENT_BUCKET,
 } from '@/lib/document-helpers';
+import { extractText } from '@/lib/document-text-extract';
 
 export const runtime = 'nodejs';
 const UUID = /^[0-9a-f-]{36}$/i;
@@ -39,6 +40,7 @@ export async function POST(request, { params }) {
     .upload(storagePath, buf, { contentType: file.type, upsert: false });
   if (upErr) return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
 
+  const extracted_text = extractText(buf, file.type, file.name) || null;
   const { data: ver, error: verErr } = await admin
     .from('document_versions')
     .insert({
@@ -49,6 +51,7 @@ export async function POST(request, { params }) {
       size_bytes: file.size,
       checksum_sha256: sha256(buf),
       notes: notes || null,
+      extracted_text,
       uploaded_by: user.id,
     })
     .select()

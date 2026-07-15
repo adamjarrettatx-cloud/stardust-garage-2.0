@@ -22,27 +22,38 @@ export default async function DocumentsPage({ searchParams }) {
 
   const supabase = await createClient();
 
-  // RLS confines us to admin-readable rows automatically. We also pass through
-  // a service-role view of tags so we don't double-fetch per row.
-  let query = supabase
-    .from('documents')
-    .select(`
-      id, title, description, category, counterparty, status, event_id,
-      current_version_id, created_at, updated_at,
-      events:event_id ( id, title, event_date ),
-      document_versions:current_version_id ( filename, mime_type, size_bytes, version_number, uploaded_at ),
-      document_tags ( tag ),
-      document_contracts ( status )
-    `)
-    .order('updated_at', { ascending: false });
+  // Columns + embedded relations the list UI renders. RLS confines every path
+  // below to admin-readable rows automatically (public.is_admin()).
+  const SELECT = `
+    id, title, description, category, counterparty, status, event_id,
+    current_version_id, created_at, updated_at,
+    events:event_id ( id, title, event_date ),
+    document_versions:current_version_id ( filename, mime_type, size_bytes, version_number, uploaded_at ),
+    document_tags ( tag ),
+    document_contracts ( status )
+  `;
 
-  if (status && status !== 'all') query = query.eq('status', status);
-  if (category)                    query = query.eq('category', category);
-  if (q) query = query.or(
-    `title.ilike.%${q}%,counterparty.ilike.%${q}%,description.ilike.%${q}%`
-  );
-
-  const { data: documents, error } = await query;
+  // With a search term, go through the search_documents RPC: it runs Postgres
+  // full-text search over the enriched search_tsv (which now includes extracted
+  // file text), complemented by an ilike substring match, and returns rows
+  // ranked by relevance. Without a term, the plain table query preserves the
+  // existing "browse by most-recently-updated" behavior.
+  let documents, error;
+  if (q) {
+    ({ data: documents, error } = await supabase
+      .rpc('search_documents', {
+        p_q: q,
+        p_status: status || 'active',
+        p_category: category || null,
+      })
+      .select(SELECT));
+  } else {
+    let query = supabase.from('documents').select(SELECT)
+      .order('updated_at', { ascending: false });
+    if (status && status !== 'all') query = query.eq('status', status);
+    if (category)                    query = query.eq('category', category);
+    ({ data: documents, error } = await query);
+  }
 
   const { data: events } = await supabase
     .from('events')

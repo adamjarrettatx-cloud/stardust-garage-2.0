@@ -10,6 +10,7 @@ import {
   DOCUMENT_BUCKET,
   DOCUMENT_CATEGORIES,
 } from '@/lib/document-helpers';
+import { extractText } from '@/lib/document-text-extract';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -84,7 +85,8 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Failed to upload file.' }, { status: 500 });
   }
 
-  // 3. Insert version row
+  // 3. Insert version row (with extracted body text so it becomes searchable)
+  const extracted_text = extractText(buf, file.type, file.name) || null;
   const { data: ver, error: verErr } = await admin
     .from('document_versions')
     .insert({
@@ -94,6 +96,7 @@ export async function POST(request) {
       mime_type: file.type,
       size_bytes: file.size,
       checksum_sha256: sha256(buf),
+      extracted_text,
       uploaded_by: user.id,
     })
     .select()
