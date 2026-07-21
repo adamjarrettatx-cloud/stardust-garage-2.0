@@ -31,7 +31,7 @@ export default function MemberLoginPage() {
     }
 
     const isAdmin = Boolean(data?.user?.user_metadata?.is_admin);
-    router.push(isAdmin ? '/admin' : '/member');
+    router.push(isAdmin ? '/bananas' : '/member');
     router.refresh();
   };
 

@@ -9,6 +9,6 @@ export const metadata = { title: 'Capacity Setup' };
 
 export default async function CapacityAdminPage() {
   const { unauthorized } = await requireAdmin();
-  if (unauthorized) redirect('/admin/login');
+  if (unauthorized) redirect('/bananas/login');
   return <AdminCapacityClient />;
 }

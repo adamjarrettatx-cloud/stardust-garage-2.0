@@ -2,7 +2,6 @@ import Link from 'next/link';
 import SignupForm from './SignupForm';
 
 const navLinks = [
-  { label: 'About', href: '/about' },
   { label: 'Venue Rental', href: '/venue-rental' },
   { label: 'DJs', href: '/collaborate/djs' },
   { label: 'Artists', href: '/collaborate/artists' },
