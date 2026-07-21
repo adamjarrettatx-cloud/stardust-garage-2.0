@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { adminFetch } from '@/lib/admin-fetch';
@@ -40,6 +40,17 @@ export default function DocumentsClient({ initialDocuments, initialError, events
   const [documents, setDocuments] = useState(initialDocuments);
   const [error, setError] = useState(initialError);
   const [showUpload, setShowUpload] = useState(false);
+
+  // Filtering happens server-side: tab/search/status changes push new query
+  // params, the server re-fetches, and Next.js re-renders this client component
+  // with fresh props. Because useState only reads its initializer on first
+  // mount, we must re-sync local state whenever the server hands us new results
+  // — otherwise the list keeps showing the stale (unfiltered) initial documents
+  // even though the active tab updates. See router.push in setFilter below.
+  useEffect(() => {
+    setDocuments(initialDocuments);
+    setError(initialError);
+  }, [initialDocuments, initialError]);
   const [uploading, setUploading] = useState(false);
 
   // Upload form state
