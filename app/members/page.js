@@ -66,7 +66,7 @@ export default function MembersPage() {
             <span style={{ color: 'rgba(255,255,255,0.5)' }}>Designed for community.</span>
           </h1>
           <p className="text-[15px] leading-[1.65]" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            We optimized for the things that actually make a workday good \u2014 the internet, the people, the room.
+            We optimized for the things that actually make a workday good — the internet, the people, the room.
           </p>
         </div>
 
@@ -87,7 +87,7 @@ export default function MembersPage() {
           <div className="text-[11px] font-semibold tracking-[0.28em] mb-3" style={{ color: 'rgba(255,255,255,0.5)' }}>JOIN</div>
           <h2 className="text-[28px] md:text-[40px] font-extrabold -tracking-[0.02em] leading-[1.05] mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Two ways in.</h2>
           <p className="text-[15px] leading-[1.65]" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            One is a workday membership. The other adds a discount on every show we throw \u2014 for the people who want their nights here too.
+            One is a workday membership. The other adds a discount on every show we throw — for the people who want their nights here too.
           </p>
         </div>
 
@@ -127,7 +127,7 @@ export default function MembersPage() {
             <p className="text-[12.5px]" style={{ color: 'rgba(255,255,255,0.5)' }}>Requires membership</p>
           </div>
           <ul className="list-none flex-1 space-y-2">
-            <li className="flex items-start gap-3 text-[14px] leading-[1.55]"><CheckIcon /><span>Two sizes \u2014 small and large</span></li>
+            <li className="flex items-start gap-3 text-[14px] leading-[1.55]"><CheckIcon /><span>Two sizes — small and large</span></li>
             <li className="flex items-start gap-3 text-[14px] leading-[1.55]"><CheckIcon /><span>Combination lock and built-in fast charger</span></li>
           </ul>
         </div>
