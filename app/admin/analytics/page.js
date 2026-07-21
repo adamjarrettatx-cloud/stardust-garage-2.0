@@ -87,7 +87,7 @@ export default async function AnalyticsPage() {
           Event Analytics
         </h1>
         <div className="text-[11px] tracking-[0.18em]" style={{ color: '#8a8a8a' }}>
-          ADMIN ONLY
+          OWNER ONLY
         </div>
       </div>
       <p className="mb-6 text-[14px]" style={{ color: '#8a8a8a' }}>
