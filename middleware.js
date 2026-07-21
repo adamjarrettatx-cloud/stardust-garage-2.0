@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
 
-  const isAdminRoute  = pathname.startsWith('/admin');
+  const isAdminRoute  = pathname.startsWith('/bananas');
   const isTeamRoute   = pathname === '/team' || pathname.startsWith('/team/');
   const isMemberRoute = pathname === '/member' || pathname.startsWith('/member/');
   // Capacity counter pages (the two Jelly2 door devices) are staff-only. The
@@ -17,7 +17,7 @@ export async function middleware(request) {
   }
 
   // Allow login pages without auth
-  if (pathname === '/admin/login' || pathname === '/login' || pathname === '/team/login') {
+  if (pathname === '/bananas/login' || pathname === '/login' || pathname === '/team/login') {
     return NextResponse.next();
   }
 
@@ -71,7 +71,7 @@ export async function middleware(request) {
   // Not logged in -> bounce to appropriate login
   if (!user) {
     const url = request.nextUrl.clone();
-    if (isAdminRoute) url.pathname = '/admin/login';
+    if (isAdminRoute) url.pathname = '/bananas/login';
     else if (isTeamRoute || isCapacityRoute) url.pathname = '/team/login';
     else url.pathname = '/login';
     return NextResponse.redirect(url);
