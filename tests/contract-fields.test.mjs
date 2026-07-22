@@ -130,12 +130,14 @@ test('screen<->layout round trip is stable', () => {
   assert.equal(back.ph, box.ph);
 });
 
-test('fieldRectForSignNow honors the origin constant', () => {
+test('SignNow y-origin is top-left (empirically confirmed)', () => {
+  assert.equal(SIGNNOW_FIELD_Y_ORIGIN, 'top-left');
+});
+
+test('fieldRectForSignNow flips stored bottom-left y to SignNow top-left', () => {
   const field = { x: 50, y: 700, width: 200, height: 20 };
   const rect = fieldRectForSignNow(field, 792);
-  if (SIGNNOW_FIELD_Y_ORIGIN === 'bottom-left') {
-    assert.deepEqual(rect, { x: 50, y: 700, width: 200, height: 20 });
-  } else {
-    assert.deepEqual(rect, { x: 50, y: 792 - 700 - 20, width: 200, height: 20 });
-  }
+  // stored y=700 is the bottom edge from the page bottom; top edge from the
+  // page top = 792 - 700 - 20 = 72.
+  assert.deepEqual(rect, { x: 50, y: 72, width: 200, height: 20 });
 });
