@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { adminFetch } from '@/lib/admin-fetch';
 import ContractPanel from './ContractPanel';
+import ContractFieldsPanel from './ContractFieldsPanel';
 import ContractFinancialsPanel from './ContractFinancialsPanel';
 
 function formatBytes(n) {
@@ -197,6 +198,12 @@ export default function DocumentDetailClient({ document: doc, versions, audit, e
           events={events}
           signNowConfigured={signNowConfigured}
         />
+      )}
+
+      {/* Fields + business-value fill — only for contract-category documents.
+          The panel creates the contract record lazily on first field save. */}
+      {doc.category === 'contracts' && versions.length > 0 && (
+        <ContractFieldsPanel documentId={doc.id} initialContract={contract} />
       )}
 
       {/* Financial terms — only once a contract record exists. */}

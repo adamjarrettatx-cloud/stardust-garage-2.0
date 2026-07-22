@@ -4,12 +4,15 @@ import { createAdminClient, audit, DOCUMENT_BUCKET, archiveSignedContractPdf } f
 import {
   isSignNowConfigured,
   sendForSignature,
+  sendContractForSignature,
   getSignatureStatus,
   downloadSignedDocument,
   SignNowNotConfiguredError,
   SignNowApiError,
 } from '@/lib/signnow';
 import { canTransitionContract, isTerminalContractStatus } from '@/lib/contract-helpers';
+import { validateLayoutAgainstSigners, buildSignNowFields } from '@/lib/contract-fields';
+import { readPdfMeta, bakeBusinessFields } from '@/lib/template-helpers';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -287,14 +290,46 @@ export async function POST(request, { params }) {
     );
   }
 
+  const layout = Array.isArray(contract.field_layout) ? contract.field_layout : [];
+  const fieldValues = contract.field_values && typeof contract.field_values === 'object' ? contract.field_values : {};
+  const subject = contract.counterparty_name ? `Contract for ${contract.counterparty_name}` : undefined;
+
+  // Pre-send guard: every signer_N referenced by a field must have a matching
+  // signer, or the SignNow roles won't line up and the invite will be wrong.
+  const layoutCheck = validateLayoutAgainstSigners(layout, signers);
+  if (!layoutCheck.ok) {
+    return NextResponse.json({ error: layoutCheck.error, code: 'LAYOUT_SIGNER_MISMATCH' }, { status: 400 });
+  }
+
   let result;
   try {
-    result = await sendForSignature({
-      fileBuffer: file.buffer,
-      filename: file.filename,
-      signers,
-      subject: contract.counterparty_name ? `Contract for ${contract.counterparty_name}` : undefined,
-    });
+    if (layout.length) {
+      // Prepared path: bake business values into the PDF (bottom-left/points,
+      // no transform), then send with ONLY the signer-fillable fields as
+      // interactive SignNow fields. buildSignNowFields ignores business fields.
+      const meta = await readPdfMeta(file.buffer);
+      const preparedPdf = await bakeBusinessFields({
+        pdfBuffer: file.buffer,
+        fieldLayout: layout,
+        fieldValues,
+      });
+      const signNowFields = buildSignNowFields(layout, meta?.pages || []);
+      result = await sendContractForSignature({
+        fileBuffer: Buffer.from(preparedPdf),
+        filename: file.filename,
+        signers,
+        fields: signNowFields,
+        subject,
+      });
+    } else {
+      // Backward-compatible raw send for contracts with no field layout at all.
+      result = await sendForSignature({
+        fileBuffer: file.buffer,
+        filename: file.filename,
+        signers,
+        subject,
+      });
+    }
   } catch (err) {
     if (err instanceof SignNowNotConfiguredError) {
       return NextResponse.json({ error: err.message, code: err.code }, { status: 503 });
