@@ -34,7 +34,7 @@ const CATEGORY_COLORS = {
   other:     { color: '#8a8a8a', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.10)' },
 };
 
-export default function DocumentsClient({ initialDocuments, initialError, events, categories, filters }) {
+export default function DocumentsClient({ initialDocuments, initialError, events, categories, filters, contractTemplatesEnabled = false }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [documents, setDocuments] = useState(initialDocuments);
@@ -198,20 +198,24 @@ export default function DocumentsClient({ initialDocuments, initialError, events
           <option value="archived">Archived</option>
           <option value="all">All</option>
         </select>
-        <Link
-          href="/bananas/documents/templates"
-          className="px-4 py-2.5 text-[13px] font-semibold rounded-[10px] tracking-[0.06em] uppercase"
-          style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}
-        >
-          Templates
-        </Link>
-        <button
-          onClick={openTemplatePicker}
-          className="px-4 py-2.5 text-[13px] font-semibold rounded-[10px] tracking-[0.06em] uppercase"
-          style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}
-        >
-          + From template
-        </button>
+        {contractTemplatesEnabled && (
+          <>
+            <Link
+              href="/bananas/documents/templates"
+              className="px-4 py-2.5 text-[13px] font-semibold rounded-[10px] tracking-[0.06em] uppercase"
+              style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}
+            >
+              Templates
+            </Link>
+            <button
+              onClick={openTemplatePicker}
+              className="px-4 py-2.5 text-[13px] font-semibold rounded-[10px] tracking-[0.06em] uppercase"
+              style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}
+            >
+              + From template
+            </button>
+          </>
+        )}
         <button
           onClick={() => setShowUpload(true)}
           className="px-5 py-2.5 text-[13px] font-semibold rounded-[10px] tracking-[0.06em] uppercase"
@@ -351,7 +355,7 @@ export default function DocumentsClient({ initialDocuments, initialError, events
       )}
 
       {/* Create-from-template modal */}
-      {showTemplatePicker && (
+      {contractTemplatesEnabled && showTemplatePicker && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-6"
           style={{ background: 'rgba(0,0,0,0.7)' }}

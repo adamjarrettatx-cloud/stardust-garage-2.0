@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
 import { DOCUMENT_CATEGORIES } from '@/lib/document-helpers';
+import { isContractTemplatesEnabled } from '@/lib/feature-flags';
 import DocumentsClient from './DocumentsClient';
 
 export const revalidate = 0;
@@ -80,6 +81,7 @@ export default async function DocumentsPage({ searchParams }) {
         events={events || []}
         categories={DOCUMENT_CATEGORIES}
         filters={{ q, category, status }}
+        contractTemplatesEnabled={isContractTemplatesEnabled()}
       />
     </main>
   );

@@ -10,16 +10,27 @@ import {
   DOCUMENT_CATEGORIES,
 } from '@/lib/document-helpers';
 import { buildTemplateStoragePath, readPdfMeta, TEMPLATE_MIME } from '@/lib/template-helpers';
+import { isContractTemplatesEnabled } from '@/lib/feature-flags';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const VALID_CATEGORIES = new Set(DOCUMENT_CATEGORIES.map((c) => c.value));
 
+// Guard for the feature-flagged contract-templates endpoints. Returns a 404
+// response when the feature is off so the routes are unreachable, or null to
+// proceed. 404 (not 403) keeps the disabled feature invisible.
+function templatesDisabled() {
+  if (isContractTemplatesEnabled()) return null;
+  return NextResponse.json({ error: 'Not found', code: 'FEATURE_DISABLED' }, { status: 404 });
+}
+
 // GET /api/admin/templates?include=inactive
 //   List templates (active only by default). Excludes the raw field_layout blob
 //   from the list payload — it can be large; the detail route returns it.
 export async function GET(request) {
+  const off = templatesDisabled();
+  if (off) return off;
   const { unauthorized, reason } = await requireAdminMfa();
   if (unauthorized) return NextResponse.json({ error: 'Unauthorized', reason }, { status: 401 });
 
@@ -51,6 +62,8 @@ export async function GET(request) {
 // reliably-rendered PDF). Reads the page count via pdf-lib up front so the
 // editor knows how many pages to render.
 export async function POST(request) {
+  const off = templatesDisabled();
+  if (off) return off;
   const { user, unauthorized, reason } = await requireAdminMfa();
   if (unauthorized) return NextResponse.json({ error: 'Unauthorized', reason }, { status: 401 });
 

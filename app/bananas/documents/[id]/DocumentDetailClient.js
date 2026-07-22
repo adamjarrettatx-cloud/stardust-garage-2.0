@@ -28,7 +28,7 @@ const ACTION_LABEL = {
   contract_send: 'Contract sent', contract_signed: 'Contract signed', contract_void: 'Contract voided',
 };
 
-export default function DocumentDetailClient({ document: doc, versions, audit, events, categories, contract, signNowConfigured }) {
+export default function DocumentDetailClient({ document: doc, versions, audit, events, categories, contract, signNowConfigured, contractTemplatesEnabled = false }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -201,8 +201,9 @@ export default function DocumentDetailClient({ document: doc, versions, audit, e
       )}
 
       {/* Fields + business-value fill — only for contract-category documents.
-          The panel creates the contract record lazily on first field save. */}
-      {doc.category === 'contracts' && versions.length > 0 && (
+          The panel creates the contract record lazily on first field save.
+          Hidden entirely when the contract-templates feature flag is off. */}
+      {contractTemplatesEnabled && doc.category === 'contracts' && versions.length > 0 && (
         <ContractFieldsPanel documentId={doc.id} initialContract={contract} />
       )}
 

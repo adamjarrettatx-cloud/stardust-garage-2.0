@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
 import { DOCUMENT_CATEGORIES } from '@/lib/document-helpers';
 import { isSignNowConfigured } from '@/lib/signnow';
+import { isContractTemplatesEnabled } from '@/lib/feature-flags';
 import DocumentDetailClient from './DocumentDetailClient';
 
 export const revalidate = 0;
@@ -77,6 +78,7 @@ export default async function DocumentDetailPage({ params }) {
         categories={DOCUMENT_CATEGORIES}
         contract={contract}
         signNowConfigured={isSignNowConfigured()}
+        contractTemplatesEnabled={isContractTemplatesEnabled()}
       />
     </main>
   );

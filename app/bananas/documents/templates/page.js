@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { adminPageGate } from '@/lib/auth-helpers';
 import { DOCUMENT_CATEGORIES } from '@/lib/document-helpers';
+import { isContractTemplatesEnabled } from '@/lib/feature-flags';
 import TemplatesClient from './TemplatesClient';
 
 export const revalidate = 0;
@@ -14,6 +15,10 @@ export const dynamic = 'force-dynamic';
 export default async function TemplatesPage() {
   const { redirect: gate } = await adminPageGate();
   if (gate) redirect(gate);
+
+  // Feature-flagged off by default: send admins back to Documents rather than
+  // render an editor for a feature that's currently hidden.
+  if (!isContractTemplatesEnabled()) redirect('/bananas/documents');
 
   return (
     <main className="max-w-[1000px] mx-auto px-6 py-16">
