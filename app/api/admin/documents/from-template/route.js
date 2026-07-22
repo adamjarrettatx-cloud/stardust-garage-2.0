@@ -8,6 +8,7 @@ import {
   DOCUMENT_BUCKET,
 } from '@/lib/document-helpers';
 import { validateFieldLayout } from '@/lib/contract-fields';
+import { isContractTemplatesEnabled } from '@/lib/feature-flags';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,6 +22,9 @@ const UUID = /^[0-9a-f-]{36}$/i;
 //   of the template's layout (independently editable per Adam's requirement that
 //   the recipient-fillable field set varies per send). Returns { document_id }.
 export async function POST(request) {
+  if (!isContractTemplatesEnabled()) {
+    return NextResponse.json({ error: 'Not found', code: 'FEATURE_DISABLED' }, { status: 404 });
+  }
   const { user, unauthorized, reason } = await requireAdminMfa();
   if (unauthorized) return NextResponse.json({ error: 'Unauthorized', reason }, { status: 401 });
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient, DOCUMENT_BUCKET } from '@/lib/document-helpers';
+import { isContractTemplatesEnabled } from '@/lib/feature-flags';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,6 +13,9 @@ const UUID = /^[0-9a-f-]{36}$/i;
 //   its pages. Same private-bucket streaming discipline as the document download
 //   route — the storage signed URL never leaves the server.
 export async function GET(request, { params }) {
+  if (!isContractTemplatesEnabled()) {
+    return NextResponse.json({ error: 'Not found', code: 'FEATURE_DISABLED' }, { status: 404 });
+  }
   const { unauthorized, reason } = await requireAdminMfa();
   if (unauthorized) return NextResponse.json({ error: 'Unauthorized', reason }, { status: 401 });
   const { id } = await params;

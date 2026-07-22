@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient, audit, DOCUMENT_BUCKET, DOCUMENT_CATEGORIES } from '@/lib/document-helpers';
 import { validateFieldLayout } from '@/lib/contract-fields';
+import { isContractTemplatesEnabled } from '@/lib/feature-flags';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -9,8 +10,16 @@ export const dynamic = 'force-dynamic';
 const UUID = /^[0-9a-f-]{36}$/i;
 const VALID_CATEGORIES = new Set(DOCUMENT_CATEGORIES.map((c) => c.value));
 
+// 404 when the contract-templates feature flag is off; null to proceed.
+function templatesDisabled() {
+  if (isContractTemplatesEnabled()) return null;
+  return NextResponse.json({ error: 'Not found', code: 'FEATURE_DISABLED' }, { status: 404 });
+}
+
 // GET /api/admin/templates/:id  -- full template incl. field_layout
 export async function GET(request, { params }) {
+  const off = templatesDisabled();
+  if (off) return off;
   const { unauthorized, reason } = await requireAdminMfa();
   if (unauthorized) return NextResponse.json({ error: 'Unauthorized', reason }, { status: 401 });
   const { id } = await params;
@@ -29,6 +38,8 @@ export async function GET(request, { params }) {
 // PATCH /api/admin/templates/:id  -- rename/describe/recategorize, toggle
 // active, and/or save the visually-placed field_layout.
 export async function PATCH(request, { params }) {
+  const off = templatesDisabled();
+  if (off) return off;
   const { user, unauthorized, reason } = await requireAdminMfa();
   if (unauthorized) return NextResponse.json({ error: 'Unauthorized', reason }, { status: 401 });
   const { id } = await params;
@@ -85,6 +96,8 @@ export async function PATCH(request, { params }) {
 // Contracts already created from the template keep their own cloned field_layout
 // and PDF version, so they are unaffected (template_id FK is nullable).
 export async function DELETE(request, { params }) {
+  const off = templatesDisabled();
+  if (off) return off;
   const { user, unauthorized, reason } = await requireAdminMfa();
   if (unauthorized) return NextResponse.json({ error: 'Unauthorized', reason }, { status: 401 });
   const { id } = await params;

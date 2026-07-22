@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient, audit } from '@/lib/document-helpers';
 import { validateFieldLayout, sanitizeFieldValues } from '@/lib/contract-fields';
+import { isContractTemplatesEnabled } from '@/lib/feature-flags';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,6 +16,9 @@ const UUID = /^[0-9a-f-]{36}$/i;
 //   it doesn't exist yet (mirrors the contract PUT route), so a one-off document
 //   can gain fields without a template.
 export async function PUT(request, { params }) {
+  if (!isContractTemplatesEnabled()) {
+    return NextResponse.json({ error: 'Not found', code: 'FEATURE_DISABLED' }, { status: 404 });
+  }
   const { user, unauthorized, reason } = await requireAdminMfa();
   if (unauthorized) return NextResponse.json({ error: 'Unauthorized', reason }, { status: 401 });
   const { id } = await params;
