@@ -40,6 +40,11 @@ export default function DocumentsClient({ initialDocuments, initialError, events
   const [documents, setDocuments] = useState(initialDocuments);
   const [error, setError] = useState(initialError);
   const [showUpload, setShowUpload] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [templates, setTemplates] = useState([]);
+  const [tplLoading, setTplLoading] = useState(false);
+  const [creatingFromTpl, setCreatingFromTpl] = useState(false);
+  const [tplForm, setTplForm] = useState({ template_id: '', title: '', counterparty: '' });
 
   // Filtering happens server-side: tab/search/status changes push new query
   // params, the server re-fetches, and Next.js re-renders this client component
@@ -100,6 +105,43 @@ export default function DocumentsClient({ initialDocuments, initialError, events
     return false;
   }
 
+  async function openTemplatePicker() {
+    setShowTemplatePicker(true);
+    setTplLoading(true); setError(null);
+    try {
+      const json = await adminFetch('/api/admin/templates');
+      setTemplates(json.templates || []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setTplLoading(false);
+    }
+  }
+
+  async function handleCreateFromTemplate(e) {
+    e.preventDefault();
+    if (!tplForm.template_id) return setError('Pick a template.');
+    setCreatingFromTpl(true); setError(null);
+    try {
+      const json = await adminFetch('/api/admin/documents/from-template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          template_id: tplForm.template_id,
+          title: tplForm.title || undefined,
+          counterparty: tplForm.counterparty || undefined,
+        }),
+      });
+      setShowTemplatePicker(false);
+      setTplForm({ template_id: '', title: '', counterparty: '' });
+      router.push(`/bananas/documents/${json.document_id}`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setCreatingFromTpl(false);
+    }
+  }
+
   async function handleDelete(id, title) {
     if (!confirm(`Delete "${title}"? This permanently removes all versions and files.`)) return;
     try {
@@ -156,6 +198,20 @@ export default function DocumentsClient({ initialDocuments, initialError, events
           <option value="archived">Archived</option>
           <option value="all">All</option>
         </select>
+        <Link
+          href="/bananas/documents/templates"
+          className="px-4 py-2.5 text-[13px] font-semibold rounded-[10px] tracking-[0.06em] uppercase"
+          style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}
+        >
+          Templates
+        </Link>
+        <button
+          onClick={openTemplatePicker}
+          className="px-4 py-2.5 text-[13px] font-semibold rounded-[10px] tracking-[0.06em] uppercase"
+          style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}
+        >
+          + From template
+        </button>
         <button
           onClick={() => setShowUpload(true)}
           className="px-5 py-2.5 text-[13px] font-semibold rounded-[10px] tracking-[0.06em] uppercase"
@@ -291,6 +347,75 @@ export default function DocumentsClient({ initialDocuments, initialError, events
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Create-from-template modal */}
+      {showTemplatePicker && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-6"
+          style={{ background: 'rgba(0,0,0,0.7)' }}
+          onClick={() => !creatingFromTpl && setShowTemplatePicker(false)}
+        >
+          <form
+            onSubmit={handleCreateFromTemplate}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-[520px] rounded-[14px] border p-6 space-y-3"
+            style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.10)' }}
+          >
+            <h2 className="text-[20px] font-bold mb-1">New contract from template</h2>
+            <p className="text-[12px] mb-4" style={{ color: '#8a8a8a' }}>
+              Clones the template PDF and its field layout into a new contract you can then customize, fill, and send.
+            </p>
+            {tplLoading ? (
+              <p className="text-[13px]" style={{ color: '#8a8a8a' }}>Loading templates…</p>
+            ) : templates.length === 0 ? (
+              <p className="text-[13px]" style={{ color: '#8a8a8a' }}>
+                No active templates.{' '}
+                <Link href="/bananas/documents/templates" className="underline">Create one first.</Link>
+              </p>
+            ) : (
+              <>
+                <select
+                  required
+                  value={tplForm.template_id}
+                  onChange={(e) => setTplForm({ ...tplForm, template_id: e.target.value })}
+                  className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none cursor-pointer"
+                  style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+                >
+                  <option value="">Choose a template…</option>
+                  {templates.map((t) => (
+                    <option key={t.id} value={t.id}>{t.title} ({t.field_count} field{t.field_count === 1 ? '' : 's'})</option>
+                  ))}
+                </select>
+                <input
+                  placeholder="Contract title (defaults to template title)"
+                  value={tplForm.title}
+                  onChange={(e) => setTplForm({ ...tplForm, title: e.target.value })}
+                  className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none"
+                  style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+                />
+                <input
+                  placeholder="Counterparty (optional)"
+                  value={tplForm.counterparty}
+                  onChange={(e) => setTplForm({ ...tplForm, counterparty: e.target.value })}
+                  className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none"
+                  style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+                />
+              </>
+            )}
+            <div className="flex justify-end gap-2 pt-2">
+              <button type="button" onClick={() => setShowTemplatePicker(false)} disabled={creatingFromTpl}
+                className="px-4 py-2 text-[13px] rounded-[10px]" style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}>
+                Cancel
+              </button>
+              <button type="submit" disabled={creatingFromTpl || !tplForm.template_id}
+                className="px-5 py-2 text-[13px] font-semibold rounded-[10px] tracking-[0.06em] uppercase"
+                style={{ background: 'white', color: 'black', opacity: creatingFromTpl || !tplForm.template_id ? 0.6 : 1 }}>
+                {creatingFromTpl ? 'Creating…' : 'Create contract'}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
