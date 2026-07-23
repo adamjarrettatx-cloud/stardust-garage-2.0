@@ -20,11 +20,15 @@ export default async function FinancialCalendarPage() {
   // rows (same pattern as /bananas/analytics).
   const supabase = createAdminClient();
 
+  // Fetch ALL events (no row cap), matching the Team Calendar this feature is
+  // modeled on. A calendar must be able to render every month; capping the
+  // result (previously .limit(500), ascending) returned only the earliest N
+  // events, so once the catalog grew past the cap, whole months — including
+  // recent/historical ones — silently rendered with no entries at all.
   const { data: events } = await supabase
     .from('events')
     .select('id, title, event_date, category, status, tt_event_series_id')
-    .order('event_date', { ascending: true })
-    .limit(500);
+    .order('event_date', { ascending: true });
 
   // Cached TicketTailor metrics (populated by the read-only refresh route). The
   // table may not exist in a given environment — degrade gracefully to empty.

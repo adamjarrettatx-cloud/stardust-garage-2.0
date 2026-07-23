@@ -155,3 +155,37 @@ test('summarizeIncome on empty set is all zeros', () => {
     eventCount: 0, revenueEvents: 0, grossCents: 0, ticketsSold: 0, ordersCount: 0, lastUpdated: null,
   });
 });
+
+// Regression: every month that has events must be representable as entries and
+// isolable by entriesInMonth. The original bug surfaced when the page query
+// capped the event set, so whole months (e.g. Feb/Mar/Apr) rendered empty. The
+// pure pipeline must never drop a month given the full event set.
+test('buildFinancialCalendar + entriesInMonth covers every month incl. Feb/Mar/Apr', () => {
+  const events = Array.from({ length: 12 }, (_, i) => ({
+    id: `e-${i + 1}`,
+    title: `Event ${i + 1}`,
+    event_date: `2026-${String(i + 1).padStart(2, '0')}-15`,
+    tt_event_series_id: null,
+  }));
+  const entries = buildFinancialCalendar({ events, metrics: [], today: TODAY });
+  assert.equal(entries.length, 12);
+  // month is 0-indexed: Feb=1, Mar=2, Apr=3.
+  for (const month of [1, 2, 3]) {
+    const inMonth = entriesInMonth(entries, 2026, month);
+    assert.equal(inMonth.length, 1, `expected one entry for 2026 month ${month}`);
+    assert.equal(inMonth[0].eventDate, `2026-${String(month + 1).padStart(2, '0')}-15`);
+  }
+});
+
+// Regression: event_date may arrive as a full timestamptz string, not a bare
+// date. toDateString() must reduce it to YYYY-MM-DD so month filtering still
+// buckets it into the correct month rather than dropping it.
+test('entriesInMonth buckets timestamp-format event_date into the right month', () => {
+  const events = [
+    { id: 'ts-feb', title: 'Feb', event_date: '2026-02-15T00:00:00+00:00', tt_event_series_id: null },
+    { id: 'ts-apr', title: 'Apr', event_date: '2026-04-01T18:30:00.000Z', tt_event_series_id: null },
+  ];
+  const entries = buildFinancialCalendar({ events, metrics: [], today: TODAY });
+  assert.deepEqual(entriesInMonth(entries, 2026, 1).map((e) => e.id), ['ts-feb']);
+  assert.deepEqual(entriesInMonth(entries, 2026, 3).map((e) => e.id), ['ts-apr']);
+});
