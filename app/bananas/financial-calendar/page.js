@@ -49,12 +49,24 @@ export default async function FinancialCalendarPage() {
     .limit(5000);
   if (!discoveredRes.error && discoveredRes.data) discovered = discoveredRes.data;
 
+  // Owner-entered manual income (public.manual_income_entries): money with no
+  // local event and no TicketTailor record (e.g. a venue rental). Owner-gated
+  // above; degrade to empty if the table doesn't exist yet in this environment.
+  let manual = [];
+  const manualRes = await supabase
+    .from('manual_income_entries')
+    .select('id, entry_date, title, customer_name, event_name, category, amount_cents, notes, source, local_event_id, updated_at')
+    .order('entry_date', { ascending: true })
+    .limit(5000);
+  if (!manualRes.error && manualRes.data) manual = manualRes.data;
+
   // Build entries on the server so the client receives ready-to-render data and
   // never touches TicketTailor directly. `today` is resolved server-side.
   const entries = buildFinancialCalendar({
     events: events || [],
     metrics,
     discovered,
+    manual,
     today: new Date(),
   });
 

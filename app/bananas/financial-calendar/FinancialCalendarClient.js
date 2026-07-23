@@ -2,9 +2,19 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { centsToUsd } from '@/lib/event-analytics';
 import { ENTRY_STATE, entriesInMonth, summarizeIncome } from '@/lib/financial-calendar';
+import { MANUAL_CATEGORIES } from '@/lib/manual-income';
+import { adminFetch } from '@/lib/admin-fetch';
 import RefreshMetricsButton from '@/app/bananas/analytics/RefreshMetricsButton';
+import ManualIncomeDialog from './ManualIncomeDialog';
+
+const MANUAL_CATEGORY_LABEL = Object.fromEntries(MANUAL_CATEGORIES.map((c) => [c.value, c.label]));
+
+function toDateInput(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = [
@@ -52,11 +62,49 @@ function cellIncomeLabel(entry) {
 }
 
 export default function FinancialCalendarClient({ entries, todayIso }) {
+  const router = useRouter();
   const today = useMemo(() => new Date(todayIso), [todayIso]);
 
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [selectedDay, setSelectedDay] = useState(null);
+
+  // Manual-income add/edit dialog + delete state.
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState(null);
+  const [dialogDate, setDialogDate] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
+
+  const openAdd = () => {
+    setEditingEntry(null);
+    setDialogDate(selectedDay ? toDateInput(selectedDay) : toDateInput(today));
+    setDialogOpen(true);
+  };
+  const openEdit = (entry) => {
+    setEditingEntry(entry);
+    setDialogDate(null);
+    setDialogOpen(true);
+  };
+  const closeDialog = () => { setDialogOpen(false); setEditingEntry(null); };
+
+  const deleteEntry = async (entry) => {
+    if (typeof window !== 'undefined' && !window.confirm(`Delete "${entry.title}"? This cannot be undone.`)) return;
+    setDeletingId(entry.manualId);
+    setDeleteError(null);
+    try {
+      await adminFetch('/api/admin/manual-income', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: entry.manualId }),
+      });
+      router.refresh();
+    } catch (err) {
+      setDeleteError(err?.message || 'Could not delete the entry.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -125,13 +173,29 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
         — not a forecast. Income only; expenses and other sources are not tracked yet.
       </p>
 
-      {/* Controls: refresh + last updated */}
+      {/* Controls: refresh + add income + last updated */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
-        <RefreshMetricsButton />
+        <div className="flex flex-wrap items-center gap-3">
+          <RefreshMetricsButton />
+          <button
+            type="button"
+            onClick={openAdd}
+            data-testid="fc-add-income"
+            className="text-[12px] font-semibold tracking-[0.10em] uppercase rounded-[10px] px-4 py-2 transition-colors"
+            style={{ background: '#4ade80', color: '#0a0a0a' }}
+          >
+            + Add income
+          </button>
+        </div>
         <span className="text-[12px]" style={{ color: '#8a8a8a' }} data-testid="fc-last-updated">
           Metrics last synced: <span style={{ color: '#c8c8c8' }}>{fmtFetched(monthSummary.lastUpdated)}</span>
         </span>
       </div>
+      {deleteError && (
+        <p className="text-[12px] mb-4 rounded-[8px] px-3 py-2" style={{ background: 'rgba(248,113,113,0.1)', color: '#f87171' }} role="alert" data-testid="fc-delete-error">
+          {deleteError}
+        </p>
+      )}
 
       {/* Monthly income summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" data-testid="fc-month-summary">
@@ -225,7 +289,7 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
                           </div>
                           <div className="text-[9px] font-bold truncate">
                             {cellIncomeLabel(entry)}
-                            {entry.isFuture && hasMoney && <span className="font-normal opacity-70"> · to date</span>}
+                            {entry.isFuture && hasMoney && !entry.isManual && <span className="font-normal opacity-70"> · to date</span>}
                           </div>
                         </div>
                       );
@@ -259,25 +323,51 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
                 const hasMoney = entry.state === ENTRY_STATE.OK;
                 const meta = STATE_META[entry.state];
                 return (
-                  <div key={entry.id} className="rounded-[10px] p-3" style={{ background: hasMoney ? '#0f1a12' : '#101010', border: `1px solid ${hasMoney ? 'rgba(74,222,128,0.22)' : 'rgba(255,255,255,0.08)'}` }}>
+                  <div key={entry.id} className="rounded-[10px] p-3" style={{ background: hasMoney ? '#0f1a12' : '#101010', border: `1px solid ${hasMoney ? 'rgba(74,222,128,0.22)' : 'rgba(255,255,255,0.08)'}` }} data-testid={entry.isManual ? 'fc-manual-detail' : undefined}>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: CATEGORY_COLOR[entry.category] || '#8a8a8a' }} />
-                      {entry.hasLocalEvent === false ? (
-                        // TicketTailor-only event: no local page to link to.
-                        <span className="text-[14px] font-bold truncate" title="TicketTailor-only event (no website record)">{entry.title}</span>
+                      {entry.isManual || entry.hasLocalEvent === false ? (
+                        // Manual or TicketTailor-only entry: no local page to link to.
+                        <span className="text-[14px] font-bold truncate" title={entry.isManual ? 'Manual income entry' : 'TicketTailor-only event (no website record)'}>{entry.title}</span>
                       ) : (
                         <Link href={`/bananas/events/${entry.id}`} className="text-[14px] font-bold hover:underline truncate">{entry.title}</Link>
                       )}
                     </div>
 
                     <div className="flex items-center gap-2 mb-2 text-[10px] tracking-[0.08em] uppercase" style={{ color: '#8a8a8a' }}>
+                      {entry.isManual && (
+                        <span className="px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(74,222,128,0.14)', color: '#4ade80' }}>Manual</span>
+                      )}
                       {entry.eventStatus && <span>{entry.eventStatus}</span>}
                       {entry.isFuture && (
                         <span className="px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(255,184,77,0.14)', color: '#ffb84d' }}>Upcoming</span>
                       )}
                     </div>
 
-                    {hasMoney || entry.state === ENTRY_STATE.ZERO ? (
+                    {entry.isManual ? (
+                      <>
+                        <div className="text-[22px] font-extrabold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#4ade80' }}>
+                          {centsToUsd(entry.grossCents)}
+                        </div>
+                        <div className="text-[10px] mb-2" style={{ color: '#8a8a8a' }}>
+                          Manual income · {MANUAL_CATEGORY_LABEL[entry.category] || entry.category}
+                        </div>
+                        {(entry.customerName || entry.eventName) && (
+                          <div className="text-[11px] mb-1" style={{ color: '#c8c8c8' }}>
+                            {[entry.customerName, entry.eventName].filter(Boolean).join(' · ')}
+                          </div>
+                        )}
+                        {entry.notes && (
+                          <p className="text-[11px] mb-1 whitespace-pre-wrap" style={{ color: '#8a8a8a' }}>{entry.notes}</p>
+                        )}
+                        <div className="flex items-center gap-3 mt-2 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                          <button type="button" onClick={() => openEdit(entry)} data-testid="fc-manual-edit" className="text-[11px] font-semibold tracking-[0.08em] uppercase transition-colors hover:text-white" style={{ color: '#8a8a8a' }}>Edit</button>
+                          <button type="button" onClick={() => deleteEntry(entry)} disabled={deletingId === entry.manualId} data-testid="fc-manual-delete" className="text-[11px] font-semibold tracking-[0.08em] uppercase transition-colors disabled:opacity-50" style={{ color: '#f87171' }}>
+                            {deletingId === entry.manualId ? 'Deleting…' : 'Delete'}
+                          </button>
+                        </div>
+                      </>
+                    ) : hasMoney || entry.state === ENTRY_STATE.ZERO ? (
                       <>
                         <div className="text-[22px] font-extrabold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: hasMoney ? '#4ade80' : '#c8c8c8' }}>
                           {centsToUsd(entry.grossCents)}
@@ -307,9 +397,11 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
                       </div>
                     )}
 
-                    <div className="text-[10px] mt-2 pt-2" style={{ color: '#6a6a6a', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                      Last synced: {fmtFetched(entry.fetchedAt)}
-                    </div>
+                    {!entry.isManual && (
+                      <div className="text-[10px] mt-2 pt-2" style={{ color: '#6a6a6a', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                        Last synced: {fmtFetched(entry.fetchedAt)}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -319,10 +411,18 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
       </div>
 
       <p className="mt-6 text-[12px]" style={{ color: '#6a6a6a' }}>
-        Income figures come from the read-only TicketTailor metrics cache, refreshed on a daily cron or on
-        demand above. Historical months reflect stored metrics; upcoming events show real sales collected so
-        far and are labeled accordingly. SpotOn point-of-sale income is not included yet.
+        TicketTailor figures come from the read-only metrics cache, refreshed on a daily cron or on demand
+        above (upcoming events show real sales-to-date, not a forecast). Entries tagged <span style={{ color: '#4ade80' }}>Manual</span> are
+        owner-entered income (e.g. venue rentals) with no ticketing record. SpotOn point-of-sale income is not
+        included yet.
       </p>
+
+      <ManualIncomeDialog
+        open={dialogOpen}
+        editing={editingEntry}
+        defaultDate={dialogDate}
+        onClose={closeDialog}
+      />
     </main>
   );
 }

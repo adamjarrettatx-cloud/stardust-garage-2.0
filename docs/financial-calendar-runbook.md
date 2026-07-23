@@ -43,7 +43,7 @@ access and no API secret is exposed to the browser.
 
 ## Data source & refresh
 
-The calendar renders income entries from **two** read-only caches, merged
+The calendar renders income entries from **three** sources, merged
 server-side (`buildFinancialCalendar` in `lib/financial-calendar.js`):
 
 1. **Local events** — `public.event_ticket_metrics`, keyed by local
@@ -52,6 +52,10 @@ server-side (`buildFinancialCalendar` in `lib/financial-calendar.js`):
    event series id, populated by `/api/admin/refresh-tt-discovered`. This
    surfaces historical events that live **only** in TicketTailor and were never
    mirrored onto the website (no `public.events` row) — previously invisible.
+3. **Manual income** — `public.manual_income_entries`, keyed by its own uuid,
+   entered by the **owner** through the calendar UI. Covers income with no
+   local event and no TicketTailor record (e.g. a venue rental paid directly).
+   Read-only sources (1) and (2) are never mutated by this path.
 
 Both refresh routes only ever GET from TicketTailor (`listEvents` / `listOrders`
 / `listIssuedTickets`); neither writes back to TicketTailor, and **no website
@@ -64,6 +68,36 @@ the matching `tt_discovered_events` row is skipped (matched by series id, or by
 its `local_event_id` back-link) so income is never double-counted. TT-only
 entries have no local page — the day-detail panel shows their title as plain
 text rather than a link to `/bananas/events/:id`.
+
+### Manual income (owner-entered)
+The owner can record income by hand from the calendar via **+ Add income**
+(and Edit/Delete on a manual entry's day-detail card). These rows are:
+
+- **Owner-only, stricter than admin.** Reads and writes are gated by
+  `requireOwner()` (server-side owner email from `auth.users`) at the API, and
+  by RLS policies using a new `public.is_owner()` definer function at the DB.
+  A non-owner admin/team member can neither see nor modify manual income.
+- **Never double-counted.** Manual entries are an independent source keyed by
+  their own uuid, so they can never collide with a TT/local entry. Monthly
+  totals (`summarizeIncome`) simply add manual gross on top; manual rows carry
+  no tickets/orders.
+- **Money-safe.** The UI accepts `$`, thousands commas, and up to 2 decimals;
+  `parseAmountToCents()` converts to integer cents without float error and
+  rejects negative/over-precise input. Server re-validates via
+  `validateManualEntry()` — the client is never trusted.
+- **CSRF-guarded.** The write route additionally checks same-origin
+  (`isSameOrigin`) on top of the owner session + SameSite cookies.
+
+| Endpoint | Method | Purpose | Auth |
+| --- | --- | --- | --- |
+| `/api/admin/manual-income` | `POST` | Create a manual income entry | `requireOwner()` + same-origin |
+| `/api/admin/manual-income` | `PATCH` | Edit an entry by id | `requireOwner()` + same-origin |
+| `/api/admin/manual-income` | `DELETE` | Delete an entry by id | `requireOwner()` + same-origin |
+
+Categories live in `lib/manual-income.js` (`MANUAL_CATEGORIES`) as a
+convention — the DB stores `category` as text (not a Postgres enum) so new
+categories need **no migration**. `venue_rental` is the default; `other` is the
+escape hatch.
 
 ### Refresh routes
 | Route | Trigger | Auth |
@@ -79,22 +113,29 @@ successive daily runs cycle through the full catalog without exceeding
 serverless time / TT rate limits. Series already covered by a local event are
 skipped (the local metrics route owns them).
 
-### Migration
+### Migrations
 - **`supabase/migrations/20260723_tt_discovered_events.sql`** (additive) creates
   `public.tt_discovered_events` with admin-only RLS reusing `public.is_admin()`.
   It does not alter `public.events` or `public.event_ticket_metrics`.
+- **`supabase/migrations/20260723_manual_income_entries.sql`** (additive) creates
+  the `public.is_owner()` definer function and `public.manual_income_entries`
+  with **owner-only** RLS. It does not alter any existing table or function.
 - The local-events path still requires **no** migration (reuses
   `event_ticket_metrics`).
 
 ## One-time deployment & backfill
 
-1. **Apply the migration** (e.g. `supabase db push`, or run the SQL file against
-   the project). Purely additive; safe to re-run.
-2. **Deploy** so the new route `/api/admin/refresh-tt-discovered` and the daily
-   cron entry in `vercel.json` are live.
-3. **Backfill now** (don't wait for the cron). As an owner/admin, POST to the
-   route to pull income for the discovered TT-only events. A single run with a
-   raised batch covers a small historical catalog:
+Apply migrations in either order — both are independent and additive.
+
+1. **Apply the migrations** (e.g. `supabase db push`, or run the SQL files
+   against the project). Purely additive; safe to re-run.
+   - `20260723_tt_discovered_events.sql`
+   - `20260723_manual_income_entries.sql`
+2. **Deploy** so the routes `/api/admin/refresh-tt-discovered` and
+   `/api/admin/manual-income`, plus the daily cron entry in `vercel.json`, are
+   live.
+3. **Backfill TicketTailor-only events** (don't wait for the cron). As an
+   owner/admin, POST to the discovery route to pull income for TT-only events:
    ```bash
    # Admin session (browser) — or server-to-server with the cron secret:
    curl -X POST https://<host>/api/admin/refresh-tt-discovered \
@@ -105,8 +146,13 @@ skipped (the local metrics route owns them).
    ```
    Re-run until the JSON response reports `"remaining": 0`. The Feb–Apr events
    then appear on the calendar with real income.
-4. **Verify**: open `/bananas/financial-calendar`, navigate to February–April;
-   TT-only events render (title as plain text, no local link) with income.
+4. **Manual income needs NO backfill** — it is entered on demand. There is no
+   seed data. After deploy, the owner adds entries via **+ Add income**. (The
+   motivating SolarPunk venue rental on 2026-07-18 for $2,800.00 is intentionally
+   NOT seeded — create it only after confirming.)
+5. **Verify**: open `/bananas/financial-calendar`; navigate to February–April
+   for TT-only events; add a manual entry and confirm it appears tagged
+   **Manual** and rolls into the month total.
 
 ### Environment variables (already used by the existing integration)
 
@@ -128,12 +174,16 @@ treatment (never a fabricated number):
 - `not_configured` — TT series linked but `TICKETTAILOR_API_KEY` missing.
 - `error` — last refresh attempt failed.
 
+Manual entries are always `ok` (real, countable money) and additionally flagged
+`isManual` so the UI tags them **Manual** and shows Edit/Delete.
+
 ## Deferred scope (intentionally NOT built yet)
 
-- **SpotOn CSV import.** Extension point is in place:
-  `lib/financial-calendar.js` gives every entry an `incomeSources` array and a
-  `mergeIncomeSources()` seam. A future SpotOn importer contributes an object of
-  the same shape and the month totals add up with no shape change.
+- **SpotOn CSV import.** Extension point is intact: `lib/financial-calendar.js`
+  gives every entry an `incomeSources` array and a `mergeIncomeSources()` seam.
+  A future SpotOn importer is a **separate source** contributing an object of the
+  same shape — it does NOT reuse `manual_income_entries` or the manual helpers.
+  Month totals add up with no shape change.
 - **Expenses / net profit.** Income only for the MVP.
 - **Forecasting / projected revenue.** Upcoming events show actual sales-to-date
   only, deliberately labeled so it is not read as a projection.
@@ -142,5 +192,10 @@ treatment (never a fabricated number):
 
 - `tests/financial-calendar.test.mjs` — pure data helpers: income entry
   building, state classification, future-event flagging, month filtering, and
-  income aggregation.
+  income aggregation (incl. TicketTailor-only + manual merges).
+- `tests/tt-discovered-events.test.mjs` — TicketTailor discovery normalization,
+  series collapsing, metric/identity builders, and batch selection.
+- `tests/manual-income.test.mjs` — cents parsing/validation, create/update
+  payload builders, manual calendar-entry shape, date/month aggregation, mixed
+  TicketTailor + manual totals (no double-count), and the same-origin CSRF guard.
 - Run: `npm test`.
