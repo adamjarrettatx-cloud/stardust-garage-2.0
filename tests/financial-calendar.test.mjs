@@ -5,6 +5,8 @@ import {
   mergeIncomeSources,
   buildIncomeEntry,
   buildFinancialCalendar,
+  buildDiscoveredIncomeEntry,
+  discoveredEntryId,
   entriesInMonth,
   summarizeIncome,
 } from '../lib/financial-calendar.js';
@@ -175,6 +177,60 @@ test('buildFinancialCalendar + entriesInMonth covers every month incl. Feb/Mar/A
     assert.equal(inMonth.length, 1, `expected one entry for 2026 month ${month}`);
     assert.equal(inMonth[0].eventDate, `2026-${String(month + 1).padStart(2, '0')}-15`);
   }
+});
+
+// --- TicketTailor-only discovered events -----------------------------------
+
+const febDiscovered = {
+  tt_event_series_id: 'es_feb', tt_event_id: 'ev_feb', title: 'Feb TT-only Party',
+  event_date: '2026-02-14', gross_cents: 42000, fees_cents: 2000, net_cents: 40000,
+  tickets_sold: 30, orders_count: 25, status: 'ok', source: 'tickettailor',
+  fetched_at: '2026-07-20T00:00:00Z', local_event_id: null,
+};
+
+test('buildDiscoveredIncomeEntry produces a local-page-less OK entry', () => {
+  const e = buildDiscoveredIncomeEntry(febDiscovered, TODAY);
+  assert.equal(e.id, discoveredEntryId('es_feb'));
+  assert.equal(e.id, 'tt:es_feb');
+  assert.equal(e.hasLocalEvent, false);
+  assert.equal(e.ttLinked, true);
+  assert.equal(e.state, ENTRY_STATE.OK);
+  assert.equal(e.hasIncome, true);
+  assert.equal(e.grossCents, 42000);
+  assert.equal(e.eventDate, '2026-02-14');
+});
+
+test('buildFinancialCalendar surfaces TT-only months (Feb) absent from local events', () => {
+  const events = [
+    { id: 'e-jun', title: 'June Local', event_date: '2026-06-10', tt_event_series_id: 'es_jun' },
+  ];
+  const entries = buildFinancialCalendar({ events, metrics: [okMetrics], discovered: [febDiscovered], today: TODAY });
+  const feb = entriesInMonth(entries, 2026, 1);
+  assert.equal(feb.length, 1);
+  assert.equal(feb[0].id, 'tt:es_feb');
+  assert.equal(feb[0].hasLocalEvent, false);
+  // Local June entry still present and marked as backed by a local page.
+  const jun = entriesInMonth(entries, 2026, 5);
+  assert.equal(jun.length, 1);
+  assert.equal(jun[0].hasLocalEvent, true);
+});
+
+test('buildFinancialCalendar de-dupes a discovered series already covered locally', () => {
+  const events = [
+    { id: 'e-feb-local', title: 'Feb Local', event_date: '2026-02-14', tt_event_series_id: 'es_feb' },
+  ];
+  // Same series as the local event → discovered row must NOT create a second entry.
+  const entries = buildFinancialCalendar({ events, metrics: [], discovered: [febDiscovered], today: TODAY });
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].id, 'e-feb-local');
+  assert.equal(entries[0].hasLocalEvent, true);
+});
+
+test('buildFinancialCalendar de-dupes when discovered row carries a local_event_id', () => {
+  const events = [];
+  const linked = { ...febDiscovered, local_event_id: 'some-uuid' };
+  const entries = buildFinancialCalendar({ events, metrics: [], discovered: [linked], today: TODAY });
+  assert.equal(entries.length, 0);
 });
 
 // Regression: event_date may arrive as a full timestamptz string, not a bare

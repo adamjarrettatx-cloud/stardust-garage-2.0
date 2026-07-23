@@ -43,16 +43,70 @@ access and no API secret is exposed to the browser.
 
 ## Data source & refresh
 
-- Reads the existing cache table `public.event_ticket_metrics`, populated by the
-  read-only refresh route `/api/admin/refresh-event-metrics`:
-  - Daily via Vercel cron (`GET`, `Bearer ${CRON_SECRET}`).
-  - On demand via the **Refresh metrics** button (`POST`, admin + MFA-ready).
-- The refresh route only ever GETs from TicketTailor (`listOrders` /
-  `listIssuedTickets`); it never writes back to TicketTailor.
-- Money is stored/summed in integer cents and formatted to USD only at render.
-- **No new migration is required** — the calendar reuses the existing
-  `event_ticket_metrics` columns (`gross_cents`, `net_cents`, `fees_cents`,
-  `tickets_sold`, `orders_count`, `status`, `fetched_at`).
+The calendar renders income entries from **two** read-only caches, merged
+server-side (`buildFinancialCalendar` in `lib/financial-calendar.js`):
+
+1. **Local events** — `public.event_ticket_metrics`, keyed by local
+   `events.id`, populated by `/api/admin/refresh-event-metrics`. Unchanged.
+2. **TicketTailor-only events** — `public.tt_discovered_events`, keyed by TT
+   event series id, populated by `/api/admin/refresh-tt-discovered`. This
+   surfaces historical events that live **only** in TicketTailor and were never
+   mirrored onto the website (no `public.events` row) — previously invisible.
+
+Both refresh routes only ever GET from TicketTailor (`listEvents` / `listOrders`
+/ `listIssuedTickets`); neither writes back to TicketTailor, and **no website
+event record is ever created**. Money is stored/summed in integer cents and
+formatted to USD only at render.
+
+### De-duplication
+A TT series represented by a local event is served from `event_ticket_metrics`;
+the matching `tt_discovered_events` row is skipped (matched by series id, or by
+its `local_event_id` back-link) so income is never double-counted. TT-only
+entries have no local page — the day-detail panel shows their title as plain
+text rather than a link to `/bananas/events/:id`.
+
+### Refresh routes
+| Route | Trigger | Auth |
+| --- | --- | --- |
+| `POST/GET /api/admin/refresh-event-metrics` | Daily cron `23 6 * * *` + **Refresh metrics** button | `CRON_SECRET` / admin+MFA |
+| `POST/GET /api/admin/refresh-tt-discovered` | Daily cron `41 6 * * *` | `CRON_SECRET` / admin+MFA |
+
+The discovery route is **batched and resumable**: each run lists all TT
+occurrences (one paginated call), upserts their identity (title/date/series),
+then pulls income for up to **25** of the stalest not-yet-linked series
+(`DEFAULT_BATCH`, clamped to `MAX_BATCH=100`). Never-fetched rows go first, so
+successive daily runs cycle through the full catalog without exceeding
+serverless time / TT rate limits. Series already covered by a local event are
+skipped (the local metrics route owns them).
+
+### Migration
+- **`supabase/migrations/20260723_tt_discovered_events.sql`** (additive) creates
+  `public.tt_discovered_events` with admin-only RLS reusing `public.is_admin()`.
+  It does not alter `public.events` or `public.event_ticket_metrics`.
+- The local-events path still requires **no** migration (reuses
+  `event_ticket_metrics`).
+
+## One-time deployment & backfill
+
+1. **Apply the migration** (e.g. `supabase db push`, or run the SQL file against
+   the project). Purely additive; safe to re-run.
+2. **Deploy** so the new route `/api/admin/refresh-tt-discovered` and the daily
+   cron entry in `vercel.json` are live.
+3. **Backfill now** (don't wait for the cron). As an owner/admin, POST to the
+   route to pull income for the discovered TT-only events. A single run with a
+   raised batch covers a small historical catalog:
+   ```bash
+   # Admin session (browser) — or server-to-server with the cron secret:
+   curl -X POST https://<host>/api/admin/refresh-tt-discovered \
+     -H 'Content-Type: application/json' -d '{"limit": 100}'
+   # OR the scheduled path:
+   curl https://<host>/api/admin/refresh-tt-discovered \
+     -H "Authorization: Bearer $CRON_SECRET"
+   ```
+   Re-run until the JSON response reports `"remaining": 0`. The Feb–Apr events
+   then appear on the calendar with real income.
+4. **Verify**: open `/bananas/financial-calendar`, navigate to February–April;
+   TT-only events render (title as plain text, no local link) with income.
 
 ### Environment variables (already used by the existing integration)
 

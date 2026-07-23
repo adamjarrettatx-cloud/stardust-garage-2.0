@@ -39,11 +39,22 @@ export default async function FinancialCalendarPage() {
     .limit(5000);
   if (!metricsRes.error && metricsRes.data) metrics = metricsRes.data;
 
+  // TicketTailor-only events that were never mirrored onto the website (no local
+  // events row). Populated by /api/admin/refresh-tt-discovered. Degrades to an
+  // empty set if the cache table doesn't exist yet in this environment.
+  let discovered = [];
+  const discoveredRes = await supabase
+    .from('tt_discovered_events')
+    .select('tt_event_series_id, tt_event_id, title, event_date, tickets_sold, orders_count, gross_cents, fees_cents, net_cents, source, status, fetched_at, local_event_id')
+    .limit(5000);
+  if (!discoveredRes.error && discoveredRes.data) discovered = discoveredRes.data;
+
   // Build entries on the server so the client receives ready-to-render data and
   // never touches TicketTailor directly. `today` is resolved server-side.
   const entries = buildFinancialCalendar({
     events: events || [],
     metrics,
+    discovered,
     today: new Date(),
   });
 

@@ -262,7 +262,12 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
                   <div key={entry.id} className="rounded-[10px] p-3" style={{ background: hasMoney ? '#0f1a12' : '#101010', border: `1px solid ${hasMoney ? 'rgba(74,222,128,0.22)' : 'rgba(255,255,255,0.08)'}` }}>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: CATEGORY_COLOR[entry.category] || '#8a8a8a' }} />
-                      <Link href={`/bananas/events/${entry.id}`} className="text-[14px] font-bold hover:underline truncate">{entry.title}</Link>
+                      {entry.hasLocalEvent === false ? (
+                        // TicketTailor-only event: no local page to link to.
+                        <span className="text-[14px] font-bold truncate" title="TicketTailor-only event (no website record)">{entry.title}</span>
+                      ) : (
+                        <Link href={`/bananas/events/${entry.id}`} className="text-[14px] font-bold hover:underline truncate">{entry.title}</Link>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2 mb-2 text-[10px] tracking-[0.08em] uppercase" style={{ color: '#8a8a8a' }}>
