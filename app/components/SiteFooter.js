@@ -50,50 +50,8 @@ export default function SiteFooter() {
           <SignupForm />
         </div>
 
-        {/* Map */}
-        <div
-          className="rounded-[18px] overflow-hidden border mb-16"
-          style={{ borderColor: 'rgba(255,255,255,0.08)', aspectRatio: '16 / 7' }}
-        >
-          <iframe
-            src="https://www.google.com/maps?q=4319+Terry-O+Ln,+Austin,+TX+78745&output=embed"
-            style={{
-              width: '100%',
-              height: '100%',
-              border: 0,
-              filter: 'invert(0.9) hue-rotate(180deg) saturate(0.3)',
-            }}
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            title="Stardust Garage location"
-          />
-        </div>
-
         {/* Contact + nav grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-16">
-          <div>
-            <h3
-              className="text-[11px] font-semibold tracking-[0.2em] mb-4"
-              style={{ color: '#8a8a8a' }}
-            >
-              VISIT
-            </h3>
-            <p className="text-[14px] leading-[1.6]" style={{ color: '#d0d0d0' }}>
-              4319 Terry-O Ln
-              <br />
-              Austin, TX 78745
-            </p>
-            <a
-              href="https://www.google.com/maps/search/?api=1&query=4319+Terry-O+Ln+Austin+TX+78745"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block mt-3 text-[12px] font-semibold tracking-[0.14em] hover:opacity-70 transition-opacity"
-              style={{ color: '#f5f5f5' }}
-            >
-              GET DIRECTIONS →
-            </a>
-          </div>
-
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-10 mb-16">
           <div>
             <h3
               className="text-[11px] font-semibold tracking-[0.2em] mb-4"
