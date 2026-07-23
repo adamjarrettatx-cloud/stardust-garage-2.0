@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import TeamEventModal from '@/app/bananas/calendar/TeamEventModal';
 
@@ -142,6 +143,13 @@ export default function TeamCalendarClient({ publicEvents, teamEvents: initialTe
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Link
+            href="/team/progress"
+            className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"
+            style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#ffb84d' }}
+          >
+            PROGRESS
+          </Link>
           <button
             onClick={() => setModalState({ mode: 'create', date: today })}
             className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5"
