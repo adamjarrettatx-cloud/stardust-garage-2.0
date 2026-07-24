@@ -73,20 +73,30 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
   const [dialogDate, setDialogDate] = useState(null);
+  const [linkForEvent, setLinkForEvent] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
 
   const openAdd = () => {
     setEditingEntry(null);
+    setLinkForEvent(null);
     setDialogDate(selectedDay ? toDateInput(selectedDay) : toDateInput(today));
+    setDialogOpen(true);
+  };
+  // Add manual income attached to a specific local event (venue rental etc.).
+  const openAddToEvent = (entry) => {
+    setEditingEntry(null);
+    setDialogDate(entry.eventDate || null);
+    setLinkForEvent({ id: entry.id, title: entry.title, date: entry.eventDate });
     setDialogOpen(true);
   };
   const openEdit = (entry) => {
     setEditingEntry(entry);
+    setLinkForEvent(null);
     setDialogDate(null);
     setDialogOpen(true);
   };
-  const closeDialog = () => { setDialogOpen(false); setEditingEntry(null); };
+  const closeDialog = () => { setDialogOpen(false); setEditingEntry(null); setLinkForEvent(null); };
 
   const deleteEntry = async (entry) => {
     if (typeof window !== 'undefined' && !window.confirm(`Delete "${entry.title}"? This cannot be undone.`)) return;
@@ -367,6 +377,29 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
                           </button>
                         </div>
                       </>
+                    ) : entry.hasManualIncome ? (
+                      <div data-testid="fc-event-combined">
+                        <div className="text-[22px] font-extrabold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#4ade80' }}>
+                          {centsToUsd(entry.grossCents)}
+                        </div>
+                        <div className="text-[10px] mb-2" style={{ color: '#8a8a8a' }}>Combined income</div>
+                        <div className="space-y-1 text-[11px]" data-testid="fc-event-breakdown">
+                          {entry.ttLinked && (
+                            <div className="flex items-center justify-between">
+                              <span style={{ color: '#8a8a8a' }}>TicketTailor{entry.isFuture ? ' (to date)' : ''}</span>
+                              <span style={{ color: '#c8c8c8' }}>
+                                {hasMoney || entry.state === ENTRY_STATE.ZERO
+                                  ? centsToUsd(entry.ttGrossCents)
+                                  : (STATE_META[entry.state]?.chip || '—')}
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between">
+                            <span style={{ color: '#8a8a8a' }}>Manual</span>
+                            <span style={{ color: '#c8c8c8' }}>{centsToUsd(entry.manualGrossCents)}</span>
+                          </div>
+                        </div>
+                      </div>
                     ) : hasMoney || entry.state === ENTRY_STATE.ZERO ? (
                       <>
                         <div className="text-[22px] font-extrabold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: hasMoney ? '#4ade80' : '#c8c8c8' }}>
@@ -397,6 +430,45 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
                       </div>
                     )}
 
+                    {/* Manual income linked to this event (owner-entered). */}
+                    {!entry.isManual && entry.manualEntries?.length > 0 && (
+                      <div className="mt-3 pt-2 space-y-2" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }} data-testid="fc-event-manual-list">
+                        {entry.manualEntries.map((m) => (
+                          <div key={m.id} className="rounded-[8px] p-2" style={{ background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.16)' }} data-testid="fc-event-manual-item">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[11px] font-semibold truncate" style={{ color: '#c8c8c8' }}>{m.title}</span>
+                              <span className="text-[12px] font-bold flex-shrink-0" style={{ color: '#4ade80' }}>{centsToUsd(m.grossCents)}</span>
+                            </div>
+                            <div className="text-[10px] mt-0.5" style={{ color: '#8a8a8a' }}>
+                              Manual · {MANUAL_CATEGORY_LABEL[m.category] || m.category}
+                              {m.customerName ? ` · ${m.customerName}` : ''}
+                            </div>
+                            {m.notes && (
+                              <p className="text-[10px] mt-1 whitespace-pre-wrap" style={{ color: '#8a8a8a' }}>{m.notes}</p>
+                            )}
+                            <div className="flex items-center gap-3 mt-1">
+                              <button type="button" onClick={() => openEdit({ ...m, parentTitle: entry.title })} data-testid="fc-manual-edit" className="text-[10px] font-semibold tracking-[0.08em] uppercase transition-colors hover:text-white" style={{ color: '#8a8a8a' }}>Edit</button>
+                              <button type="button" onClick={() => deleteEntry(m)} disabled={deletingId === m.manualId} data-testid="fc-manual-delete" className="text-[10px] font-semibold tracking-[0.08em] uppercase transition-colors disabled:opacity-50" style={{ color: '#f87171' }}>
+                                {deletingId === m.manualId ? 'Deleting…' : 'Delete'}
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {!entry.isManual && entry.hasLocalEvent && (
+                      <button
+                        type="button"
+                        onClick={() => openAddToEvent(entry)}
+                        data-testid="fc-add-income-to-event"
+                        className="mt-3 w-full text-[11px] font-semibold tracking-[0.08em] uppercase rounded-[8px] px-3 py-2 border transition-colors hover:bg-white/5"
+                        style={{ borderColor: 'rgba(74,222,128,0.3)', color: '#4ade80' }}
+                      >
+                        + Add income to event
+                      </button>
+                    )}
+
                     {!entry.isManual && (
                       <div className="text-[10px] mt-2 pt-2" style={{ color: '#6a6a6a', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                         Last synced: {fmtFetched(entry.fetchedAt)}
@@ -421,6 +493,7 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
         open={dialogOpen}
         editing={editingEntry}
         defaultDate={dialogDate}
+        linkedEvent={linkForEvent}
         onClose={closeDialog}
       />
     </main>

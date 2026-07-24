@@ -11,10 +11,12 @@ import {
   buildManualInsert,
   buildManualUpdate,
   buildManualIncomeEntry,
+  checkEventLink,
 } from '../lib/manual-income.js';
 import {
   ENTRY_STATE,
   buildFinancialCalendar,
+  attachManualIncomeToEvent,
   entriesInMonth,
   summarizeIncome,
 } from '../lib/financial-calendar.js';
@@ -194,4 +196,124 @@ test('MANUAL_CATEGORIES includes venue_rental and an extensible other', () => {
   const values = MANUAL_CATEGORIES.map((c) => c.value);
   assert.ok(values.includes('venue_rental'));
   assert.ok(values.includes('other'));
+});
+
+// --- Event-linked manual income (venue rental on an existing event) ---------
+
+// Existing local website event with NO TicketTailor link (the motivating case:
+// SolarPunk rented the venue for "The Archer's Way").
+const archerEvent = {
+  id: 'evt-archer', title: "The Archer's Way", event_date: '2026-07-18',
+  category: 'other', status: 'published', tt_event_series_id: null,
+};
+const linkedManualRow = {
+  id: 'm-link', entry_date: '2026-07-18', title: 'SolarPunk venue rental',
+  customer_name: 'SolarPunk', event_name: "The Archer's Way", category: 'venue_rental',
+  amount_cents: 280000, notes: 'paid by check', source: 'manual',
+  local_event_id: 'evt-archer', updated_at: '2026-07-18T10:00:00Z',
+};
+
+test('checkEventLink: null/empty passes as unlinked; real row resolves; missing/mismatch rejected', () => {
+  assert.deepEqual(checkEventLink(null, null), { ok: true, localEventId: null });
+  assert.deepEqual(checkEventLink('', undefined), { ok: true, localEventId: null });
+  assert.deepEqual(checkEventLink('  ', null), { ok: true, localEventId: null });
+  assert.deepEqual(checkEventLink('evt-archer', { id: 'evt-archer' }), { ok: true, localEventId: 'evt-archer' });
+  assert.equal(checkEventLink('evt-ghost', null).ok, false);            // no such event
+  assert.equal(checkEventLink('evt-archer', { id: 'evt-other' }).ok, false); // row mismatch
+});
+
+test('linked manual income folds into its parent event, not a standalone entry', () => {
+  const entries = buildFinancialCalendar({ events: [archerEvent], metrics: [], manual: [linkedManualRow], today: TODAY });
+  // Only ONE entry: the event. The manual row is folded in, never separate.
+  assert.equal(entries.length, 1);
+  const parent = entries[0];
+  assert.equal(parent.id, 'evt-archer');
+  assert.equal(parent.hasManualIncome, true);
+  assert.equal(parent.manualEntries.length, 1);
+  assert.equal(parent.manualEntries[0].id, 'manual:m-link');
+  assert.equal(parent.manualEntries[0].customerName, 'SolarPunk');
+  // No standalone "manual:*" entry exists on the calendar.
+  assert.ok(!entries.some((e) => e.id === 'manual:m-link'));
+});
+
+test('manual-only existing event (no TT link) reads as having income once linked', () => {
+  const entries = buildFinancialCalendar({ events: [archerEvent], metrics: [], manual: [linkedManualRow], today: TODAY });
+  const parent = entries[0];
+  assert.equal(parent.ttLinked, false);
+  assert.equal(parent.ttGrossCents, 0);
+  assert.equal(parent.manualGrossCents, 280000);
+  assert.equal(parent.grossCents, 280000);   // combined == manual when no TT
+  assert.equal(parent.hasIncome, true);       // was UNLINKED/$0 before the link
+  assert.equal(parent.ticketsSold, 0);
+});
+
+test('linked manual amount is counted exactly once in month totals (via the parent)', () => {
+  const entries = buildFinancialCalendar({ events: [archerEvent], metrics: [], manual: [linkedManualRow], today: TODAY });
+  const july = entriesInMonth(entries, 2026, 6);
+  assert.equal(july.length, 1);
+  const s = summarizeIncome(july);
+  assert.equal(s.eventCount, 1);
+  assert.equal(s.revenueEvents, 1);
+  assert.equal(s.grossCents, 280000);   // not doubled
+  assert.equal(s.ticketsSold, 0);
+});
+
+test('event with BOTH TicketTailor sales and linked manual income: combined breakdown, single count', () => {
+  const ttEvent = { id: 'evt-both', title: 'Gala', event_date: '2026-07-10', category: 'party', status: 'published', tt_event_series_id: 'ev_x' };
+  const metrics = [
+    { event_id: 'evt-both', tickets_sold: 20, orders_count: 15, gross_cents: 100000, fees_cents: 5000, net_cents: 95000, status: 'ok', source: 'tickettailor', fetched_at: '2026-07-09T10:00:00Z' },
+  ];
+  const manual = [{ ...linkedManualRow, id: 'm-both', entry_date: '2026-07-10', local_event_id: 'evt-both' }];
+  const entries = buildFinancialCalendar({ events: [ttEvent], metrics, manual, today: TODAY });
+  assert.equal(entries.length, 1);            // one event, not two
+  const parent = entries[0];
+  assert.equal(parent.ttGrossCents, 100000);
+  assert.equal(parent.manualGrossCents, 280000);
+  assert.equal(parent.grossCents, 380000);     // combined
+  assert.equal(parent.ticketsSold, 20);        // manual adds no tickets
+  const s = summarizeIncome(entriesInMonth(entries, 2026, 6));
+  assert.equal(s.eventCount, 1);
+  assert.equal(s.grossCents, 380000);          // counted once
+  assert.equal(s.ticketsSold, 20);
+});
+
+test('standalone manual income (no link) still renders as its own entry', () => {
+  const standalone = { ...linkedManualRow, id: 'm-solo', local_event_id: null };
+  const entries = buildFinancialCalendar({ events: [archerEvent], metrics: [], manual: [standalone], today: TODAY });
+  assert.equal(entries.length, 2);             // event + standalone manual
+  assert.ok(entries.some((e) => e.id === 'manual:m-solo' && e.isManual));
+  const parent = entries.find((e) => e.id === 'evt-archer');
+  assert.equal(parent.hasManualIncome, false);
+});
+
+test('manual linked to an event NOT in the dataset falls back to a standalone entry (money never dropped)', () => {
+  const orphan = { ...linkedManualRow, id: 'm-orphan', local_event_id: 'evt-not-here' };
+  const entries = buildFinancialCalendar({ events: [archerEvent], metrics: [], manual: [orphan], today: TODAY });
+  assert.ok(entries.some((e) => e.id === 'manual:m-orphan' && e.isManual));
+  const s = summarizeIncome(entriesInMonth(entries, 2026, 6));
+  assert.equal(s.grossCents, 280000);
+});
+
+test('attachManualIncomeToEvent is idempotent per row and additive across rows', () => {
+  const [parent] = buildFinancialCalendar({ events: [archerEvent], metrics: [], manual: [], today: TODAY });
+  attachManualIncomeToEvent(parent, buildManualIncomeEntry({ ...linkedManualRow, id: 'a', amount_cents: 100000 }, TODAY));
+  attachManualIncomeToEvent(parent, buildManualIncomeEntry({ ...linkedManualRow, id: 'b', amount_cents: 50000 }, TODAY));
+  assert.equal(parent.manualEntries.length, 2);
+  assert.equal(parent.manualGrossCents, 150000);
+  assert.equal(parent.grossCents, 150000);
+});
+
+test('editing a linked entry preserves local_event_id; insert carries it too', () => {
+  const { value } = validateManualEntry({
+    date: '2026-07-18', title: 'SolarPunk venue rental', amount: '2800',
+    category: 'venue_rental', localEventId: 'evt-archer', customerName: 'SolarPunk',
+  });
+  assert.equal(value.localEventId, 'evt-archer');
+  assert.equal(buildManualInsert(value, { createdBy: 'owner' }).local_event_id, 'evt-archer');
+  assert.equal(buildManualUpdate(value).local_event_id, 'evt-archer');
+
+  // Intentionally unlinking (no localEventId) sets it null, never undefined.
+  const { value: solo } = validateManualEntry({ date: '2026-07-18', title: 'X', amount: '10' });
+  assert.equal(solo.localEventId, null);
+  assert.equal(buildManualUpdate(solo).local_event_id, null);
 });

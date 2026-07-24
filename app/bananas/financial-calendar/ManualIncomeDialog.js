@@ -8,7 +8,11 @@ import { MANUAL_CATEGORIES, DEFAULT_MANUAL_CATEGORY, parseAmountToCents } from '
 // Owner-only modal to create or edit a manual income entry. Talks to the
 // owner-gated /api/admin/manual-income route (POST to create, PATCH to edit).
 // `editing` is a manual calendar entry (isManual) or null for create.
-export default function ManualIncomeDialog({ open, editing, defaultDate, onClose }) {
+// `linkedEvent` ({ id, title, date }) puts the dialog in "add income to this
+// event" mode — the entry is linked to that local event (local_event_id) and
+// the form is prefilled with the event's date/context and a venue_rental
+// category. Editing a linked entry preserves its link unless it is standalone.
+export default function ManualIncomeDialog({ open, editing, defaultDate, linkedEvent, onClose }) {
   const router = useRouter();
   const firstFieldRef = useRef(null);
 
@@ -19,6 +23,10 @@ export default function ManualIncomeDialog({ open, editing, defaultDate, onClose
   const [customerName, setCustomerName] = useState('');
   const [eventName, setEventName] = useState('');
   const [notes, setNotes] = useState('');
+  // The local event this entry is attached to (null = standalone). Carried
+  // through submit as local_event_id; the server re-validates it exists.
+  const [localEventId, setLocalEventId] = useState(null);
+  const [linkedTitle, setLinkedTitle] = useState('');
 
   const [busy, setBusy] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -26,7 +34,8 @@ export default function ManualIncomeDialog({ open, editing, defaultDate, onClose
 
   const isEdit = Boolean(editing);
 
-  // Seed the form whenever it opens (edit → existing values; create → date hint).
+  // Seed the form whenever it opens (edit → existing values; create → date hint
+  // or, in add-to-event mode, the linked event's context).
   useEffect(() => {
     if (!open) return;
     setFieldErrors({});
@@ -40,6 +49,18 @@ export default function ManualIncomeDialog({ open, editing, defaultDate, onClose
       setCustomerName(editing.customerName || '');
       setEventName(editing.eventName || '');
       setNotes(editing.notes || '');
+      setLocalEventId(editing.localEventId || null);
+      setLinkedTitle(editing.localEventId ? (editing.parentTitle || editing.eventName || '') : '');
+    } else if (linkedEvent) {
+      setEntryDate(linkedEvent.date || defaultDate || '');
+      setTitle('');
+      setAmount('');
+      setCategory('venue_rental');
+      setCustomerName('');
+      setEventName(linkedEvent.title || '');
+      setNotes('');
+      setLocalEventId(linkedEvent.id || null);
+      setLinkedTitle(linkedEvent.title || '');
     } else {
       setEntryDate(defaultDate || '');
       setTitle('');
@@ -48,8 +69,10 @@ export default function ManualIncomeDialog({ open, editing, defaultDate, onClose
       setCustomerName('');
       setEventName('');
       setNotes('');
+      setLocalEventId(null);
+      setLinkedTitle('');
     }
-  }, [open, editing, defaultDate]);
+  }, [open, editing, defaultDate, linkedEvent]);
 
   // Focus the first field and support Escape-to-close for accessibility.
   useEffect(() => {
@@ -89,6 +112,7 @@ export default function ManualIncomeDialog({ open, editing, defaultDate, onClose
         customerName: customerName.trim() || null,
         eventName: eventName.trim() || null,
         notes: notes.trim() || null,
+        localEventId: localEventId || null,
       };
       if (isEdit) payload.id = editing.manualId;
 
@@ -137,6 +161,12 @@ export default function ManualIncomeDialog({ open, editing, defaultDate, onClose
         </div>
 
         <form onSubmit={onSubmit} className="space-y-3" noValidate>
+          {localEventId && (
+            <div className="text-[11px] rounded-[8px] px-3 py-2 flex items-center gap-2" style={{ background: 'rgba(74,222,128,0.1)', color: '#4ade80' }} data-testid="fc-manual-linked-banner">
+              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#4ade80' }} />
+              <span className="truncate">Linked to event{linkedTitle ? `: ${linkedTitle}` : ''}</span>
+            </div>
+          )}
           <div>
             <label htmlFor="mi-date" className="block text-[11px] uppercase tracking-[0.1em] mb-1" style={{ color: '#8a8a8a' }}>Date *</label>
             <input
@@ -185,7 +215,7 @@ export default function ManualIncomeDialog({ open, editing, defaultDate, onClose
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="mi-customer" className="block text-[11px] uppercase tracking-[0.1em] mb-1" style={{ color: '#8a8a8a' }}>Customer</label>
+              <label htmlFor="mi-customer" className="block text-[11px] uppercase tracking-[0.1em] mb-1" style={{ color: '#8a8a8a' }}>Customer / group</label>
               <input id="mi-customer" type="text" maxLength={200} value={customerName} onChange={(e) => setCustomerName(e.target.value)} className={inputCls} style={inputStyle} data-testid="fc-manual-customer" />
             </div>
             <div>

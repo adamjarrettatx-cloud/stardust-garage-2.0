@@ -54,8 +54,11 @@ server-side (`buildFinancialCalendar` in `lib/financial-calendar.js`):
    mirrored onto the website (no `public.events` row) — previously invisible.
 3. **Manual income** — `public.manual_income_entries`, keyed by its own uuid,
    entered by the **owner** through the calendar UI. Covers income with no
-   local event and no TicketTailor record (e.g. a venue rental paid directly).
-   Read-only sources (1) and (2) are never mutated by this path.
+   TicketTailor record (e.g. a venue rental paid directly). A manual entry is
+   either **standalone** (no local event) OR **linked to an existing local
+   event** via `local_event_id` — e.g. a group rents the venue for an event
+   that also has (or lacks) ticket sales. Read-only sources (1) and (2) are
+   never mutated by this path.
 
 Both refresh routes only ever GET from TicketTailor (`listEvents` / `listOrders`
 / `listIssuedTickets`); neither writes back to TicketTailor, and **no website
@@ -70,17 +73,40 @@ entries have no local page — the day-detail panel shows their title as plain
 text rather than a link to `/bananas/events/:id`.
 
 ### Manual income (owner-entered)
-The owner can record income by hand from the calendar via **+ Add income**
-(and Edit/Delete on a manual entry's day-detail card). These rows are:
+The owner records income by hand from the calendar two ways:
+
+- **Standalone** — the top-level **+ Add income** button, for money with no
+  event at all.
+- **Linked to an existing event** — the **+ Add income to event** button inside
+  a local event's day-detail card. The form opens prefilled with the event's
+  date/title context and a `venue_rental` category; a **Customer / group** field
+  captures who paid (e.g. SolarPunk). The saved entry carries the event's
+  `local_event_id`.
+
+Both use Edit/Delete on the entry's day-detail card. Deleting removes only the
+manual income row — never the event. These rows are:
 
 - **Owner-only, stricter than admin.** Reads and writes are gated by
   `requireOwner()` (server-side owner email from `auth.users`) at the API, and
   by RLS policies using a new `public.is_owner()` definer function at the DB.
   A non-owner admin/team member can neither see nor modify manual income.
-- **Never double-counted.** Manual entries are an independent source keyed by
-  their own uuid, so they can never collide with a TT/local entry. Monthly
-  totals (`summarizeIncome`) simply add manual gross on top; manual rows carry
-  no tickets/orders.
+- **Linked safely.** `local_event_id` is never trusted from the client: the
+  write route fetches the candidate row from `public.events` server-side and
+  `checkEventLink()` rejects the save (422) if it does not resolve to a real
+  event. Editing preserves the link unless the entry is intentionally saved as
+  standalone.
+- **Never double-counted.** A **linked** entry is folded into its parent event
+  (`attachManualIncomeToEvent`): its money rolls into the parent's *combined*
+  gross and it is **not** also rendered as a separate day entry, so month totals
+  count it exactly once (through the parent). A **standalone** entry is its own
+  uuid-keyed entry and adds on top. Either way `summarizeIncome` sums each
+  amount once; manual rows carry no tickets/orders. A linked entry whose event
+  is missing from the dataset falls back to standalone so money is never lost.
+- **Combined breakdown.** A linked event's day-detail card shows the combined
+  total plus a breakdown (TicketTailor income + manual income) and lists each
+  manual line with source, category, customer/group, amount, and Edit/Delete.
+  An event with **no TT link** shows its manual income instead of only
+  "No TT link" once income is added.
 - **Money-safe.** The UI accepts `$`, thousands commas, and up to 2 decimals;
   `parseAmountToCents()` converts to integer cents without float error and
   rejects negative/over-precise input. Server re-validates via
@@ -197,5 +223,9 @@ Manual entries are always `ok` (real, countable money) and additionally flagged
   series collapsing, metric/identity builders, and batch selection.
 - `tests/manual-income.test.mjs` — cents parsing/validation, create/update
   payload builders, manual calendar-entry shape, date/month aggregation, mixed
-  TicketTailor + manual totals (no double-count), and the same-origin CSRF guard.
+  TicketTailor + manual totals (no double-count), the same-origin CSRF guard,
+  and event-linked income: `checkEventLink` existence validation, folding a
+  linked entry into its parent (dedup), combined TT+manual totals counted once,
+  manual-only (no-TT-link) events, standalone/orphan fallback, and edit/delete
+  link preservation.
 - Run: `npm test`.

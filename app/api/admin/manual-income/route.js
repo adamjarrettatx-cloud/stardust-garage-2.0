@@ -6,6 +6,7 @@ import {
   buildManualInsert,
   buildManualUpdate,
   isSameOrigin,
+  checkEventLink,
 } from '@/lib/manual-income';
 
 export const runtime = 'nodejs';
@@ -44,6 +45,25 @@ async function readJson(request) {
   }
 }
 
+// Confirm a client-supplied local_event_id references a real local event. We
+// NEVER trust the raw id: we fetch the row server-side (service-role, already
+// owner-gated) and let the pure checkEventLink() decide. Returns the verified
+// id (or null when none was supplied). Throws on an unexpected DB error so the
+// caller surfaces a 500 rather than silently unlinking.
+async function verifyEventLink(supabase, localEventId) {
+  if (localEventId == null || String(localEventId).trim() === '') {
+    return { ok: true, localEventId: null };
+  }
+  const id = String(localEventId).trim();
+  const { data, error } = await supabase
+    .from('events')
+    .select('id')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return checkEventLink(id, data);
+}
+
 // POST — create a manual income entry.
 export async function POST(request) {
   try {
@@ -59,6 +79,12 @@ export async function POST(request) {
     }
 
     const supabase = createAdminClient();
+    const link = await verifyEventLink(supabase, result.value.localEventId);
+    if (!link.ok) {
+      return NextResponse.json({ error: 'Validation failed', fields: { localEventId: link.error } }, { status: 422 });
+    }
+    result.value.localEventId = link.localEventId;
+
     const { data, error } = await supabase
       .from('manual_income_entries')
       .insert(buildManualInsert(result.value, { createdBy: g.user.id }))
@@ -91,6 +117,12 @@ export async function PATCH(request) {
     }
 
     const supabase = createAdminClient();
+    const link = await verifyEventLink(supabase, result.value.localEventId);
+    if (!link.ok) {
+      return NextResponse.json({ error: 'Validation failed', fields: { localEventId: link.error } }, { status: 422 });
+    }
+    result.value.localEventId = link.localEventId;
+
     const { data, error } = await supabase
       .from('manual_income_entries')
       .update(buildManualUpdate(result.value))
