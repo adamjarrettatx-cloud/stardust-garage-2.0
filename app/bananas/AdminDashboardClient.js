@@ -181,6 +181,7 @@ export default function AdminDashboardClient({ isOwner, counts }) {
           <Tile href="/bananas/progress" eyebrow="TRACK" title="Progress" />
           <Tile href="/bananas/calendar" eyebrow="TEAM ONLY" title="Team Calendar" />
           <Tile href="/bananas/team" eyebrow="MANAGE" title="Team Members" />
+          <Tile href="/team/chat" eyebrow="NEW" title="Team Chat" />
         </div>
       )}
 
