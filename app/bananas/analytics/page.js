@@ -14,7 +14,7 @@ export const revalidate = 0;
 export const dynamic = 'force-dynamic';
 
 const CATEGORY_COLOR = {
-  workshop: '#ffb84d', yoga: '#4ade80', party: '#f472b6', other: '#8a8a8a',
+  workshop: 'var(--st-ffb84d)', yoga: 'var(--st-4ade80)', party: 'var(--st-f472b6)', other: 'var(--text-3)',
 };
 
 function fmtDate(s) {
@@ -74,7 +74,7 @@ export default async function AnalyticsPage() {
       <Link
         href="/bananas"
         className="text-[12px] tracking-[0.14em] mb-4 inline-block hover:text-white transition-colors"
-        style={{ color: '#8a8a8a' }}
+        style={{ color: 'var(--text-3)' }}
       >
         ← BACK TO ADMIN
       </Link>
@@ -86,19 +86,19 @@ export default async function AnalyticsPage() {
         >
           Event Analytics
         </h1>
-        <div className="text-[11px] tracking-[0.18em]" style={{ color: '#8a8a8a' }}>
+        <div className="text-[11px] tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
           OWNER ONLY
         </div>
       </div>
-      <p className="mb-6 text-[14px]" style={{ color: '#8a8a8a' }}>
+      <p className="mb-6 text-[14px]" style={{ color: 'var(--text-3)' }}>
         Member-code engagement from local data plus cached TicketTailor sales metrics. Revenue figures come
         from the read-only metrics cache, refreshed on a daily cron or on demand below.
       </p>
 
       <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
         <RefreshMetricsButton />
-        <span className="text-[12px]" style={{ color: '#8a8a8a' }}>
-          Metrics last fetched: <span style={{ color: '#c8c8c8' }}>{fmtFetched(lastFetched)}</span>
+        <span className="text-[12px]" style={{ color: 'var(--text-3)' }}>
+          Metrics last fetched: <span style={{ color: 'var(--text-2)' }}>{fmtFetched(lastFetched)}</span>
         </span>
       </div>
 
@@ -110,8 +110,8 @@ export default async function AnalyticsPage() {
           { label: 'Member codes', value: totals.memberCodes },
           { label: 'Codes sent', value: totals.codesSent },
         ].map((c) => (
-          <div key={c.label} className="rounded-[14px] border p-5" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.06)' }}>
-            <div className="text-[10px] font-semibold tracking-[0.14em] uppercase mb-1.5" style={{ color: '#8a8a8a' }}>{c.label}</div>
+          <div key={c.label} className="rounded-[14px] border p-5" style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a06)' }}>
+            <div className="text-[10px] font-semibold tracking-[0.14em] uppercase mb-1.5" style={{ color: 'var(--text-3)' }}>{c.label}</div>
             <div className="text-[28px] font-extrabold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{c.value}</div>
           </div>
         ))}
@@ -126,18 +126,18 @@ export default async function AnalyticsPage() {
             { label: 'Net revenue', value: centsToUsd(totals.netCents) },
             { label: 'Tickets sold', value: totals.ticketsSold },
           ].map((c) => (
-            <div key={c.label} className="rounded-[14px] border p-5" style={{ background: '#0f1a12', borderColor: 'rgba(74,222,128,0.22)' }}>
-              <div className="text-[10px] font-semibold tracking-[0.14em] uppercase mb-1.5" style={{ color: '#4ade80' }}>{c.label}</div>
+            <div key={c.label} className="rounded-[14px] border p-5" style={{ background: 'var(--st-tint-green-1)', borderColor: 'rgba(74,222,128,0.22)' }}>
+              <div className="text-[10px] font-semibold tracking-[0.14em] uppercase mb-1.5" style={{ color: 'var(--st-4ade80)' }}>{c.label}</div>
               <div className="text-[24px] font-extrabold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{c.value}</div>
             </div>
           ))}
         </div>
       ) : (
-        <div className="rounded-[14px] border p-5 mb-10" style={{ background: '#16140d', borderColor: 'rgba(255,184,77,0.25)' }}>
-          <div className="text-[10px] font-semibold tracking-[0.14em] uppercase mb-2" style={{ color: '#ffb84d' }}>
+        <div className="rounded-[14px] border p-5 mb-10" style={{ background: 'var(--st-tint-amber-3)', borderColor: 'rgba(255,184,77,0.25)' }}>
+          <div className="text-[10px] font-semibold tracking-[0.14em] uppercase mb-2" style={{ color: 'var(--st-ffb84d)' }}>
             No cached TicketTailor metrics yet
           </div>
-          <p className="text-[13px]" style={{ color: '#c8c8c8' }}>
+          <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>
             Revenue, fees, net, and tickets-sold totals appear here once the read-only metrics cache is
             populated. Link an event to a TicketTailor series and click <strong>Refresh metrics</strong>, or
             wait for the daily cron. Events without a TT series, or environments without
@@ -148,14 +148,14 @@ export default async function AnalyticsPage() {
       )}
 
       {/* Per-event table */}
-      <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase mb-3" style={{ color: '#8a8a8a' }}>
+      <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase mb-3" style={{ color: 'var(--text-3)' }}>
         Performance by event
       </h2>
       {rows.length === 0 ? (
-        <p className="text-[13px]" style={{ color: '#8a8a8a' }}>No events yet.</p>
+        <p className="text-[13px]" style={{ color: 'var(--text-3)' }}>No events yet.</p>
       ) : (
-        <div className="rounded-[12px] border overflow-hidden" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.06)' }}>
-          <div className="grid grid-cols-[1fr_100px_90px_90px_70px_70px_80px] gap-2 px-4 py-2.5 text-[11px] font-semibold tracking-[0.08em] uppercase" style={{ color: '#8a8a8a', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="rounded-[12px] border overflow-hidden" style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a06)' }}>
+          <div className="grid grid-cols-[1fr_100px_90px_90px_70px_70px_80px] gap-2 px-4 py-2.5 text-[11px] font-semibold tracking-[0.08em] uppercase" style={{ color: 'var(--text-3)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
             <span>Event</span><span>Date</span><span>Gross</span><span>Net</span><span>Sold</span><span>Codes</span><span>TT</span>
           </div>
           {rows.map((r) => {
@@ -166,26 +166,26 @@ export default async function AnalyticsPage() {
             return (
               <div key={r.id} className="grid grid-cols-[1fr_100px_90px_90px_70px_70px_80px] gap-2 px-4 py-3 text-[13px] items-center" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
                 <span className="truncate flex items-center gap-2">
-                  <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ background: CATEGORY_COLOR[r.category] || '#8a8a8a' }} />
+                  <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ background: CATEGORY_COLOR[r.category] || 'var(--text-3)' }} />
                   <Link href={`/bananas/events/${r.id}`} className="truncate hover:underline">{r.title}</Link>
                 </span>
-                <span style={{ color: '#c8c8c8' }}>{fmtDate(r.eventDate)}</span>
-                <span style={{ color: refreshed ? '#e8e8e8' : '#6a6a6a' }}>{refreshed ? centsToUsd(m.grossCents) : '—'}</span>
-                <span style={{ color: refreshed ? '#4ade80' : '#6a6a6a' }}>{refreshed ? centsToUsd(m.netCents) : '—'}</span>
-                <span style={{ color: refreshed ? '#e8e8e8' : '#6a6a6a' }}>{refreshed ? m.ticketsSold : '—'}</span>
+                <span style={{ color: 'var(--text-2)' }}>{fmtDate(r.eventDate)}</span>
+                <span style={{ color: refreshed ? 'var(--text-1)' : 'var(--text-4)' }}>{refreshed ? centsToUsd(m.grossCents) : '—'}</span>
+                <span style={{ color: refreshed ? 'var(--st-4ade80)' : 'var(--text-4)' }}>{refreshed ? centsToUsd(m.netCents) : '—'}</span>
+                <span style={{ color: refreshed ? 'var(--text-1)' : 'var(--text-4)' }}>{refreshed ? m.ticketsSold : '—'}</span>
                 <span title={`${r.memberCodes.sent} sent / ${r.memberCodes.total} total`}>
                   {r.memberCodes.sent}/{r.memberCodes.total}
                 </span>
                 {r.ttSeriesLinked ? (
                   <span className="flex items-center gap-1.5">
-                    <span style={{ color: '#4ade80' }}>linked</span>
+                    <span style={{ color: 'var(--st-4ade80)' }}>linked</span>
                     <RowRefreshButton eventId={r.id} />
                   </span>
                 ) : (
                   <Link
                     href={`/bananas/events/${r.id}`}
                     className="hover:underline"
-                    style={{ color: '#ffb84d' }}
+                    style={{ color: 'var(--st-ffb84d)' }}
                     title="Link this event to a TicketTailor series"
                   >
                     Link →
@@ -197,7 +197,7 @@ export default async function AnalyticsPage() {
         </div>
       )}
 
-      <p className="mt-6 text-[12px]" style={{ color: '#6a6a6a' }}>
+      <p className="mt-6 text-[12px]" style={{ color: 'var(--text-4)' }}>
         Codes column shows member discount codes sent / generated for the event. Revenue columns are blank
         until the event is TT-linked and its metrics have been refreshed.
       </p>

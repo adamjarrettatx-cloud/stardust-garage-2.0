@@ -83,7 +83,7 @@ export default function CollaborationActions({ collaborationId, currentStatus })
           className={btnBase}
           style={{
             background: 'rgba(168,85,247,0.12)',
-            color: '#c084fc',
+            color: 'var(--st-c084fc)',
             border: '1px solid rgba(168,85,247,0.3)',
           }}
         >
@@ -97,7 +97,7 @@ export default function CollaborationActions({ collaborationId, currentStatus })
           onClick={() => updateStatus('pending')}
           disabled={working}
           className={`${btnBase} border hover:bg-white/5`}
-          style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
+          style={{ borderColor: 'var(--fg-a15)', color: 'var(--text-1)' }}
         >
           MARK PENDING
         </button>
@@ -109,7 +109,7 @@ export default function CollaborationActions({ collaborationId, currentStatus })
           onClick={() => updateStatus('rejected')}
           disabled={working}
           className={`${btnBase} border hover:bg-red-500/10 hover:border-red-500/40`}
-          style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
+          style={{ borderColor: 'var(--fg-a15)', color: 'var(--text-1)' }}
         >
           REJECT
         </button>
@@ -120,7 +120,7 @@ export default function CollaborationActions({ collaborationId, currentStatus })
         onClick={handleDelete}
         disabled={working}
         className={`ml-auto ${btnBase} border hover:bg-red-500/10 hover:border-red-500/40`}
-        style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
+        style={{ borderColor: 'var(--fg-a15)', color: 'var(--text-1)' }}
       >
         DELETE
       </button>

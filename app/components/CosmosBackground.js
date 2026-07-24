@@ -8,8 +8,8 @@ export default function CosmosBackground() {
       aria-hidden="true"
       className="pointer-events-none fixed inset-0 z-0"
       style={{
-        background:
-          'radial-gradient(ellipse at top, #0f0f1a 0%, #0a0a0a 60%, #070710 100%)',
+        background: 'var(--cosmos-gradient)',
+        transition: 'background 0.3s ease',
       }}
     >
       {/* Layer 1: tiny distant stars (dim, slow twinkle) */}
@@ -25,7 +25,7 @@ export default function CosmosBackground() {
             cx={s.x}
             cy={s.y}
             r="0.6"
-            fill="#ffffff"
+            fill="var(--star-color)"
             style={{
               animation: `cosmos-twinkle-slow ${s.dur}s ease-in-out ${s.delay}s infinite`,
             }}
@@ -46,7 +46,7 @@ export default function CosmosBackground() {
             cx={s.x}
             cy={s.y}
             r="1"
-            fill="#ffffff"
+            fill="var(--star-color)"
             style={{
               animation: `cosmos-twinkle-med ${s.dur}s ease-in-out ${s.delay}s infinite`,
             }}
@@ -69,9 +69,9 @@ export default function CosmosBackground() {
               transformOrigin: `${s.x}px ${s.y}px`,
             }}
           >
-            <circle cx={s.x} cy={s.y} r="1.4" fill="#ffffff" />
+            <circle cx={s.x} cy={s.y} r="1.4" fill="var(--star-color)" />
             {/* subtle glow */}
-            <circle cx={s.x} cy={s.y} r="3" fill="#ffffff" opacity="0.12" />
+            <circle cx={s.x} cy={s.y} r="3" fill="var(--star-color)" opacity="0.12" />
           </g>
         ))}
       </svg>

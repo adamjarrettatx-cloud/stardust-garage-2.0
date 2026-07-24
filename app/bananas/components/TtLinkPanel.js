@@ -38,10 +38,10 @@ export default function TtLinkPanel({ eventId, initialSeriesId, metrics = null }
   const [showRefreshHint, setShowRefreshHint] = useState(false);
 
   const labelClass = 'block text-[12px] font-semibold tracking-[0.14em] mb-2';
-  const labelStyle = { color: '#8a8a8a' };
+  const labelStyle = { color: 'var(--text-3)' };
   const inputClass =
     'w-full px-5 py-3.5 rounded-[10px] text-[14px] outline-none border transition-colors focus:border-white/30';
-  const inputStyle = { background: '#141414', borderColor: 'rgba(255,255,255,0.1)', color: '#f5f5f5' };
+  const inputStyle = { background: 'var(--surface-1)', borderColor: 'var(--fg-a1)', color: 'var(--text-1)' };
 
   // Load the TT series list so admins can pick by name. Read-only admin route;
   // degrades to manual entry if the key is missing or the call fails.
@@ -101,7 +101,7 @@ export default function TtLinkPanel({ eventId, initialSeriesId, metrics = null }
   return (
     <div
       className="rounded-[12px] border p-5"
-      style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.08)' }}
+      style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a08)' }}
     >
       <div className="flex items-center justify-between mb-3">
         <label className={labelClass} style={labelStyle}>
@@ -110,8 +110,8 @@ export default function TtLinkPanel({ eventId, initialSeriesId, metrics = null }
         <span
           className="text-[11px] font-semibold tracking-[0.12em] px-2.5 py-1 rounded-full"
           style={{
-            color: isLinked ? '#0f1a12' : '#8a8a8a',
-            background: isLinked ? '#4ade80' : 'rgba(255,255,255,0.08)',
+            color: isLinked ? 'var(--st-tint-green-1)' : 'var(--text-3)',
+            background: isLinked ? 'var(--st-4ade80)' : 'rgba(255,255,255,0.08)',
           }}
         >
           {isLinked ? 'LINKED' : 'NOT LINKED'}
@@ -125,11 +125,11 @@ export default function TtLinkPanel({ eventId, initialSeriesId, metrics = null }
           className={inputClass}
           style={inputStyle}
         >
-          <option value="" style={{ background: '#141414' }}>
+          <option value="" style={{ background: 'var(--surface-1)' }}>
             — None —
           </option>
           {ttSeries.map((s) => (
-            <option key={s.id} value={s.id} style={{ background: '#141414' }}>
+            <option key={s.id} value={s.id} style={{ background: 'var(--surface-1)' }}>
               {s.name} ({s.id})
             </option>
           ))}
@@ -145,7 +145,7 @@ export default function TtLinkPanel({ eventId, initialSeriesId, metrics = null }
         />
       )}
 
-      <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+      <p className="text-[11px] mt-2" style={{ color: 'var(--text-4)' }}>
         {ttSeriesError
           ? `Could not load series list (${ttSeriesError}). Enter the series ID manually.`
           : 'Saved server-side and validated as a TicketTailor series ID (usually "es_…"). Used by analytics and member discount codes.'}
@@ -167,7 +167,7 @@ export default function TtLinkPanel({ eventId, initialSeriesId, metrics = null }
             onClick={() => submit({ clear: true })}
             disabled={saving}
             className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5 disabled:opacity-40"
-            style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
+            style={{ borderColor: 'var(--fg-a15)', color: 'var(--text-1)' }}
           >
             UNLINK
           </button>
@@ -175,13 +175,13 @@ export default function TtLinkPanel({ eventId, initialSeriesId, metrics = null }
       </div>
 
       {msg && (
-        <p className="text-[13px] mt-3" style={{ color: '#c8c8c8' }}>
+        <p className="text-[13px] mt-3" style={{ color: 'var(--text-2)' }}>
           {msg}
         </p>
       )}
 
       {showRefreshHint && (
-        <p className="text-[12px] mt-2" style={{ color: '#ffb84d' }}>
+        <p className="text-[12px] mt-2" style={{ color: 'var(--st-ffb84d)' }}>
           Link changed — refresh metrics below (or from{' '}
           <Link href="/bananas/analytics" className="underline">
             Event Analytics
@@ -193,19 +193,19 @@ export default function TtLinkPanel({ eventId, initialSeriesId, metrics = null }
       {/* Per-event metrics refresh. Read-only against TicketTailor — it only
           re-pulls THIS event's cached sales numbers. Shown once linked. */}
       {isLinked && (
-        <div className="mt-4 pt-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+        <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--fg-a08)' }}>
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="text-[12px]" style={{ color: '#8a8a8a' }}>
+            <div className="text-[12px]" style={{ color: 'var(--text-3)' }}>
               Metrics:{' '}
-              <span style={{ color: metrics?.status === 'ok' ? '#86efac' : '#c8c8c8' }}>
+              <span style={{ color: metrics?.status === 'ok' ? 'var(--st-86efac)' : 'var(--text-2)' }}>
                 {METRICS_STATUS_LABEL[metrics?.status] || 'not yet fetched'}
               </span>
               {' · last fetched '}
-              <span style={{ color: '#c8c8c8' }}>{fmtFetched(metrics?.fetched_at)}</span>
+              <span style={{ color: 'var(--text-2)' }}>{fmtFetched(metrics?.fetched_at)}</span>
             </div>
             <RefreshMetricsButton eventId={eventId} label="Refresh metrics" compact />
           </div>
-          <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+          <p className="text-[11px] mt-2" style={{ color: 'var(--text-4)' }}>
             Pulls this event&apos;s ticket sales from TicketTailor (read-only) into the analytics cache.
           </p>
         </div>

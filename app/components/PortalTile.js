@@ -46,7 +46,7 @@ export default function PortalTile({
       onClick={handleClick}
       className="group relative block overflow-hidden rounded-[20px] border transition-all duration-500 ease-out hover:-translate-y-1 hover:border-white/20"
       style={{
-        borderColor: 'rgba(255,255,255,0.08)',
+        borderColor: 'var(--fg-a08)',
         aspectRatio: '4 / 5',
         viewTransitionName: transitionName,
         // Stack: bg image -> dark tint -> content
@@ -60,7 +60,7 @@ export default function PortalTile({
         className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
         style={{
           background:
-            'radial-gradient(circle at 30% 20%, rgba(255,255,255,0.08) 0%, transparent 50%)',
+            'radial-gradient(circle at 30% 20%, var(--fg-a08) 0%, transparent 50%)',
         }}
       />
 
@@ -78,7 +78,7 @@ export default function PortalTile({
         <div>
           <div
             className="text-[10px] font-semibold tracking-[0.28em] mb-4 transition-opacity duration-500"
-            style={{ color: 'rgba(255,255,255,0.55)' }}
+            style={{ color: 'var(--fg-a55)' }}
           >
             {eyebrow}
           </div>
@@ -98,7 +98,7 @@ export default function PortalTile({
           {summary && (
             <p
               className="text-[14px] md:text-[15px] leading-[1.55] max-w-[34ch]"
-              style={{ color: 'rgba(255,255,255,0.78)' }}
+              style={{ color: 'var(--fg-a78)' }}
             >
               {summary}
             </p>
@@ -113,7 +113,7 @@ export default function PortalTile({
                   style={{
                     borderTop: i === 0 ? '1px solid rgba(255,255,255,0.08)' : 'none',
                     borderBottom: '1px solid rgba(255,255,255,0.08)',
-                    color: 'rgba(255,255,255,0.78)',
+                    color: 'var(--fg-a78)',
                   }}
                 >
                   {b}
@@ -125,7 +125,7 @@ export default function PortalTile({
           {meta && (
             <div
               className="text-[10.5px] font-semibold tracking-[0.22em] uppercase pt-1"
-              style={{ color: 'rgba(255,255,255,0.45)' }}
+              style={{ color: 'var(--fg-a45)' }}
             >
               {meta}
             </div>

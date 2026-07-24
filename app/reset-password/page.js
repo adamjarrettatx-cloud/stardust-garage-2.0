@@ -63,7 +63,7 @@ export default function ResetPasswordPage() {
   if (validSession === null) {
     return (
       <main className="min-h-screen flex items-center justify-center px-6 py-12">
-        <p className="text-[14px]" style={{ color: '#8a8a8a' }}>Loading...</p>
+        <p className="text-[14px]" style={{ color: 'var(--text-3)' }}>Loading...</p>
       </main>
     );
   }
@@ -79,7 +79,7 @@ export default function ResetPasswordPage() {
           <h1 className="text-[24px] font-extrabold -tracking-[0.02em] mb-4 leading-[1.1]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             Link expired or invalid.
           </h1>
-          <p className="text-[14px] leading-[1.6] mb-8" style={{ color: '#a0a0a0' }}>
+          <p className="text-[14px] leading-[1.6] mb-8" style={{ color: 'var(--text-3)' }}>
             Reset links expire after 1 hour. Request a new one to continue.
           </p>
           <Link href="/forgot-password" className="inline-block px-6 py-2.5 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5" style={{ background: '#ffffff', color: '#0a0a0a' }}>
@@ -98,11 +98,11 @@ export default function ResetPasswordPage() {
           <div className="flex justify-center mb-10">
             <Wordmark size="md" align="center" />
           </div>
-          <div className="text-[11px] font-semibold tracking-[0.28em] mb-4" style={{ color: '#a0a0a0' }}>PASSWORD UPDATED</div>
+          <div className="text-[11px] font-semibold tracking-[0.28em] mb-4" style={{ color: 'var(--text-3)' }}>PASSWORD UPDATED</div>
           <h1 className="text-[28px] font-extrabold -tracking-[0.02em] mb-4 leading-[1.1]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             You&apos;re all set.
           </h1>
-          <p className="text-[14px] leading-[1.6]" style={{ color: '#a0a0a0' }}>
+          <p className="text-[14px] leading-[1.6]" style={{ color: 'var(--text-3)' }}>
             Redirecting to your member area...
           </p>
         </div>
@@ -119,22 +119,22 @@ export default function ResetPasswordPage() {
         <h1 className="text-[28px] font-extrabold -tracking-[0.02em] mb-2 text-center leading-[1.1]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           Set New Password
         </h1>
-        <p className="text-[13px] text-center mb-10" style={{ color: '#8a8a8a' }}>
+        <p className="text-[13px] text-center mb-10" style={{ color: 'var(--text-3)' }}>
           Choose a password you&apos;ll remember.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-[12px] font-semibold tracking-[0.14em] mb-2" style={{ color: '#8a8a8a' }}>NEW PASSWORD</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} className="w-full px-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.1)', color: '#f5f5f5' }} />
+            <label className="block text-[12px] font-semibold tracking-[0.14em] mb-2" style={{ color: 'var(--text-3)' }}>NEW PASSWORD</label>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} className="w-full px-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30" style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a1)', color: 'var(--text-1)' }} />
           </div>
 
           <div>
-            <label className="block text-[12px] font-semibold tracking-[0.14em] mb-2" style={{ color: '#8a8a8a' }}>CONFIRM PASSWORD</label>
-            <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={8} className="w-full px-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.1)', color: '#f5f5f5' }} />
+            <label className="block text-[12px] font-semibold tracking-[0.14em] mb-2" style={{ color: 'var(--text-3)' }}>CONFIRM PASSWORD</label>
+            <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={8} className="w-full px-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30" style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a1)', color: 'var(--text-1)' }} />
           </div>
 
-          <p className="text-[11px] leading-[1.5]" style={{ color: 'rgba(255,255,255,0.4)' }}>
+          <p className="text-[11px] leading-[1.5]" style={{ color: 'var(--fg-a4)' }}>
             Minimum 8 characters.
           </p>
 

@@ -56,7 +56,7 @@ export default async function DocumentsPage({ searchParams }) {
       <Link
         href="/bananas"
         className="text-[12px] tracking-[0.14em] mb-4 inline-block hover:text-white transition-colors"
-        style={{ color: '#8a8a8a' }}
+        style={{ color: 'var(--text-3)' }}
       >
         ← BACK TO ADMIN
       </Link>
@@ -67,11 +67,11 @@ export default async function DocumentsPage({ searchParams }) {
         >
           Documents
         </h1>
-        <div className="text-[11px] tracking-[0.18em]" style={{ color: '#8a8a8a' }}>
+        <div className="text-[11px] tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
           PRIVATE · ADMIN ONLY
         </div>
       </div>
-      <p className="mb-8 text-[14px]" style={{ color: '#8a8a8a' }}>
+      <p className="mb-8 text-[14px]" style={{ color: 'var(--text-3)' }}>
         Contracts, vendor docs, SOPs, finance — every upload is logged. Files never leave a private bucket.
       </p>
 

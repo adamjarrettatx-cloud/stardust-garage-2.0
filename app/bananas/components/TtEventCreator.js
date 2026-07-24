@@ -155,9 +155,9 @@ export default function TtEventCreator() {
     }
   };
 
-  const inputStyle = { background: '#141414', borderColor: 'rgba(255,255,255,0.1)', color: '#f5f5f5' };
+  const inputStyle = { background: 'var(--surface-1)', borderColor: 'var(--fg-a1)', color: 'var(--text-1)' };
   const labelClass = 'block text-[12px] font-semibold tracking-[0.14em] mb-2';
-  const labelStyle = { color: '#8a8a8a' };
+  const labelStyle = { color: 'var(--text-3)' };
   const inputClass =
     'w-full px-5 py-3.5 rounded-[10px] text-[14px] outline-none border transition-colors focus:border-white/30';
 
@@ -166,7 +166,7 @@ export default function TtEventCreator() {
       <Link
         href="/bananas"
         className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70"
-        style={{ color: '#8a8a8a' }}
+        style={{ color: 'var(--text-3)' }}
       >
         ← BACK TO ADMIN
       </Link>
@@ -177,7 +177,7 @@ export default function TtEventCreator() {
       >
         New Ticketed Event
       </h1>
-      <p className="text-[13px] mb-10" style={{ color: '#8a8a8a' }}>
+      <p className="text-[13px] mb-10" style={{ color: 'var(--text-3)' }}>
         Creates and publishes a website event and a TicketTailor event series together — date, times
         and ticket types included. Both go live as soon as TicketTailor confirms the box office and
         returns a ticket link; if anything fails, the website event is kept as a hidden draft so the
@@ -201,7 +201,7 @@ export default function TtEventCreator() {
             className={inputClass}
             style={inputStyle}
           />
-          <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+          <p className="text-[11px] mt-2" style={{ color: 'var(--text-4)' }}>
             This becomes the URL: /events/{slug || 'your-slug'}
           </p>
         </div>
@@ -231,12 +231,12 @@ export default function TtEventCreator() {
           <label className={labelClass} style={labelStyle}>CATEGORY</label>
           <select value={category} onChange={handleCategoryChange} className={inputClass} style={inputStyle}>
             {CATEGORY_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value} style={{ background: '#141414' }}>
+              <option key={opt.value} value={opt.value} style={{ background: 'var(--surface-1)' }}>
                 {opt.label}
               </option>
             ))}
           </select>
-          <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+          <p className="text-[11px] mt-2" style={{ color: 'var(--text-4)' }}>
             Workshop, Yoga, and Party events generate member discount codes automatically.
           </p>
         </div>
@@ -255,7 +255,7 @@ export default function TtEventCreator() {
                 className={inputClass + ' max-w-[140px]'}
                 style={inputStyle}
               />
-              <span className="text-[14px]" style={{ color: '#8a8a8a' }}>%</span>
+              <span className="text-[14px]" style={{ color: 'var(--text-3)' }}>%</span>
             </div>
           </div>
         )}
@@ -268,7 +268,7 @@ export default function TtEventCreator() {
               type="button"
               onClick={addTicket}
               className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5"
-              style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
+              style={{ borderColor: 'var(--fg-a15)', color: 'var(--text-1)' }}
             >
               + ADD TICKET TYPE
             </button>
@@ -279,10 +279,10 @@ export default function TtEventCreator() {
               <div
                 key={i}
                 className="rounded-[12px] border p-4"
-                style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.08)' }}
+                style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a08)' }}
               >
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-[11px] font-semibold tracking-[0.14em]" style={{ color: '#8a8a8a' }}>
+                  <span className="text-[11px] font-semibold tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
                     TICKET {i + 1}
                   </span>
                   {ticketTypes.length > 1 && (
@@ -290,7 +290,7 @@ export default function TtEventCreator() {
                       type="button"
                       onClick={() => removeTicket(i)}
                       className="text-[11px] font-semibold tracking-[0.12em] transition-opacity hover:opacity-70"
-                      style={{ color: '#ff8080' }}
+                      style={{ color: 'var(--st-ff8080)' }}
                     >
                       REMOVE
                     </button>
@@ -299,7 +299,7 @@ export default function TtEventCreator() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-1">
-                    <label className="block text-[10px] font-semibold tracking-[0.12em] mb-1.5" style={{ color: '#8a8a8a' }}>NAME</label>
+                    <label className="block text-[10px] font-semibold tracking-[0.12em] mb-1.5" style={{ color: 'var(--text-3)' }}>NAME</label>
                     <input
                       type="text"
                       value={t.name}
@@ -310,7 +310,7 @@ export default function TtEventCreator() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold tracking-[0.12em] mb-1.5" style={{ color: '#8a8a8a' }}>PRICE (USD)</label>
+                    <label className="block text-[10px] font-semibold tracking-[0.12em] mb-1.5" style={{ color: 'var(--text-3)' }}>PRICE (USD)</label>
                     <input
                       type="number"
                       min={0}
@@ -323,7 +323,7 @@ export default function TtEventCreator() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold tracking-[0.12em] mb-1.5" style={{ color: '#8a8a8a' }}>CAPACITY</label>
+                    <label className="block text-[10px] font-semibold tracking-[0.12em] mb-1.5" style={{ color: 'var(--text-3)' }}>CAPACITY</label>
                     <input
                       type="number"
                       min={1}
@@ -337,7 +337,7 @@ export default function TtEventCreator() {
                   </div>
                 </div>
                 <div className="mt-3">
-                  <label className="block text-[10px] font-semibold tracking-[0.12em] mb-1.5" style={{ color: '#8a8a8a' }}>DESCRIPTION (OPTIONAL)</label>
+                  <label className="block text-[10px] font-semibold tracking-[0.12em] mb-1.5" style={{ color: 'var(--text-3)' }}>DESCRIPTION (OPTIONAL)</label>
                   <input
                     type="text"
                     value={t.description}
@@ -349,7 +349,7 @@ export default function TtEventCreator() {
               </div>
             ))}
           </div>
-          <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+          <p className="text-[11px] mt-2" style={{ color: 'var(--text-4)' }}>
             Price in dollars (use 0 for free). Leave capacity blank for unlimited.
           </p>
         </div>
@@ -357,7 +357,7 @@ export default function TtEventCreator() {
         <div>
           <label className={labelClass} style={labelStyle}>IMAGE</label>
           {imageUrl && (
-            <div className="mb-3 rounded-[10px] overflow-hidden border" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+            <div className="mb-3 rounded-[10px] overflow-hidden border" style={{ borderColor: 'var(--fg-a1)' }}>
               <img src={imageUrl} alt="Event preview" className="w-full h-auto max-h-[300px] object-cover" />
             </div>
           )}
@@ -368,9 +368,9 @@ export default function TtEventCreator() {
               onChange={handleImageUpload}
               disabled={uploading}
               className="text-[13px] file:mr-4 file:px-5 file:py-2.5 file:rounded-full file:border-0 file:text-[12px] file:font-semibold file:tracking-[0.12em] file:bg-white file:text-black file:cursor-pointer hover:file:bg-gray-200"
-              style={{ color: '#8a8a8a' }}
+              style={{ color: 'var(--text-3)' }}
             />
-            {uploading && <p className="text-[13px]" style={{ color: '#8a8a8a' }}>Uploading...</p>}
+            {uploading && <p className="text-[13px]" style={{ color: 'var(--text-3)' }}>Uploading...</p>}
             <input
               type="text"
               value={imageUrl}
@@ -380,7 +380,7 @@ export default function TtEventCreator() {
               style={inputStyle}
             />
           </div>
-          <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+          <p className="text-[11px] mt-2" style={{ color: 'var(--text-4)' }}>
             This image is saved on the Stardust website event page. TicketTailor&rsquo;s
             event image isn&rsquo;t set automatically yet — add it in the TicketTailor
             dashboard if you want it on the box office page too.
@@ -393,7 +393,7 @@ export default function TtEventCreator() {
           </div>
         )}
         {note && (
-          <div className="text-[13px] p-3 rounded-[10px] border" style={{ color: '#ffb84d', borderColor: 'rgba(255,184,77,0.3)', background: 'rgba(255,184,77,0.08)' }}>
+          <div className="text-[13px] p-3 rounded-[10px] border" style={{ color: 'var(--st-ffb84d)', borderColor: 'rgba(255,184,77,0.3)', background: 'rgba(255,184,77,0.08)' }}>
             {note}
           </div>
         )}
@@ -410,7 +410,7 @@ export default function TtEventCreator() {
           <Link
             href="/bananas"
             className="px-8 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5 flex items-center"
-            style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
+            style={{ borderColor: 'var(--fg-a15)', color: 'var(--text-1)' }}
           >
             CANCEL
           </Link>

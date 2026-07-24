@@ -34,15 +34,15 @@ export default async function EventPage({ params }) {
 
   return (
     <main className="max-w-[1100px] mx-auto px-4 md:px-6 py-8 md:py-10">
-      <div className="flex flex-wrap gap-2.5 text-[11px] font-semibold tracking-[0.14em] uppercase mb-6 md:mb-7" style={{ color: '#8a8a8a' }}>
+      <div className="flex flex-wrap gap-2.5 text-[11px] font-semibold tracking-[0.14em] uppercase mb-6 md:mb-7" style={{ color: 'var(--text-3)' }}>
         <Link href="/" className="hover:text-white">HOME</Link>
-        <span style={{ color: 'rgba(255,255,255,0.3)' }}>/</span>
+        <span style={{ color: 'var(--fg-a3)' }}>/</span>
         <Link href="/events" className="hover:text-white">EVENTS</Link>
-        <span style={{ color: 'rgba(255,255,255,0.3)' }}>/</span>
-        <span style={{ color: '#f5f5f5' }}>{event.title.toUpperCase()}</span>
+        <span style={{ color: 'var(--fg-a3)' }}>/</span>
+        <span style={{ color: 'var(--text-1)' }}>{event.title.toUpperCase()}</span>
       </div>
 
-      <div className="w-full rounded-[14px] overflow-hidden mb-10 md:mb-12 bg-[#111] aspect-[16/10] md:aspect-[16/7]">
+      <div className="w-full rounded-[14px] overflow-hidden mb-10 md:mb-12 bg-[var(--surface-2)] aspect-[16/10] md:aspect-[16/7]">
         {event.image_url && (
           <img src={event.image_url} alt={event.title} className="w-full h-full object-cover" />
         )}
@@ -69,7 +69,7 @@ export default async function EventPage({ params }) {
           ) : (
             <div
               className="inline-block px-[22px] py-2.5 rounded-full text-[13px] font-bold tracking-[0.08em] mb-8 border"
-              style={{ borderColor: 'rgba(255,255,255,0.3)', color: '#8a8a8a' }}
+              style={{ borderColor: 'var(--fg-a3)', color: 'var(--text-3)' }}
             >
               PRIVATE EVENT
             </div>
@@ -85,28 +85,28 @@ export default async function EventPage({ params }) {
             >
               <span
                 className="text-[11px] font-extrabold tracking-[0.1em] px-2 py-1 rounded-full"
-                style={{ background: '#ffb84d', color: '#0a0a0a' }}
+                style={{ background: 'var(--st-ffb84d)', color: '#0a0a0a' }}
               >
                 MEMBERS
               </span>
-              <span className="text-[13px] font-bold tracking-[0.02em]" style={{ color: '#ffb84d' }}>
+              <span className="text-[13px] font-bold tracking-[0.02em]" style={{ color: 'var(--st-ffb84d)' }}>
                 Get {discountCallout.percent}% OFF
               </span>
             </div>
           )}
 
           {event.event_time && (
-            <div className="py-5 border-t" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+            <div className="py-5 border-t" style={{ borderColor: 'var(--fg-a08)' }}>
               <div className="text-[13px] font-bold mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Time</div>
-              <div className="text-sm leading-[1.6]" style={{ color: '#8a8a8a' }}>
+              <div className="text-sm leading-[1.6]" style={{ color: 'var(--text-3)' }}>
                 {event.event_end_time ? `${event.event_time} – ${event.event_end_time}` : event.event_time}
               </div>
             </div>
           )}
 
-          <div className="py-5 border-t" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+          <div className="py-5 border-t" style={{ borderColor: 'var(--fg-a08)' }}>
             <div className="text-[13px] font-bold mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Venue</div>
-            <div className="text-sm leading-[1.6]" style={{ color: '#8a8a8a' }}>
+            <div className="text-sm leading-[1.6]" style={{ color: 'var(--text-3)' }}>
               Stardust Garage<br />
               St. Elmo Arts District<br />
               Austin, TX 78745
@@ -124,7 +124,7 @@ export default async function EventPage({ params }) {
               {event.description}
             </div>
           ) : (
-            <p className="text-[15px] leading-[1.7]" style={{ color: '#8a8a8a' }}>
+            <p className="text-[15px] leading-[1.7]" style={{ color: 'var(--text-3)' }}>
               More details coming soon.
             </p>
           )}

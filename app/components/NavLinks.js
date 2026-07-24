@@ -73,7 +73,7 @@ export default function NavLinks() {
                   type="button"
                   onClick={() => setOpenDropdown(isOpen ? null : link.label)}
                   className="text-[13px] font-medium tracking-[0.12em] transition-colors flex items-center gap-1.5"
-                  style={{ color: isDropdownActive || isOpen ? '#f5f5f5' : '#8a8a8a' }}
+                  style={{ color: isDropdownActive || isOpen ? 'var(--text-1)' : 'var(--text-3)' }}
                 >
                   {link.label}
                   <svg
@@ -94,8 +94,8 @@ export default function NavLinks() {
                   <div
                     className="absolute top-full right-0 mt-3 rounded-[12px] border overflow-hidden min-w-[160px]"
                     style={{
-                      background: '#141414',
-                      borderColor: 'rgba(255,255,255,0.1)',
+                      background: 'var(--surface-1)',
+                      borderColor: 'var(--fg-a1)',
                       boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
                     }}
                   >
@@ -105,7 +105,7 @@ export default function NavLinks() {
                         href={item.href}
                         onClick={() => setOpenDropdown(null)}
                         className="block px-5 py-3 text-[13px] font-medium tracking-[0.08em] transition-colors hover:bg-white/5"
-                        style={{ color: isActive(item.href) ? '#f5f5f5' : '#c0c0c0' }}
+                        style={{ color: isActive(item.href) ? 'var(--text-1)' : 'var(--text-2)' }}
                       >
                         {item.label}
                       </Link>
@@ -121,7 +121,7 @@ export default function NavLinks() {
               <Link
                 href={link.href}
                 className="text-[13px] font-medium tracking-[0.12em] transition-colors"
-                style={{ color: isActive(link.href) ? '#f5f5f5' : '#8a8a8a' }}
+                style={{ color: isActive(link.href) ? 'var(--text-1)' : 'var(--text-3)' }}
               >
                 {link.label}
               </Link>
@@ -137,7 +137,7 @@ export default function NavLinks() {
         className="md:hidden p-2 -mr-2"
         aria-label="Open menu"
       >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f5f5f5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <line x1="3" y1="6" x2="21" y2="6" />
           <line x1="3" y1="12" x2="21" y2="12" />
           <line x1="3" y1="18" x2="21" y2="18" />
@@ -151,7 +151,7 @@ export default function NavLinks() {
           style={{ background: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(10px)' }}
         >
           <div className="flex items-center justify-between px-6 pt-8">
-            <span className="text-[11px] font-semibold tracking-[0.2em]" style={{ color: '#8a8a8a' }}>
+            <span className="text-[11px] font-semibold tracking-[0.2em]" style={{ color: 'var(--text-3)' }}>
               MENU
             </span>
             <button
@@ -160,7 +160,7 @@ export default function NavLinks() {
               className="p-2 -mr-2"
               aria-label="Close menu"
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f5f5f5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
@@ -178,13 +178,13 @@ export default function NavLinks() {
                         type="button"
                         onClick={() => setMobileExpanded(isExpanded ? null : link.label)}
                         className="w-full flex items-center justify-between py-5 text-left border-b"
-                        style={{ borderColor: 'rgba(255,255,255,0.08)' }}
+                        style={{ borderColor: 'var(--fg-a08)' }}
                       >
                         <span
                           className="text-[22px] font-extrabold -tracking-[0.01em]"
                           style={{
                             fontFamily: "'Plus Jakarta Sans', sans-serif",
-                            color: '#f5f5f5',
+                            color: 'var(--text-1)',
                           }}
                         >
                           {link.label}
@@ -194,7 +194,7 @@ export default function NavLinks() {
                           height="18"
                           viewBox="0 0 24 24"
                           fill="none"
-                          stroke="#8a8a8a"
+                          stroke="var(--text-3)"
                           strokeWidth="2"
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -214,7 +214,7 @@ export default function NavLinks() {
                                 href={item.href}
                                 onClick={() => setMobileOpen(false)}
                                 className="block text-[16px] font-medium tracking-[0.06em] py-1.5"
-                                style={{ color: '#c0c0c0' }}
+                                style={{ color: 'var(--text-2)' }}
                               >
                                 {item.label}
                               </Link>
@@ -233,9 +233,9 @@ export default function NavLinks() {
                       onClick={() => setMobileOpen(false)}
                       className="block py-5 border-b text-[22px] font-extrabold -tracking-[0.01em]"
                       style={{
-                        borderColor: 'rgba(255,255,255,0.08)',
+                        borderColor: 'var(--fg-a08)',
                         fontFamily: "'Plus Jakarta Sans', sans-serif",
-                        color: isActive(link.href) ? '#f5f5f5' : '#c0c0c0',
+                        color: isActive(link.href) ? 'var(--text-1)' : 'var(--text-2)',
                       }}
                     >
                       {link.label}

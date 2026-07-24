@@ -34,7 +34,7 @@ const SIZES = {
 export default function Wordmark({
   size = 'sm',
   align = 'start',
-  color = '#ffffff',
+  color = 'var(--text-1)',
   className = '',
 }) {
   const s = SIZES[size] || SIZES.sm;

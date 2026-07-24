@@ -24,10 +24,10 @@ function formatEventDate(dateString) {
 }
 
 const TABS = [
-  { id: 'new',      label: 'New',      color: '#ffb84d' },
-  { id: 'reviewed', label: 'Reviewed', color: '#c084fc' },
-  { id: 'pending',  label: 'Pending',  color: '#a0a0a0' },
-  { id: 'approved', label: 'Approved', color: '#4ade80' },
+  { id: 'new',      label: 'New',      color: 'var(--st-ffb84d)' },
+  { id: 'reviewed', label: 'Reviewed', color: 'var(--st-c084fc)' },
+  { id: 'pending',  label: 'Pending',  color: 'var(--text-3)' },
+  { id: 'approved', label: 'Approved', color: 'var(--st-4ade80)' },
 ];
 
 export default function MicroPartiesList({ inquiries }) {
@@ -53,8 +53,8 @@ export default function MicroPartiesList({ inquiries }) {
               onClick={() => setActiveTab(tab.id)}
               className="flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-semibold tracking-[0.1em] transition-colors"
               style={{
-                background: isActive ? tab.color : 'rgba(255,255,255,0.06)',
-                color: isActive ? '#0a0a0a' : '#c0c0c0',
+                background: isActive ? tab.color : 'var(--fg-a06)',
+                color: isActive ? '#0a0a0a' : 'var(--text-2)',
                 fontFamily: "'Plus Jakarta Sans', sans-serif",
                 border: 'none',
                 cursor: 'pointer',
@@ -65,7 +65,7 @@ export default function MicroPartiesList({ inquiries }) {
                 className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-none"
                 style={{
                   background: isActive ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.1)',
-                  color: isActive ? '#0a0a0a' : '#c0c0c0',
+                  color: isActive ? '#0a0a0a' : 'var(--text-2)',
                 }}
               >
                 {counts[tab.id]}
@@ -79,9 +79,9 @@ export default function MicroPartiesList({ inquiries }) {
       {visible.length === 0 ? (
         <div
           className="rounded-[14px] p-12 text-center border"
-          style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
+          style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a05)' }}
         >
-          <p style={{ color: '#8a8a8a' }}>
+          <p style={{ color: 'var(--text-3)' }}>
             No {activeTabDef?.label.toLowerCase()} micro party inquiries.
           </p>
         </div>
@@ -92,7 +92,7 @@ export default function MicroPartiesList({ inquiries }) {
               key={i.id}
               href={`/bananas/micro-parties/${i.id}`}
               className="block rounded-[14px] p-6 border transition-colors hover:border-white/20"
-              style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
+              style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a05)' }}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
@@ -104,14 +104,14 @@ export default function MicroPartiesList({ inquiries }) {
                       {i.event_name || i.full_name}
                     </h3>
                     {i.event_type && (
-                      <span className="text-[13px]" style={{ color: '#8a8a8a' }}>
+                      <span className="text-[13px]" style={{ color: 'var(--text-3)' }}>
                         {i.event_type}
                       </span>
                     )}
                   </div>
                   <div
                     className="text-[13px] flex flex-wrap gap-x-4 gap-y-1"
-                    style={{ color: '#8a8a8a' }}
+                    style={{ color: 'var(--text-3)' }}
                   >
                     <span>{i.full_name}</span>
                     <span>{i.email}</span>
@@ -120,7 +120,7 @@ export default function MicroPartiesList({ inquiries }) {
                   </div>
                 </div>
                 <div className="flex-shrink-0 text-right">
-                  <div className="text-[11px]" style={{ color: '#666' }}>
+                  <div className="text-[11px]" style={{ color: 'var(--text-4)' }}>
                     {formatDate(i.created_at)}
                   </div>
                 </div>

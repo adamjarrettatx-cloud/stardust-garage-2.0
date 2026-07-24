@@ -116,7 +116,7 @@ function LightingVisual() {
 
       {/* Beam */}
       <g className="beam" style={{ transformOrigin: '100px 22px' }}>
-        <path d="M 90 22 L 60 110 L 140 110 L 110 22 Z" fill="url(#beam-grad)" />
+        <path d="M 90 22 L 60 110 L 140 110 L 110 22 Z" fill="url(var(--st-bbeeaa)m-grad)" />
       </g>
 
       {/* Light source dot + halo */}
@@ -215,7 +215,7 @@ function ShowcaseCard({ item, index }) {
       style={{
         background:
           'linear-gradient(180deg, rgba(20,20,26,0.8) 0%, rgba(12,12,16,0.95) 100%)',
-        borderColor: 'rgba(255,255,255,0.07)',
+        borderColor: 'var(--fg-a07)',
         opacity: visible ? 1 : 0,
         transform: visible ? 'translateY(0)' : 'translateY(28px)',
         transition: `opacity 700ms cubic-bezier(0.2, 0.8, 0.2, 1) ${
@@ -229,7 +229,7 @@ function ShowcaseCard({ item, index }) {
         style={{
           color: 'rgba(245,245,240,0.85)',
           background:
-            'radial-gradient(120% 100% at 50% 0%, rgba(255,255,255,0.04) 0%, transparent 70%)',
+            'radial-gradient(120% 100% at 50% 0%, var(--fg-a04) 0%, transparent 70%)',
         }}
       >
         <div className="w-full h-full max-w-[260px]">{visualFor(item.visual)}</div>
@@ -246,7 +246,7 @@ function ShowcaseCard({ item, index }) {
       <div className="p-7 md:p-8 flex flex-col flex-1">
         <div
           className="text-[10px] font-semibold tracking-[0.28em] mb-3"
-          style={{ color: 'rgba(255,255,255,0.45)' }}
+          style={{ color: 'var(--fg-a45)' }}
         >
           {item.eyebrow}
         </div>
@@ -258,7 +258,7 @@ function ShowcaseCard({ item, index }) {
         </h3>
         <p
           className="text-[13.5px] leading-[1.6] mb-5"
-          style={{ color: 'rgba(255,255,255,0.62)' }}
+          style={{ color: 'var(--fg-a62)' }}
         >
           {item.desc}
         </p>
@@ -269,15 +269,15 @@ function ShowcaseCard({ item, index }) {
                 key={gear.label}
                 className="rounded-[10px] border px-3 py-3 flex flex-col items-center text-center"
                 style={{
-                  borderColor: 'rgba(255,255,255,0.08)',
-                  background: 'rgba(255,255,255,0.025)',
+                  borderColor: 'var(--fg-a08)',
+                  background: 'var(--fg-a025)',
                 }}
               >
                 <span
                   className="text-[22px] font-bold tabular-nums leading-none -tracking-[0.02em] mb-2"
                   style={{
                     fontFamily: "'Plus Jakarta Sans', sans-serif",
-                    color: 'rgba(255,255,255,0.92)',
+                    color: 'var(--fg-a92)',
                   }}
                 >
                   {gear.count}
@@ -286,7 +286,7 @@ function ShowcaseCard({ item, index }) {
                   className="text-[11.5px] font-semibold leading-[1.2]"
                   style={{
                     fontFamily: "'Plus Jakarta Sans', sans-serif",
-                    color: 'rgba(255,255,255,0.78)',
+                    color: 'var(--fg-a78)',
                   }}
                 >
                   {gear.label}
@@ -298,8 +298,8 @@ function ShowcaseCard({ item, index }) {
           <div
             className="text-[10.5px] font-semibold tracking-[0.22em] uppercase pt-4 mt-auto border-t"
             style={{
-              color: 'rgba(255,255,255,0.5)',
-              borderColor: 'rgba(255,255,255,0.07)',
+              color: 'var(--fg-a5)',
+              borderColor: 'var(--fg-a07)',
             }}
           >
             {item.spec}

@@ -24,12 +24,12 @@ function formatDate(iso) {
 
 function Field({ label, children }) {
   return (
-    <div className="py-5 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-      <div className="text-[11px] font-semibold tracking-[0.14em] mb-2" style={{ color: '#8a8a8a' }}>
+    <div className="py-5 border-t" style={{ borderColor: 'var(--fg-a06)' }}>
+      <div className="text-[11px] font-semibold tracking-[0.14em] mb-2" style={{ color: 'var(--text-3)' }}>
         {label}
       </div>
       <div className="text-[15px] leading-[1.6]" style={{ whiteSpace: 'pre-wrap' }}>
-        {children || <span style={{ color: '#555' }}>—</span>}
+        {children || <span style={{ color: 'var(--text-4)' }}>—</span>}
       </div>
     </div>
   );
@@ -54,7 +54,7 @@ export default async function CollaborationDetail({ params }) {
       <Link
         href="/bananas/collaborations"
         className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70"
-        style={{ color: '#8a8a8a' }}
+        style={{ color: 'var(--text-3)' }}
       >
         ← BACK TO COLLABORATIONS
       </Link>
@@ -65,9 +65,9 @@ export default async function CollaborationDetail({ params }) {
             <div
               className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full"
               style={{
-                background: '#1a1a1a',
-                color: '#f5f5f5',
-                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'var(--surface-4)',
+                color: 'var(--text-1)',
+                border: '1px solid var(--fg-a1)',
               }}
             >
               {ROLE_LABELS[c.collaborator_type] || c.collaborator_type?.toUpperCase()}
@@ -75,9 +75,9 @@ export default async function CollaborationDetail({ params }) {
             <div
               className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full"
               style={{
-                background: '#1a1a1a',
-                color: '#f5f5f5',
-                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'var(--surface-4)',
+                color: 'var(--text-1)',
+                border: '1px solid var(--fg-a1)',
               }}
             >
               {c.applying_for?.toUpperCase()}
@@ -92,11 +92,11 @@ export default async function CollaborationDetail({ params }) {
                   c.status === 'pending' ? 'rgba(255,255,255,0.06)' :
                   'rgba(255,184,77,0.15)',
                 color:
-                  c.status === 'approved' ? '#4ade80' :
-                  c.status === 'rejected' ? '#f87171' :
-                  c.status === 'reviewed' ? '#c084fc' :
-                  c.status === 'pending' ? '#a0a0a0' :
-                  '#ffb84d',
+                  c.status === 'approved' ? 'var(--st-4ade80)' :
+                  c.status === 'rejected' ? 'var(--st-f87171)' :
+                  c.status === 'reviewed' ? 'var(--st-c084fc)' :
+                  c.status === 'pending' ? 'var(--text-3)' :
+                  'var(--st-ffb84d)',
               }}
             >
               {c.status || 'new'}
@@ -108,7 +108,7 @@ export default async function CollaborationDetail({ params }) {
           >
             {c.full_name}
           </h1>
-          <p className="text-[12px] mt-3" style={{ color: '#666' }}>
+          <p className="text-[12px] mt-3" style={{ color: 'var(--text-4)' }}>
             Submitted {formatDate(c.created_at)}
           </p>
         </div>
@@ -118,7 +118,7 @@ export default async function CollaborationDetail({ params }) {
 
       <section
         className="rounded-[14px] p-8 border mt-8 mb-6"
-        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
+        style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a05)' }}
       >
         <h2 className="text-[13px] font-bold tracking-[0.14em] pb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           CONTACT INFO
@@ -135,7 +135,7 @@ export default async function CollaborationDetail({ params }) {
 
       <section
         className="rounded-[14px] p-8 border mb-6"
-        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
+        style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a05)' }}
       >
         <h2 className="text-[13px] font-bold tracking-[0.14em] pb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           ABOUT

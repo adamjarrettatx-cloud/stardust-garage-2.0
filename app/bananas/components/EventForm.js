@@ -244,13 +244,13 @@ export default function EventForm({ event, metrics = null }) {
     isEditing && QUALIFYING_CATEGORIES.includes(category) && !!ttEventSeriesId.trim();
 
   const inputStyle = {
-    background: '#141414',
-    borderColor: 'rgba(255,255,255,0.1)',
-    color: '#f5f5f5',
+    background: 'var(--surface-1)',
+    borderColor: 'var(--fg-a1)',
+    color: 'var(--text-1)',
   };
 
   const labelClass = 'block text-[12px] font-semibold tracking-[0.14em] mb-2';
-  const labelStyle = { color: '#8a8a8a' };
+  const labelStyle = { color: 'var(--text-3)' };
   const inputClass = 'w-full px-5 py-3.5 rounded-[10px] text-[14px] outline-none border transition-colors focus:border-white/30';
 
   return (
@@ -258,7 +258,7 @@ export default function EventForm({ event, metrics = null }) {
       <Link
         href="/bananas"
         className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70"
-        style={{ color: '#8a8a8a' }}
+        style={{ color: 'var(--text-3)' }}
       >
         ← BACK TO ADMIN
       </Link>
@@ -294,7 +294,7 @@ export default function EventForm({ event, metrics = null }) {
             className={inputClass}
             style={inputStyle}
           />
-          <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+          <p className="text-[11px] mt-2" style={{ color: 'var(--text-4)' }}>
             This becomes the URL: /events/{slug || 'your-slug'}
           </p>
         </div>
@@ -345,12 +345,12 @@ export default function EventForm({ event, metrics = null }) {
             style={inputStyle}
           >
             {CATEGORY_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value} style={{ background: '#141414' }}>
+              <option key={opt.value} value={opt.value} style={{ background: 'var(--surface-1)' }}>
                 {opt.label}
               </option>
             ))}
           </select>
-          <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+          <p className="text-[11px] mt-2" style={{ color: 'var(--text-4)' }}>
             Workshop, Yoga, and Party events generate member discount codes automatically.
           </p>
         </div>
@@ -370,9 +370,9 @@ export default function EventForm({ event, metrics = null }) {
                 className={inputClass + ' max-w-[140px]'}
                 style={inputStyle}
               />
-              <span className="text-[14px]" style={{ color: '#8a8a8a' }}>%</span>
+              <span className="text-[14px]" style={{ color: 'var(--text-3)' }}>%</span>
             </div>
-            <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+            <p className="text-[11px] mt-2" style={{ color: 'var(--text-4)' }}>
               Default: Workshop 60%, Yoga 40%, Party 60%
             </p>
           </div>
@@ -393,11 +393,11 @@ export default function EventForm({ event, metrics = null }) {
                 className={inputClass}
                 style={inputStyle}
               >
-                <option value="" style={{ background: '#141414' }}>
+                <option value="" style={{ background: 'var(--surface-1)' }}>
                   — None —
                 </option>
                 {ttSeries.map((s) => (
-                  <option key={s.id} value={s.id} style={{ background: '#141414' }}>
+                  <option key={s.id} value={s.id} style={{ background: 'var(--surface-1)' }}>
                     {s.name} ({s.id})
                   </option>
                 ))}
@@ -412,7 +412,7 @@ export default function EventForm({ event, metrics = null }) {
                 style={inputStyle}
               />
             )}
-            <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+            <p className="text-[11px] mt-2" style={{ color: 'var(--text-4)' }}>
               {ttSeriesError
                 ? `Could not load series list (${ttSeriesError}). Enter the series ID manually.`
                 : 'Link the TicketTailor event series so member discount codes apply to its tickets. You can verify the link after creating the event.'}
@@ -429,15 +429,15 @@ export default function EventForm({ event, metrics = null }) {
               onClick={() => setIsInternal(false)}
               className="py-4 px-5 rounded-[10px] border text-left transition-all"
               style={{
-                background: !isInternal ? '#ffffff' : '#141414',
+                background: !isInternal ? '#ffffff' : 'var(--surface-1)',
                 borderColor: !isInternal ? '#ffffff' : 'rgba(255,255,255,0.1)',
-                color: !isInternal ? '#0a0a0a' : '#f5f5f5',
+                color: !isInternal ? '#0a0a0a' : 'var(--text-1)',
               }}
             >
               <div className="text-[14px] font-bold mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 Public
               </div>
-              <div className="text-[12px]" style={{ color: !isInternal ? '#555' : '#8a8a8a' }}>
+              <div className="text-[12px]" style={{ color: !isInternal ? 'var(--text-4)' : 'var(--text-3)' }}>
                 Shown on the public events page
               </div>
             </button>
@@ -446,21 +446,21 @@ export default function EventForm({ event, metrics = null }) {
               onClick={() => setIsInternal(true)}
               className="py-4 px-5 rounded-[10px] border text-left transition-all"
               style={{
-                background: isInternal ? '#f59e0b' : '#141414',
-                borderColor: isInternal ? '#f59e0b' : 'rgba(255,255,255,0.1)',
-                color: isInternal ? '#0a0a0a' : '#f5f5f5',
+                background: isInternal ? 'var(--st-f59e0b)' : 'var(--surface-1)',
+                borderColor: isInternal ? 'var(--st-f59e0b)' : 'rgba(255,255,255,0.1)',
+                color: isInternal ? '#0a0a0a' : 'var(--text-1)',
               }}
             >
               <div className="text-[14px] font-bold mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 Micro Party (Internal)
               </div>
-              <div className="text-[12px]" style={{ color: isInternal ? '#5a3d00' : '#8a8a8a' }}>
+              <div className="text-[12px]" style={{ color: isInternal ? 'var(--st-tint-amber-7)' : 'var(--text-3)' }}>
                 Hidden from public · team calendar only
               </div>
             </button>
           </div>
           {isInternal && (
-            <p className="text-[11px] mt-2" style={{ color: '#f59e0b' }}>
+            <p className="text-[11px] mt-2" style={{ color: 'var(--st-f59e0b)' }}>
               Internal micro party: never appears on the public events page or member surfaces. It still
               supports contracts, SignNow, financials, and POS imports, and shows on the team calendar.
             </p>
@@ -476,15 +476,15 @@ export default function EventForm({ event, metrics = null }) {
               onClick={() => setEventType('public')}
               className="py-4 px-5 rounded-[10px] border text-left transition-all"
               style={{
-                background: eventType === 'public' ? '#ffffff' : '#141414',
+                background: eventType === 'public' ? '#ffffff' : 'var(--surface-1)',
                 borderColor: eventType === 'public' ? '#ffffff' : 'rgba(255,255,255,0.1)',
-                color: eventType === 'public' ? '#0a0a0a' : '#f5f5f5',
+                color: eventType === 'public' ? '#0a0a0a' : 'var(--text-1)',
               }}
             >
               <div className="text-[14px] font-bold mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 Public Event
               </div>
-              <div className="text-[12px]" style={{ color: eventType === 'public' ? '#555' : '#8a8a8a' }}>
+              <div className="text-[12px]" style={{ color: eventType === 'public' ? 'var(--text-4)' : 'var(--text-3)' }}>
                 Sell tickets via link
               </div>
             </button>
@@ -493,15 +493,15 @@ export default function EventForm({ event, metrics = null }) {
               onClick={() => setEventType('private')}
               className="py-4 px-5 rounded-[10px] border text-left transition-all"
               style={{
-                background: eventType === 'private' ? '#ffffff' : '#141414',
+                background: eventType === 'private' ? '#ffffff' : 'var(--surface-1)',
                 borderColor: eventType === 'private' ? '#ffffff' : 'rgba(255,255,255,0.1)',
-                color: eventType === 'private' ? '#0a0a0a' : '#f5f5f5',
+                color: eventType === 'private' ? '#0a0a0a' : 'var(--text-1)',
               }}
             >
               <div className="text-[14px] font-bold mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 Private Event
               </div>
-              <div className="text-[12px]" style={{ color: eventType === 'private' ? '#555' : '#8a8a8a' }}>
+              <div className="text-[12px]" style={{ color: eventType === 'private' ? 'var(--text-4)' : 'var(--text-3)' }}>
                 Venue rental, no tickets
               </div>
             </button>
@@ -520,7 +520,7 @@ export default function EventForm({ event, metrics = null }) {
               className={inputClass}
               style={inputStyle}
             />
-            <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+            <p className="text-[11px] mt-2" style={{ color: 'var(--text-4)' }}>
               Link to Eventbrite, Shopify, Dice, etc. Leave blank if tickets are not yet available.
             </p>
           </div>
@@ -529,7 +529,7 @@ export default function EventForm({ event, metrics = null }) {
         <div>
           <label className={labelClass} style={labelStyle}>IMAGE</label>
           {imageUrl && (
-            <div className="mb-3 rounded-[10px] overflow-hidden border" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+            <div className="mb-3 rounded-[10px] overflow-hidden border" style={{ borderColor: 'var(--fg-a1)' }}>
               <img src={imageUrl} alt="Event preview" className="w-full h-auto max-h-[300px] object-cover" />
             </div>
           )}
@@ -540,9 +540,9 @@ export default function EventForm({ event, metrics = null }) {
               onChange={handleImageUpload}
               disabled={uploading}
               className="text-[13px] file:mr-4 file:px-5 file:py-2.5 file:rounded-full file:border-0 file:text-[12px] file:font-semibold file:tracking-[0.12em] file:bg-white file:text-black file:cursor-pointer hover:file:bg-gray-200"
-              style={{ color: '#8a8a8a' }}
+              style={{ color: 'var(--text-3)' }}
             />
-            {uploading && <p className="text-[13px]" style={{ color: '#8a8a8a' }}>Uploading...</p>}
+            {uploading && <p className="text-[13px]" style={{ color: 'var(--text-3)' }}>Uploading...</p>}
             <input
               type="text"
               value={imageUrl}
@@ -572,7 +572,7 @@ export default function EventForm({ event, metrics = null }) {
           <Link
             href="/bananas"
             className="px-8 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5 flex items-center"
-            style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
+            style={{ borderColor: 'var(--fg-a15)', color: 'var(--text-1)' }}
           >
             CANCEL
           </Link>
@@ -586,15 +586,15 @@ export default function EventForm({ event, metrics = null }) {
               disabled={generating}
               className="self-start px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
               style={{
-                border: '1px solid #ffb84d',
-                color: '#ffb84d',
+                border: '1px solid var(--st-ffb84d)',
+                color: 'var(--st-ffb84d)',
                 background: 'transparent',
               }}
             >
               {generating ? 'GENERATING...' : 'GENERATE MEMBER CODES'}
             </button>
             {generateMessage && (
-              <p className="text-[13px]" style={{ color: '#ffb84d' }}>
+              <p className="text-[13px]" style={{ color: 'var(--st-ffb84d)' }}>
                 {generateMessage}
               </p>
             )}

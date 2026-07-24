@@ -21,7 +21,7 @@ export default async function MicroPartyInquiriesPage() {
       <Link
         href="/bananas"
         className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70"
-        style={{ color: '#8a8a8a' }}
+        style={{ color: 'var(--text-3)' }}
       >
         ← BACK TO ADMIN
       </Link>
@@ -32,7 +32,7 @@ export default async function MicroPartyInquiriesPage() {
       >
         Micro Party Inquiries
       </h1>
-      <p className="text-[14px] mb-10" style={{ color: '#8a8a8a' }}>
+      <p className="text-[14px] mb-10" style={{ color: 'var(--text-3)' }}>
         Inquiries submitted through the Micro Parties / Birthdays form.
       </p>
 

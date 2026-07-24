@@ -71,7 +71,7 @@ export default function SignupForm() {
         >
           You&apos;re on the list
         </h3>
-        <p className="text-[15px] leading-[1.6]" style={{ color: '#555' }}>
+        <p className="text-[15px] leading-[1.6]" style={{ color: 'var(--text-4)' }}>
           We&apos;ll be in touch with the next drop.
         </p>
       </div>
@@ -83,7 +83,7 @@ export default function SignupForm() {
       <div
         className="inline-block text-[11px] font-semibold tracking-[0.2em] px-3.5 py-1.5 rounded-full mb-6"
         style={{
-          color: '#555',
+          color: 'var(--text-4)',
           border: '1px solid rgba(0,0,0,0.15)',
         }}
       >
@@ -95,7 +95,7 @@ export default function SignupForm() {
       >
         Never miss a drop.
       </h2>
-      <p className="text-[15px] leading-[1.55] mb-8 max-w-[420px] mx-auto" style={{ color: '#555' }}>
+      <p className="text-[15px] leading-[1.55] mb-8 max-w-[420px] mx-auto" style={{ color: 'var(--text-4)' }}>
         Get early access to events, parties, and members-only experiences.
       </p>
       <form
@@ -125,9 +125,9 @@ export default function SignupForm() {
         </button>
       </form>
       {error && (
-        <p className="text-[12px] mt-3" style={{ color: '#c53030' }}>{error}</p>
+        <p className="text-[12px] mt-3" style={{ color: 'var(--st-c53030)' }}>{error}</p>
       )}
-      <p className="text-[11px] mt-4" style={{ color: '#888' }}>
+      <p className="text-[11px] mt-4" style={{ color: 'var(--text-4)' }}>
         No spam. Unsubscribe anytime.
       </p>
     </div>

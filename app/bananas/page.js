@@ -67,7 +67,7 @@ export default async function AdminDashboard() {
           >
             Admin
           </h1>
-          <p className="text-[14px] mt-2" style={{ color: '#8a8a8a' }}>
+          <p className="text-[14px] mt-2" style={{ color: 'var(--text-3)' }}>
             Signed in as {user?.email}
           </p>
         </div>
