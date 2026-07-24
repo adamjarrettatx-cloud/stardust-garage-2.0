@@ -1,0 +1,166 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  classifyTask,
+  completedRecently,
+  computeKpis,
+  filterTasks,
+  sortTasks,
+  mapImportStatus,
+  dayDiff,
+  departmentLabel,
+  statusLabel,
+} from '../lib/progress.js';
+
+const TODAY = '2026-07-23';
+
+function task(overrides = {}) {
+  return {
+    id: overrides.id || 'id',
+    title: 'A deliverable',
+    department: 'marketing',
+    status: 'in_progress',
+    priority: 'medium',
+    due_date: null,
+    next_update_due: null,
+    last_update_at: null,
+    created_at: TODAY,
+    completed_at: null,
+    archived: false,
+    assignee_id: null,
+    updated_at: TODAY,
+    ...overrides,
+  };
+}
+
+test('dayDiff counts whole days and is DST-stable', () => {
+  assert.equal(dayDiff('2026-07-23', '2026-07-26'), 3);
+  assert.equal(dayDiff('2026-07-26', '2026-07-23'), -3);
+  assert.equal(dayDiff('2026-03-08', '2026-03-09'), 1); // US DST spring-forward
+  assert.equal(dayDiff(null, '2026-07-23'), null);
+});
+
+test('classifyTask flags overdue only for non-done past-due tasks', () => {
+  assert.equal(classifyTask(task({ due_date: '2026-07-20' }), TODAY).overdue, true);
+  assert.equal(classifyTask(task({ due_date: '2026-07-30' }), TODAY).overdue, false);
+  assert.equal(
+    classifyTask(task({ due_date: '2026-07-20', status: 'done' }), TODAY).overdue,
+    false,
+  );
+});
+
+test('classifyTask flags dueSoon within the window but not overdue', () => {
+  assert.equal(classifyTask(task({ due_date: '2026-07-25' }), TODAY).dueSoon, true);
+  assert.equal(classifyTask(task({ due_date: '2026-07-23' }), TODAY).dueSoon, true);
+  assert.equal(classifyTask(task({ due_date: '2026-07-28' }), TODAY).dueSoon, false);
+  assert.equal(classifyTask(task({ due_date: '2026-07-20' }), TODAY).dueSoon, false);
+});
+
+test('classifyTask uses next_update_due for staleness when present', () => {
+  assert.equal(classifyTask(task({ next_update_due: '2026-07-20' }), TODAY).stale, true);
+  assert.equal(classifyTask(task({ next_update_due: '2026-07-25' }), TODAY).stale, false);
+});
+
+test('classifyTask falls back to last update age when no cadence set', () => {
+  // last update 10 days ago > default 7-day window => stale
+  assert.equal(classifyTask(task({ last_update_at: '2026-07-13' }), TODAY).stale, true);
+  // last update 2 days ago => fresh
+  assert.equal(classifyTask(task({ last_update_at: '2026-07-21' }), TODAY).stale, false);
+});
+
+test('classifyTask never marks a done task stale', () => {
+  const c = classifyTask(task({ status: 'done', next_update_due: '2026-01-01' }), TODAY);
+  assert.equal(c.stale, false);
+  assert.equal(c.needsAttention, false);
+});
+
+test('needsAttention is true for blocked tasks', () => {
+  assert.equal(classifyTask(task({ status: 'blocked' }), TODAY).needsAttention, true);
+});
+
+test('completedRecently respects the window and requires done status', () => {
+  assert.equal(completedRecently(task({ status: 'done', completed_at: '2026-07-21' }), TODAY), true);
+  assert.equal(completedRecently(task({ status: 'done', completed_at: '2026-07-10' }), TODAY), false);
+  assert.equal(completedRecently(task({ status: 'in_progress', completed_at: '2026-07-21' }), TODAY), false);
+});
+
+test('computeKpis tallies each dimension independently', () => {
+  const tasks = [
+    task({ id: '1', due_date: '2026-07-10' }), // overdue
+    task({ id: '2', status: 'blocked' }), // blocked
+    task({ id: '3', next_update_due: '2026-07-01' }), // stale
+    task({ id: '4', due_date: '2026-07-24' }), // due soon
+    task({ id: '5', status: 'done', completed_at: '2026-07-22' }), // completed recently
+  ];
+  const kpis = computeKpis(tasks, TODAY);
+  assert.equal(kpis.total, 5);
+  assert.equal(kpis.overdue, 1);
+  assert.equal(kpis.blocked, 1);
+  assert.equal(kpis.stale, 1);
+  assert.equal(kpis.dueSoon, 1);
+  assert.equal(kpis.completedRecently, 1);
+});
+
+test('filterTasks applies department/status/priority/assignee/search', () => {
+  const tasks = [
+    task({ id: '1', department: 'marketing', status: 'blocked', priority: 'high', assignee_id: 'a', title: 'Launch flyer' }),
+    task({ id: '2', department: 'legal', status: 'done', priority: 'low', assignee_id: 'b', title: 'Contract review' }),
+  ];
+  assert.deepEqual(filterTasks(tasks, { department: 'legal' }).map((t) => t.id), ['2']);
+  assert.deepEqual(filterTasks(tasks, { status: 'blocked' }).map((t) => t.id), ['1']);
+  assert.deepEqual(filterTasks(tasks, { priority: 'low' }).map((t) => t.id), ['2']);
+  assert.deepEqual(filterTasks(tasks, { assigneeId: 'a' }).map((t) => t.id), ['1']);
+  assert.deepEqual(filterTasks(tasks, {}, 'contract').map((t) => t.id), ['2']);
+  assert.deepEqual(filterTasks(tasks, {}, 'FLYER').map((t) => t.id), ['1']);
+});
+
+test('filterTasks archived flag include/exclude', () => {
+  const tasks = [task({ id: '1', archived: false }), task({ id: '2', archived: true })];
+  assert.deepEqual(filterTasks(tasks, { archived: false }).map((t) => t.id), ['1']);
+  assert.deepEqual(filterTasks(tasks, { archived: true }).map((t) => t.id), ['2']);
+});
+
+test('sortTasks by priority desc puts urgent first, nulls handled for due_date', () => {
+  const tasks = [
+    task({ id: 'low', priority: 'low' }),
+    task({ id: 'urgent', priority: 'urgent' }),
+    task({ id: 'med', priority: 'medium' }),
+  ];
+  assert.deepEqual(sortTasks(tasks, 'priority', 'desc').map((t) => t.id), ['urgent', 'med', 'low']);
+
+  const withDates = [
+    task({ id: 'none', due_date: null }),
+    task({ id: 'early', due_date: '2026-07-01' }),
+    task({ id: 'late', due_date: '2026-08-01' }),
+  ];
+  // asc => earliest first, null last
+  assert.deepEqual(sortTasks(withDates, 'due_date', 'asc').map((t) => t.id), ['early', 'late', 'none']);
+});
+
+test('sortTasks does not mutate the input array', () => {
+  const tasks = [task({ id: 'a', priority: 'low' }), task({ id: 'b', priority: 'urgent' })];
+  const before = tasks.map((t) => t.id);
+  sortTasks(tasks, 'priority', 'desc');
+  assert.deepEqual(tasks.map((t) => t.id), before);
+});
+
+test('mapImportStatus maps common free-form phrasings', () => {
+  assert.equal(mapImportStatus('Done'), 'done');
+  assert.equal(mapImportStatus('Completed and live'), 'done');
+  assert.equal(mapImportStatus('BLOCKED - waiting on vendor'), 'blocked');
+  assert.equal(mapImportStatus('stuck'), 'blocked');
+  assert.equal(mapImportStatus('pending review'), 'waiting');
+  assert.equal(mapImportStatus('In Progress'), 'in_progress');
+  assert.equal(mapImportStatus('WIP'), 'in_progress');
+  assert.equal(mapImportStatus('todo'), 'not_started');
+  assert.equal(mapImportStatus(''), 'not_started');
+  assert.equal(mapImportStatus('some random note'), 'not_started');
+});
+
+test('label helpers fall back gracefully', () => {
+  assert.equal(departmentLabel('legal'), 'Legal');
+  assert.equal(departmentLabel('supplies_inventory'), 'Supplies / Inventory');
+  assert.equal(departmentLabel('unknown'), 'unknown');
+  assert.equal(statusLabel('blocked'), 'Blocked');
+  assert.equal(statusLabel(null), '—');
+});
