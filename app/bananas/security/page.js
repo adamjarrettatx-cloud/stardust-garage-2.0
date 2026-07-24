@@ -23,7 +23,7 @@ export default async function SecurityPage({ searchParams }) {
       <Link
         href="/bananas"
         className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70"
-        style={{ color: '#8a8a8a' }}
+        style={{ color: 'var(--text-3)' }}
       >
         ← BACK TO ADMIN
       </Link>
@@ -35,11 +35,11 @@ export default async function SecurityPage({ searchParams }) {
         >
           Security
         </h1>
-        <div className="text-[11px] tracking-[0.18em]" style={{ color: '#8a8a8a' }}>
+        <div className="text-[11px] tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
           {enforced ? 'MFA REQUIRED' : 'MFA OPTIONAL'}
         </div>
       </div>
-      <p className="mb-8 text-[14px]" style={{ color: '#8a8a8a' }}>
+      <p className="mb-8 text-[14px]" style={{ color: 'var(--text-3)' }}>
         Manage two-factor authentication for your account. Current assurance level:{' '}
         <strong>{status.currentLevel || 'aal1'}</strong>.
       </p>
@@ -47,7 +47,7 @@ export default async function SecurityPage({ searchParams }) {
       {mfaRequired && (
         <div
           className="mb-6 p-4 rounded-[12px] text-[13px]"
-          style={{ background: 'rgba(255,184,77,0.1)', border: '1px solid rgba(255,184,77,0.3)', color: '#ffd599' }}
+          style={{ background: 'rgba(255,184,77,0.1)', border: '1px solid rgba(255,184,77,0.3)', color: 'var(--st-ffd599)' }}
         >
           <strong>Two-factor authentication is required.</strong>{' '}
           {status.hasVerifiedFactor

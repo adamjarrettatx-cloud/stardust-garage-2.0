@@ -39,14 +39,14 @@ export default function ForgotPasswordPage() {
           <div className="flex justify-center mb-10">
             <Wordmark size="md" align="center" />
           </div>
-          <div className="text-[11px] font-semibold tracking-[0.28em] mb-4" style={{ color: '#a0a0a0' }}>
+          <div className="text-[11px] font-semibold tracking-[0.28em] mb-4" style={{ color: 'var(--text-3)' }}>
             CHECK YOUR INBOX
           </div>
           <h1 className="text-[28px] font-extrabold -tracking-[0.02em] mb-4 leading-[1.1]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             Email sent.
           </h1>
-          <p className="text-[14px] leading-[1.6] mb-8" style={{ color: '#a0a0a0' }}>
-            If <span style={{ color: '#f5f5f5' }}>{email}</span> is registered with us, you&apos;ll receive a password reset link shortly. The link expires in 1 hour.
+          <p className="text-[14px] leading-[1.6] mb-8" style={{ color: 'var(--text-3)' }}>
+            If <span style={{ color: 'var(--text-1)' }}>{email}</span> is registered with us, you&apos;ll receive a password reset link shortly. The link expires in 1 hour.
           </p>
           <Link href="/login" className="inline-block px-6 py-2.5 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5" style={{ background: '#ffffff', color: '#0a0a0a' }}>
             BACK TO LOGIN
@@ -65,14 +65,14 @@ export default function ForgotPasswordPage() {
         <h1 className="text-[28px] font-extrabold -tracking-[0.02em] mb-2 text-center leading-[1.1]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           Reset Password
         </h1>
-        <p className="text-[13px] text-center mb-10" style={{ color: '#8a8a8a' }}>
+        <p className="text-[13px] text-center mb-10" style={{ color: 'var(--text-3)' }}>
           Enter your email and we&apos;ll send you a reset link.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-[12px] font-semibold tracking-[0.14em] mb-2" style={{ color: '#8a8a8a' }}>EMAIL</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full px-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.1)', color: '#f5f5f5' }} />
+            <label className="block text-[12px] font-semibold tracking-[0.14em] mb-2" style={{ color: 'var(--text-3)' }}>EMAIL</label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full px-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30" style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a1)', color: 'var(--text-1)' }} />
           </div>
 
           {error && (
@@ -84,9 +84,9 @@ export default function ForgotPasswordPage() {
           </button>
         </form>
 
-        <p className="text-[12px] text-center mt-8" style={{ color: '#8a8a8a' }}>
+        <p className="text-[12px] text-center mt-8" style={{ color: 'var(--text-3)' }}>
           Remember it?{' '}
-          <Link href="/login" className="underline hover:text-white transition-colors" style={{ color: '#a0a0a0' }}>
+          <Link href="/login" className="underline hover:text-white transition-colors" style={{ color: 'var(--text-3)' }}>
             Back to login
           </Link>
         </p>

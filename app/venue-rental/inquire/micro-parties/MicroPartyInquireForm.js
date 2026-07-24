@@ -136,7 +136,7 @@ export default function MicroPartyInquireForm() {
       <main className="max-w-[700px] mx-auto px-4 md:px-6 py-20 md:py-24 text-center">
         <div
           className="text-[11px] font-semibold tracking-[0.2em] mb-5"
-          style={{ color: '#8a8a8a' }}
+          style={{ color: 'var(--text-3)' }}
         >
           INQUIRY RECEIVED
         </div>
@@ -146,7 +146,7 @@ export default function MicroPartyInquireForm() {
         >
           Thank you.
         </h1>
-        <p className="text-[15px] leading-[1.6] mb-10" style={{ color: '#a0a0a0' }}>
+        <p className="text-[15px] leading-[1.6] mb-10" style={{ color: 'var(--text-3)' }}>
           We&apos;ll review your event details and reach out within 48 hours to discuss next steps.
         </p>
         <button
@@ -162,14 +162,14 @@ export default function MicroPartyInquireForm() {
   }
 
   const inputStyle = {
-    background: '#141414',
-    borderColor: 'rgba(255,255,255,0.1)',
-    color: '#f5f5f5',
+    background: 'var(--surface-1)',
+    borderColor: 'var(--fg-a1)',
+    color: 'var(--text-1)',
   };
   const inputClass =
     'w-full px-5 py-3.5 rounded-[10px] text-[14px] outline-none border transition-colors focus:border-white/30';
   const labelClass = 'block text-[12px] font-semibold tracking-[0.14em] mb-2';
-  const labelStyle = { color: '#8a8a8a' };
+  const labelStyle = { color: 'var(--text-3)' };
 
   return (
     <main className="max-w-[780px] mx-auto px-4 md:px-6 py-12 md:py-16">
@@ -179,7 +179,7 @@ export default function MicroPartyInquireForm() {
       >
         Micro Parties
       </h1>
-      <p className="text-[15px] leading-[1.55] mb-10 md:mb-12" style={{ color: '#8a8a8a' }}>
+      <p className="text-[15px] leading-[1.55] mb-10 md:mb-12" style={{ color: 'var(--text-3)' }}>
         Tell us about your event and we&apos;ll be in touch within 48 hours.
       </p>
 
@@ -187,7 +187,7 @@ export default function MicroPartyInquireForm() {
         {/* CONTACT INFO */}
         <section
           className="rounded-[14px] p-6 md:p-8 border"
-          style={{ background: '#0f0f0f', borderColor: 'rgba(255,255,255,0.05)' }}
+          style={{ background: 'var(--surface-2)', borderColor: 'var(--fg-a05)' }}
         >
           <h2
             className="text-[18px] font-bold mb-6"
@@ -249,7 +249,7 @@ export default function MicroPartyInquireForm() {
                       className="px-7 py-2.5 rounded-full text-[13px] font-semibold tracking-[0.08em] transition-all border"
                       style={{
                         background: active ? '#ffffff' : 'transparent',
-                        color: active ? '#0a0a0a' : '#f5f5f5',
+                        color: active ? '#0a0a0a' : 'var(--text-1)',
                         borderColor: active ? '#ffffff' : 'rgba(255,255,255,0.2)',
                       }}
                     >
@@ -277,7 +277,7 @@ export default function MicroPartyInquireForm() {
         {/* EVENT DETAILS */}
         <section
           className="rounded-[14px] p-6 md:p-8 border"
-          style={{ background: '#0f0f0f', borderColor: 'rgba(255,255,255,0.05)' }}
+          style={{ background: 'var(--surface-2)', borderColor: 'var(--fg-a05)' }}
         >
           <h2
             className="text-[18px] font-bold mb-6"
@@ -331,9 +331,9 @@ export default function MicroPartyInquireForm() {
                   className={inputClass}
                   style={inputStyle}
                 >
-                  <option value="" style={{ background: '#141414' }}>Choose a start time</option>
+                  <option value="" style={{ background: 'var(--surface-1)' }}>Choose a start time</option>
                   {startTimeOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value} style={{ background: '#141414' }}>
+                    <option key={opt.value} value={opt.value} style={{ background: 'var(--surface-1)' }}>
                       {opt.label}
                     </option>
                   ))}
@@ -347,9 +347,9 @@ export default function MicroPartyInquireForm() {
                   className={inputClass}
                   style={inputStyle}
                 >
-                  <option value="" style={{ background: '#141414' }}>Choose a duration</option>
+                  <option value="" style={{ background: 'var(--surface-1)' }}>Choose a duration</option>
                   {durationOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value} style={{ background: '#141414' }}>
+                    <option key={opt.value} value={opt.value} style={{ background: 'var(--surface-1)' }}>
                       {opt.label}
                     </option>
                   ))}
@@ -357,7 +357,7 @@ export default function MicroPartyInquireForm() {
               </div>
             </div>
 
-            <p className="text-[12px] -mt-2" style={{ color: '#666' }}>
+            <p className="text-[12px] -mt-2" style={{ color: 'var(--text-4)' }}>
               Available between 7:00 PM and 1:00 AM. Minimum 3 hours.
             </p>
 
@@ -391,7 +391,7 @@ export default function MicroPartyInquireForm() {
                       className="px-7 py-2.5 rounded-full text-[13px] font-semibold tracking-[0.08em] transition-all border"
                       style={{
                         background: active ? '#ffffff' : 'transparent',
-                        color: active ? '#0a0a0a' : '#f5f5f5',
+                        color: active ? '#0a0a0a' : 'var(--text-1)',
                         borderColor: active ? '#ffffff' : 'rgba(255,255,255,0.2)',
                       }}
                     >
@@ -407,7 +407,7 @@ export default function MicroPartyInquireForm() {
         {/* VISION & ADDITIONAL INFO */}
         <section
           className="rounded-[14px] p-6 md:p-8 border"
-          style={{ background: '#0f0f0f', borderColor: 'rgba(255,255,255,0.05)' }}
+          style={{ background: 'var(--surface-2)', borderColor: 'var(--fg-a05)' }}
         >
           <h2
             className="text-[18px] font-bold mb-6"
@@ -460,9 +460,9 @@ export default function MicroPartyInquireForm() {
             checked={acknowledged}
             onChange={(e) => setAcknowledged(e.target.checked)}
             className="mt-1 w-4 h-4 cursor-pointer"
-            style={{ accentColor: '#f5f5f5' }}
+            style={{ accentColor: 'var(--text-1)' }}
           />
-          <span className="text-[13px] leading-[1.55]" style={{ color: '#a0a0a0' }}>
+          <span className="text-[13px] leading-[1.55]" style={{ color: 'var(--text-3)' }}>
             By checking this box, I understand that submitting this inquiry does not guarantee event approval or booking. The Stardust Garage team will review my request and follow up within 48 hours to discuss availability and next steps.
           </span>
         </label>

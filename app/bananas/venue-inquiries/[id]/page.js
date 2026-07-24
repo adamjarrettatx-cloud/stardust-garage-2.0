@@ -25,12 +25,12 @@ function formatDate(iso) {
 
 function Field({ label, children }) {
   return (
-    <div className="py-5 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-      <div className="text-[11px] font-semibold tracking-[0.14em] mb-2" style={{ color: '#8a8a8a' }}>
+    <div className="py-5 border-t" style={{ borderColor: 'var(--fg-a06)' }}>
+      <div className="text-[11px] font-semibold tracking-[0.14em] mb-2" style={{ color: 'var(--text-3)' }}>
         {label}
       </div>
       <div className="text-[15px] leading-[1.6]" style={{ whiteSpace: 'pre-wrap' }}>
-        {children || <span style={{ color: '#555' }}>—</span>}
+        {children || <span style={{ color: 'var(--text-4)' }}>—</span>}
       </div>
     </div>
   );
@@ -55,7 +55,7 @@ export default async function InquiryDetail({ params }) {
       <Link
         href="/bananas/venue-inquiries"
         className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70"
-        style={{ color: '#8a8a8a' }}
+        style={{ color: 'var(--text-3)' }}
       >
         ← BACK TO INQUIRIES
       </Link>
@@ -67,9 +67,9 @@ export default async function InquiryDetail({ params }) {
               <div
                 className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full"
                 style={{
-                  background: '#1a1a1a',
-                  color: '#f5f5f5',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  background: 'var(--surface-4)',
+                  color: 'var(--text-1)',
+                  border: '1px solid var(--fg-a1)',
                 }}
               >
                 {TYPE_LABELS[i.inquiry_type].toUpperCase()}
@@ -85,11 +85,11 @@ export default async function InquiryDetail({ params }) {
                   i.status === 'pending' ? 'rgba(255,255,255,0.06)' :
                   'rgba(255,184,77,0.15)',
                 color:
-                  i.status === 'approved' ? '#4ade80' :
-                  i.status === 'rejected' ? '#f87171' :
-                  i.status === 'reviewed' ? '#c084fc' :
-                  i.status === 'pending' ? '#a0a0a0' :
-                  '#ffb84d',
+                  i.status === 'approved' ? 'var(--st-4ade80)' :
+                  i.status === 'rejected' ? 'var(--st-f87171)' :
+                  i.status === 'reviewed' ? 'var(--st-c084fc)' :
+                  i.status === 'pending' ? 'var(--text-3)' :
+                  'var(--st-ffb84d)',
               }}
             >
               {i.status || 'new'}
@@ -101,10 +101,10 @@ export default async function InquiryDetail({ params }) {
           >
             {i.event_name}
           </h1>
-          <p className="text-[15px] mt-1" style={{ color: '#8a8a8a' }}>
+          <p className="text-[15px] mt-1" style={{ color: 'var(--text-3)' }}>
             {i.event_type}
           </p>
-          <p className="text-[12px] mt-3" style={{ color: '#666' }}>
+          <p className="text-[12px] mt-3" style={{ color: 'var(--text-4)' }}>
             Submitted {formatDate(i.created_at)}
           </p>
         </div>
@@ -114,7 +114,7 @@ export default async function InquiryDetail({ params }) {
 
       <section
         className="rounded-[14px] p-8 border mt-8 mb-6"
-        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
+        style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a05)' }}
       >
         <h2 className="text-[13px] font-bold tracking-[0.14em] pb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           CONTACT
@@ -138,7 +138,7 @@ export default async function InquiryDetail({ params }) {
 
       <section
         className="rounded-[14px] p-8 border mb-6"
-        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
+        style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a05)' }}
       >
         <h2 className="text-[13px] font-bold tracking-[0.14em] pb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           EVENT DETAILS
@@ -152,7 +152,7 @@ export default async function InquiryDetail({ params }) {
 
       <section
         className="rounded-[14px] p-8 border mb-6"
-        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
+        style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a05)' }}
       >
         <h2 className="text-[13px] font-bold tracking-[0.14em] pb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           SPACE &amp; PRODUCTION
@@ -164,7 +164,7 @@ export default async function InquiryDetail({ params }) {
                 <span
                   key={area}
                   className="text-[12px] font-medium px-3 py-1 rounded-full"
-                  style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)' }}
+                  style={{ background: 'var(--surface-4)', border: '1px solid var(--fg-a1)' }}
                 >
                   {area}
                 </span>
@@ -179,7 +179,7 @@ export default async function InquiryDetail({ params }) {
 
       <section
         className="rounded-[14px] p-8 border mb-6"
-        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
+        style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a05)' }}
       >
         <h2 className="text-[13px] font-bold tracking-[0.14em] pb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           VISION &amp; ADDITIONAL INFO
@@ -193,14 +193,14 @@ export default async function InquiryDetail({ params }) {
 
       <section
         className="rounded-[14px] p-8 border"
-        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
+        style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a05)' }}
       >
         <h2 className="text-[13px] font-bold tracking-[0.14em] mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           ACKNOWLEDGMENT
         </h2>
         <div className="flex items-start gap-3 text-[14px]">
           <span>{i.acknowledged_terms ? '✓' : '✗'}</span>
-          <span style={{ color: i.acknowledged_terms ? '#f5f5f5' : '#888' }}>
+          <span style={{ color: i.acknowledged_terms ? 'var(--text-1)' : 'var(--text-4)' }}>
             Acknowledged Stardust Garage is an intentional, creative venue and rentals are subject to management approval.
           </span>
         </div>

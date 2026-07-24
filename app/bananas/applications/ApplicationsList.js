@@ -34,7 +34,7 @@ function Avatar({ application }) {
         src={application.photo_url}
         alt={application.full_name}
         className="w-11 h-11 flex-shrink-0 object-cover"
-        style={{ borderRadius: '50%', border: '1px solid #2a2a2a' }}
+        style={{ borderRadius: '50%', border: '1px solid var(--surface-5)' }}
       />
     );
   }
@@ -43,9 +43,9 @@ function Avatar({ application }) {
       className="w-11 h-11 flex-shrink-0 flex items-center justify-center text-[14px] font-bold"
       style={{
         borderRadius: '50%',
-        background: '#1a1a1a',
-        border: '1px solid #2a2a2a',
-        color: '#8a8a8a',
+        background: 'var(--surface-4)',
+        border: '1px solid var(--surface-5)',
+        color: 'var(--text-3)',
         fontFamily: "'Plus Jakarta Sans', sans-serif",
       }}
     >
@@ -55,10 +55,10 @@ function Avatar({ application }) {
 }
 
 const TABS = [
-  { id: 'new',      label: 'New',      color: '#ffb84d' },
-  { id: 'reviewed', label: 'Reviewed', color: '#c084fc' },
-  { id: 'pending',  label: 'Pending',  color: '#a0a0a0' },
-  { id: 'approved', label: 'Approved', color: '#4ade80' },
+  { id: 'new',      label: 'New',      color: 'var(--st-ffb84d)' },
+  { id: 'reviewed', label: 'Reviewed', color: 'var(--st-c084fc)' },
+  { id: 'pending',  label: 'Pending',  color: 'var(--text-3)' },
+  { id: 'approved', label: 'Approved', color: 'var(--st-4ade80)' },
 ];
 
 export default function ApplicationsList({ applications }) {
@@ -84,8 +84,8 @@ export default function ApplicationsList({ applications }) {
               onClick={() => setActiveTab(tab.id)}
               className="flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-semibold tracking-[0.1em] transition-colors"
               style={{
-                background: isActive ? tab.color : 'rgba(255,255,255,0.06)',
-                color: isActive ? '#0a0a0a' : '#c0c0c0',
+                background: isActive ? tab.color : 'var(--fg-a06)',
+                color: isActive ? '#0a0a0a' : 'var(--text-2)',
                 fontFamily: "'Plus Jakarta Sans', sans-serif",
                 border: 'none',
                 cursor: 'pointer',
@@ -96,7 +96,7 @@ export default function ApplicationsList({ applications }) {
                 className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-none"
                 style={{
                   background: isActive ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.1)',
-                  color: isActive ? '#0a0a0a' : '#c0c0c0',
+                  color: isActive ? '#0a0a0a' : 'var(--text-2)',
                 }}
               >
                 {counts[tab.id]}
@@ -110,9 +110,9 @@ export default function ApplicationsList({ applications }) {
       {visible.length === 0 ? (
         <div
           className="rounded-[14px] p-12 text-center border"
-          style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
+          style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a05)' }}
         >
-          <p style={{ color: '#8a8a8a' }}>
+          <p style={{ color: 'var(--text-3)' }}>
             No {activeTabDef?.label.toLowerCase()} applications.
           </p>
         </div>
@@ -123,7 +123,7 @@ export default function ApplicationsList({ applications }) {
               key={a.id}
               href={`/bananas/applications/${a.id}`}
               className="block rounded-[14px] p-6 border transition-colors hover:border-white/20"
-              style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
+              style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a05)' }}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-4 flex-1 min-w-0">
@@ -137,14 +137,14 @@ export default function ApplicationsList({ applications }) {
                         {a.full_name}
                       </h3>
                       {a.preferred_name && (
-                        <span className="text-[13px]" style={{ color: '#8a8a8a' }}>
+                        <span className="text-[13px]" style={{ color: 'var(--text-3)' }}>
                           ({a.preferred_name})
                         </span>
                       )}
                     </div>
                     <div
                       className="text-[13px] flex flex-wrap gap-x-4 gap-y-1"
-                      style={{ color: '#8a8a8a' }}
+                      style={{ color: 'var(--text-3)' }}
                     >
                       <span>{a.email}</span>
                       <span>{a.phone}</span>
@@ -156,14 +156,14 @@ export default function ApplicationsList({ applications }) {
                   <div
                     className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full mb-2"
                     style={{
-                      background: a.plan === 'cowork-party' ? '#f5f5f5' : '#1a1a1a',
-                      color: a.plan === 'cowork-party' ? '#0a0a0a' : '#f5f5f5',
-                      border: '1px solid rgba(255,255,255,0.1)',
+                      background: a.plan === 'cowork-party' ? 'var(--text-1)' : 'var(--surface-4)',
+                      color: a.plan === 'cowork-party' ? '#0a0a0a' : 'var(--text-1)',
+                      border: '1px solid var(--fg-a1)',
                     }}
                   >
                     {a.plan === 'cowork-party' ? 'COWORK + PARTY' : 'COWORK'}
                   </div>
-                  <div className="text-[11px]" style={{ color: '#666' }}>
+                  <div className="text-[11px]" style={{ color: 'var(--text-4)' }}>
                     {formatDate(a.created_at)}
                   </div>
                 </div>

@@ -1,17 +1,16 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import TeamEventModal from './TeamEventModal';
+import { useTheme } from '../../lib/useTheme';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
-
-const THEME_KEY = 'sdg-admin-calendar-theme';
 
 // Category config: label, swatch color, a darker variant for readable text on
 // light backgrounds, and the text color used on a fully-filled chip (e.g. the
@@ -117,25 +116,9 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
   const [teamEvents, setTeamEvents] = useState(initialTeamEvents);
   const [modalState, setModalState] = useState(null); // null | { mode:'create', date } | { mode:'edit', event }
   const [selectedDay, setSelectedDay] = useState(null);
-  const [theme, setTheme] = useState('dark');
-
-  // Restore saved theme preference on mount.
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(THEME_KEY);
-      if (saved === 'light' || saved === 'dark') setTheme(saved);
-    } catch {
-      // localStorage unavailable — fall back to default dark theme silently.
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    setTheme(prev => {
-      const next = prev === 'dark' ? 'light' : 'dark';
-      try { window.localStorage.setItem(THEME_KEY, next); } catch {}
-      return next;
-    });
-  };
+  // Site-wide theme (set via the toggle in the navbar) — this page no
+  // longer has its own separate light/dark control.
+  const { theme } = useTheme();
 
   const t = THEMES[theme];
 
@@ -244,16 +227,6 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {/* Light / Dark theme toggle */}
-          <button
-            onClick={toggleTheme}
-            aria-label="Toggle light/dark theme"
-            className="flex items-center gap-2 px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.12em] border transition-colors hover:opacity-80"
-            style={{ borderColor: t.border, color: t.text, background: theme === 'light' ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.04)' }}
-          >
-            <span>{theme === 'dark' ? '☀️' : '🌙'}</span>
-            {theme === 'dark' ? 'LIGHT MODE' : 'DARK MODE'}
-          </button>
           <button
             onClick={() => setModalState({ mode: 'create', date: today })}
             className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5"

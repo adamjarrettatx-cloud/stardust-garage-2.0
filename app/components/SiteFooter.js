@@ -42,7 +42,7 @@ export default function SiteFooter() {
   return (
     <footer
       className="relative mt-24 px-6 pt-20 pb-10 border-t"
-      style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+      style={{ borderColor: 'var(--fg-a06)' }}
     >
       <div className="max-w-[1100px] mx-auto">
         {/* Email/phone signup */}
@@ -55,14 +55,14 @@ export default function SiteFooter() {
           <div>
             <h3
               className="text-[11px] font-semibold tracking-[0.2em] mb-4"
-              style={{ color: '#8a8a8a' }}
+              style={{ color: 'var(--text-3)' }}
             >
               CONTACT
             </h3>
             <a
               href="mailto:hello@sdgatx.com"
               className="block text-[14px] hover:opacity-70 transition-opacity"
-              style={{ color: '#d0d0d0' }}
+              style={{ color: 'var(--text-2)' }}
             >
               hello@sdgatx.com
             </a>
@@ -71,7 +71,7 @@ export default function SiteFooter() {
               target="_blank"
               rel="noopener noreferrer"
               className="block mt-2 text-[14px] hover:opacity-70 transition-opacity"
-              style={{ color: '#d0d0d0' }}
+              style={{ color: 'var(--text-2)' }}
             >
               (737) 423-3300
             </a>
@@ -80,11 +80,11 @@ export default function SiteFooter() {
           <div>
             <h3
               className="text-[11px] font-semibold tracking-[0.2em] mb-4"
-              style={{ color: '#8a8a8a' }}
+              style={{ color: 'var(--text-3)' }}
             >
               HOURS
             </h3>
-            <div className="text-[14px] space-y-1.5" style={{ color: '#d0d0d0' }}>
+            <div className="text-[14px] space-y-1.5" style={{ color: 'var(--text-2)' }}>
               <p>Mon–Fri: 8AM – 6PM</p>
               <p>Wknd: see schedule</p>
             </div>
@@ -93,7 +93,7 @@ export default function SiteFooter() {
           <div>
             <h3
               className="text-[11px] font-semibold tracking-[0.2em] mb-4"
-              style={{ color: '#8a8a8a' }}
+              style={{ color: 'var(--text-3)' }}
             >
               MORE
             </h3>
@@ -103,7 +103,7 @@ export default function SiteFooter() {
                   <Link
                     href={l.href}
                     className="text-[14px] hover:opacity-70 transition-opacity"
-                    style={{ color: '#d0d0d0' }}
+                    style={{ color: 'var(--text-2)' }}
                   >
                     {l.label}
                   </Link>
@@ -116,9 +116,9 @@ export default function SiteFooter() {
         {/* Bottom row */}
         <div
           className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pt-8 border-t"
-          style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+          style={{ borderColor: 'var(--fg-a06)' }}
         >
-          <div className="text-[12px]" style={{ color: '#8a8a8a' }}>
+          <div className="text-[12px]" style={{ color: 'var(--text-3)' }}>
             © {new Date().getFullYear()} Stardust Garage
           </div>
 
@@ -129,7 +129,7 @@ export default function SiteFooter() {
               rel="noopener noreferrer"
               aria-label="Instagram"
               className="w-10 h-10 rounded-full flex items-center justify-center border transition-all hover:bg-white/5 hover:-translate-y-0.5"
-              style={{ borderColor: 'rgba(255,255,255,0.12)', color: '#f5f5f5' }}
+              style={{ borderColor: 'var(--fg-a12)', color: 'var(--text-1)' }}
             >
               <SocialIcon name="instagram" />
             </a>
@@ -139,7 +139,7 @@ export default function SiteFooter() {
               rel="noopener noreferrer"
               aria-label="YouTube"
               className="w-10 h-10 rounded-full flex items-center justify-center border transition-all hover:bg-white/5 hover:-translate-y-0.5"
-              style={{ borderColor: 'rgba(255,255,255,0.12)', color: '#f5f5f5' }}
+              style={{ borderColor: 'var(--fg-a12)', color: 'var(--text-1)' }}
             >
               <SocialIcon name="youtube" />
             </a>

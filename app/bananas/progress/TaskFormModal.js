@@ -16,7 +16,7 @@ async function apiJson(url, options) {
 }
 
 const inputStyle = {
-  background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)', color: '#f5f5f5',
+  background: '#0a0a0a', border: '1px solid var(--fg-a1)', color: 'var(--text-1)',
 };
 
 // Admin create/edit form. `task` present => edit (PATCH), absent => create
@@ -79,13 +79,13 @@ export default function TaskFormModal({ task, assignees = [], onClose, onSaved }
       <button aria-label="Close" onClick={onClose} className="absolute inset-0 bg-black/70" style={{ border: 'none', cursor: 'pointer' }} />
       <form onSubmit={submit}
         className="relative w-full max-w-[560px] max-h-[90vh] overflow-y-auto rounded-[16px] p-6"
-        style={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)' }}>
+        style={{ background: 'var(--surface-2)', border: '1px solid var(--fg-a1)' }}>
         <h2 className="text-[22px] font-extrabold mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           {editing ? 'Edit task' : 'New task'}
         </h2>
 
         {error && (
-          <div className="rounded-lg px-4 py-3 mb-4 text-[13px]" style={{ background: 'rgba(239,68,68,0.12)', color: '#fca5a5' }} role="alert">{error}</div>
+          <div className="rounded-lg px-4 py-3 mb-4 text-[13px]" style={{ background: 'rgba(239,68,68,0.12)', color: 'var(--st-fca5a5)' }} role="alert">{error}</div>
         )}
 
         <div className="space-y-4">
@@ -148,12 +148,12 @@ export default function TaskFormModal({ task, assignees = [], onClose, onSaved }
         <div className="flex justify-end gap-3 mt-6">
           <button type="button" onClick={onClose}
             className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.1em] hover:bg-white/5"
-            style={{ minHeight: '44px', border: '1px solid rgba(255,255,255,0.15)', color: '#aaa', cursor: 'pointer' }}>
+            style={{ minHeight: '44px', border: '1px solid var(--fg-a15)', color: 'var(--text-3)', cursor: 'pointer' }}>
             CANCEL
           </button>
           <button type="submit" disabled={saving}
             className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.1em] disabled:opacity-40"
-            style={{ minHeight: '44px', background: '#ffb84d', color: '#0a0a0a', border: 'none', cursor: 'pointer' }}>
+            style={{ minHeight: '44px', background: 'var(--st-ffb84d)', color: '#0a0a0a', border: 'none', cursor: 'pointer' }}>
             {saving ? 'SAVING…' : editing ? 'SAVE CHANGES' : 'CREATE TASK'}
           </button>
         </div>
@@ -165,7 +165,7 @@ export default function TaskFormModal({ task, assignees = [], onClose, onSaved }
 function Labeled({ label, children }) {
   return (
     <label className="block">
-      <span className="block text-[11px] font-semibold tracking-[0.12em] mb-1.5" style={{ color: '#8a8a8a' }}>{label.toUpperCase()}</span>
+      <span className="block text-[11px] font-semibold tracking-[0.12em] mb-1.5" style={{ color: 'var(--text-3)' }}>{label.toUpperCase()}</span>
       {children}
     </label>
   );

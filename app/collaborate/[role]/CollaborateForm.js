@@ -88,9 +88,9 @@ export default function CollaborateForm({ role, roleLabel, roleSubtitle }) {
       <main className="max-w-[700px] mx-auto px-4 md:px-6 py-20 md:py-24 text-center">
         <div
           className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-8"
-          style={{ background: 'rgba(255,255,255,0.08)' }}
+          style={{ background: 'var(--fg-a08)' }}
         >
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f5f5f5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--text-1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>
@@ -100,13 +100,13 @@ export default function CollaborateForm({ role, roleLabel, roleSubtitle }) {
         >
           Submission received
         </h1>
-        <p className="text-[16px] leading-[1.6] mb-10" style={{ color: '#8a8a8a' }}>
+        <p className="text-[16px] leading-[1.6] mb-10" style={{ color: 'var(--text-3)' }}>
           Thanks for reaching out. We review every submission personally and will be in touch soon.
         </p>
         <Link
           href="/"
           className="inline-block px-8 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5"
-          style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
+          style={{ borderColor: 'var(--fg-a15)', color: 'var(--text-1)' }}
         >
           BACK TO HOME
         </Link>
@@ -115,13 +115,13 @@ export default function CollaborateForm({ role, roleLabel, roleSubtitle }) {
   }
 
   const inputStyle = {
-    background: '#141414',
-    borderColor: 'rgba(255,255,255,0.1)',
-    color: '#f5f5f5',
+    background: 'var(--surface-1)',
+    borderColor: 'var(--fg-a1)',
+    color: 'var(--text-1)',
   };
 
   const labelClass = 'block text-[11px] font-semibold tracking-[0.16em] mb-2';
-  const labelStyle = { color: '#a0a0a0' };
+  const labelStyle = { color: 'var(--text-3)' };
   const inputClass = 'w-full px-5 py-3.5 rounded-[10px] text-[14px] outline-none border transition-colors focus:border-white/30';
   const textareaClass = 'w-full px-5 py-3.5 rounded-[10px] text-[14px] outline-none border transition-colors focus:border-white/30 resize-y';
 
@@ -130,7 +130,7 @@ export default function CollaborateForm({ role, roleLabel, roleSubtitle }) {
       <Link
         href="/"
         className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70"
-        style={{ color: '#8a8a8a' }}
+        style={{ color: 'var(--text-3)' }}
       >
         ← BACK
       </Link>
@@ -139,8 +139,8 @@ export default function CollaborateForm({ role, roleLabel, roleSubtitle }) {
         <div
           className="inline-block text-[11px] font-semibold tracking-[0.2em] px-3.5 py-1.5 rounded-full mb-6"
           style={{
-            color: '#8a8a8a',
-            border: '1px solid rgba(255,255,255,0.12)',
+            color: 'var(--text-3)',
+            border: '1px solid var(--fg-a12)',
           }}
         >
           {roleLabel.toUpperCase()}
@@ -151,13 +151,13 @@ export default function CollaborateForm({ role, roleLabel, roleSubtitle }) {
         >
           Collaborate
         </h1>
-        <p className="text-[15px] italic mb-2" style={{ color: '#a0a0a0' }}>
+        <p className="text-[15px] italic mb-2" style={{ color: 'var(--text-3)' }}>
           Let&apos;s create something together
         </p>
-        <p className="text-[14px]" style={{ color: '#8a8a8a' }}>
+        <p className="text-[14px]" style={{ color: 'var(--text-3)' }}>
           {roleSubtitle}
         </p>
-        <p className="text-[12px] mt-4" style={{ color: '#666' }}>
+        <p className="text-[12px] mt-4" style={{ color: 'var(--text-4)' }}>
           * indicates required
         </p>
       </div>
@@ -166,9 +166,9 @@ export default function CollaborateForm({ role, roleLabel, roleSubtitle }) {
         {/* CONTACT INFO */}
         <section
           className="rounded-[14px] p-6 md:p-8 border"
-          style={{ background: '#0f0f0f', borderColor: 'rgba(255,255,255,0.05)' }}
+          style={{ background: 'var(--surface-2)', borderColor: 'var(--fg-a05)' }}
         >
-          <h2 className="text-[11px] font-semibold tracking-[0.16em] mb-6" style={{ color: '#8a8a8a', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+          <h2 className="text-[11px] font-semibold tracking-[0.16em] mb-6" style={{ color: 'var(--text-3)', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             CONTACT INFO
           </h2>
 
@@ -243,9 +243,9 @@ export default function CollaborateForm({ role, roleLabel, roleSubtitle }) {
         {/* ABOUT YOU */}
         <section
           className="rounded-[14px] p-6 md:p-8 border"
-          style={{ background: '#0f0f0f', borderColor: 'rgba(255,255,255,0.05)' }}
+          style={{ background: 'var(--surface-2)', borderColor: 'var(--fg-a05)' }}
         >
-          <h2 className="text-[11px] font-semibold tracking-[0.16em] mb-6" style={{ color: '#8a8a8a', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+          <h2 className="text-[11px] font-semibold tracking-[0.16em] mb-6" style={{ color: 'var(--text-3)', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             ABOUT YOU
           </h2>
 
@@ -262,9 +262,9 @@ export default function CollaborateForm({ role, roleLabel, roleSubtitle }) {
                       onClick={() => update('applying_for', opt)}
                       className="py-3 px-4 rounded-[10px] text-[13px] text-center border transition-all"
                       style={{
-                        background: selected ? '#ffffff' : '#141414',
+                        background: selected ? '#ffffff' : 'var(--surface-1)',
                         borderColor: selected ? '#ffffff' : 'rgba(255,255,255,0.1)',
-                        color: selected ? '#0a0a0a' : '#f5f5f5',
+                        color: selected ? '#0a0a0a' : 'var(--text-1)',
                       }}
                     >
                       {opt}

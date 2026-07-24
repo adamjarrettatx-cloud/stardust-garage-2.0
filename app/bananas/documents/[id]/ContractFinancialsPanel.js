@@ -23,7 +23,7 @@ export default function ContractFinancialsPanel({ documentId, initial }) {
   );
   const [recipient, setRecipient] = useState(initial?.revenue_share_recipient || 'stardust');
 
-  const inputStyle = { background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' };
+  const inputStyle = { background: 'var(--surface-3)', border: '1px solid var(--fg-a08)', color: 'white' };
 
   async function extract() {
     setBusy(true); setErr(null); setMsg(null);
@@ -71,19 +71,19 @@ export default function ContractFinancialsPanel({ documentId, initial }) {
   }
 
   return (
-    <div className="rounded-[14px] border p-5 mb-6" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.06)' }}>
-      <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase mb-4" style={{ color: '#8a8a8a' }}>
+    <div className="rounded-[14px] border p-5 mb-6" style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a06)' }}>
+      <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase mb-4" style={{ color: 'var(--text-3)' }}>
         Financial Terms
       </h2>
 
       {err && (
-        <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>{err}</div>
+        <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: 'var(--st-fca5a5)' }}>{err}</div>
       )}
       {msg && (
-        <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.3)', color: '#86efac' }}>{msg}</div>
+        <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.3)', color: 'var(--st-86efac)' }}>{msg}</div>
       )}
 
-      <p className="text-[12px] mb-2" style={{ color: '#6a6a6a' }}>
+      <p className="text-[12px] mb-2" style={{ color: 'var(--text-4)' }}>
         Paste contract text to auto-detect terms (50% net split, $500 flat fee, sales tax). Text stays on
         our servers — nothing is sent to external AI. You can also enter terms manually below.
       </p>
@@ -96,24 +96,24 @@ export default function ContractFinancialsPanel({ documentId, initial }) {
         style={inputStyle}
       />
       <button onClick={extract} disabled={busy}
-        className="text-[12px] px-3 py-1.5 rounded-[8px] mb-5" style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white', opacity: busy ? 0.6 : 1 }}>
+        className="text-[12px] px-3 py-1.5 rounded-[8px] mb-5" style={{ border: '1px solid var(--fg-a1)', color: 'white', opacity: busy ? 0.6 : 1 }}>
         {busy ? 'Working…' : 'Auto-detect terms'}
       </button>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-        <label className="text-[12px]" style={{ color: '#8a8a8a' }}>
+        <label className="text-[12px]" style={{ color: 'var(--text-3)' }}>
           Stardust split %
           <input type="number" min="0" max="100" value={split} onChange={(e) => setSplit(e.target.value)}
             placeholder="(none = 100%)"
             className="mt-1 w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none" style={inputStyle} />
         </label>
-        <label className="text-[12px]" style={{ color: '#8a8a8a' }}>
+        <label className="text-[12px]" style={{ color: 'var(--text-3)' }}>
           Flat fee ($)
           <input type="number" min="0" step="0.01" value={flatFee} onChange={(e) => setFlatFee(e.target.value)}
             placeholder="0.00"
             className="mt-1 w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none" style={inputStyle} />
         </label>
-        <label className="text-[12px]" style={{ color: '#8a8a8a' }}>
+        <label className="text-[12px]" style={{ color: 'var(--text-3)' }}>
           Recipient
           <select value={recipient} onChange={(e) => setRecipient(e.target.value)}
             className="mt-1 w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none cursor-pointer" style={inputStyle}>
@@ -130,7 +130,7 @@ export default function ContractFinancialsPanel({ documentId, initial }) {
           {busy ? 'Saving…' : 'Save terms'}
         </button>
         {terms?.financial_terms_source && terms.financial_terms_source !== 'none' && (
-          <span className="text-[11px]" style={{ color: '#6a6a6a' }}>Source: {terms.financial_terms_source}</span>
+          <span className="text-[11px]" style={{ color: 'var(--text-4)' }}>Source: {terms.financial_terms_source}</span>
         )}
       </div>
     </div>

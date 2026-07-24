@@ -66,7 +66,7 @@ export default async function DocumentDetailPage({ params }) {
       <Link
         href="/bananas/documents"
         className="text-[12px] tracking-[0.14em] mb-4 inline-block hover:text-white transition-colors"
-        style={{ color: '#8a8a8a' }}
+        style={{ color: 'var(--text-3)' }}
       >
         ← BACK TO DOCUMENTS
       </Link>

@@ -13,18 +13,18 @@ const MONTHS = [
 ];
 
 const CATEGORIES = {
-  internal:      { label: 'Internal',      color: '#3b82f6', text: '#fff' },
-  team_meeting:  { label: 'Team Meeting',  color: '#8b5cf6', text: '#fff' },
-  yoga:          { label: 'Yoga',          color: '#10b981', text: '#fff' },
-  micro_party:   { label: 'Micro Party',   color: '#f59e0b', text: '#000' },
-  workshop:      { label: 'Workshop',      color: '#ec4899', text: '#fff' },
-  maintenance:   { label: 'Maintenance',   color: '#6b7280', text: '#fff' },
-  other:         { label: 'Other',         color: '#f97316', text: '#fff' },
+  internal:      { label: 'Internal',      color: 'var(--st-3b82f6)', text: '#fff' },
+  team_meeting:  { label: 'Team Meeting',  color: 'var(--st-8b5cf6)', text: '#fff' },
+  yoga:          { label: 'Yoga',          color: 'var(--st-10b981)', text: '#fff' },
+  micro_party:   { label: 'Micro Party',   color: 'var(--st-f59e0b)', text: '#000' },
+  workshop:      { label: 'Workshop',      color: 'var(--st-ec4899)', text: '#fff' },
+  maintenance:   { label: 'Maintenance',   color: 'var(--text-4)', text: '#fff' },
+  other:         { label: 'Other',         color: 'var(--st-f97316)', text: '#fff' },
 };
 
-const PUBLIC_STYLE = { color: '#ffb84d', bg: 'rgba(255,184,77,0.12)', border: 'rgba(255,184,77,0.3)' };
+const PUBLIC_STYLE = { color: 'var(--st-ffb84d)', bg: 'rgba(255,184,77,0.12)', border: 'rgba(255,184,77,0.3)' };
 // INTERNAL micro-party marker style — shown to the team, never to the public.
-const INTERNAL_STYLE = { color: '#f59e0b', bg: 'rgba(245,158,11,0.14)', border: 'rgba(245,158,11,0.4)' };
+const INTERNAL_STYLE = { color: 'var(--st-f59e0b)', bg: 'rgba(245,158,11,0.14)', border: 'rgba(245,158,11,0.4)' };
 
 function eventStyle(evt) {
   return evt?.visibility === 'internal' ? INTERNAL_STYLE : PUBLIC_STYLE;
@@ -138,7 +138,7 @@ export default function TeamCalendarClient({ publicEvents, teamEvents: initialTe
           >
             Team Calendar
           </h1>
-          <p className="text-[13px] mt-1" style={{ color: '#8a8a8a' }}>
+          <p className="text-[13px] mt-1" style={{ color: 'var(--text-3)' }}>
             Welcome, {currentUserName} · click a day to view · double-click to add
           </p>
         </div>
@@ -153,7 +153,7 @@ export default function TeamCalendarClient({ publicEvents, teamEvents: initialTe
           <Link
             href="/team/progress"
             className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"
-            style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#ffb84d' }}
+            style={{ borderColor: 'var(--fg-a15)', color: 'var(--st-ffb84d)' }}
           >
             PROGRESS
           </Link>
@@ -168,7 +168,7 @@ export default function TeamCalendarClient({ publicEvents, teamEvents: initialTe
             onClick={handleSignOut}
             disabled={signingOut}
             className="px-4 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5 disabled:opacity-50"
-            style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#8a8a8a' }}
+            style={{ borderColor: 'var(--fg-a15)', color: 'var(--text-3)' }}
           >
             {signingOut ? 'SIGNING OUT...' : 'SIGN OUT'}
           </button>
@@ -177,35 +177,35 @@ export default function TeamCalendarClient({ publicEvents, teamEvents: initialTe
 
       {/* Legend */}
       <div className="flex flex-wrap gap-3 mb-6">
-        <span className="flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.1em]" style={{ color: '#8a8a8a' }}>LEGEND:</span>
+        <span className="flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.1em]" style={{ color: 'var(--text-3)' }}>LEGEND:</span>
         <span className="flex items-center gap-1.5 text-[11px]">
           <span className="w-2.5 h-2.5 rounded-sm" style={{ background: PUBLIC_STYLE.color }} />
-          <span style={{ color: '#aaa' }}>Public Event</span>
+          <span style={{ color: 'var(--text-3)' }}>Public Event</span>
         </span>
         <span className="flex items-center gap-1.5 text-[11px]">
           <span className="w-2.5 h-2.5 rounded-sm" style={{ background: INTERNAL_STYLE.color }} />
-          <span style={{ color: '#aaa' }}>Micro Party (Internal)</span>
+          <span style={{ color: 'var(--text-3)' }}>Micro Party (Internal)</span>
         </span>
         {Object.entries(CATEGORIES).map(([key, cat]) => (
           <span key={key} className="flex items-center gap-1.5 text-[11px]">
             <span className="w-2.5 h-2.5 rounded-sm" style={{ background: cat.color }} />
-            <span style={{ color: '#aaa' }}>{cat.label}</span>
+            <span style={{ color: 'var(--text-3)' }}>{cat.label}</span>
           </span>
         ))}
         <span className="flex items-center gap-1.5 text-[11px] ml-auto">
-          <span className="w-2.5 h-2.5 rounded-full border" style={{ borderColor: 'rgba(255,255,255,0.3)' }} />
-          <span style={{ color: '#555' }}>Tap your own events to edit</span>
+          <span className="w-2.5 h-2.5 rounded-full border" style={{ borderColor: 'var(--fg-a3)' }} />
+          <span style={{ color: 'var(--text-4)' }}>Tap your own events to edit</span>
         </span>
       </div>
 
       {/* Month nav */}
       <div className="flex items-center gap-4 mb-4">
-        <button onClick={prevMonth} className="w-9 h-9 rounded-full border flex items-center justify-center transition-colors hover:bg-white/10 text-[16px]" style={{ borderColor: 'rgba(255,255,255,0.12)' }}>‹</button>
+        <button onClick={prevMonth} className="w-9 h-9 rounded-full border flex items-center justify-center transition-colors hover:bg-white/10 text-[16px]" style={{ borderColor: 'var(--fg-a12)' }}>‹</button>
         <h2 className="text-[22px] font-extrabold -tracking-[0.01em] min-w-[220px] text-center" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           {MONTHS[month]} {year}
         </h2>
-        <button onClick={nextMonth} className="w-9 h-9 rounded-full border flex items-center justify-center transition-colors hover:bg-white/10 text-[16px]" style={{ borderColor: 'rgba(255,255,255,0.12)' }}>›</button>
-        <button onClick={goToday} className="ml-2 px-4 py-1.5 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/10" style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#aaa' }}>TODAY</button>
+        <button onClick={nextMonth} className="w-9 h-9 rounded-full border flex items-center justify-center transition-colors hover:bg-white/10 text-[16px]" style={{ borderColor: 'var(--fg-a12)' }}>›</button>
+        <button onClick={goToday} className="ml-2 px-4 py-1.5 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/10" style={{ borderColor: 'var(--fg-a15)', color: 'var(--text-3)' }}>TODAY</button>
       </div>
 
       <div className="flex gap-5">
@@ -213,11 +213,11 @@ export default function TeamCalendarClient({ publicEvents, teamEvents: initialTe
         <div className="flex-1 min-w-0">
           <div className="grid grid-cols-7 mb-1">
             {DAYS.map(d => (
-              <div key={d} className="text-center text-[11px] font-semibold tracking-[0.12em] py-2" style={{ color: '#8a8a8a' }}>{d}</div>
+              <div key={d} className="text-center text-[11px] font-semibold tracking-[0.12em] py-2" style={{ color: 'var(--text-3)' }}>{d}</div>
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-px" style={{ background: 'rgba(255,255,255,0.04)' }}>
+          <div className="grid grid-cols-7 gap-px" style={{ background: 'var(--fg-a04)' }}>
             {Array.from({ length: totalCells }).map((_, i) => {
               const dayNum = i - firstDay + 1;
               const isCurrentMonth = dayNum >= 1 && dayNum <= daysInMonth;
@@ -233,7 +233,7 @@ export default function TeamCalendarClient({ publicEvents, teamEvents: initialTe
                   onDoubleClick={() => isCurrentMonth && setModalState({ mode: 'create', date: cellDate })}
                   className="min-h-[100px] p-2 cursor-pointer transition-colors"
                   style={{
-                    background: isSelected ? 'rgba(255,255,255,0.08)' : isCurrentMonth ? '#141414' : '#0f0f0f',
+                    background: isSelected ? 'rgba(255,255,255,0.08)' : isCurrentMonth ? 'var(--surface-1)' : 'var(--surface-2)',
                     outline: isSelected ? '1px solid rgba(255,255,255,0.2)' : 'none',
                   }}
                 >
@@ -242,7 +242,7 @@ export default function TeamCalendarClient({ publicEvents, teamEvents: initialTe
                       className="text-[13px] font-bold w-7 h-7 flex items-center justify-center rounded-full"
                       style={{
                         background: isToday ? '#ffffff' : 'transparent',
-                        color: isToday ? '#0a0a0a' : isCurrentMonth ? '#f5f5f5' : '#333',
+                        color: isToday ? '#0a0a0a' : isCurrentMonth ? 'var(--text-1)' : 'var(--surface-5)',
                         fontFamily: "'Plus Jakarta Sans', sans-serif",
                       }}
                     >
@@ -287,7 +287,7 @@ export default function TeamCalendarClient({ publicEvents, teamEvents: initialTe
                       );
                     })}
                     {(pub.length + team.length) > 3 && (
-                      <div className="text-[9px] font-semibold" style={{ color: '#8a8a8a' }}>+{pub.length + team.length - 3} more</div>
+                      <div className="text-[9px] font-semibold" style={{ color: 'var(--text-3)' }}>+{pub.length + team.length - 3} more</div>
                     )}
                   </div>
                 </div>
@@ -298,21 +298,21 @@ export default function TeamCalendarClient({ publicEvents, teamEvents: initialTe
 
         {/* Day Detail Panel */}
         {selectedDay && (
-          <div className="w-[280px] flex-shrink-0 rounded-[14px] border p-5 self-start sticky top-6" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.08)' }}>
+          <div className="w-[280px] flex-shrink-0 rounded-[14px] border p-5 self-start sticky top-6" style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a08)' }}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-[16px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 {selectedDay.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
               </h3>
-              <button onClick={() => setSelectedDay(null)} className="text-[18px] leading-none transition-opacity hover:opacity-50" style={{ color: '#8a8a8a' }}>×</button>
+              <button onClick={() => setSelectedDay(null)} className="text-[18px] leading-none transition-opacity hover:opacity-50" style={{ color: 'var(--text-3)' }}>×</button>
             </div>
 
             {selectedEvents.pub.length === 0 && selectedEvents.team.length === 0 && (
-              <p className="text-[12px]" style={{ color: '#555' }}>No events this day.</p>
+              <p className="text-[12px]" style={{ color: 'var(--text-4)' }}>No events this day.</p>
             )}
 
             {selectedEvents.pub.length > 0 && (
               <div className="mb-4">
-                <div className="text-[10px] font-semibold tracking-[0.12em] mb-2" style={{ color: '#8a8a8a' }}>WEBSITE EVENTS</div>
+                <div className="text-[10px] font-semibold tracking-[0.12em] mb-2" style={{ color: 'var(--text-3)' }}>WEBSITE EVENTS</div>
                 <div className="space-y-2">
                   {selectedEvents.pub.map(evt => {
                     const st = eventStyle(evt);
@@ -327,7 +327,7 @@ export default function TeamCalendarClient({ publicEvents, teamEvents: initialTe
                             </span>
                           )}
                         </div>
-                        {evt.event_time && <div className="text-[11px] mt-0.5" style={{ color: '#aaa' }}>{evt.event_time}</div>}
+                        {evt.event_time && <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-3)' }}>{evt.event_time}</div>}
                       </div>
                     );
                   })}
@@ -337,7 +337,7 @@ export default function TeamCalendarClient({ publicEvents, teamEvents: initialTe
 
             {selectedEvents.team.length > 0 && (
               <div>
-                <div className="text-[10px] font-semibold tracking-[0.12em] mb-2" style={{ color: '#8a8a8a' }}>TEAM EVENTS</div>
+                <div className="text-[10px] font-semibold tracking-[0.12em] mb-2" style={{ color: 'var(--text-3)' }}>TEAM EVENTS</div>
                 <div className="space-y-2">
                   {selectedEvents.team.map(evt => {
                     const cat = CATEGORIES[evt.category] || CATEGORIES.other;
@@ -355,18 +355,18 @@ export default function TeamCalendarClient({ publicEvents, teamEvents: initialTe
                       >
                         <div className="flex items-center gap-2 mb-0.5">
                           <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: cat.color }} />
-                          <div className="text-[13px] font-bold" style={{ color: '#f5f5f5' }}>{evt.title}</div>
+                          <div className="text-[13px] font-bold" style={{ color: 'var(--text-1)' }}>{evt.title}</div>
                           {mine && <span className="ml-auto text-[9px] font-semibold" style={{ color: cat.color }}>EDIT</span>}
                         </div>
                         <div className="text-[11px]" style={{ color: cat.color }}>{cat.label}</div>
                         {(evt.start_time || evt.end_time) && (
-                          <div className="text-[11px] mt-0.5" style={{ color: '#aaa' }}>{evt.start_time}{evt.end_time ? ` – ${evt.end_time}` : ''}</div>
+                          <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-3)' }}>{evt.start_time}{evt.end_time ? ` – ${evt.end_time}` : ''}</div>
                         )}
                         {evt.description && (
-                          <div className="text-[11px] mt-1 line-clamp-2" style={{ color: '#888' }}>{evt.description}</div>
+                          <div className="text-[11px] mt-1 line-clamp-2" style={{ color: 'var(--text-4)' }}>{evt.description}</div>
                         )}
                         {!mine && (
-                          <div className="text-[10px] mt-1" style={{ color: '#555' }}>Added by team</div>
+                          <div className="text-[10px] mt-1" style={{ color: 'var(--text-4)' }}>Added by team</div>
                         )}
                       </div>
                     );
@@ -378,7 +378,7 @@ export default function TeamCalendarClient({ publicEvents, teamEvents: initialTe
             <button
               onClick={() => setModalState({ mode: 'create', date: selectedDay })}
               className="w-full mt-4 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/10"
-              style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
+              style={{ borderColor: 'var(--fg-a15)', color: 'var(--text-1)' }}
             >
               + ADD EVENT THIS DAY
             </button>

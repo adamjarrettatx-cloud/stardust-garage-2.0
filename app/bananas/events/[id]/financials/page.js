@@ -32,7 +32,7 @@ export default async function EventFinancialsPage({ params }) {
       <Link
         href={`/bananas/events/${id}`}
         className="text-[12px] tracking-[0.14em] mb-4 inline-block hover:text-white transition-colors"
-        style={{ color: '#8a8a8a' }}
+        style={{ color: 'var(--text-3)' }}
       >
         ← BACK TO EVENT
       </Link>
@@ -40,9 +40,9 @@ export default async function EventFinancialsPage({ params }) {
         <h1 className="text-[32px] font-extrabold -tracking-[0.02em] leading-[1.1]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           Event Financials
         </h1>
-        <div className="text-[11px] tracking-[0.18em]" style={{ color: '#8a8a8a' }}>ADMIN ONLY</div>
+        <div className="text-[11px] tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>ADMIN ONLY</div>
       </div>
-      <p className="mb-8 text-[14px]" style={{ color: '#8a8a8a' }}>
+      <p className="mb-8 text-[14px]" style={{ color: 'var(--text-3)' }}>
         {data.event.title}. Combines TicketTailor ticket sales, imported POS CSV totals, and contract
         split terms into a per-event profit view. Ticket revenue is sourced from TicketTailor only.
       </p>
