@@ -144,6 +144,13 @@ export default function TeamCalendarClient({ publicEvents, teamEvents: initialTe
         </div>
         <div className="flex items-center gap-3">
           <Link
+            href="/team/chat"
+            className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"
+            style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#ffb84d' }}
+          >
+            CHAT
+          </Link>
+          <Link
             href="/team/progress"
             className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"
             style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#ffb84d' }}
