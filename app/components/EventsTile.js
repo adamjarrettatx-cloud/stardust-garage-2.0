@@ -47,7 +47,7 @@ export default function EventsTile({ events = [] }) {
       onClick={handleTileClick}
       className="group relative block overflow-hidden rounded-[20px] border transition-all duration-500 ease-out hover:-translate-y-1 hover:border-white/20"
       style={{
-        borderColor: 'var(--fg-a08)',
+        borderColor: 'rgba(255,255,255,0.08)',
         aspectRatio: '4 / 5',
         viewTransitionName: transitionName,
         backgroundImage:
@@ -61,7 +61,7 @@ export default function EventsTile({ events = [] }) {
         className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
         style={{
           background:
-            'radial-gradient(circle at 30% 20%, var(--fg-a06) 0%, transparent 55%)',
+            'radial-gradient(circle at 30% 20%, rgba(255,255,255,0.06) 0%, transparent 55%)',
         }}
       />
 
@@ -79,13 +79,13 @@ export default function EventsTile({ events = [] }) {
         <div className="flex items-baseline justify-between mb-auto">
           <div
             className="text-[10px] font-semibold tracking-[0.28em]"
-            style={{ color: 'var(--fg-a55)' }}
+            style={{ color: 'rgba(255,255,255,0.55)' }}
           >
             UPCOMING
           </div>
           <div
             className="text-[10px] font-semibold tracking-[0.24em]"
-            style={{ color: 'var(--fg-a35)' }}
+            style={{ color: 'rgba(255,255,255,0.35)' }}
           >
             {events.length > 0 ? `01 / ${String(events.length).padStart(2, '0')}` : ''}
           </div>
@@ -111,13 +111,13 @@ export default function EventsTile({ events = [] }) {
               <div className="pb-2">
                 <div
                   className="text-[11px] font-semibold tracking-[0.24em] mb-1"
-                  style={{ color: 'var(--fg-a55)' }}
+                  style={{ color: 'rgba(255,255,255,0.55)' }}
                 >
                   {monthShort(featureDate)}
                 </div>
                 <div
                   className="text-[11px] font-semibold tracking-[0.24em]"
-                  style={{ color: 'var(--fg-a35)' }}
+                  style={{ color: 'rgba(255,255,255,0.35)' }}
                 >
                   {weekday(featureDate)}
                 </div>
@@ -166,9 +166,9 @@ export default function EventsTile({ events = [] }) {
               <span
                 className="inline-flex items-center gap-2.5 px-5 py-3 rounded-full text-[11px] font-semibold tracking-[0.2em] border"
                 style={{
-                  borderColor: 'var(--fg-a25)',
-                  color: 'var(--fg-a7)',
-                  background: 'var(--fg-a04)',
+                  borderColor: 'rgba(255,255,255,0.25)',
+                  color: 'rgba(255,255,255,0.7)',
+                  background: 'rgba(255,255,255,0.04)',
                 }}
               >
                 MEMBERS ONLY
@@ -179,7 +179,7 @@ export default function EventsTile({ events = [] }) {
           <div className="mt-8">
             <p
               className="text-[15px] leading-[1.55]"
-              style={{ color: 'var(--fg-a7)' }}
+              style={{ color: 'rgba(255,255,255,0.7)' }}
             >
               No upcoming shows announced.
               <br />
@@ -192,7 +192,7 @@ export default function EventsTile({ events = [] }) {
         {secondary.length > 0 && (
           <ul
             className="mt-8 pt-5 space-y-1 border-t"
-            style={{ borderColor: 'var(--fg-a08)' }}
+            style={{ borderColor: 'rgba(255,255,255,0.08)' }}
           >
             {secondary.map((ev) => {
               const d = parseDate(ev.event_date);
@@ -226,7 +226,7 @@ export default function EventsTile({ events = [] }) {
             href={href}
             onClick={handleTileClick}
             className="inline-flex items-center gap-2 text-[11px] font-semibold tracking-[0.2em] transition-all duration-300 group-hover:gap-3"
-            style={{ color: 'var(--fg-a85)' }}
+            style={{ color: 'rgba(255,255,255,0.85)' }}
           >
             ALL EVENTS
             <svg
@@ -258,17 +258,17 @@ function SecondaryRow({ d, title, hasTicket }) {
     <>
       <div
         className="flex items-baseline gap-1.5 w-[60px] flex-shrink-0 tabular-nums"
-        style={{ color: 'var(--fg-a55)' }}
+        style={{ color: 'rgba(255,255,255,0.55)' }}
       >
         <span
           className="text-[10px] font-semibold tracking-[0.2em]"
-          style={{ color: 'var(--fg-a45)' }}
+          style={{ color: 'rgba(255,255,255,0.45)' }}
         >
           {monthShort}
         </span>
         <span
           className="text-[14px] font-semibold"
-          style={{ color: 'var(--fg-a85)' }}
+          style={{ color: 'rgba(255,255,255,0.85)' }}
         >
           {day}
         </span>
@@ -277,7 +277,7 @@ function SecondaryRow({ d, title, hasTicket }) {
         className="flex-1 text-[13px] leading-[1.4] truncate"
         style={{
           fontFamily: "'Plus Jakarta Sans', sans-serif",
-          color: 'var(--fg-a85)',
+          color: 'rgba(255,255,255,0.85)',
         }}
       >
         {title}

@@ -28,7 +28,7 @@ export default async function StudioPage() {
         >
           Membership inactive
         </h1>
-        <p style={{ color: 'var(--text-3)' }}>
+        <p style={{ color: '#8a8a8a' }}>
           Your membership isn&apos;t active right now. Contact us at hello@sdgatx.com.
         </p>
       </main>

@@ -29,7 +29,7 @@ export default function RowRefreshButton({ eventId }) {
   }
 
   const glyph = state === 'busy' ? '…' : state === 'done' ? '✓' : state === 'error' ? '!' : '↻';
-  const color = state === 'error' ? 'var(--st-f87171)' : state === 'done' ? 'var(--st-4ade80)' : 'var(--st-ffb84d)';
+  const color = state === 'error' ? '#f87171' : state === 'done' ? '#4ade80' : '#ffb84d';
   const title =
     state === 'error' ? 'Refresh failed — try again' : 'Refresh this event’s metrics (read-only)';
 
@@ -41,7 +41,7 @@ export default function RowRefreshButton({ eventId }) {
       title={title}
       aria-label="Refresh metrics for this event"
       className="text-[13px] leading-none px-1.5 py-1 rounded-[6px] disabled:opacity-50"
-      style={{ border: '1px solid var(--fg-a12)', color }}
+      style={{ border: '1px solid rgba(255,255,255,0.12)', color }}
     >
       {glyph}
     </button>

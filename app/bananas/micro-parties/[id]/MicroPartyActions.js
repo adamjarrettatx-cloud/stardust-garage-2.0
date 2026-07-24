@@ -54,8 +54,8 @@ export default function MicroPartyActions({ inquiryId, currentStatus }) {
           onClick={() => updateStatus('approved')}
           className={btnBase}
           style={{
-            background: currentStatus === 'approved' ? 'rgba(34,197,94,0.15)' : 'var(--st-22c55e)',
-            color: currentStatus === 'approved' ? 'var(--st-4ade80)' : '#0a0a0a',
+            background: currentStatus === 'approved' ? 'rgba(34,197,94,0.15)' : '#22c55e',
+            color: currentStatus === 'approved' ? '#4ade80' : '#0a0a0a',
             border: '1px solid rgba(34,197,94,0.3)',
           }}
         >
@@ -71,7 +71,7 @@ export default function MicroPartyActions({ inquiryId, currentStatus }) {
             className={btnBase}
             style={{
               background: 'rgba(168,85,247,0.12)',
-              color: 'var(--st-c084fc)',
+              color: '#c084fc',
               border: '1px solid rgba(168,85,247,0.3)',
             }}
           >
@@ -88,8 +88,8 @@ export default function MicroPartyActions({ inquiryId, currentStatus }) {
             className={btnBase}
             style={{
               background: 'transparent',
-              color: 'var(--text-3)',
-              border: '1px solid var(--fg-a15)',
+              color: '#a0a0a0',
+              border: '1px solid rgba(255,255,255,0.15)',
             }}
           >
             MARK PENDING
@@ -104,7 +104,7 @@ export default function MicroPartyActions({ inquiryId, currentStatus }) {
           className={btnBase}
           style={{
             background: currentStatus === 'rejected' ? 'rgba(239,68,68,0.15)' : 'transparent',
-            color: currentStatus === 'rejected' ? 'var(--st-f87171)' : 'var(--text-1)',
+            color: currentStatus === 'rejected' ? '#f87171' : '#f5f5f5',
             border: '1px solid rgba(239,68,68,0.3)',
           }}
         >

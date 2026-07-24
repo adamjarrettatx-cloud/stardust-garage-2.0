@@ -75,19 +75,19 @@ export default function SettingsForm({ initialSettings }) {
   };
 
   const inputStyle = {
-    background: 'var(--surface-1)',
-    borderColor: 'var(--fg-a1)',
-    color: 'var(--text-1)',
+    background: '#141414',
+    borderColor: 'rgba(255,255,255,0.1)',
+    color: '#f5f5f5',
   };
 
   const labelClass = 'block text-[12px] font-semibold tracking-[0.14em] mb-2';
-  const labelStyle = { color: 'var(--text-3)' };
+  const labelStyle = { color: '#8a8a8a' };
   const inputClass = 'w-full px-5 py-3.5 rounded-[10px] text-[14px] outline-none border transition-colors focus:border-white/30';
 
   const renderImageUploader = (label, value, setValue, loadingState, setLoadingState, aspectRatio = '4 / 5', helperText = null) => (
     <>
       {value && (
-        <div className="mb-4 rounded-[10px] overflow-hidden border" style={{ borderColor: 'var(--fg-a1)', aspectRatio }}>
+        <div className="mb-4 rounded-[10px] overflow-hidden border" style={{ borderColor: 'rgba(255,255,255,0.1)', aspectRatio }}>
           <img src={value} alt="Preview" className="w-full h-full object-cover" />
         </div>
       )}
@@ -101,9 +101,9 @@ export default function SettingsForm({ initialSettings }) {
         }}
         disabled={loadingState}
         className="text-[13px] file:mr-4 file:px-5 file:py-2.5 file:rounded-full file:border-0 file:text-[12px] file:font-semibold file:tracking-[0.12em] file:bg-white file:text-black file:cursor-pointer hover:file:bg-gray-200"
-        style={{ color: 'var(--text-3)' }}
+        style={{ color: '#8a8a8a' }}
       />
-      {loadingState && <p className="text-[13px] mt-2" style={{ color: 'var(--text-3)' }}>Uploading...</p>}
+      {loadingState && <p className="text-[13px] mt-2" style={{ color: '#8a8a8a' }}>Uploading...</p>}
       <div className="mt-4">
         <input
           type="text"
@@ -115,7 +115,7 @@ export default function SettingsForm({ initialSettings }) {
         />
       </div>
       {helperText && (
-        <p className="text-[11px] mt-3" style={{ color: 'var(--text-4)' }}>{helperText}</p>
+        <p className="text-[11px] mt-3" style={{ color: '#555' }}>{helperText}</p>
       )}
     </>
   );
@@ -125,14 +125,14 @@ export default function SettingsForm({ initialSettings }) {
       {/* LOGO */}
       <section
         className="rounded-[14px] p-8 border"
-        style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a05)' }}
+        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
       >
         <h2 className="text-[18px] font-bold mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           Logo
         </h2>
 
         {logoUrl && (
-          <div className="mb-4 p-6 rounded-[10px] flex items-center justify-center" style={{ background: '#0a0a0a', border: '1px dashed var(--fg-a1)' }}>
+          <div className="mb-4 p-6 rounded-[10px] flex items-center justify-center" style={{ background: '#0a0a0a', border: '1px dashed rgba(255,255,255,0.1)' }}>
             <img src={logoUrl} alt="Logo preview" className="h-12 w-auto object-contain" />
           </div>
         )}
@@ -146,9 +146,9 @@ export default function SettingsForm({ initialSettings }) {
           }}
           disabled={uploadingLogo}
           className="text-[13px] file:mr-4 file:px-5 file:py-2.5 file:rounded-full file:border-0 file:text-[12px] file:font-semibold file:tracking-[0.12em] file:bg-white file:text-black file:cursor-pointer hover:file:bg-gray-200"
-          style={{ color: 'var(--text-3)' }}
+          style={{ color: '#8a8a8a' }}
         />
-        {uploadingLogo && <p className="text-[13px] mt-2" style={{ color: 'var(--text-3)' }}>Uploading...</p>}
+        {uploadingLogo && <p className="text-[13px] mt-2" style={{ color: '#8a8a8a' }}>Uploading...</p>}
 
         <div className="mt-4">
           <input
@@ -166,13 +166,13 @@ export default function SettingsForm({ initialSettings }) {
             type="button"
             onClick={() => setLogoUrl('')}
             className="mt-3 text-[12px] font-semibold tracking-[0.12em] hover:text-red-400 transition-colors"
-            style={{ color: 'var(--text-3)' }}
+            style={{ color: '#8a8a8a' }}
           >
             Remove logo (fall back to text)
           </button>
         )}
 
-        <p className="text-[11px] mt-4" style={{ color: 'var(--text-4)' }}>
+        <p className="text-[11px] mt-4" style={{ color: '#555' }}>
           Tip: use a transparent PNG or SVG. It displays at 55px height in the nav.
         </p>
       </section>
@@ -180,7 +180,7 @@ export default function SettingsForm({ initialSettings }) {
       {/* HOMEPAGE HERO */}
       <section
         className="rounded-[14px] p-8 border"
-        style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a05)' }}
+        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
       >
         <h2 className="text-[18px] font-bold mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           Homepage Hero
@@ -217,12 +217,12 @@ export default function SettingsForm({ initialSettings }) {
       {/* SPLASH PAGE */}
       <section
         className="rounded-[14px] p-8 border"
-        style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a05)' }}
+        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
       >
         <h2 className="text-[18px] font-bold mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           Splash Page
         </h2>
-        <p className="text-[13px] mb-6" style={{ color: 'var(--text-3)' }}>
+        <p className="text-[13px] mb-6" style={{ color: '#8a8a8a' }}>
           The floating logo image shown on the splash entry page (the first thing visitors see).
         </p>
 

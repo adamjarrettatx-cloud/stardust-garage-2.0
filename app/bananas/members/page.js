@@ -34,7 +34,7 @@ function Avatar({ member }) {
         src={member.photo_url}
         alt={member.full_name || member.email}
         className="w-11 h-11 flex-shrink-0 object-cover"
-        style={{ borderRadius: '50%', border: '1px solid var(--surface-5)' }}
+        style={{ borderRadius: '50%', border: '1px solid #2a2a2a' }}
       />
     );
   }
@@ -43,9 +43,9 @@ function Avatar({ member }) {
       className="w-11 h-11 flex-shrink-0 flex items-center justify-center text-[14px] font-bold"
       style={{
         borderRadius: '50%',
-        background: 'var(--surface-4)',
-        border: '1px solid var(--surface-5)',
-        color: 'var(--text-3)',
+        background: '#1a1a1a',
+        border: '1px solid #2a2a2a',
+        color: '#8a8a8a',
         fontFamily: "'Plus Jakarta Sans', sans-serif",
       }}
     >
@@ -73,7 +73,7 @@ export default async function AdminMembersPage() {
       <Link
         href="/bananas"
         className="text-[12px] tracking-[0.14em] mb-4 inline-block hover:text-white transition-colors"
-        style={{ color: 'var(--text-3)' }}
+        style={{ color: '#8a8a8a' }}
       >
         ← BACK TO ADMIN
       </Link>
@@ -85,12 +85,12 @@ export default async function AdminMembersPage() {
       </h1>
 
       <div className="mb-12">
-        <div className="text-[11px] font-semibold tracking-[0.18em] mb-4" style={{ color: 'var(--text-3)' }}>
+        <div className="text-[11px] font-semibold tracking-[0.18em] mb-4" style={{ color: '#8a8a8a' }}>
           ACTIVE ({active.length})
         </div>
         {active.length === 0 ? (
-          <div className="rounded-[14px] border p-8 text-center" style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a06)' }}>
-            <p style={{ color: 'var(--text-3)' }}>No active members yet.</p>
+          <div className="rounded-[14px] border p-8 text-center" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.06)' }}>
+            <p style={{ color: '#8a8a8a' }}>No active members yet.</p>
           </div>
         ) : (
           active.map((m) => <MemberRow key={m.id} member={m} />)
@@ -99,7 +99,7 @@ export default async function AdminMembersPage() {
 
       {inactive.length > 0 && (
         <div>
-          <div className="text-[11px] font-semibold tracking-[0.18em] mb-4" style={{ color: 'var(--text-3)' }}>
+          <div className="text-[11px] font-semibold tracking-[0.18em] mb-4" style={{ color: '#8a8a8a' }}>
             INACTIVE / PENDING ({inactive.length})
           </div>
           {inactive.map((m) => <MemberRow key={m.id} member={m} />)}
@@ -119,27 +119,27 @@ function MemberRow({ member }) {
   }[member.subscription_status] || 'UNKNOWN';
 
   const statusColor = {
-    active: { bg: 'rgba(80,200,120,0.15)', fg: 'var(--st-80c878)' },
-    past_due: { bg: 'rgba(255,184,77,0.15)', fg: 'var(--st-ffb84d)' },
-    cancelled: { bg: 'rgba(255,80,80,0.15)', fg: 'var(--st-ff8080)' },
-    pending: { bg: 'rgba(255,255,255,0.08)', fg: 'var(--text-3)' },
-    incomplete: { bg: 'rgba(255,80,80,0.15)', fg: 'var(--st-ff8080)' },
-  }[member.subscription_status] || { bg: 'rgba(255,255,255,0.08)', fg: 'var(--text-3)' };
+    active: { bg: 'rgba(80,200,120,0.15)', fg: '#80c878' },
+    past_due: { bg: 'rgba(255,184,77,0.15)', fg: '#ffb84d' },
+    cancelled: { bg: 'rgba(255,80,80,0.15)', fg: '#ff8080' },
+    pending: { bg: 'rgba(255,255,255,0.08)', fg: '#aaa' },
+    incomplete: { bg: 'rgba(255,80,80,0.15)', fg: '#ff8080' },
+  }[member.subscription_status] || { bg: 'rgba(255,255,255,0.08)', fg: '#aaa' };
 
   return (
     <div
       className="rounded-[14px] border p-5 mb-3 flex items-center gap-5"
-      style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a06)' }}
+      style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.06)' }}
     >
       <Avatar member={member} />
       <div className="flex-1 min-w-0">
         <div className="text-[15px] font-bold mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           {member.full_name || member.email}
         </div>
-        <div className="text-[12px]" style={{ color: 'var(--text-3)' }}>
+        <div className="text-[12px]" style={{ color: '#a0a0a0' }}>
           {member.email}
         </div>
-        <div className="text-[11px] mt-1.5" style={{ color: 'var(--text-4)' }}>
+        <div className="text-[11px] mt-1.5" style={{ color: '#555' }}>
           {member.subscription_plan ? PLAN_DISPLAY[member.subscription_plan] || member.subscription_plan : 'No plan'}
           {member.subscription_period ? ` · ${member.subscription_period}` : ''}
           {member.current_period_end ? ` · Next renewal: ${formatDate(member.current_period_end)}` : ''}

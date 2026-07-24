@@ -136,9 +136,9 @@ export default function InquireForm({ inquiryType, typeLabel }) {
       <main className="max-w-[700px] mx-auto px-4 md:px-6 py-20 md:py-24 text-center">
         <div
           className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-8"
-          style={{ background: 'var(--fg-a08)' }}
+          style={{ background: 'rgba(255,255,255,0.08)' }}
         >
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--text-1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f5f5f5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>
@@ -148,13 +148,13 @@ export default function InquireForm({ inquiryType, typeLabel }) {
         >
           Inquiry received
         </h1>
-        <p className="text-[16px] leading-[1.6] mb-10" style={{ color: 'var(--text-3)' }}>
+        <p className="text-[16px] leading-[1.6] mb-10" style={{ color: '#8a8a8a' }}>
           Thanks for reaching out about hosting your event at Stardust Garage. We&apos;ll review your inquiry and get back to you within 2-3 business days.
         </p>
         <Link
           href="/"
           className="inline-block px-8 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5"
-          style={{ borderColor: 'var(--fg-a15)', color: 'var(--text-1)' }}
+          style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
         >
           BACK TO HOME
         </Link>
@@ -163,13 +163,13 @@ export default function InquireForm({ inquiryType, typeLabel }) {
   }
 
   const inputStyle = {
-    background: 'var(--surface-1)',
-    borderColor: 'var(--fg-a1)',
-    color: 'var(--text-1)',
+    background: '#141414',
+    borderColor: 'rgba(255,255,255,0.1)',
+    color: '#f5f5f5',
   };
 
   const labelClass = 'block text-[11px] font-semibold tracking-[0.16em] mb-2';
-  const labelStyle = { color: 'var(--text-3)' };
+  const labelStyle = { color: '#a0a0a0' };
   const inputClass = 'w-full px-5 py-3.5 rounded-[10px] text-[14px] outline-none border transition-colors focus:border-white/30';
   const textareaClass = 'w-full px-5 py-3.5 rounded-[10px] text-[14px] outline-none border transition-colors focus:border-white/30 resize-y';
 
@@ -178,7 +178,7 @@ export default function InquireForm({ inquiryType, typeLabel }) {
       <Link
         href="/venue-rental"
         className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70"
-        style={{ color: 'var(--text-3)' }}
+        style={{ color: '#8a8a8a' }}
       >
         ← BACK TO VENUE RENTAL
       </Link>
@@ -188,8 +188,8 @@ export default function InquireForm({ inquiryType, typeLabel }) {
           <div
             className="inline-block text-[11px] font-semibold tracking-[0.2em] px-3.5 py-1.5 rounded-full mb-6"
             style={{
-              color: 'var(--text-3)',
-              border: '1px solid var(--fg-a12)',
+              color: '#8a8a8a',
+              border: '1px solid rgba(255,255,255,0.12)',
             }}
           >
             {typeLabel.toUpperCase()}
@@ -201,10 +201,10 @@ export default function InquireForm({ inquiryType, typeLabel }) {
         >
           Venue Rental
         </h1>
-        <p className="text-[15px] italic" style={{ color: 'var(--text-3)' }}>
+        <p className="text-[15px] italic" style={{ color: '#8a8a8a' }}>
           Inquire about hosting your event at Stardust Garage
         </p>
-        <p className="text-[12px] mt-4" style={{ color: 'var(--text-4)' }}>
+        <p className="text-[12px] mt-4" style={{ color: '#666' }}>
           * indicates required
         </p>
       </div>
@@ -213,9 +213,9 @@ export default function InquireForm({ inquiryType, typeLabel }) {
         {/* CONTACT INFO */}
         <section
           className="rounded-[14px] p-6 md:p-8 border"
-          style={{ background: 'var(--surface-2)', borderColor: 'var(--fg-a05)' }}
+          style={{ background: '#0f0f0f', borderColor: 'rgba(255,255,255,0.05)' }}
         >
-          <h2 className="text-[11px] font-semibold tracking-[0.16em] mb-6" style={{ color: 'var(--text-3)', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+          <h2 className="text-[11px] font-semibold tracking-[0.16em] mb-6" style={{ color: '#8a8a8a', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             CONTACT INFO
           </h2>
 
@@ -290,9 +290,9 @@ export default function InquireForm({ inquiryType, typeLabel }) {
         {/* EVENT DETAILS */}
         <section
           className="rounded-[14px] p-6 md:p-8 border"
-          style={{ background: 'var(--surface-2)', borderColor: 'var(--fg-a05)' }}
+          style={{ background: '#0f0f0f', borderColor: 'rgba(255,255,255,0.05)' }}
         >
-          <h2 className="text-[11px] font-semibold tracking-[0.16em] mb-6" style={{ color: 'var(--text-3)', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+          <h2 className="text-[11px] font-semibold tracking-[0.16em] mb-6" style={{ color: '#8a8a8a', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             EVENT DETAILS
           </h2>
 
@@ -382,9 +382,9 @@ export default function InquireForm({ inquiryType, typeLabel }) {
         {/* SPACE & PRODUCTION */}
         <section
           className="rounded-[14px] p-6 md:p-8 border"
-          style={{ background: 'var(--surface-2)', borderColor: 'var(--fg-a05)' }}
+          style={{ background: '#0f0f0f', borderColor: 'rgba(255,255,255,0.05)' }}
         >
-          <h2 className="text-[11px] font-semibold tracking-[0.16em] mb-6" style={{ color: 'var(--text-3)', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+          <h2 className="text-[11px] font-semibold tracking-[0.16em] mb-6" style={{ color: '#8a8a8a', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             SPACE &amp; PRODUCTION
           </h2>
 
@@ -401,9 +401,9 @@ export default function InquireForm({ inquiryType, typeLabel }) {
                       onClick={() => toggleArea(area)}
                       className="py-3 px-4 rounded-[10px] text-[13px] text-left border transition-all"
                       style={{
-                        background: selected ? '#ffffff' : 'var(--surface-1)',
+                        background: selected ? '#ffffff' : '#141414',
                         borderColor: selected ? '#ffffff' : 'rgba(255,255,255,0.1)',
-                        color: selected ? '#0a0a0a' : 'var(--text-1)',
+                        color: selected ? '#0a0a0a' : '#f5f5f5',
                       }}
                     >
                       {area}
@@ -455,9 +455,9 @@ export default function InquireForm({ inquiryType, typeLabel }) {
         {/* VISION & ADDITIONAL INFO */}
         <section
           className="rounded-[14px] p-6 md:p-8 border"
-          style={{ background: 'var(--surface-2)', borderColor: 'var(--fg-a05)' }}
+          style={{ background: '#0f0f0f', borderColor: 'rgba(255,255,255,0.05)' }}
         >
-          <h2 className="text-[11px] font-semibold tracking-[0.16em] mb-6" style={{ color: 'var(--text-3)', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+          <h2 className="text-[11px] font-semibold tracking-[0.16em] mb-6" style={{ color: '#8a8a8a', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             VISION &amp; ADDITIONAL INFO
           </h2>
 
@@ -544,7 +544,7 @@ export default function InquireForm({ inquiryType, typeLabel }) {
         {/* ACKNOWLEDGMENT */}
         <section
           className="rounded-[14px] p-5 md:p-6 border"
-          style={{ background: 'var(--surface-2)', borderColor: 'var(--fg-a05)' }}
+          style={{ background: '#0f0f0f', borderColor: 'rgba(255,255,255,0.05)' }}
         >
           <label className="flex items-start gap-3 cursor-pointer">
             <input
@@ -553,8 +553,8 @@ export default function InquireForm({ inquiryType, typeLabel }) {
               onChange={(e) => update('acknowledged_terms', e.target.checked)}
               className="mt-1 w-4 h-4 flex-shrink-0 accent-white"
             />
-            <span className="text-[14px] leading-[1.6]" style={{ color: 'var(--text-2)' }}>
-              By checking this box, and submitting this form, you acknowledge that Stardust Garage is an intentional, creative venue. All rentals are subject to management approval, availability and event alignment with our community values. <span style={{ color: 'var(--text-3)' }}>*</span>
+            <span className="text-[14px] leading-[1.6]" style={{ color: '#d4d4d4' }}>
+              By checking this box, and submitting this form, you acknowledge that Stardust Garage is an intentional, creative venue. All rentals are subject to management approval, availability and event alignment with our community values. <span style={{ color: '#a0a0a0' }}>*</span>
             </span>
           </label>
         </section>

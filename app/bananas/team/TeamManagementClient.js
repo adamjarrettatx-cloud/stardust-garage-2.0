@@ -10,14 +10,14 @@ const ROLE_CONFIG = {
   admin: {
     label: 'Admin',
     description: 'Full access to everything',
-    color: 'var(--st-ffb84d)',
+    color: '#ffb84d',
     bg: 'rgba(255,184,77,0.12)',
     border: 'rgba(255,184,77,0.3)',
   },
   team: {
     label: 'Team',
     description: 'Calendar only · own events',
-    color: 'var(--st-3b82f6)',
+    color: '#3b82f6',
     bg: 'rgba(59,130,246,0.1)',
     border: 'rgba(59,130,246,0.3)',
   },
@@ -101,14 +101,14 @@ export default function TeamManagementClient({ members: initialMembers }) {
     router.refresh();
   };
 
-  const inputStyle = { background: 'var(--surface-4)', borderColor: 'var(--fg-a12)', color: 'var(--text-1)' };
+  const inputStyle = { background: '#1a1a1a', borderColor: 'rgba(255,255,255,0.12)', color: '#f5f5f5' };
   const inputClass = 'w-full px-4 py-3 rounded-[10px] text-[14px] outline-none border transition-colors focus:border-white/30';
   const labelClass = 'block text-[11px] font-semibold tracking-[0.14em] mb-1.5';
-  const labelStyle = { color: 'var(--text-3)' };
+  const labelStyle = { color: '#8a8a8a' };
 
   return (
     <main className="max-w-[900px] mx-auto px-6 py-16">
-      <Link href="/bananas" className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70" style={{ color: 'var(--text-3)' }}>
+      <Link href="/bananas" className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70" style={{ color: '#8a8a8a' }}>
         ← BACK TO ADMIN
       </Link>
 
@@ -117,7 +117,7 @@ export default function TeamManagementClient({ members: initialMembers }) {
           <h1 className="text-[36px] font-extrabold -tracking-[0.02em] leading-[1.1]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             Team Members
           </h1>
-          <p className="text-[13px] mt-2" style={{ color: 'var(--text-3)' }}>
+          <p className="text-[13px] mt-2" style={{ color: '#8a8a8a' }}>
             Manage who has access to the team portal
           </p>
         </div>
@@ -137,14 +137,14 @@ export default function TeamManagementClient({ members: initialMembers }) {
             <div className="text-[13px] font-bold mb-1" style={{ color: cfg.color, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
               {cfg.label}
             </div>
-            <div className="text-[12px]" style={{ color: 'var(--text-3)' }}>{cfg.description}</div>
+            <div className="text-[12px]" style={{ color: '#aaa' }}>{cfg.description}</div>
           </div>
         ))}
       </div>
 
       {/* Invite form */}
       {showInvite && (
-        <div className="rounded-[14px] border p-6 mb-8" style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a08)' }}>
+        <div className="rounded-[14px] border p-6 mb-8" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.08)' }}>
           <h2 className="text-[18px] font-bold mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Add Team Member</h2>
           <form onSubmit={handleInvite} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -169,7 +169,7 @@ export default function TeamManagementClient({ members: initialMembers }) {
                 className={inputClass}
                 style={inputStyle}
               />
-              <p className="text-[11px] mt-1.5" style={{ color: 'var(--text-4)' }}>Share this with them directly. They can update their password after logging in.</p>
+              <p className="text-[11px] mt-1.5" style={{ color: '#555' }}>Share this with them directly. They can update their password after logging in.</p>
             </div>
 
             <div>
@@ -182,14 +182,14 @@ export default function TeamManagementClient({ members: initialMembers }) {
                     onClick={() => setInviteRole(role)}
                     className="py-3 px-4 rounded-[10px] border text-left transition-all"
                     style={{
-                      background: inviteRole === role ? cfg.bg : 'var(--surface-4)',
-                      borderColor: inviteRole === role ? cfg.border : 'var(--fg-a08)',
+                      background: inviteRole === role ? cfg.bg : '#1a1a1a',
+                      borderColor: inviteRole === role ? cfg.border : 'rgba(255,255,255,0.08)',
                     }}
                   >
-                    <div className="text-[13px] font-bold" style={{ color: inviteRole === role ? cfg.color : 'var(--text-1)', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                    <div className="text-[13px] font-bold" style={{ color: inviteRole === role ? cfg.color : '#f5f5f5', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                       {cfg.label}
                     </div>
-                    <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-3)' }}>{cfg.description}</div>
+                    <div className="text-[11px] mt-0.5" style={{ color: '#8a8a8a' }}>{cfg.description}</div>
                   </button>
                 ))}
               </div>
@@ -212,15 +212,15 @@ export default function TeamManagementClient({ members: initialMembers }) {
       )}
 
       {inviteSuccess && (
-        <div className="mb-6 text-[13px] p-4 rounded-[10px] border" style={{ background: 'rgba(16,185,129,0.1)', borderColor: 'rgba(16,185,129,0.3)', color: 'var(--st-34d399)' }}>
+        <div className="mb-6 text-[13px] p-4 rounded-[10px] border" style={{ background: 'rgba(16,185,129,0.1)', borderColor: 'rgba(16,185,129,0.3)', color: '#34d399' }}>
           ✓ {inviteSuccess}
         </div>
       )}
 
       {/* Members list */}
       {members.length === 0 ? (
-        <div className="rounded-[14px] p-12 text-center border" style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a05)' }}>
-          <p style={{ color: 'var(--text-3)' }}>No team members yet. Click &quot;+ ADD MEMBER&quot; to get started.</p>
+        <div className="rounded-[14px] p-12 text-center border" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}>
+          <p style={{ color: '#8a8a8a' }}>No team members yet. Click &quot;+ ADD MEMBER&quot; to get started.</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -231,7 +231,7 @@ export default function TeamManagementClient({ members: initialMembers }) {
               <div
                 key={member.id}
                 className="rounded-[14px] border p-5 flex items-center gap-5"
-                style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a05)' }}
+                style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
               >
                 {/* Avatar */}
                 <div
@@ -245,7 +245,7 @@ export default function TeamManagementClient({ members: initialMembers }) {
                   <div className="text-[15px] font-bold truncate" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                     {member.full_name || member.email}
                   </div>
-                  <div className="text-[12px] mt-0.5" style={{ color: 'var(--text-3)' }}>{member.email}</div>
+                  <div className="text-[12px] mt-0.5" style={{ color: '#8a8a8a' }}>{member.email}</div>
                 </div>
 
                 {/* Role badge */}
@@ -257,7 +257,7 @@ export default function TeamManagementClient({ members: initialMembers }) {
                 </span>
 
                 {/* Login link */}
-                <span className="text-[11px] flex-shrink-0" style={{ color: 'var(--text-4)' }}>
+                <span className="text-[11px] flex-shrink-0" style={{ color: '#555' }}>
                   {member.role === 'team' ? '/team/login' : '/bananas/login'}
                 </span>
 
@@ -267,9 +267,9 @@ export default function TeamManagementClient({ members: initialMembers }) {
                   disabled={deletingId === member.id}
                   className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-all disabled:opacity-50 flex-shrink-0"
                   style={{
-                    borderColor: isConfirming ? 'var(--st-ef4444)' : 'rgba(239,68,68,0.3)',
-                    color: isConfirming ? '#fff' : 'var(--st-ef4444)',
-                    background: isConfirming ? 'var(--st-ef4444)' : 'transparent',
+                    borderColor: isConfirming ? '#ef4444' : 'rgba(239,68,68,0.3)',
+                    color: isConfirming ? '#fff' : '#ef4444',
+                    background: isConfirming ? '#ef4444' : 'transparent',
                   }}
                 >
                   {deletingId === member.id ? '...' : isConfirming ? 'CONFIRM' : 'REMOVE'}

@@ -24,7 +24,7 @@ export default async function TemplateEditorPage({ params }) {
       <Link
         href="/bananas/documents/templates"
         className="text-[12px] tracking-[0.14em] mb-4 inline-block hover:text-white transition-colors"
-        style={{ color: 'var(--text-3)' }}
+        style={{ color: '#8a8a8a' }}
       >
         ← BACK TO TEMPLATES
       </Link>

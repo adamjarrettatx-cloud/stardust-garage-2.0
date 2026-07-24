@@ -24,17 +24,17 @@ const MONTHS = [
 
 // Category dot colors, matching the Event Analytics palette.
 const CATEGORY_COLOR = {
-  workshop: 'var(--st-ffb84d)', yoga: 'var(--st-4ade80)', party: 'var(--st-f472b6)', other: 'var(--text-3)',
+  workshop: '#ffb84d', yoga: '#4ade80', party: '#f472b6', other: '#8a8a8a',
 };
 
 // Per-state presentation for non-revenue entries. `label` shows in the detail
 // panel; `chip` is the short marker rendered on the calendar cell.
 const STATE_META = {
-  [ENTRY_STATE.PENDING]:        { chip: 'Not synced',     color: 'var(--text-3)', note: 'Linked to TicketTailor but not refreshed yet.' },
-  [ENTRY_STATE.UNLINKED]:       { chip: 'No TT link',     color: 'var(--st-ffb84d)', note: 'Not linked to a TicketTailor series — link it to track income.' },
-  [ENTRY_STATE.NOT_CONFIGURED]: { chip: 'Not configured', color: 'var(--st-ffb84d)', note: 'TICKETTAILOR_API_KEY is not configured in this environment.' },
-  [ENTRY_STATE.ERROR]:          { chip: 'Sync error',     color: 'var(--st-f87171)', note: 'The last TicketTailor refresh failed. Try refreshing again.' },
-  [ENTRY_STATE.ZERO]:           { chip: '$0 so far',      color: 'var(--text-3)', note: 'Refreshed — no sales recorded yet.' },
+  [ENTRY_STATE.PENDING]:        { chip: 'Not synced',     color: '#8a8a8a', note: 'Linked to TicketTailor but not refreshed yet.' },
+  [ENTRY_STATE.UNLINKED]:       { chip: 'No TT link',     color: '#ffb84d', note: 'Not linked to a TicketTailor series — link it to track income.' },
+  [ENTRY_STATE.NOT_CONFIGURED]: { chip: 'Not configured', color: '#ffb84d', note: 'TICKETTAILOR_API_KEY is not configured in this environment.' },
+  [ENTRY_STATE.ERROR]:          { chip: 'Sync error',     color: '#f87171', note: 'The last TicketTailor refresh failed. Try refreshing again.' },
+  [ENTRY_STATE.ZERO]:           { chip: '$0 so far',      color: '#8a8a8a', note: 'Refreshed — no sales recorded yet.' },
 };
 
 function parseLocalDate(str) {
@@ -161,7 +161,7 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
       <Link
         href="/bananas"
         className="text-[12px] tracking-[0.14em] mb-4 inline-block hover:text-white transition-colors"
-        style={{ color: 'var(--text-3)' }}
+        style={{ color: '#8a8a8a' }}
       >
         ← BACK TO ADMIN
       </Link>
@@ -173,13 +173,13 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
         >
           Financial Calendar
         </h1>
-        <div className="text-[11px] tracking-[0.18em]" style={{ color: 'var(--text-3)' }}>
+        <div className="text-[11px] tracking-[0.18em]" style={{ color: '#8a8a8a' }}>
           OWNER ONLY
         </div>
       </div>
-      <p className="mb-6 text-[14px]" style={{ color: 'var(--text-3)' }}>
+      <p className="mb-6 text-[14px]" style={{ color: '#8a8a8a' }}>
         TicketTailor income by event date, from the read-only metrics cache. Upcoming events show
-        <strong className="mx-1" style={{ color: 'var(--text-2)' }}>actual sales-to-date</strong>
+        <strong className="mx-1" style={{ color: '#c8c8c8' }}>actual sales-to-date</strong>
         — not a forecast. Income only; expenses and other sources are not tracked yet.
       </p>
 
@@ -192,17 +192,17 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
             onClick={openAdd}
             data-testid="fc-add-income"
             className="text-[12px] font-semibold tracking-[0.10em] uppercase rounded-[10px] px-4 py-2 transition-colors"
-            style={{ background: 'var(--st-4ade80)', color: '#0a0a0a' }}
+            style={{ background: '#4ade80', color: '#0a0a0a' }}
           >
             + Add income
           </button>
         </div>
-        <span className="text-[12px]" style={{ color: 'var(--text-3)' }} data-testid="fc-last-updated">
-          Metrics last synced: <span style={{ color: 'var(--text-2)' }}>{fmtFetched(monthSummary.lastUpdated)}</span>
+        <span className="text-[12px]" style={{ color: '#8a8a8a' }} data-testid="fc-last-updated">
+          Metrics last synced: <span style={{ color: '#c8c8c8' }}>{fmtFetched(monthSummary.lastUpdated)}</span>
         </span>
       </div>
       {deleteError && (
-        <p className="text-[12px] mb-4 rounded-[8px] px-3 py-2" style={{ background: 'rgba(248,113,113,0.1)', color: 'var(--st-f87171)' }} role="alert" data-testid="fc-delete-error">
+        <p className="text-[12px] mb-4 rounded-[8px] px-3 py-2" style={{ background: 'rgba(248,113,113,0.1)', color: '#f87171' }} role="alert" data-testid="fc-delete-error">
           {deleteError}
         </p>
       )}
@@ -219,10 +219,10 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
             key={c.label}
             className="rounded-[14px] border p-5"
             style={c.accent
-              ? { background: 'var(--st-tint-green-1)', borderColor: 'rgba(74,222,128,0.22)' }
-              : { background: 'var(--surface-1)', borderColor: 'var(--fg-a06)' }}
+              ? { background: '#0f1a12', borderColor: 'rgba(74,222,128,0.22)' }
+              : { background: '#141414', borderColor: 'rgba(255,255,255,0.06)' }}
           >
-            <div className="text-[10px] font-semibold tracking-[0.14em] uppercase mb-1.5" style={{ color: c.accent ? 'var(--st-4ade80)' : 'var(--text-3)' }}>{c.label}</div>
+            <div className="text-[10px] font-semibold tracking-[0.14em] uppercase mb-1.5" style={{ color: c.accent ? '#4ade80' : '#8a8a8a' }}>{c.label}</div>
             <div className="text-[24px] font-extrabold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{c.value}</div>
           </div>
         ))}
@@ -230,12 +230,12 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
 
       {/* Month nav */}
       <div className="flex items-center gap-4 mb-4">
-        <button onClick={prevMonth} aria-label="Previous month" className="w-9 h-9 rounded-full border flex items-center justify-center transition-colors hover:bg-white/10 text-[16px]" style={{ borderColor: 'var(--fg-a12)' }}>‹</button>
+        <button onClick={prevMonth} aria-label="Previous month" className="w-9 h-9 rounded-full border flex items-center justify-center transition-colors hover:bg-white/10 text-[16px]" style={{ borderColor: 'rgba(255,255,255,0.12)' }}>‹</button>
         <h2 data-testid="fc-month-label" className="text-[22px] font-extrabold -tracking-[0.01em] min-w-[220px] text-center" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           {MONTHS[month]} {year}
         </h2>
-        <button onClick={nextMonth} aria-label="Next month" className="w-9 h-9 rounded-full border flex items-center justify-center transition-colors hover:bg-white/10 text-[16px]" style={{ borderColor: 'var(--fg-a12)' }}>›</button>
-        <button onClick={goToday} className="ml-2 px-4 py-1.5 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/10" style={{ borderColor: 'var(--fg-a15)', color: 'var(--text-3)' }}>TODAY</button>
+        <button onClick={nextMonth} aria-label="Next month" className="w-9 h-9 rounded-full border flex items-center justify-center transition-colors hover:bg-white/10 text-[16px]" style={{ borderColor: 'rgba(255,255,255,0.12)' }}>›</button>
+        <button onClick={goToday} className="ml-2 px-4 py-1.5 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/10" style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#aaa' }}>TODAY</button>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-5">
@@ -243,11 +243,11 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
         <div className="flex-1 min-w-0">
           <div className="grid grid-cols-7 mb-1">
             {DAYS.map((d) => (
-              <div key={d} className="text-center text-[11px] font-semibold tracking-[0.12em] py-2" style={{ color: 'var(--text-3)' }}>{d}</div>
+              <div key={d} className="text-center text-[11px] font-semibold tracking-[0.12em] py-2" style={{ color: '#8a8a8a' }}>{d}</div>
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-px" style={{ background: 'var(--fg-a04)' }}>
+          <div className="grid grid-cols-7 gap-px" style={{ background: 'rgba(255,255,255,0.04)' }}>
             {Array.from({ length: totalCells }).map((_, i) => {
               const dayNum = i - firstDay + 1;
               const isCurrentMonth = dayNum >= 1 && dayNum <= daysInMonth;
@@ -262,7 +262,7 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
                   onClick={() => isCurrentMonth && dayEntries.length > 0 && setSelectedDay(cellDate)}
                   className="min-h-[100px] p-2 transition-colors"
                   style={{
-                    background: isSelected ? 'rgba(255,255,255,0.08)' : isCurrentMonth ? 'var(--surface-1)' : 'var(--surface-2)',
+                    background: isSelected ? 'rgba(255,255,255,0.08)' : isCurrentMonth ? '#141414' : '#0f0f0f',
                     outline: isSelected ? '1px solid rgba(255,255,255,0.2)' : 'none',
                     cursor: isCurrentMonth && dayEntries.length > 0 ? 'pointer' : 'default',
                   }}
@@ -272,7 +272,7 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
                       className="text-[13px] font-bold w-7 h-7 flex items-center justify-center rounded-full"
                       style={{
                         background: isToday ? '#ffffff' : 'transparent',
-                        color: isToday ? '#0a0a0a' : isCurrentMonth ? 'var(--text-1)' : 'var(--surface-5)',
+                        color: isToday ? '#0a0a0a' : isCurrentMonth ? '#f5f5f5' : '#333',
                         fontFamily: "'Plus Jakarta Sans', sans-serif",
                       }}
                     >
@@ -288,13 +288,13 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
                           className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
                           style={{
                             background: hasMoney ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.05)',
-                            color: hasMoney ? 'var(--st-4ade80)' : 'var(--text-2)',
+                            color: hasMoney ? '#4ade80' : '#c8c8c8',
                             border: `1px solid ${hasMoney ? 'rgba(74,222,128,0.3)' : 'rgba(255,255,255,0.08)'}`,
                           }}
                           title={entry.title}
                         >
                           <div className="truncate flex items-center gap-1">
-                            <span className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: CATEGORY_COLOR[entry.category] || 'var(--text-3)' }} />
+                            <span className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: CATEGORY_COLOR[entry.category] || '#8a8a8a' }} />
                             {entry.title}
                           </div>
                           <div className="text-[9px] font-bold truncate">
@@ -305,7 +305,7 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
                       );
                     })}
                     {dayEntries.length > 3 && (
-                      <div className="text-[9px] font-semibold" style={{ color: 'var(--text-3)' }}>+{dayEntries.length - 3} more</div>
+                      <div className="text-[9px] font-semibold" style={{ color: '#8a8a8a' }}>+{dayEntries.length - 3} more</div>
                     )}
                   </div>
                 </div>
@@ -316,16 +316,16 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
 
         {/* Day detail panel */}
         {selectedDay && (
-          <div className="w-full lg:w-[320px] flex-shrink-0 rounded-[14px] border p-5 self-start lg:sticky lg:top-6" style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a08)' }} data-testid="fc-day-detail">
+          <div className="w-full lg:w-[320px] flex-shrink-0 rounded-[14px] border p-5 self-start lg:sticky lg:top-6" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.08)' }} data-testid="fc-day-detail">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-[16px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 {selectedDay.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
               </h3>
-              <button onClick={() => setSelectedDay(null)} aria-label="Close detail" className="text-[18px] leading-none transition-opacity hover:opacity-50" style={{ color: 'var(--text-3)' }}>×</button>
+              <button onClick={() => setSelectedDay(null)} aria-label="Close detail" className="text-[18px] leading-none transition-opacity hover:opacity-50" style={{ color: '#8a8a8a' }}>×</button>
             </div>
 
             {selectedEntries.length === 0 && (
-              <p className="text-[12px]" style={{ color: 'var(--text-4)' }}>No events this day.</p>
+              <p className="text-[12px]" style={{ color: '#555' }}>No events this day.</p>
             )}
 
             <div className="space-y-3">
@@ -333,9 +333,9 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
                 const hasMoney = entry.state === ENTRY_STATE.OK;
                 const meta = STATE_META[entry.state];
                 return (
-                  <div key={entry.id} className="rounded-[10px] p-3" style={{ background: hasMoney ? 'var(--st-tint-green-1)' : 'var(--surface-2)', border: `1px solid ${hasMoney ? 'rgba(74,222,128,0.22)' : 'rgba(255,255,255,0.08)'}` }} data-testid={entry.isManual ? 'fc-manual-detail' : undefined}>
+                  <div key={entry.id} className="rounded-[10px] p-3" style={{ background: hasMoney ? '#0f1a12' : '#101010', border: `1px solid ${hasMoney ? 'rgba(74,222,128,0.22)' : 'rgba(255,255,255,0.08)'}` }} data-testid={entry.isManual ? 'fc-manual-detail' : undefined}>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: CATEGORY_COLOR[entry.category] || 'var(--text-3)' }} />
+                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: CATEGORY_COLOR[entry.category] || '#8a8a8a' }} />
                       {entry.isManual || entry.hasLocalEvent === false ? (
                         // Manual or TicketTailor-only entry: no local page to link to.
                         <span className="text-[14px] font-bold truncate" title={entry.isManual ? 'Manual income entry' : 'TicketTailor-only event (no website record)'}>{entry.title}</span>
@@ -344,50 +344,50 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 mb-2 text-[10px] tracking-[0.08em] uppercase" style={{ color: 'var(--text-3)' }}>
+                    <div className="flex items-center gap-2 mb-2 text-[10px] tracking-[0.08em] uppercase" style={{ color: '#8a8a8a' }}>
                       {entry.isManual && (
-                        <span className="px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(74,222,128,0.14)', color: 'var(--st-4ade80)' }}>Manual</span>
+                        <span className="px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(74,222,128,0.14)', color: '#4ade80' }}>Manual</span>
                       )}
                       {entry.eventStatus && <span>{entry.eventStatus}</span>}
                       {entry.isFuture && (
-                        <span className="px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(255,184,77,0.14)', color: 'var(--st-ffb84d)' }}>Upcoming</span>
+                        <span className="px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(255,184,77,0.14)', color: '#ffb84d' }}>Upcoming</span>
                       )}
                     </div>
 
                     {entry.isManual ? (
                       <>
-                        <div className="text-[22px] font-extrabold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: 'var(--st-4ade80)' }}>
+                        <div className="text-[22px] font-extrabold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#4ade80' }}>
                           {centsToUsd(entry.grossCents)}
                         </div>
-                        <div className="text-[10px] mb-2" style={{ color: 'var(--text-3)' }}>
+                        <div className="text-[10px] mb-2" style={{ color: '#8a8a8a' }}>
                           Manual income · {MANUAL_CATEGORY_LABEL[entry.category] || entry.category}
                         </div>
                         {(entry.customerName || entry.eventName) && (
-                          <div className="text-[11px] mb-1" style={{ color: 'var(--text-2)' }}>
+                          <div className="text-[11px] mb-1" style={{ color: '#c8c8c8' }}>
                             {[entry.customerName, entry.eventName].filter(Boolean).join(' · ')}
                           </div>
                         )}
                         {entry.notes && (
-                          <p className="text-[11px] mb-1 whitespace-pre-wrap" style={{ color: 'var(--text-3)' }}>{entry.notes}</p>
+                          <p className="text-[11px] mb-1 whitespace-pre-wrap" style={{ color: '#8a8a8a' }}>{entry.notes}</p>
                         )}
                         <div className="flex items-center gap-3 mt-2 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                          <button type="button" onClick={() => openEdit(entry)} data-testid="fc-manual-edit" className="text-[11px] font-semibold tracking-[0.08em] uppercase transition-colors hover:text-white" style={{ color: 'var(--text-3)' }}>Edit</button>
-                          <button type="button" onClick={() => deleteEntry(entry)} disabled={deletingId === entry.manualId} data-testid="fc-manual-delete" className="text-[11px] font-semibold tracking-[0.08em] uppercase transition-colors disabled:opacity-50" style={{ color: 'var(--st-f87171)' }}>
+                          <button type="button" onClick={() => openEdit(entry)} data-testid="fc-manual-edit" className="text-[11px] font-semibold tracking-[0.08em] uppercase transition-colors hover:text-white" style={{ color: '#8a8a8a' }}>Edit</button>
+                          <button type="button" onClick={() => deleteEntry(entry)} disabled={deletingId === entry.manualId} data-testid="fc-manual-delete" className="text-[11px] font-semibold tracking-[0.08em] uppercase transition-colors disabled:opacity-50" style={{ color: '#f87171' }}>
                             {deletingId === entry.manualId ? 'Deleting…' : 'Delete'}
                           </button>
                         </div>
                       </>
                     ) : entry.hasManualIncome ? (
                       <div data-testid="fc-event-combined">
-                        <div className="text-[22px] font-extrabold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: 'var(--st-4ade80)' }}>
+                        <div className="text-[22px] font-extrabold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#4ade80' }}>
                           {centsToUsd(entry.grossCents)}
                         </div>
-                        <div className="text-[10px] mb-2" style={{ color: 'var(--text-3)' }}>Combined income</div>
+                        <div className="text-[10px] mb-2" style={{ color: '#8a8a8a' }}>Combined income</div>
                         <div className="space-y-1 text-[11px]" data-testid="fc-event-breakdown">
                           {entry.ttLinked && (
                             <div className="flex items-center justify-between">
-                              <span style={{ color: 'var(--text-3)' }}>TicketTailor{entry.isFuture ? ' (to date)' : ''}</span>
-                              <span style={{ color: 'var(--text-2)' }}>
+                              <span style={{ color: '#8a8a8a' }}>TicketTailor{entry.isFuture ? ' (to date)' : ''}</span>
+                              <span style={{ color: '#c8c8c8' }}>
                                 {hasMoney || entry.state === ENTRY_STATE.ZERO
                                   ? centsToUsd(entry.ttGrossCents)
                                   : (STATE_META[entry.state]?.chip || '—')}
@@ -395,38 +395,38 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
                             </div>
                           )}
                           <div className="flex items-center justify-between">
-                            <span style={{ color: 'var(--text-3)' }}>Manual</span>
-                            <span style={{ color: 'var(--text-2)' }}>{centsToUsd(entry.manualGrossCents)}</span>
+                            <span style={{ color: '#8a8a8a' }}>Manual</span>
+                            <span style={{ color: '#c8c8c8' }}>{centsToUsd(entry.manualGrossCents)}</span>
                           </div>
                         </div>
                       </div>
                     ) : hasMoney || entry.state === ENTRY_STATE.ZERO ? (
                       <>
-                        <div className="text-[22px] font-extrabold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: hasMoney ? 'var(--st-4ade80)' : 'var(--text-2)' }}>
+                        <div className="text-[22px] font-extrabold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: hasMoney ? '#4ade80' : '#c8c8c8' }}>
                           {centsToUsd(entry.grossCents)}
                         </div>
-                        <div className="text-[10px] mb-2" style={{ color: 'var(--text-3)' }}>
+                        <div className="text-[10px] mb-2" style={{ color: '#8a8a8a' }}>
                           {entry.isFuture ? 'Gross TicketTailor sales-to-date (not a forecast)' : 'Gross TicketTailor income'}
                         </div>
                         <div className="grid grid-cols-3 gap-2 text-[11px]">
                           <div>
-                            <div className="uppercase tracking-[0.08em] mb-0.5" style={{ color: 'var(--text-4)' }}>Net</div>
-                            <div style={{ color: 'var(--text-2)' }}>{centsToUsd(entry.netCents)}</div>
+                            <div className="uppercase tracking-[0.08em] mb-0.5" style={{ color: '#6a6a6a' }}>Net</div>
+                            <div style={{ color: '#c8c8c8' }}>{centsToUsd(entry.netCents)}</div>
                           </div>
                           <div>
-                            <div className="uppercase tracking-[0.08em] mb-0.5" style={{ color: 'var(--text-4)' }}>Tickets</div>
-                            <div style={{ color: 'var(--text-2)' }}>{entry.ticketsSold}</div>
+                            <div className="uppercase tracking-[0.08em] mb-0.5" style={{ color: '#6a6a6a' }}>Tickets</div>
+                            <div style={{ color: '#c8c8c8' }}>{entry.ticketsSold}</div>
                           </div>
                           <div>
-                            <div className="uppercase tracking-[0.08em] mb-0.5" style={{ color: 'var(--text-4)' }}>Orders</div>
-                            <div style={{ color: 'var(--text-2)' }}>{entry.ordersCount}</div>
+                            <div className="uppercase tracking-[0.08em] mb-0.5" style={{ color: '#6a6a6a' }}>Orders</div>
+                            <div style={{ color: '#c8c8c8' }}>{entry.ordersCount}</div>
                           </div>
                         </div>
                       </>
                     ) : (
-                      <div className="text-[12px]" style={{ color: meta?.color || 'var(--text-3)' }}>
+                      <div className="text-[12px]" style={{ color: meta?.color || '#8a8a8a' }}>
                         {meta?.chip}
-                        <div className="text-[11px] mt-1" style={{ color: 'var(--text-3)' }}>{meta?.note}</div>
+                        <div className="text-[11px] mt-1" style={{ color: '#8a8a8a' }}>{meta?.note}</div>
                       </div>
                     )}
 
@@ -436,19 +436,19 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
                         {entry.manualEntries.map((m) => (
                           <div key={m.id} className="rounded-[8px] p-2" style={{ background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.16)' }} data-testid="fc-event-manual-item">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="text-[11px] font-semibold truncate" style={{ color: 'var(--text-2)' }}>{m.title}</span>
-                              <span className="text-[12px] font-bold flex-shrink-0" style={{ color: 'var(--st-4ade80)' }}>{centsToUsd(m.grossCents)}</span>
+                              <span className="text-[11px] font-semibold truncate" style={{ color: '#c8c8c8' }}>{m.title}</span>
+                              <span className="text-[12px] font-bold flex-shrink-0" style={{ color: '#4ade80' }}>{centsToUsd(m.grossCents)}</span>
                             </div>
-                            <div className="text-[10px] mt-0.5" style={{ color: 'var(--text-3)' }}>
+                            <div className="text-[10px] mt-0.5" style={{ color: '#8a8a8a' }}>
                               Manual · {MANUAL_CATEGORY_LABEL[m.category] || m.category}
                               {m.customerName ? ` · ${m.customerName}` : ''}
                             </div>
                             {m.notes && (
-                              <p className="text-[10px] mt-1 whitespace-pre-wrap" style={{ color: 'var(--text-3)' }}>{m.notes}</p>
+                              <p className="text-[10px] mt-1 whitespace-pre-wrap" style={{ color: '#8a8a8a' }}>{m.notes}</p>
                             )}
                             <div className="flex items-center gap-3 mt-1">
-                              <button type="button" onClick={() => openEdit({ ...m, parentTitle: entry.title })} data-testid="fc-manual-edit" className="text-[10px] font-semibold tracking-[0.08em] uppercase transition-colors hover:text-white" style={{ color: 'var(--text-3)' }}>Edit</button>
-                              <button type="button" onClick={() => deleteEntry(m)} disabled={deletingId === m.manualId} data-testid="fc-manual-delete" className="text-[10px] font-semibold tracking-[0.08em] uppercase transition-colors disabled:opacity-50" style={{ color: 'var(--st-f87171)' }}>
+                              <button type="button" onClick={() => openEdit({ ...m, parentTitle: entry.title })} data-testid="fc-manual-edit" className="text-[10px] font-semibold tracking-[0.08em] uppercase transition-colors hover:text-white" style={{ color: '#8a8a8a' }}>Edit</button>
+                              <button type="button" onClick={() => deleteEntry(m)} disabled={deletingId === m.manualId} data-testid="fc-manual-delete" className="text-[10px] font-semibold tracking-[0.08em] uppercase transition-colors disabled:opacity-50" style={{ color: '#f87171' }}>
                                 {deletingId === m.manualId ? 'Deleting…' : 'Delete'}
                               </button>
                             </div>
@@ -463,14 +463,14 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
                         onClick={() => openAddToEvent(entry)}
                         data-testid="fc-add-income-to-event"
                         className="mt-3 w-full text-[11px] font-semibold tracking-[0.08em] uppercase rounded-[8px] px-3 py-2 border transition-colors hover:bg-white/5"
-                        style={{ borderColor: 'rgba(74,222,128,0.3)', color: 'var(--st-4ade80)' }}
+                        style={{ borderColor: 'rgba(74,222,128,0.3)', color: '#4ade80' }}
                       >
                         + Add income to event
                       </button>
                     )}
 
                     {!entry.isManual && (
-                      <div className="text-[10px] mt-2 pt-2" style={{ color: 'var(--text-4)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div className="text-[10px] mt-2 pt-2" style={{ color: '#6a6a6a', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                         Last synced: {fmtFetched(entry.fetchedAt)}
                       </div>
                     )}
@@ -482,9 +482,9 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
         )}
       </div>
 
-      <p className="mt-6 text-[12px]" style={{ color: 'var(--text-4)' }}>
+      <p className="mt-6 text-[12px]" style={{ color: '#6a6a6a' }}>
         TicketTailor figures come from the read-only metrics cache, refreshed on a daily cron or on demand
-        above (upcoming events show real sales-to-date, not a forecast). Entries tagged <span style={{ color: 'var(--st-4ade80)' }}>Manual</span> are
+        above (upcoming events show real sales-to-date, not a forecast). Entries tagged <span style={{ color: '#4ade80' }}>Manual</span> are
         owner-entered income (e.g. venue rentals) with no ticketing record. SpotOn point-of-sale income is not
         included yet.
       </p>

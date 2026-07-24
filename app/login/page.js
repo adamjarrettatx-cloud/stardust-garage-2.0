@@ -44,19 +44,19 @@ export default function MemberLoginPage() {
         <h1 className="text-[28px] font-extrabold -tracking-[0.02em] mb-2 text-center leading-[1.1]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           Member Login
         </h1>
-        <p className="text-[13px] text-center mb-10" style={{ color: 'var(--text-3)' }}>
+        <p className="text-[13px] text-center mb-10" style={{ color: '#8a8a8a' }}>
           Sign in to access your member account
         </p>
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-[12px] font-semibold tracking-[0.14em] mb-2" style={{ color: 'var(--text-3)' }}>EMAIL</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full px-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30" style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a1)', color: 'var(--text-1)' }} />
+            <label className="block text-[12px] font-semibold tracking-[0.14em] mb-2" style={{ color: '#8a8a8a' }}>EMAIL</label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full px-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.1)', color: '#f5f5f5' }} />
           </div>
 
           <div>
-            <label className="block text-[12px] font-semibold tracking-[0.14em] mb-2" style={{ color: 'var(--text-3)' }}>PASSWORD</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full px-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30" style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a1)', color: 'var(--text-1)' }} />
+            <label className="block text-[12px] font-semibold tracking-[0.14em] mb-2" style={{ color: '#8a8a8a' }}>PASSWORD</label>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full px-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.1)', color: '#f5f5f5' }} />
           </div>
 
           {error && (
@@ -69,14 +69,14 @@ export default function MemberLoginPage() {
         </form>
 
         <div className="text-center mt-6">
-          <Link href="/forgot-password" className="text-[12px] underline hover:text-white transition-colors" style={{ color: 'var(--text-3)' }}>
+          <Link href="/forgot-password" className="text-[12px] underline hover:text-white transition-colors" style={{ color: '#a0a0a0' }}>
             Forgot password?
           </Link>
         </div>
 
-        <p className="text-[12px] text-center mt-8" style={{ color: 'var(--text-3)' }}>
+        <p className="text-[12px] text-center mt-8" style={{ color: '#8a8a8a' }}>
           Not a member yet?{' '}
-          <Link href="/members" className="underline hover:text-white transition-colors" style={{ color: 'var(--text-3)' }}>
+          <Link href="/members" className="underline hover:text-white transition-colors" style={{ color: '#a0a0a0' }}>
             Apply for membership
           </Link>
         </p>

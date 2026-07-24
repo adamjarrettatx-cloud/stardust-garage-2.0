@@ -50,7 +50,7 @@ export default async function AdminStudioBookingsPage() {
       <Link
         href="/bananas"
         className="text-[12px] tracking-[0.14em] mb-4 inline-block hover:text-white transition-colors"
-        style={{ color: 'var(--text-3)' }}
+        style={{ color: '#8a8a8a' }}
       >
         ← BACK TO ADMIN
       </Link>
@@ -65,7 +65,7 @@ export default async function AdminStudioBookingsPage() {
       <div className="mb-12">
         <div
           className="text-[11px] font-semibold tracking-[0.18em] mb-4"
-          style={{ color: 'var(--text-3)' }}
+          style={{ color: '#8a8a8a' }}
         >
           UPCOMING ({upcoming.length})
         </div>
@@ -73,11 +73,11 @@ export default async function AdminStudioBookingsPage() {
           <div
             className="rounded-[14px] border p-8 text-center"
             style={{
-              background: 'var(--surface-1)',
-              borderColor: 'var(--fg-a06)',
+              background: '#141414',
+              borderColor: 'rgba(255,255,255,0.06)',
             }}
           >
-            <p style={{ color: 'var(--text-3)' }}>No upcoming bookings.</p>
+            <p style={{ color: '#8a8a8a' }}>No upcoming bookings.</p>
           </div>
         ) : (
           upcoming.map((b) => (
@@ -95,7 +95,7 @@ export default async function AdminStudioBookingsPage() {
         <div>
           <div
             className="text-[11px] font-semibold tracking-[0.18em] mb-4"
-            style={{ color: 'var(--text-3)' }}
+            style={{ color: '#8a8a8a' }}
           >
             PAST & CANCELLED ({past.length})
           </div>
@@ -118,8 +118,8 @@ function BookingRow({ booking, profile }) {
     <div
       className="rounded-[14px] border p-5 mb-3 flex items-center gap-5"
       style={{
-        background: 'var(--surface-1)',
-        borderColor: 'var(--fg-a06)',
+        background: '#141414',
+        borderColor: 'rgba(255,255,255,0.06)',
         opacity: isCancelled ? 0.5 : 1,
       }}
     >
@@ -130,16 +130,16 @@ function BookingRow({ booking, profile }) {
         >
           {profile?.full_name || profile?.email || 'Unknown member'}
         </div>
-        <div className="text-[13px]" style={{ color: 'var(--text-3)' }}>
+        <div className="text-[13px]" style={{ color: '#a0a0a0' }}>
           {formatDateDisplay(booking.booking_date)} ·{' '}
           {formatHour(booking.start_hour)} – {formatHour(booking.end_hour)}
         </div>
-        <div className="text-[12px] mt-1" style={{ color: 'var(--text-4)' }}>
+        <div className="text-[12px] mt-1" style={{ color: '#555' }}>
           {formatMoney(booking.total_cost_cents)}
           {profile?.email ? ` · ${profile.email}` : ''}
         </div>
         {booking.notes && (
-          <div className="text-[12px] mt-2 italic" style={{ color: 'var(--text-3)' }}>
+          <div className="text-[12px] mt-2 italic" style={{ color: '#8a8a8a' }}>
             &ldquo;{booking.notes}&rdquo;
           </div>
         )}
@@ -152,7 +152,7 @@ function BookingRow({ booking, profile }) {
             background: isCancelled
               ? 'rgba(255,80,80,0.15)'
               : 'rgba(80,200,120,0.15)',
-            color: isCancelled ? 'var(--st-ff8080)' : 'var(--st-80c878)',
+            color: isCancelled ? '#ff8080' : '#80c878',
           }}
         >
           {isCancelled ? 'CANCELLED' : 'CONFIRMED'}

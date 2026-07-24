@@ -59,7 +59,7 @@ export default function SplashClient({ logoUrl }) {
               }}
             />
           ) : (
-            <div className="w-[120px] md:w-[150px] h-[150px] md:h-[190px] rounded-[14px] flex items-center justify-center text-center px-4" style={{ background: 'var(--fg-a05)', border: '1px dashed var(--fg-a2)' }}>
+            <div className="w-[120px] md:w-[150px] h-[150px] md:h-[190px] rounded-[14px] flex items-center justify-center text-center px-4" style={{ background: 'rgba(255,255,255,0.05)', border: '1px dashed rgba(255,255,255,0.2)' }}>
               <span className="text-[10px] tracking-[0.2em] text-white/40">UPLOAD SPLASH LOGO IN ADMIN</span>
             </div>
           )}
@@ -76,7 +76,7 @@ export default function SplashClient({ logoUrl }) {
         style={{ fontFamily: "'Inter', sans-serif" }}
         aria-label={soundOn ? 'Mute sound' : 'Play sound'}
       >
-        <span className="inline-block w-2 h-2 rounded-full" style={{ background: soundOn ? 'var(--text-1)' : 'rgba(255,255,255,0.3)', boxShadow: soundOn ? '0 0 10px rgba(255,255,255,0.6)' : 'none', transition: 'all 0.2s ease' }} />
+        <span className="inline-block w-2 h-2 rounded-full" style={{ background: soundOn ? '#f5f5f5' : 'rgba(255,255,255,0.3)', boxShadow: soundOn ? '0 0 10px rgba(255,255,255,0.6)' : 'none', transition: 'all 0.2s ease' }} />
         {soundOn ? 'SOUND ON' : 'SOUND OFF'}
       </button>
 

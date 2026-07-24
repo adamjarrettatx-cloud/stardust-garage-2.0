@@ -88,7 +88,7 @@ export default function VenueRentalPage() {
       <header className="mb-12 md:mb-16 max-w-[760px]">
         <div
           className="text-[11px] font-semibold tracking-[0.28em] mb-5"
-          style={{ color: 'var(--fg-a5)' }}
+          style={{ color: 'rgba(255,255,255,0.5)' }}
         >
           VENUE RENTAL
         </div>
@@ -104,7 +104,7 @@ export default function VenueRentalPage() {
         </h1>
         <p
           className="text-[15px] md:text-[16px] leading-[1.65] max-w-[600px]"
-          style={{ color: 'var(--fg-a6)' }}
+          style={{ color: 'rgba(255,255,255,0.6)' }}
         >
           The system, the room, and the booth are already here — set up,
           tuned, and ready. You bring the night.
@@ -119,7 +119,7 @@ export default function VenueRentalPage() {
         <div className="mb-10 max-w-[640px]">
           <div
             className="text-[11px] font-semibold tracking-[0.28em] mb-3"
-            style={{ color: 'var(--fg-a5)' }}
+            style={{ color: 'rgba(255,255,255,0.5)' }}
           >
             OPTIONS
           </div>
@@ -136,7 +136,7 @@ export default function VenueRentalPage() {
           <div
             key={venue.slug}
             className="rounded-[18px] p-7 md:p-10 border flex flex-col md:flex-row md:items-center gap-6 md:gap-8"
-            style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a05)' }}
+            style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
           >
             <div className="flex-1">
               <div className="flex items-start gap-4 mb-[18px] md:mb-[22px]">
@@ -158,7 +158,7 @@ export default function VenueRentalPage() {
               {venue.startingPrice && (
                 <div
                   className="text-[13px] font-medium"
-                  style={{ color: 'var(--text-3)' }}
+                  style={{ color: '#8a8a8a' }}
                 >
                   {venue.startingPrice}
                 </div>
@@ -179,11 +179,11 @@ export default function VenueRentalPage() {
       {/* Also included */}
       <div
         className="rounded-[18px] p-10 md:p-12 mt-14 mb-14 border"
-        style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a05)' }}
+        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
       >
         <h2
           className="text-[11px] font-semibold tracking-[0.28em] mb-7"
-          style={{ color: 'var(--fg-a5)' }}
+          style={{ color: 'rgba(255,255,255,0.5)' }}
         >
           ALSO INCLUDED
         </h2>
@@ -197,7 +197,7 @@ export default function VenueRentalPage() {
             </h3>
             <ul
               className="list-none text-sm leading-[1.95]"
-              style={{ color: 'var(--text-3)' }}
+              style={{ color: '#8a8a8a' }}
             >
               <li>Bar staff</li>
               <li>Security personnel (if required)</li>
@@ -213,7 +213,7 @@ export default function VenueRentalPage() {
             </h3>
             <ul
               className="list-none text-sm leading-[1.95]"
-              style={{ color: 'var(--text-3)' }}
+              style={{ color: '#8a8a8a' }}
             >
               <li>Coat check</li>
               <li>Ticket scanning system</li>
@@ -223,7 +223,7 @@ export default function VenueRentalPage() {
       </div>
 
       <div className="text-center py-8 md:py-10">
-        <p className="text-[15px] mb-5 md:mb-6" style={{ color: 'var(--text-3)' }}>
+        <p className="text-[15px] mb-5 md:mb-6" style={{ color: '#8a8a8a' }}>
           Interested in hosting an event? Get in touch for availability and custom packages.
         </p>
         <Link

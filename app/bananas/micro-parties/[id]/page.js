@@ -37,12 +37,12 @@ function formatTime(t) {
 
 function Field({ label, children }) {
   return (
-    <div className="py-5 border-t" style={{ borderColor: 'var(--fg-a06)' }}>
-      <div className="text-[11px] font-semibold tracking-[0.14em] mb-2" style={{ color: 'var(--text-3)' }}>
+    <div className="py-5 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+      <div className="text-[11px] font-semibold tracking-[0.14em] mb-2" style={{ color: '#8a8a8a' }}>
         {label}
       </div>
       <div className="text-[15px] leading-[1.6]" style={{ whiteSpace: 'pre-wrap' }}>
-        {children || <span style={{ color: 'var(--text-4)' }}>—</span>}
+        {children || <span style={{ color: '#555' }}>—</span>}
       </div>
     </div>
   );
@@ -67,7 +67,7 @@ export default async function MicroPartyDetail({ params }) {
       <Link
         href="/bananas/micro-parties"
         className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70"
-        style={{ color: 'var(--text-3)' }}
+        style={{ color: '#8a8a8a' }}
       >
         ← BACK TO MICRO PARTY INQUIRIES
       </Link>
@@ -80,7 +80,7 @@ export default async function MicroPartyDetail({ params }) {
           >
             {i.event_name || i.full_name}
           </h1>
-          <div className="text-[13px]" style={{ color: 'var(--text-3)' }}>
+          <div className="text-[13px]" style={{ color: '#8a8a8a' }}>
             Submitted {formatDate(i.created_at)}
           </div>
         </div>
@@ -95,11 +95,11 @@ export default async function MicroPartyDetail({ params }) {
               i.status === 'pending' ? 'rgba(255,255,255,0.06)' :
               'rgba(255,184,77,0.15)',
             color:
-              i.status === 'approved' ? 'var(--st-4ade80)' :
-              i.status === 'rejected' ? 'var(--st-f87171)' :
-              i.status === 'reviewed' ? 'var(--st-c084fc)' :
-              i.status === 'pending' ? 'var(--text-3)' :
-              'var(--st-ffb84d)',
+              i.status === 'approved' ? '#4ade80' :
+              i.status === 'rejected' ? '#f87171' :
+              i.status === 'reviewed' ? '#c084fc' :
+              i.status === 'pending' ? '#a0a0a0' :
+              '#ffb84d',
           }}
         >
           {i.status || 'new'}
@@ -110,7 +110,7 @@ export default async function MicroPartyDetail({ params }) {
 
       <section
         className="rounded-[14px] p-7 border mt-10"
-        style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a05)' }}
+        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
       >
         <h2 className="text-[16px] font-bold mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           Contact Info
@@ -118,7 +118,7 @@ export default async function MicroPartyDetail({ params }) {
 
         <Field label="FULL NAME">{i.full_name}</Field>
         <Field label="EMAIL">
-          <a href={`mailto:${i.email}`} style={{ color: 'var(--text-1)', textDecoration: 'underline' }}>
+          <a href={`mailto:${i.email}`} style={{ color: '#f5f5f5', textDecoration: 'underline' }}>
             {i.email}
           </a>
         </Field>
@@ -131,7 +131,7 @@ export default async function MicroPartyDetail({ params }) {
 
       <section
         className="rounded-[14px] p-7 border mt-6"
-        style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a05)' }}
+        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
       >
         <h2 className="text-[16px] font-bold mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           Event Details
@@ -150,7 +150,7 @@ export default async function MicroPartyDetail({ params }) {
 
       <section
         className="rounded-[14px] p-7 border mt-6"
-        style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a05)' }}
+        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
       >
         <h2 className="text-[16px] font-bold mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           Vision &amp; Additional Info

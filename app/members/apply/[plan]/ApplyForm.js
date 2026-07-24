@@ -152,9 +152,9 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
       <main className="max-w-[700px] mx-auto px-4 md:px-6 py-20 md:py-24 text-center">
         <div
           className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-8"
-          style={{ background: 'var(--fg-a08)' }}
+          style={{ background: 'rgba(255,255,255,0.08)' }}
         >
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--text-1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f5f5f5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>
@@ -164,13 +164,13 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
         >
           Application received
         </h1>
-        <p className="text-[16px] leading-[1.6] mb-10" style={{ color: 'var(--text-3)' }}>
+        <p className="text-[16px] leading-[1.6] mb-10" style={{ color: '#8a8a8a' }}>
           Thanks for applying. We review every application personally and will be in touch soon with next steps.
         </p>
         <Link
           href="/"
           className="inline-block px-8 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5"
-          style={{ borderColor: 'var(--fg-a15)', color: 'var(--text-1)' }}
+          style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
         >
           BACK TO HOME
         </Link>
@@ -179,13 +179,13 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
   }
 
   const inputStyle = {
-    background: 'var(--surface-1)',
-    borderColor: 'var(--fg-a1)',
-    color: 'var(--text-1)',
+    background: '#141414',
+    borderColor: 'rgba(255,255,255,0.1)',
+    color: '#f5f5f5',
   };
 
   const labelClass = 'block text-[11px] font-semibold tracking-[0.16em] mb-2';
-  const labelStyle = { color: 'var(--text-3)' };
+  const labelStyle = { color: '#a0a0a0' };
   const inputClass = 'w-full px-5 py-3.5 rounded-[10px] text-[14px] outline-none border transition-colors focus:border-white/30';
   const textareaClass = 'w-full px-5 py-3.5 rounded-[10px] text-[14px] outline-none border transition-colors focus:border-white/30 resize-y';
 
@@ -194,7 +194,7 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
       <Link
         href="/members"
         className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70"
-        style={{ color: 'var(--text-3)' }}
+        style={{ color: '#8a8a8a' }}
       >
         ← BACK TO MEMBERSHIP
       </Link>
@@ -203,8 +203,8 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
         <div
           className="inline-block text-[11px] font-semibold tracking-[0.2em] px-3.5 py-1.5 rounded-full mb-6"
           style={{
-            color: 'var(--text-3)',
-            border: '1px solid var(--fg-a12)',
+            color: '#8a8a8a',
+            border: '1px solid rgba(255,255,255,0.12)',
           }}
         >
           {planName.toUpperCase()} · {planPrice}
@@ -215,10 +215,10 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
         >
           Membership
         </h1>
-        <p className="text-[15px] italic" style={{ color: 'var(--text-3)' }}>
+        <p className="text-[15px] italic" style={{ color: '#8a8a8a' }}>
           Join the Constellation. Amplify the Frequency.
         </p>
-        <p className="text-[12px] mt-4" style={{ color: 'var(--text-4)' }}>
+        <p className="text-[12px] mt-4" style={{ color: '#666' }}>
           * indicates required
         </p>
       </div>
@@ -226,7 +226,7 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div
           className="rounded-[14px] p-6 md:p-8 border space-y-6"
-          style={{ background: 'var(--surface-2)', borderColor: 'var(--fg-a05)' }}
+          style={{ background: '#0f0f0f', borderColor: 'rgba(255,255,255,0.05)' }}
         >
           <div>
             <label className={labelClass} style={labelStyle}>FULL NAME *</label>
@@ -318,7 +318,7 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
 
           <div>
             <label className={labelClass} style={labelStyle}>PROFILE PHOTO</label>
-            <p className="text-[12px] leading-[1.5] mb-3" style={{ color: 'var(--text-3)' }}>
+            <p className="text-[12px] leading-[1.5] mb-3" style={{ color: '#8a8a8a' }}>
               Optional now, but required if your application is approved. JPG, PNG or WebP, max 5MB.
             </p>
             <input
@@ -335,7 +335,7 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
                   src={photoPreview}
                   alt="Profile preview"
                   className="w-[72px] h-[72px] flex-shrink-0 object-cover"
-                  style={{ borderRadius: '14px', border: '1px solid var(--surface-5)' }}
+                  style={{ borderRadius: '14px', border: '1px solid #2a2a2a' }}
                 />
               )}
               <div className="min-w-0">
@@ -343,12 +343,12 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   className="px-5 py-3 rounded-[10px] text-[12px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5"
-                  style={{ borderColor: 'var(--fg-a15)', color: 'var(--text-1)' }}
+                  style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
                 >
                   {photoFile ? 'CHANGE PHOTO' : 'CHOOSE PHOTO'}
                 </button>
                 {photoFile && (
-                  <div className="text-[12px] mt-2 truncate" style={{ color: 'var(--text-3)' }}>
+                  <div className="text-[12px] mt-2 truncate" style={{ color: '#8a8a8a' }}>
                     {photoFile.name}
                   </div>
                 )}
@@ -362,7 +362,7 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
 
         <div
           className="rounded-[14px] p-6 md:p-8 border space-y-6"
-          style={{ background: 'var(--surface-2)', borderColor: 'var(--fg-a05)' }}
+          style={{ background: '#0f0f0f', borderColor: 'rgba(255,255,255,0.05)' }}
         >
           <div>
             <label className={labelClass} style={labelStyle}>WHAT BRINGS YOU TO STARDUST? *</label>
@@ -421,7 +421,7 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
 
         <div
           className="rounded-[14px] p-6 md:p-8 border"
-          style={{ background: 'var(--surface-2)', borderColor: 'var(--fg-a05)' }}
+          style={{ background: '#0f0f0f', borderColor: 'rgba(255,255,255,0.05)' }}
         >
           <h3 className={labelClass} style={{ ...labelStyle, marginBottom: 20 }}>
             CREATIVE ALIGNMENT *

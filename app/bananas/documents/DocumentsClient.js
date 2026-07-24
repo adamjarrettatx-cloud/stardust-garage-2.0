@@ -19,19 +19,19 @@ function formatDate(s) {
 }
 
 const CONTRACT_STATUS_COLOR = {
-  draft: 'var(--text-3)', pending_review: 'var(--st-fbbf24)', sent: 'var(--st-60a5fa)',
-  partially_signed: 'var(--st-a78bfa)', signed: 'var(--st-4ade80)', declined: 'var(--st-f87171)',
-  void: 'var(--text-4)', expired: 'var(--st-f59e0b)',
+  draft: '#8a8a8a', pending_review: '#fbbf24', sent: '#60a5fa',
+  partially_signed: '#a78bfa', signed: '#4ade80', declined: '#f87171',
+  void: '#6b7280', expired: '#f59e0b',
 };
 
 const CATEGORY_COLORS = {
-  contracts: { color: 'var(--st-ffb84d)', bg: 'rgba(255,184,77,0.12)', border: 'rgba(255,184,77,0.3)' },
-  finance:   { color: 'var(--st-4ade80)', bg: 'rgba(74,222,128,0.10)', border: 'rgba(74,222,128,0.3)' },
-  sops:      { color: 'var(--st-a78bfa)', bg: 'rgba(167,139,250,0.10)', border: 'rgba(167,139,250,0.3)' },
-  vendor:    { color: 'var(--st-60a5fa)', bg: 'rgba(96,165,250,0.10)', border: 'rgba(96,165,250,0.3)' },
-  marketing: { color: 'var(--st-f472b6)', bg: 'rgba(244,114,182,0.10)', border: 'rgba(244,114,182,0.3)' },
-  team:      { color: 'var(--st-fbbf24)', bg: 'rgba(251,191,36,0.10)', border: 'rgba(251,191,36,0.3)' },
-  other:     { color: 'var(--text-3)', bg: 'rgba(255,255,255,0.04)', border: 'var(--fg-a1)' },
+  contracts: { color: '#ffb84d', bg: 'rgba(255,184,77,0.12)', border: 'rgba(255,184,77,0.3)' },
+  finance:   { color: '#4ade80', bg: 'rgba(74,222,128,0.10)', border: 'rgba(74,222,128,0.3)' },
+  sops:      { color: '#a78bfa', bg: 'rgba(167,139,250,0.10)', border: 'rgba(167,139,250,0.3)' },
+  vendor:    { color: '#60a5fa', bg: 'rgba(96,165,250,0.10)', border: 'rgba(96,165,250,0.3)' },
+  marketing: { color: '#f472b6', bg: 'rgba(244,114,182,0.10)', border: 'rgba(244,114,182,0.3)' },
+  team:      { color: '#fbbf24', bg: 'rgba(251,191,36,0.10)', border: 'rgba(251,191,36,0.3)' },
+  other:     { color: '#8a8a8a', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.10)' },
 };
 
 export default function DocumentsClient({ initialDocuments, initialError, events, categories, filters, contractTemplatesEnabled = false }) {
@@ -185,13 +185,13 @@ export default function DocumentsClient({ initialDocuments, initialError, events
           defaultValue={filters.q}
           onKeyDown={(e) => { if (e.key === 'Enter') setFilter('q', e.currentTarget.value); }}
           className="flex-1 min-w-[240px] px-4 py-2.5 text-[14px] rounded-[10px] outline-none focus:border-white/30"
-          style={{ background: 'var(--surface-1)', border: '1px solid var(--fg-a08)', color: 'white' }}
+          style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
         />
         <select
           value={filters.status || 'active'}
           onChange={(e) => setFilter('status', e.target.value)}
           className="px-3 py-2.5 text-[14px] rounded-[10px] outline-none cursor-pointer"
-          style={{ background: 'var(--surface-1)', border: '1px solid var(--fg-a08)', color: 'white' }}
+          style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
         >
           <option value="active">Active</option>
           <option value="draft">Draft</option>
@@ -203,14 +203,14 @@ export default function DocumentsClient({ initialDocuments, initialError, events
             <Link
               href="/bananas/documents/templates"
               className="px-4 py-2.5 text-[13px] font-semibold rounded-[10px] tracking-[0.06em] uppercase"
-              style={{ border: '1px solid var(--fg-a1)', color: 'white' }}
+              style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}
             >
               Templates
             </Link>
             <button
               onClick={openTemplatePicker}
               className="px-4 py-2.5 text-[13px] font-semibold rounded-[10px] tracking-[0.06em] uppercase"
-              style={{ border: '1px solid var(--fg-a1)', color: 'white' }}
+              style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}
             >
               + From template
             </button>
@@ -242,7 +242,7 @@ export default function DocumentsClient({ initialDocuments, initialError, events
               onClick={() => setFilter('category', c.value)}
               className="px-4 py-3 text-[13px] font-semibold tracking-[0.06em] uppercase whitespace-nowrap transition-colors"
               style={{
-                color: isActive ? 'white' : 'var(--text-3)',
+                color: isActive ? 'white' : '#8a8a8a',
                 borderBottom: isActive ? '2px solid white' : '2px solid transparent',
                 marginBottom: '-1px',
               }}
@@ -254,15 +254,15 @@ export default function DocumentsClient({ initialDocuments, initialError, events
       </div>
 
       {error && (
-        <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: 'var(--st-fca5a5)' }}>
+        <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
           {error}
         </div>
       )}
 
       {/* List */}
       {documents.length === 0 ? (
-        <div className="rounded-[14px] border p-12 text-center" style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a06)' }}>
-          <p style={{ color: 'var(--text-3)' }}>No documents yet. Click Upload to add the first one.</p>
+        <div className="rounded-[14px] border p-12 text-center" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.06)' }}>
+          <p style={{ color: '#8a8a8a' }}>No documents yet. Click Upload to add the first one.</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -277,7 +277,7 @@ export default function DocumentsClient({ initialDocuments, initialError, events
               <div
                 key={d.id}
                 className="rounded-[12px] border p-4 flex items-start gap-4 hover:border-white/20 transition-colors"
-                style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a06)' }}
+                style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.06)' }}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1.5 flex-wrap">
@@ -291,7 +291,7 @@ export default function DocumentsClient({ initialDocuments, initialError, events
                       {d.category}
                     </span>
                     {d.status !== 'active' && (
-                      <span className="text-[10px] tracking-[0.10em] uppercase px-2 py-0.5 rounded-[6px]" style={{ background: 'var(--fg-a05)', color: 'var(--text-3)' }}>
+                      <span className="text-[10px] tracking-[0.10em] uppercase px-2 py-0.5 rounded-[6px]" style={{ background: 'rgba(255,255,255,0.05)', color: '#8a8a8a' }}>
                         {d.status}
                       </span>
                     )}
@@ -299,15 +299,15 @@ export default function DocumentsClient({ initialDocuments, initialError, events
                       <span
                         className="text-[10px] tracking-[0.10em] uppercase px-2 py-0.5 rounded-[6px] font-semibold"
                         style={{
-                          background: `${CONTRACT_STATUS_COLOR[contractStatus] || 'var(--text-3)'}22`,
-                          color: CONTRACT_STATUS_COLOR[contractStatus] || 'var(--text-3)',
+                          background: `${CONTRACT_STATUS_COLOR[contractStatus] || '#8a8a8a'}22`,
+                          color: CONTRACT_STATUS_COLOR[contractStatus] || '#8a8a8a',
                         }}
                       >
                         {contractStatus.replace('_', ' ')}
                       </span>
                     )}
                   </div>
-                  <div className="text-[12px] flex flex-wrap gap-x-3 gap-y-1" style={{ color: 'var(--text-3)' }}>
+                  <div className="text-[12px] flex flex-wrap gap-x-3 gap-y-1" style={{ color: '#8a8a8a' }}>
                     {d.counterparty && <span>{d.counterparty}</span>}
                     {d.events && <span>· Event: {d.events.title}</span>}
                     {ver && <span>· v{ver.version_number} · {ver.filename} · {formatBytes(ver.size_bytes)}</span>}
@@ -316,7 +316,7 @@ export default function DocumentsClient({ initialDocuments, initialError, events
                   {tags.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
                       {tags.map((t) => (
-                        <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-[4px]" style={{ background: 'var(--fg-a05)', color: 'var(--text-3)' }}>
+                        <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-[4px]" style={{ background: 'rgba(255,255,255,0.05)', color: '#a8a8a8' }}>
                           #{t}
                         </span>
                       ))}
@@ -329,21 +329,21 @@ export default function DocumentsClient({ initialDocuments, initialError, events
                     target="_blank"
                     rel="noreferrer"
                     className="text-[12px] px-3 py-1.5 rounded-[8px] hover:bg-white/10"
-                    style={{ border: '1px solid var(--fg-a1)', color: 'white' }}
+                    style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}
                   >
                     View
                   </a>
                   <a
                     href={`/api/admin/documents/${d.id}/download`}
                     className="text-[12px] px-3 py-1.5 rounded-[8px] hover:bg-white/10"
-                    style={{ border: '1px solid var(--fg-a1)', color: 'white' }}
+                    style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}
                   >
                     Download
                   </a>
                   <button
                     onClick={() => handleDelete(d.id, d.title)}
                     className="text-[12px] px-3 py-1.5 rounded-[8px] hover:bg-red-500/10"
-                    style={{ border: '1px solid rgba(239,68,68,0.25)', color: 'var(--st-fca5a5)' }}
+                    style={{ border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5' }}
                   >
                     Delete
                   </button>
@@ -365,16 +365,16 @@ export default function DocumentsClient({ initialDocuments, initialError, events
             onSubmit={handleCreateFromTemplate}
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-[520px] rounded-[14px] border p-6 space-y-3"
-            style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a1)' }}
+            style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.10)' }}
           >
             <h2 className="text-[20px] font-bold mb-1">New contract from template</h2>
-            <p className="text-[12px] mb-4" style={{ color: 'var(--text-3)' }}>
+            <p className="text-[12px] mb-4" style={{ color: '#8a8a8a' }}>
               Clones the template PDF and its field layout into a new contract you can then customize, fill, and send.
             </p>
             {tplLoading ? (
-              <p className="text-[13px]" style={{ color: 'var(--text-3)' }}>Loading templates…</p>
+              <p className="text-[13px]" style={{ color: '#8a8a8a' }}>Loading templates…</p>
             ) : templates.length === 0 ? (
-              <p className="text-[13px]" style={{ color: 'var(--text-3)' }}>
+              <p className="text-[13px]" style={{ color: '#8a8a8a' }}>
                 No active templates.{' '}
                 <Link href="/bananas/documents/templates" className="underline">Create one first.</Link>
               </p>
@@ -385,7 +385,7 @@ export default function DocumentsClient({ initialDocuments, initialError, events
                   value={tplForm.template_id}
                   onChange={(e) => setTplForm({ ...tplForm, template_id: e.target.value })}
                   className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none cursor-pointer"
-                  style={{ background: 'var(--surface-3)', border: '1px solid var(--fg-a08)', color: 'white' }}
+                  style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
                 >
                   <option value="">Choose a template…</option>
                   {templates.map((t) => (
@@ -397,20 +397,20 @@ export default function DocumentsClient({ initialDocuments, initialError, events
                   value={tplForm.title}
                   onChange={(e) => setTplForm({ ...tplForm, title: e.target.value })}
                   className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none"
-                  style={{ background: 'var(--surface-3)', border: '1px solid var(--fg-a08)', color: 'white' }}
+                  style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
                 />
                 <input
                   placeholder="Counterparty (optional)"
                   value={tplForm.counterparty}
                   onChange={(e) => setTplForm({ ...tplForm, counterparty: e.target.value })}
                   className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none"
-                  style={{ background: 'var(--surface-3)', border: '1px solid var(--fg-a08)', color: 'white' }}
+                  style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
                 />
               </>
             )}
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setShowTemplatePicker(false)} disabled={creatingFromTpl}
-                className="px-4 py-2 text-[13px] rounded-[10px]" style={{ border: '1px solid var(--fg-a1)', color: 'white' }}>
+                className="px-4 py-2 text-[13px] rounded-[10px]" style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}>
                 Cancel
               </button>
               <button type="submit" disabled={creatingFromTpl || !tplForm.template_id}
@@ -434,10 +434,10 @@ export default function DocumentsClient({ initialDocuments, initialError, events
             onSubmit={handleUpload}
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-[520px] rounded-[14px] border p-6 space-y-3"
-            style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a1)' }}
+            style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.10)' }}
           >
             <h2 className="text-[20px] font-bold mb-1">Upload document</h2>
-            <p className="text-[12px] mb-4" style={{ color: 'var(--text-3)' }}>
+            <p className="text-[12px] mb-4" style={{ color: '#8a8a8a' }}>
               File is stored in a private bucket. Only admins can access it. All actions are logged.
             </p>
             <input
@@ -446,14 +446,14 @@ export default function DocumentsClient({ initialDocuments, initialError, events
               value={f.title}
               onChange={(e) => setF({ ...f, title: e.target.value })}
               className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none"
-              style={{ background: 'var(--surface-3)', border: '1px solid var(--fg-a08)', color: 'white' }}
+              style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
             />
             <div className="grid grid-cols-2 gap-3">
               <select
                 value={f.category}
                 onChange={(e) => setF({ ...f, category: e.target.value })}
                 className="px-3 py-2.5 text-[14px] rounded-[10px] outline-none cursor-pointer"
-                style={{ background: 'var(--surface-3)', border: '1px solid var(--fg-a08)', color: 'white' }}
+                style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
               >
                 {categories.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
@@ -462,14 +462,14 @@ export default function DocumentsClient({ initialDocuments, initialError, events
                 value={f.counterparty}
                 onChange={(e) => setF({ ...f, counterparty: e.target.value })}
                 className="px-3 py-2.5 text-[14px] rounded-[10px] outline-none"
-                style={{ background: 'var(--surface-3)', border: '1px solid var(--fg-a08)', color: 'white' }}
+                style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
               />
             </div>
             <select
               value={f.event_id}
               onChange={(e) => setF({ ...f, event_id: e.target.value })}
               className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none cursor-pointer"
-              style={{ background: 'var(--surface-3)', border: '1px solid var(--fg-a08)', color: 'white' }}
+              style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
             >
               <option value="">No event link</option>
               {events.map((ev) => (
@@ -483,7 +483,7 @@ export default function DocumentsClient({ initialDocuments, initialError, events
               value={f.tags}
               onChange={(e) => setF({ ...f, tags: e.target.value })}
               className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none"
-              style={{ background: 'var(--surface-3)', border: '1px solid var(--fg-a08)', color: 'white' }}
+              style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
             />
             <textarea
               placeholder="Notes / description (optional)"
@@ -491,16 +491,16 @@ export default function DocumentsClient({ initialDocuments, initialError, events
               onChange={(e) => setF({ ...f, description: e.target.value })}
               rows={2}
               className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none resize-none"
-              style={{ background: 'var(--surface-3)', border: '1px solid var(--fg-a08)', color: 'white' }}
+              style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
             />
             <input
               required
               type="file"
               onChange={(e) => setF({ ...f, file: e.target.files?.[0] || null })}
               className="w-full text-[13px]"
-              style={{ color: 'var(--text-3)' }}
+              style={{ color: '#a8a8a8' }}
             />
-            <p className="text-[11px]" style={{ color: 'var(--text-4)' }}>
+            <p className="text-[11px]" style={{ color: '#666' }}>
               Max 100 MB. PDF, Office docs, images, CSV, ZIP.
             </p>
             <div className="flex justify-end gap-2 pt-2">
@@ -509,7 +509,7 @@ export default function DocumentsClient({ initialDocuments, initialError, events
                 onClick={() => setShowUpload(false)}
                 disabled={uploading}
                 className="px-4 py-2 text-[13px] rounded-[10px]"
-                style={{ border: '1px solid var(--fg-a1)', color: 'white' }}
+                style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}
               >
                 Cancel
               </button>
