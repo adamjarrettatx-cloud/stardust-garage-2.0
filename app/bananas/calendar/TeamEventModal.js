@@ -44,11 +44,52 @@ const FREQ_OPTIONS = [
   { value: 'monthly',  label: 'Monthly' },
 ];
 
+// Modal palettes, kept in sync with the calendar page's light/dark toggle.
+const MODAL_THEMES = {
+  dark: {
+    overlay: 'rgba(0,0,0,0.75)',
+    panelBg: '#141414',
+    panelBorder: 'rgba(255,255,255,0.1)',
+    text: '#f5f5f5',
+    textStrong: '#ffffff',
+    muted: '#8a8a8a',
+    mutedStrong: '#aaaaaa',
+    inputBg: '#1a1a1a',
+    inputBorder: 'rgba(255,255,255,0.12)',
+    swatchBg: '#1a1a1a',
+    swatchBorder: 'rgba(255,255,255,0.08)',
+    hoverBg: 'rgba(255,255,255,0.05)',
+    saveBg: '#ffffff',
+    saveText: '#0a0a0a',
+    cancelBorder: 'rgba(255,255,255,0.15)',
+    divider: 'rgba(255,255,255,0.06)',
+  },
+  light: {
+    overlay: 'rgba(20,18,14,0.45)',
+    panelBg: '#ffffff',
+    panelBorder: 'rgba(0,0,0,0.1)',
+    text: '#1a1a1d',
+    textStrong: '#000000',
+    muted: '#5c5c63',
+    mutedStrong: '#3a3a40',
+    inputBg: '#f5f4f1',
+    inputBorder: 'rgba(0,0,0,0.15)',
+    swatchBg: '#f5f4f1',
+    swatchBorder: 'rgba(0,0,0,0.1)',
+    hoverBg: 'rgba(0,0,0,0.05)',
+    saveBg: '#1a1a1d',
+    saveText: '#ffffff',
+    cancelBorder: 'rgba(0,0,0,0.15)',
+    divider: 'rgba(0,0,0,0.08)',
+  },
+};
+
 export default function TeamEventModal({
   mode,
   event,
   defaultDate,
   categories,
+  theme = 'dark',
   onSave,
   onSaveBatch,
   onDelete,
@@ -56,6 +97,7 @@ export default function TeamEventModal({
 }) {
   const isEdit = mode === 'edit';
   const supabase = createClient();
+  const m = MODAL_THEMES[theme] || MODAL_THEMES.dark;
 
   const [title, setTitle] = useState(event?.title || '');
   const [eventDate, setEventDate] = useState(
@@ -218,36 +260,38 @@ export default function TeamEventModal({
   };
 
   const inputStyle = {
-    background: '#1a1a1a',
-    borderColor: 'rgba(255,255,255,0.12)',
-    color: '#f5f5f5',
+    background: m.inputBg,
+    borderColor: m.inputBorder,
+    color: m.text,
   };
-  const inputClass = 'w-full px-4 py-3 rounded-[10px] text-[14px] outline-none border transition-colors focus:border-white/30';
-  const labelClass = 'block text-[11px] font-semibold tracking-[0.14em] mb-1.5';
-  const labelStyle = { color: '#8a8a8a' };
+  const inputClass = 'w-full px-4 py-3 rounded-[10px] text-[15px] outline-none border transition-colors focus:border-white/30';
+  const labelClass = 'block text-[12px] font-semibold tracking-[0.14em] mb-1.5';
+  const labelStyle = { color: m.muted };
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center px-4"
-      style={{ background: 'rgba(0,0,0,0.75)' }}
+      style={{ background: m.overlay }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
         className="w-full max-w-[480px] rounded-[16px] border p-7 max-h-[90vh] overflow-y-auto"
-        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.1)' }}
+        style={{ background: m.panelBg, borderColor: m.panelBorder, color: m.text }}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h2
             className="text-[22px] font-extrabold -tracking-[0.01em]"
-            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: m.textStrong }}
           >
             {isEdit ? 'Edit Event' : 'Add Team Event'}
           </h2>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-[20px] leading-none transition-colors hover:bg-white/10"
-            style={{ color: '#8a8a8a' }}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[20px] leading-none transition-colors"
+            style={{ color: m.muted }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = m.hoverBg; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
           >
             ×
           </button>
@@ -318,11 +362,11 @@ export default function TeamEventModal({
                   key={key}
                   type="button"
                   onClick={() => setCategory(key)}
-                  className="py-2.5 px-3 rounded-[10px] border text-left text-[12px] font-semibold transition-all flex items-center gap-2"
+                  className="py-2.5 px-3 rounded-[10px] border text-left text-[13px] font-semibold transition-all flex items-center gap-2"
                   style={{
-                    background: category === key ? cat.color : '#1a1a1a',
-                    borderColor: category === key ? cat.color : 'rgba(255,255,255,0.08)',
-                    color: category === key ? cat.text : '#aaa',
+                    background: category === key ? cat.color : m.swatchBg,
+                    borderColor: category === key ? cat.color : m.swatchBorder,
+                    color: category === key ? cat.text : m.mutedStrong,
                   }}
                 >
                   <span
@@ -343,17 +387,17 @@ export default function TeamEventModal({
                 onClick={() => setRecurring(r => !r)}
                 className="w-full flex items-center justify-between px-4 py-3.5 rounded-[10px] border transition-all"
                 style={{
-                  background: recurring ? 'rgba(139,92,246,0.15)' : '#1a1a1a',
-                  borderColor: recurring ? 'rgba(139,92,246,0.5)' : 'rgba(255,255,255,0.1)',
+                  background: recurring ? 'rgba(139,92,246,0.15)' : m.swatchBg,
+                  borderColor: recurring ? 'rgba(139,92,246,0.5)' : m.inputBorder,
                 }}
               >
                 <div className="flex items-center gap-3">
                   <span className="text-[18px]">🔁</span>
                   <div className="text-left">
-                    <div className="text-[13px] font-semibold" style={{ color: recurring ? '#c4b5fd' : '#f5f5f5' }}>
+                    <div className="text-[14px] font-semibold" style={{ color: recurring ? '#8b5cf6' : m.text }}>
                       Recurring Event
                     </div>
-                    <div className="text-[11px]" style={{ color: '#8a8a8a' }}>
+                    <div className="text-[12px]" style={{ color: m.muted }}>
                       Repeat on a schedule
                     </div>
                   </div>
@@ -381,18 +425,18 @@ export default function TeamEventModal({
                 >
                   {/* Frequency */}
                   <div>
-                    <label className={labelClass} style={{ color: '#c4b5fd' }}>FREQUENCY</label>
+                    <label className={labelClass} style={{ color: '#8b5cf6' }}>FREQUENCY</label>
                     <div className="grid grid-cols-3 gap-2">
                       {FREQ_OPTIONS.map(opt => (
                         <button
                           key={opt.value}
                           type="button"
                           onClick={() => setRecurrenceFreq(opt.value)}
-                          className="py-2.5 rounded-[8px] text-[12px] font-semibold border transition-all"
+                          className="py-2.5 rounded-[8px] text-[13px] font-semibold border transition-all"
                           style={{
-                            background: recurrenceFreq === opt.value ? '#8b5cf6' : '#1a1a1a',
-                            borderColor: recurrenceFreq === opt.value ? '#8b5cf6' : 'rgba(255,255,255,0.08)',
-                            color: recurrenceFreq === opt.value ? '#fff' : '#aaa',
+                            background: recurrenceFreq === opt.value ? '#8b5cf6' : m.swatchBg,
+                            borderColor: recurrenceFreq === opt.value ? '#8b5cf6' : m.swatchBorder,
+                            color: recurrenceFreq === opt.value ? '#fff' : m.mutedStrong,
                           }}
                         >
                           {opt.label}
@@ -403,7 +447,7 @@ export default function TeamEventModal({
 
                   {/* End date */}
                   <div>
-                    <label className={labelClass} style={{ color: '#c4b5fd' }}>REPEAT UNTIL</label>
+                    <label className={labelClass} style={{ color: '#8b5cf6' }}>REPEAT UNTIL</label>
                     <input
                       type="date"
                       value={recurrenceEnd}
@@ -418,8 +462,8 @@ export default function TeamEventModal({
                   {/* Preview */}
                   {occurrenceCount !== null && (
                     <div
-                      className="text-[12px] font-semibold text-center py-2 rounded-[8px]"
-                      style={{ background: 'rgba(139,92,246,0.15)', color: '#c4b5fd' }}
+                      className="text-[13px] font-semibold text-center py-2 rounded-[8px]"
+                      style={{ background: 'rgba(139,92,246,0.15)', color: theme === 'light' ? '#6d28d9' : '#c4b5fd' }}
                     >
                       {occurrenceCount === 1
                         ? '1 occurrence will be created'
@@ -435,10 +479,10 @@ export default function TeamEventModal({
           {isEdit && event?.is_recurring && (
             <div
               className="flex items-center gap-2 px-3 py-2 rounded-[8px] text-[12px] font-semibold"
-              style={{ background: 'rgba(139,92,246,0.15)', color: '#c4b5fd', border: '1px solid rgba(139,92,246,0.3)' }}
+              style={{ background: 'rgba(139,92,246,0.15)', color: theme === 'light' ? '#6d28d9' : '#c4b5fd', border: '1px solid rgba(139,92,246,0.3)' }}
             >
               🔁 Part of a recurring series ({event.recurrence_freq})
-              <span className="text-[11px] font-normal ml-auto" style={{ color: '#8a8a8a' }}>
+              <span className="text-[12px] font-normal ml-auto" style={{ color: m.muted }}>
                 editing this occurrence only
               </span>
             </div>
@@ -469,7 +513,7 @@ export default function TeamEventModal({
               type="submit"
               disabled={saving}
               className="flex-1 py-3.5 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
-              style={{ background: '#ffffff', color: '#0a0a0a' }}
+              style={{ background: m.saveBg, color: m.saveText }}
             >
               {saving
                 ? 'SAVING...'
@@ -482,8 +526,10 @@ export default function TeamEventModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-3.5 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"
-              style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
+              className="px-6 py-3.5 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors"
+              style={{ borderColor: m.cancelBorder, color: m.text }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = m.hoverBg; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
             >
               CANCEL
             </button>
@@ -491,11 +537,11 @@ export default function TeamEventModal({
 
           {/* ── DELETE (edit mode) ── */}
           {isEdit && (
-            <div className="pt-1 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+            <div className="pt-1 border-t" style={{ borderColor: m.divider }}>
               {deleteScope === 'picker' ? (
                 // Series delete picker
                 <div className="mt-3 space-y-2">
-                  <p className="text-[12px] text-center mb-3" style={{ color: '#8a8a8a' }}>
+                  <p className="text-[13px] text-center mb-3" style={{ color: m.muted }}>
                     This is a recurring event. What do you want to delete?
                   </p>
                   <button
@@ -519,8 +565,8 @@ export default function TeamEventModal({
                   <button
                     type="button"
                     onClick={() => setDeleteScope(null)}
-                    className="w-full py-2 text-[11px] transition-opacity hover:opacity-70"
-                    style={{ color: '#8a8a8a' }}
+                    className="w-full py-2 text-[12px] transition-opacity hover:opacity-70"
+                    style={{ color: m.muted }}
                   >
                     Cancel
                   </button>
@@ -536,14 +582,14 @@ export default function TeamEventModal({
                   >
                     {deleting ? 'DELETING...' : 'CONFIRM DELETE'}
                   </button>
-                  <p className="text-[11px] text-center" style={{ color: '#8a8a8a' }}>
+                  <p className="text-[12px] text-center" style={{ color: m.muted }}>
                     This cannot be undone.
                   </p>
                   <button
                     type="button"
                     onClick={() => setConfirmDelete(false)}
-                    className="w-full py-1.5 text-[11px] transition-opacity hover:opacity-70"
-                    style={{ color: '#8a8a8a' }}
+                    className="w-full py-1.5 text-[12px] transition-opacity hover:opacity-70"
+                    style={{ color: m.muted }}
                   >
                     Cancel
                   </button>
