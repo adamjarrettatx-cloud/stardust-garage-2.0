@@ -313,6 +313,7 @@ function AdminProgressView({ initialTasks, assignees, isOwner, todayIso }) {
         <TaskDrawer
           task={drawerTask}
           assignees={assignees}
+          theme={theme}
           canManage
           canDelete={isOwner}
           onClose={() => setDrawerTask(null)}
@@ -434,6 +435,7 @@ function TeamProgressView({ initialTasks, assignees, currentUserName, todayIso }
         <TaskDrawer
           task={drawerTask}
           assignees={assignees}
+          theme={theme}
           onClose={() => setDrawerTask(null)}
           onChanged={refresh}
         />
