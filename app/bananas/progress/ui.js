@@ -35,11 +35,19 @@ export function PriorityBadge({ value }) {
   );
 }
 
-export function DeptChip({ slug }) {
+// `theme` is optional and defaults to the original dark-only styling so
+// existing (dark-only) callers like the admin progress board are unaffected.
+// Pass theme="light" from a page that has its own light/dark toggle (e.g.
+// app/team/progress/TeamProgressClient.js) to keep this chip legible on a
+// light background.
+export function DeptChip({ slug, theme = 'dark' }) {
+  const style = theme === 'light'
+    ? { background: 'rgba(0,0,0,0.06)', color: '#4a4a52' }
+    : { background: 'rgba(255,255,255,0.06)', color: '#c0c0c0' };
   return (
     <span
       className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold tracking-[0.06em]"
-      style={{ background: 'rgba(255,255,255,0.06)', color: '#c0c0c0' }}
+      style={style}
     >
       {departmentLabel(slug)}
     </span>

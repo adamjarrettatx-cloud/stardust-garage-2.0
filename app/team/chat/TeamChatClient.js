@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import ThemeToggle from '@/app/components/ThemeToggle';
 import {
   channelDisplayName,
   channelHasUnread,
@@ -11,9 +12,68 @@ import {
   formatMessageTime,
 } from '@/lib/chat';
 
+const THEME_KEY = 'sdg-team-chat-theme';
+
+// Local, page-scoped light/dark palette — mirrors the pattern used by the
+// admin Team Calendar (app/bananas/calendar/CalendarClient.js). Dark values
+// are the original hardcoded colors this page always used; light values are
+// new. No global theme system involved.
+const THEMES = {
+  dark: {
+    text: '#f5f5f5',
+    muted: '#8a8a8a',
+    faint: '#555',
+    accent: '#ffb84d',
+    pageBg: 'transparent',
+    panelBg: '#141414',
+    inputBg: '#0f0f0f',
+    border: 'rgba(255,255,255,0.08)',
+    borderStrong: 'rgba(255,255,255,0.15)',
+    activeRowBg: 'rgba(255,255,255,0.08)',
+    inactiveText: '#bbb',
+    bodyText: '#ddd',
+    sendBg: '#ffffff',
+    sendText: '#0a0a0a',
+  },
+  light: {
+    text: '#1a1a1d',
+    muted: '#5c5c63',
+    faint: '#9a948a',
+    accent: '#8a5109',
+    pageBg: '#f2efe8',
+    panelBg: '#ffffff',
+    inputBg: '#f5f2ec',
+    border: 'rgba(0,0,0,0.12)',
+    borderStrong: 'rgba(0,0,0,0.18)',
+    activeRowBg: 'rgba(0,0,0,0.06)',
+    inactiveText: '#5c5c63',
+    bodyText: '#3a3a40',
+    sendBg: '#1a1a1d',
+    sendText: '#ffffff',
+  },
+};
+
 export default function TeamChatClient({ currentUserId, currentUserName }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
+
+  const [theme, setTheme] = useState('dark');
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(THEME_KEY);
+      if (saved === 'light' || saved === 'dark') setTheme(saved);
+    } catch {
+      // localStorage unavailable — fall back to default dark theme silently.
+    }
+  }, []);
+  const toggleTheme = () => {
+    setTheme((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      try { window.localStorage.setItem(THEME_KEY, next); } catch {}
+      return next;
+    });
+  };
+  const t = THEMES[theme];
 
   const [channels, setChannels] = useState([]);        // chat_channels rows I belong to
   const [roster, setRoster] = useState([]);            // chat_channel_members rows (my channels)
@@ -250,30 +310,34 @@ export default function TeamChatClient({ currentUserId, currentUserName }) {
   }, [channels, roster, currentUserId]);
 
   return (
-    <main className="max-w-[1400px] mx-auto px-6 py-12">
+    <main
+      className="max-w-[1400px] mx-auto px-6 py-12 transition-colors duration-150"
+      style={{ background: t.pageBg, color: t.text }}
+    >
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
         <div>
-          <Link href="/team/calendar" className="text-[12px] tracking-[0.1em] hover:underline" style={{ color: '#8a8a8a' }}>← TEAM</Link>
-          <h1 className="text-[36px] font-extrabold -tracking-[0.02em] leading-[1.1] mt-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+          <Link href="/team/calendar" className="text-[12px] tracking-[0.1em] hover:underline" style={{ color: t.muted }}>← TEAM</Link>
+          <h1 className="text-[36px] font-extrabold -tracking-[0.02em] leading-[1.1] mt-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.text }}>
             Team Chat
           </h1>
-          <p className="text-[13px] mt-1" style={{ color: '#8a8a8a' }}>
+          <p className="text-[13px] mt-1" style={{ color: t.muted }}>
             {currentUserName} · channels &amp; direct messages
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <Link
             href="/team/progress"
             className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"
-            style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#ffb84d' }}
+            style={{ borderColor: t.borderStrong, color: t.accent }}
           >
             PROGRESS
           </Link>
           <button
             onClick={handleSignOut}
             className="px-4 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"
-            style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#8a8a8a' }}
+            style={{ borderColor: t.borderStrong, color: t.muted }}
           >
             SIGN OUT
           </button>
@@ -282,12 +346,12 @@ export default function TeamChatClient({ currentUserId, currentUserName }) {
 
       <div className="flex gap-5 h-[70vh] min-h-[480px]">
         {/* Sidebar */}
-        <aside className="w-[260px] flex-shrink-0 rounded-[14px] border overflow-y-auto" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.08)' }}>
+        <aside className="w-[260px] flex-shrink-0 rounded-[14px] border overflow-y-auto" style={{ background: t.panelBg, borderColor: t.border }}>
           <div className="p-4">
-            <div className="text-[10px] font-semibold tracking-[0.12em] mb-2" style={{ color: '#8a8a8a' }}>CHANNELS</div>
+            <div className="text-[10px] font-semibold tracking-[0.12em] mb-2" style={{ color: t.muted }}>CHANNELS</div>
             <div className="space-y-1">
               {groupChannels.length === 0 && !loading && (
-                <p className="text-[12px]" style={{ color: '#555' }}>No channels yet.</p>
+                <p className="text-[12px]" style={{ color: t.faint }}>No channels yet.</p>
               )}
               {groupChannels.map((c) => (
                 <SidebarRow
@@ -296,24 +360,26 @@ export default function TeamChatClient({ currentUserId, currentUserName }) {
                   unread={isUnread(c.id)}
                   onClick={() => setSelectedId(c.id)}
                   label={`# ${channelDisplayName(c, roster, teamByUserId, currentUserId)}`}
+                  t={t}
                 />
               ))}
             </div>
 
-            <div className="text-[10px] font-semibold tracking-[0.12em] mt-6 mb-2" style={{ color: '#8a8a8a' }}>DIRECT MESSAGES</div>
+            <div className="text-[10px] font-semibold tracking-[0.12em] mt-6 mb-2" style={{ color: t.muted }}>DIRECT MESSAGES</div>
             <div className="space-y-1">
               {team.length === 0 && !loading && (
-                <p className="text-[12px]" style={{ color: '#555' }}>No teammates found.</p>
+                <p className="text-[12px]" style={{ color: t.faint }}>No teammates found.</p>
               )}
-              {team.map((t) => {
-                const dmId = dmChannelByUser[t.user_id];
+              {team.map((member) => {
+                const dmId = dmChannelByUser[member.user_id];
                 return (
                   <SidebarRow
-                    key={t.user_id}
+                    key={member.user_id}
                     active={dmId != null && dmId === selectedId}
                     unread={dmId != null && isUnread(dmId)}
-                    onClick={() => (dmId ? setSelectedId(dmId) : openDm(t.user_id))}
-                    label={t.full_name || t.email}
+                    onClick={() => (dmId ? setSelectedId(dmId) : openDm(member.user_id))}
+                    label={member.full_name || member.email}
+                    t={t}
                   />
                 );
               })}
@@ -322,19 +388,19 @@ export default function TeamChatClient({ currentUserId, currentUserName }) {
         </aside>
 
         {/* Thread */}
-        <section className="flex-1 min-w-0 flex flex-col rounded-[14px] border" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.08)' }}>
-          <div className="px-5 py-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-            <h2 className="text-[16px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        <section className="flex-1 min-w-0 flex flex-col rounded-[14px] border" style={{ background: t.panelBg, borderColor: t.border }}>
+          <div className="px-5 py-4 border-b" style={{ borderColor: t.border }}>
+            <h2 className="text-[16px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.text }}>
               {selectedChannel ? (selectedChannel.type === 'dm' ? selectedTitle : `# ${selectedTitle}`) : 'Select a conversation'}
             </h2>
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
             {!selectedId && (
-              <p className="text-[13px]" style={{ color: '#555' }}>Pick a channel or teammate to start chatting.</p>
+              <p className="text-[13px]" style={{ color: t.faint }}>Pick a channel or teammate to start chatting.</p>
             )}
             {selectedId && messages.length === 0 && (
-              <p className="text-[13px]" style={{ color: '#555' }}>No messages yet. Say hello.</p>
+              <p className="text-[13px]" style={{ color: t.faint }}>No messages yet. Say hello.</p>
             )}
             {messages.map((m) => {
               const sender = teamByUserId[m.sender_id];
@@ -343,10 +409,10 @@ export default function TeamChatClient({ currentUserId, currentUserName }) {
               return (
                 <div key={m.id} className="flex flex-col">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-[13px] font-bold" style={{ color: mine ? '#ffb84d' : '#f5f5f5' }}>{name}</span>
-                    <span className="text-[10px]" style={{ color: '#555' }}>{formatMessageTime(m.created_at)}</span>
+                    <span className="text-[13px] font-bold" style={{ color: mine ? t.accent : t.text }}>{name}</span>
+                    <span className="text-[10px]" style={{ color: t.faint }}>{formatMessageTime(m.created_at)}</span>
                   </div>
-                  <div className="text-[14px] whitespace-pre-wrap break-words mt-0.5" style={{ color: '#ddd' }}>{m.body}</div>
+                  <div className="text-[14px] whitespace-pre-wrap break-words mt-0.5" style={{ color: t.bodyText }}>{m.body}</div>
                 </div>
               );
             })}
@@ -355,7 +421,7 @@ export default function TeamChatClient({ currentUserId, currentUserName }) {
 
           {/* Composer */}
           {selectedId && (
-            <div className="px-4 py-3 border-t flex items-end gap-3" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+            <div className="px-4 py-3 border-t flex items-end gap-3" style={{ borderColor: t.border }}>
               <textarea
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
@@ -363,13 +429,13 @@ export default function TeamChatClient({ currentUserId, currentUserName }) {
                 rows={1}
                 placeholder="Type a message… (Enter to send, Shift+Enter for newline)"
                 className="flex-1 resize-none rounded-[12px] px-4 py-3 text-[14px] outline-none"
-                style={{ background: '#0f0f0f', border: '1px solid rgba(255,255,255,0.12)', color: '#f5f5f5', maxHeight: '120px' }}
+                style={{ background: t.inputBg, border: `1px solid ${t.borderStrong}`, color: t.text, maxHeight: '120px' }}
               />
               <button
                 onClick={sendMessage}
                 disabled={sending || !draft.trim()}
                 className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0"
-                style={{ background: '#ffffff', color: '#0a0a0a' }}
+                style={{ background: t.sendBg, color: t.sendText }}
               >
                 {sending ? 'SENDING…' : 'SEND'}
               </button>
@@ -381,18 +447,18 @@ export default function TeamChatClient({ currentUserId, currentUserName }) {
   );
 }
 
-function SidebarRow({ active, unread, onClick, label }) {
+function SidebarRow({ active, unread, onClick, label, t }) {
   return (
     <button
       onClick={onClick}
       className="w-full text-left px-3 py-2 rounded-[10px] text-[13px] flex items-center gap-2 transition-colors"
       style={{
-        background: active ? 'rgba(255,255,255,0.08)' : 'transparent',
-        color: active ? '#f5f5f5' : '#bbb',
+        background: active ? t.activeRowBg : 'transparent',
+        color: active ? t.text : t.inactiveText,
       }}
     >
-      <span className="truncate flex-1" style={{ fontWeight: unread ? 700 : 400, color: unread && !active ? '#f5f5f5' : undefined }}>{label}</span>
-      {unread && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#ffb84d' }} />}
+      <span className="truncate flex-1" style={{ fontWeight: unread ? 700 : 400, color: unread && !active ? t.text : undefined }}>{label}</span>
+      {unread && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: t.accent }} />}
     </button>
   );
 }
