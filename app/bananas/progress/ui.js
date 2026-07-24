@@ -11,7 +11,7 @@ const STATUS_MAP = Object.fromEntries(STATUSES.map((s) => [s.value, s]));
 const PRIORITY_MAP = Object.fromEntries(PRIORITIES.map((p) => [p.value, p]));
 
 export function StatusBadge({ value }) {
-  const s = STATUS_MAP[value] || { color: 'var(--text-3)', label: value };
+  const s = STATUS_MAP[value] || { color: '#8a8a8a', label: value };
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
@@ -24,7 +24,7 @@ export function StatusBadge({ value }) {
 }
 
 export function PriorityBadge({ value }) {
-  const p = PRIORITY_MAP[value] || { color: 'var(--text-4)', label: value };
+  const p = PRIORITY_MAP[value] || { color: '#6b7280', label: value };
   return (
     <span
       className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold tracking-[0.08em] uppercase"
@@ -39,7 +39,7 @@ export function DeptChip({ slug }) {
   return (
     <span
       className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold tracking-[0.06em]"
-      style={{ background: 'var(--fg-a06)', color: 'var(--text-2)' }}
+      style={{ background: 'rgba(255,255,255,0.06)', color: '#c0c0c0' }}
     >
       {departmentLabel(slug)}
     </span>
@@ -50,10 +50,10 @@ export function DeptChip({ slug }) {
 // when the task is healthy.
 export function AttentionFlags({ flags }) {
   const items = [];
-  if (flags.overdue) items.push({ label: `Overdue ${Math.abs(flags.daysUntilDue)}d`, color: 'var(--st-ef4444)' });
-  if (flags.isBlocked) items.push({ label: 'Blocked', color: 'var(--st-ef4444)' });
-  if (flags.stale) items.push({ label: 'Stale update', color: 'var(--st-f59e0b)' });
-  if (flags.dueSoon && !flags.overdue) items.push({ label: `Due ${flags.daysUntilDue}d`, color: 'var(--st-f59e0b)' });
+  if (flags.overdue) items.push({ label: `Overdue ${Math.abs(flags.daysUntilDue)}d`, color: '#ef4444' });
+  if (flags.isBlocked) items.push({ label: 'Blocked', color: '#ef4444' });
+  if (flags.stale) items.push({ label: 'Stale update', color: '#f59e0b' });
+  if (flags.dueSoon && !flags.overdue) items.push({ label: `Due ${flags.daysUntilDue}d`, color: '#f59e0b' });
   if (items.length === 0) return null;
   return (
     <span className="inline-flex flex-wrap gap-1.5">

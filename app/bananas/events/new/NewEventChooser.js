@@ -16,14 +16,14 @@ export default function NewEventChooser() {
   if (mode === 'ticketed') return <TtEventCreator />;
   if (mode === 'manual') return <EventForm />;
 
-  const cardStyle = { background: 'var(--surface-1)', borderColor: 'var(--fg-a08)' };
+  const cardStyle = { background: '#141414', borderColor: 'rgba(255,255,255,0.08)' };
 
   return (
     <main className="max-w-[700px] mx-auto px-6 py-16">
       <Link
         href="/bananas"
         className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70"
-        style={{ color: 'var(--text-3)' }}
+        style={{ color: '#8a8a8a' }}
       >
         ← BACK TO ADMIN
       </Link>
@@ -34,7 +34,7 @@ export default function NewEventChooser() {
       >
         New Event
       </h1>
-      <p className="text-[13px] mb-10" style={{ color: 'var(--text-3)' }}>
+      <p className="text-[13px] mb-10" style={{ color: '#8a8a8a' }}>
         How do you want to create this event?
       </p>
 
@@ -48,7 +48,7 @@ export default function NewEventChooser() {
           <div className="text-[17px] font-bold mb-1.5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             Ticketed event (TicketTailor)
           </div>
-          <div className="text-[13px] leading-[1.6]" style={{ color: 'var(--text-3)' }}>
+          <div className="text-[13px] leading-[1.6]" style={{ color: '#8a8a8a' }}>
             Creates and publishes the website event and a TicketTailor event series together — date,
             times and ticket types included. Both go live immediately.
           </div>
@@ -63,7 +63,7 @@ export default function NewEventChooser() {
           <div className="text-[17px] font-bold mb-1.5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             Manual / private event
           </div>
-          <div className="text-[13px] leading-[1.6]" style={{ color: 'var(--text-3)' }}>
+          <div className="text-[13px] leading-[1.6]" style={{ color: '#8a8a8a' }}>
             The classic form — website event only. Link an existing TicketTailor series or paste an
             external ticket URL, or leave it as a private (no-ticket) event.
           </div>

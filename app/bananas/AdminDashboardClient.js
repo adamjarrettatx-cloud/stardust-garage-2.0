@@ -13,13 +13,13 @@ function Tile({ href, eyebrow, title, count = 0 }) {
       href={href}
       className="relative rounded-[14px] p-5 border transition-colors hover:border-white/20"
       style={{
-        background: isHighlighted ? 'var(--st-tint-amber-2)' : 'var(--surface-1)',
+        background: isHighlighted ? '#1f1c14' : '#141414',
         borderColor: isHighlighted ? 'rgba(255,200,80,0.25)' : 'rgba(255,255,255,0.05)',
       }}
     >
       <div
         className="text-[10px] font-semibold tracking-[0.14em] mb-1.5"
-        style={{ color: 'var(--text-3)' }}
+        style={{ color: '#8a8a8a' }}
       >
         {eyebrow}
       </div>
@@ -33,7 +33,7 @@ function Tile({ href, eyebrow, title, count = 0 }) {
         <span
           className="absolute top-3 right-3 inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-[11px] font-bold leading-none"
           style={{
-            background: 'var(--st-ffb84d)',
+            background: '#ffb84d',
             color: '#0a0a0a',
             fontFamily: "'Plus Jakarta Sans', sans-serif",
           }}
@@ -62,8 +62,8 @@ function TabBar({ tabs, active, onChange }) {
             onClick={() => onChange(tab.id)}
             className="px-4 py-2 rounded-full text-[12px] font-semibold tracking-[0.1em] transition-colors"
             style={{
-              background: isActive ? 'var(--st-ffb84d)' : 'rgba(255,255,255,0.06)',
-              color: isActive ? '#0a0a0a' : 'var(--text-2)',
+              background: isActive ? '#ffb84d' : 'rgba(255,255,255,0.06)',
+              color: isActive ? '#0a0a0a' : '#c0c0c0',
               fontFamily: "'Plus Jakarta Sans', sans-serif",
               border: 'none',
               cursor: 'pointer',
@@ -74,7 +74,7 @@ function TabBar({ tabs, active, onChange }) {
               <span
                 className="ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-none"
                 style={{
-                  background: isActive ? 'rgba(0,0,0,0.25)' : 'var(--st-ffb84d)',
+                  background: isActive ? 'rgba(0,0,0,0.25)' : '#ffb84d',
                   color: isActive ? '#0a0a0a' : '#0a0a0a',
                 }}
               >

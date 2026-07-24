@@ -25,7 +25,7 @@ export default async function HomePage() {
       <main className="min-h-[calc(100vh-100px)] flex flex-col">
         <section className="flex flex-col items-center px-6 pt-8 md:pt-16 pb-12 md:pb-16">
           <Wordmark size="xl" align="center" />
-          <p className="mt-6 text-[13px] md:text-[14px] text-center max-w-[460px] leading-[1.6]" style={{ color: 'var(--fg-a55)' }}>
+          <p className="mt-6 text-[13px] md:text-[14px] text-center max-w-[460px] leading-[1.6]" style={{ color: 'rgba(255,255,255,0.55)' }}>
             Underground music venue, cowork space, and creative hub in the St. Elmo Arts District.
           </p>
         </section>
@@ -55,7 +55,7 @@ export default async function HomePage() {
             <Link
               href="/members"
               className="group relative block overflow-hidden rounded-[18px] border transition-all hover:-translate-y-0.5 hover:border-white/15"
-              style={{ borderColor: 'var(--fg-a08)' }}
+              style={{ borderColor: 'rgba(255,255,255,0.08)' }}
             >
               <div
                 className="absolute inset-0"
@@ -63,13 +63,13 @@ export default async function HomePage() {
               />
               <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6 px-7 md:px-10 py-7 md:py-8">
                 <div className="flex-1 min-w-0">
-                  <div className="text-[11px] font-semibold tracking-[0.28em] mb-2" style={{ color: 'var(--fg-a6)' }}>
+                  <div className="text-[11px] font-semibold tracking-[0.28em] mb-2" style={{ color: 'rgba(255,255,255,0.6)' }}>
                     CREATE
                   </div>
                   <h2 className="text-[26px] md:text-[32px] font-extrabold -tracking-[0.02em] leading-[1.1] mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                     Studio
                   </h2>
-                  <p className="text-[14px] md:text-[15px] max-w-[640px] leading-[1.55]" style={{ color: 'var(--fg-a7)' }}>
+                  <p className="text-[14px] md:text-[15px] max-w-[640px] leading-[1.55]" style={{ color: 'rgba(255,255,255,0.7)' }}>
                     A pro-grade studio space inside Stardust Garage — for production, rehearsal, and recording sessions. Bookable hourly by active members.
                   </p>
                 </div>

@@ -50,18 +50,18 @@ export default function PublishEventButton({ eventId, status, ttEventSeriesId })
   return (
     <div
       className="rounded-[12px] border p-5 mb-6"
-      style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a08)' }}
+      style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.08)' }}
     >
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
-          <span className="text-[12px] font-semibold tracking-[0.14em]" style={{ color: 'var(--text-3)' }}>
+          <span className="text-[12px] font-semibold tracking-[0.14em]" style={{ color: '#8a8a8a' }}>
             STATUS
           </span>
           <span
             className="text-[11px] font-semibold tracking-[0.12em] px-2.5 py-1 rounded-full"
             style={{
-              color: isDraft ? '#0a0a0a' : 'var(--st-tint-green-1)',
-              background: isDraft ? 'var(--st-ffb84d)' : 'var(--st-4ade80)',
+              color: isDraft ? '#0a0a0a' : '#0f1a12',
+              background: isDraft ? '#ffb84d' : '#4ade80',
             }}
           >
             {isDraft ? 'DRAFT' : 'PUBLISHED'}
@@ -74,14 +74,14 @@ export default function PublishEventButton({ eventId, status, ttEventSeriesId })
             onClick={publish}
             disabled={publishing}
             className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-40"
-            style={{ background: 'var(--st-4ade80)', color: '#0a0a0a' }}
+            style={{ background: '#4ade80', color: '#0a0a0a' }}
           >
             {publishing ? 'PUBLISHING…' : 'PUBLISH WEBSITE + TICKETTAILOR'}
           </button>
         )}
       </div>
 
-      <p className="text-[11px] mt-3" style={{ color: 'var(--text-4)' }}>
+      <p className="text-[11px] mt-3" style={{ color: '#555' }}>
         {isDraft
           ? ttEventSeriesId
             ? 'Publishing makes this event public and sets its TicketTailor series to "published" so tickets go on sale.'
@@ -90,12 +90,12 @@ export default function PublishEventButton({ eventId, status, ttEventSeriesId })
       </p>
 
       {msg && (
-        <p className="text-[13px] mt-3" style={{ color: 'var(--st-86efac)' }}>
+        <p className="text-[13px] mt-3" style={{ color: '#86efac' }}>
           {msg}
         </p>
       )}
       {error && (
-        <p className="text-[13px] mt-3" style={{ color: 'var(--st-ff8080)' }}>
+        <p className="text-[13px] mt-3" style={{ color: '#ff8080' }}>
           {error}
         </p>
       )}

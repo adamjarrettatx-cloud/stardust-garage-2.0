@@ -21,7 +21,7 @@ export default async function ApplicationsPage() {
       <Link
         href="/bananas"
         className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70"
-        style={{ color: 'var(--text-3)' }}
+        style={{ color: '#8a8a8a' }}
       >
         ← BACK TO ADMIN
       </Link>
@@ -32,7 +32,7 @@ export default async function ApplicationsPage() {
       >
         Membership Applications
       </h1>
-      <p className="text-[14px] mb-10" style={{ color: 'var(--text-3)' }}>
+      <p className="text-[14px] mb-10" style={{ color: '#8a8a8a' }}>
         Applications submitted through the Members page.
       </p>
 

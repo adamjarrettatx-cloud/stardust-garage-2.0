@@ -41,13 +41,13 @@ export default async function MyBookingsPage() {
         <Link
           href="/member"
           className="text-[12px] tracking-[0.14em] mb-4 inline-block hover:text-white transition-colors"
-          style={{ color: 'var(--text-3)' }}
+          style={{ color: '#8a8a8a' }}
         >
           ← BACK TO MEMBER HOME
         </Link>
         <div
           className="text-[11px] font-semibold tracking-[0.28em] mb-3"
-          style={{ color: 'var(--fg-a5)' }}
+          style={{ color: 'rgba(255,255,255,0.5)' }}
         >
           MEMBER AREA
         </div>

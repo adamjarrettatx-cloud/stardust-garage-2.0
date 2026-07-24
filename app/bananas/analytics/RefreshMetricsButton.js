@@ -45,12 +45,12 @@ export default function RefreshMetricsButton({ eventId = null, label = 'Refresh 
             ? 'text-[11px] font-semibold tracking-[0.10em] uppercase rounded-[8px] px-3 py-1.5 transition-colors disabled:opacity-50'
             : 'text-[12px] font-semibold tracking-[0.10em] uppercase rounded-[10px] px-4 py-2 transition-colors disabled:opacity-50'
         }
-        style={{ background: 'var(--st-ffb84d)', color: 'var(--surface-1)' }}
+        style={{ background: '#ffb84d', color: '#141414' }}
       >
         {busy ? 'Refreshing…' : label}
       </button>
       {msg && (
-        <span className="text-[12px]" style={{ color: 'var(--text-3)' }}>{msg}</span>
+        <span className="text-[12px]" style={{ color: '#8a8a8a' }}>{msg}</span>
       )}
     </div>
   );

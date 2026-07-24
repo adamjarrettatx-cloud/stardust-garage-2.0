@@ -45,9 +45,9 @@ export default function TeamLoginPage() {
   };
 
   const inputStyle = {
-    background: 'var(--surface-1)',
-    borderColor: 'var(--fg-a1)',
-    color: 'var(--text-1)',
+    background: '#141414',
+    borderColor: 'rgba(255,255,255,0.1)',
+    color: '#f5f5f5',
   };
 
   return (
@@ -62,13 +62,13 @@ export default function TeamLoginPage() {
         >
           Team Login
         </h1>
-        <p className="text-[13px] text-center mb-10" style={{ color: 'var(--text-3)' }}>
+        <p className="text-[13px] text-center mb-10" style={{ color: '#8a8a8a' }}>
           Stardust Garage team portal
         </p>
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-[12px] font-semibold tracking-[0.14em] mb-2" style={{ color: 'var(--text-3)' }}>
+            <label className="block text-[12px] font-semibold tracking-[0.14em] mb-2" style={{ color: '#8a8a8a' }}>
               EMAIL
             </label>
             <input
@@ -82,7 +82,7 @@ export default function TeamLoginPage() {
           </div>
 
           <div>
-            <label className="block text-[12px] font-semibold tracking-[0.14em] mb-2" style={{ color: 'var(--text-3)' }}>
+            <label className="block text-[12px] font-semibold tracking-[0.14em] mb-2" style={{ color: '#8a8a8a' }}>
               PASSWORD
             </label>
             <input

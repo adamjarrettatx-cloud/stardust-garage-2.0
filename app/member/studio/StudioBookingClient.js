@@ -106,13 +106,13 @@ export default function StudioBookingClient({ settings, existingBookings }) {
         <div
           className="rounded-[14px] border p-10 text-center"
           style={{
-            background: 'var(--surface-1)',
-            borderColor: 'var(--fg-a08)',
+            background: '#141414',
+            borderColor: 'rgba(255,255,255,0.08)',
           }}
         >
           <div
             className="text-[11px] font-semibold tracking-[0.28em] mb-4"
-            style={{ color: 'var(--text-3)' }}
+            style={{ color: '#a0a0a0' }}
           >
             BOOKING CONFIRMED
           </div>
@@ -124,7 +124,7 @@ export default function StudioBookingClient({ settings, existingBookings }) {
           </h1>
           <div
             className="text-[15px] leading-[1.7] mb-6"
-            style={{ color: 'var(--text-3)' }}
+            style={{ color: '#a0a0a0' }}
           >
             <div>{formatDateDisplay(success.booking_date)}</div>
             <div>
@@ -134,7 +134,7 @@ export default function StudioBookingClient({ settings, existingBookings }) {
           </div>
           <p
             className="text-[12px] mb-8"
-            style={{ color: 'var(--fg-a4)' }}
+            style={{ color: 'rgba(255,255,255,0.4)' }}
           >
             Payment will be set up in a future update. For now, your booking is reserved.
           </p>
@@ -149,7 +149,7 @@ export default function StudioBookingClient({ settings, existingBookings }) {
             <Link
               href="/member"
               className="px-6 py-2.5 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"
-              style={{ borderColor: 'var(--fg-a15)', color: 'var(--text-1)' }}
+              style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
             >
               MEMBER HOME
             </Link>
@@ -165,13 +165,13 @@ export default function StudioBookingClient({ settings, existingBookings }) {
         <Link
           href="/member"
           className="text-[12px] tracking-[0.14em] mb-4 inline-block hover:text-white transition-colors"
-          style={{ color: 'var(--text-3)' }}
+          style={{ color: '#8a8a8a' }}
         >
           ← BACK TO MEMBER HOME
         </Link>
         <div
           className="text-[11px] font-semibold tracking-[0.28em] mb-3"
-          style={{ color: 'var(--fg-a5)' }}
+          style={{ color: 'rgba(255,255,255,0.5)' }}
         >
           BOOK STUDIO TIME
         </div>
@@ -181,7 +181,7 @@ export default function StudioBookingClient({ settings, existingBookings }) {
         >
           Reserve the studio.
         </h1>
-        <p className="text-[14px]" style={{ color: 'var(--text-3)' }}>
+        <p className="text-[14px]" style={{ color: '#8a8a8a' }}>
           {formatMoney(settings.hourly_rate_cents)} per hour · minimum{' '}
           {settings.min_booking_hours} hours · at least {settings.min_advance_hours}-hour advance notice
         </p>
@@ -191,7 +191,7 @@ export default function StudioBookingClient({ settings, existingBookings }) {
       <div className="mb-8">
         <div
           className="text-[11px] font-semibold tracking-[0.18em] mb-3"
-          style={{ color: 'var(--text-3)' }}
+          style={{ color: '#8a8a8a' }}
         >
           1. CHOOSE A DATE
         </div>
@@ -207,8 +207,8 @@ export default function StudioBookingClient({ settings, existingBookings }) {
                 disabled={isDisabled}
                 className="flex-shrink-0 px-3 py-3 rounded-[10px] border transition-all min-w-[68px]"
                 style={{
-                  background: isSelected ? '#ffffff' : 'var(--surface-1)',
-                  color: isSelected ? '#0a0a0a' : isDisabled ? 'var(--surface-5)' : 'var(--text-1)',
+                  background: isSelected ? '#ffffff' : '#141414',
+                  color: isSelected ? '#0a0a0a' : isDisabled ? '#444' : '#f5f5f5',
                   borderColor: isSelected
                     ? '#ffffff'
                     : isDisabled
@@ -221,7 +221,7 @@ export default function StudioBookingClient({ settings, existingBookings }) {
                 <div
                   className="text-[10px] font-semibold tracking-[0.14em] mb-0.5"
                   style={{
-                    color: isSelected ? '#0a0a0a' : isDisabled ? 'var(--surface-5)' : 'var(--text-3)',
+                    color: isSelected ? '#0a0a0a' : isDisabled ? '#444' : '#8a8a8a',
                   }}
                 >
                   {d.label}
@@ -232,7 +232,7 @@ export default function StudioBookingClient({ settings, existingBookings }) {
                 <div
                   className="text-[10px] tracking-[0.08em] mt-1"
                   style={{
-                    color: isSelected ? '#0a0a0a' : isDisabled ? 'var(--surface-5)' : 'var(--text-3)',
+                    color: isSelected ? '#0a0a0a' : isDisabled ? '#444' : '#8a8a8a',
                   }}
                 >
                   {d.month}
@@ -248,7 +248,7 @@ export default function StudioBookingClient({ settings, existingBookings }) {
         <div className="mb-8">
           <div
             className="text-[11px] font-semibold tracking-[0.18em] mb-3"
-            style={{ color: 'var(--text-3)' }}
+            style={{ color: '#8a8a8a' }}
           >
             2. PICK YOUR HOURS
           </div>
@@ -257,7 +257,7 @@ export default function StudioBookingClient({ settings, existingBookings }) {
           <div className="mb-4">
             <div
               className="text-[11px] tracking-[0.1em] mb-2"
-              style={{ color: 'var(--text-3)' }}
+              style={{ color: '#a0a0a0' }}
             >
               START
             </div>
@@ -279,8 +279,8 @@ export default function StudioBookingClient({ settings, existingBookings }) {
                       color: isSelected
                         ? '#0a0a0a'
                         : isBlocked
-                          ? 'var(--surface-5)'
-                          : 'var(--text-1)',
+                          ? '#444'
+                          : '#f5f5f5',
                       borderColor: isSelected
                         ? '#ffffff'
                         : isBlocked
@@ -304,7 +304,7 @@ export default function StudioBookingClient({ settings, existingBookings }) {
             <div className="mb-4">
               <div
                 className="text-[11px] tracking-[0.1em] mb-2"
-                style={{ color: 'var(--text-3)' }}
+                style={{ color: '#a0a0a0' }}
               >
                 END
               </div>
@@ -341,8 +341,8 @@ export default function StudioBookingClient({ settings, existingBookings }) {
                         color: isSelected
                           ? '#0a0a0a'
                           : isBlocked
-                            ? 'var(--surface-5)'
-                            : 'var(--text-1)',
+                            ? '#444'
+                            : '#f5f5f5',
                         borderColor: isSelected
                           ? '#ffffff'
                           : isBlocked
@@ -368,7 +368,7 @@ export default function StudioBookingClient({ settings, existingBookings }) {
         <div className="mb-8">
           <label
             className="block text-[11px] font-semibold tracking-[0.18em] mb-3"
-            style={{ color: 'var(--text-3)' }}
+            style={{ color: '#8a8a8a' }}
           >
             3. NOTES (OPTIONAL)
           </label>
@@ -379,9 +379,9 @@ export default function StudioBookingClient({ settings, existingBookings }) {
             rows={3}
             className="w-full px-5 py-3.5 rounded-[14px] text-[14px] outline-none border transition-colors focus:border-white/30 resize-none"
             style={{
-              background: 'var(--surface-1)',
-              borderColor: 'var(--fg-a08)',
-              color: 'var(--text-1)',
+              background: '#141414',
+              borderColor: 'rgba(255,255,255,0.08)',
+              color: '#f5f5f5',
             }}
           />
         </div>
@@ -391,18 +391,18 @@ export default function StudioBookingClient({ settings, existingBookings }) {
       {canSubmit && (
         <div
           className="rounded-[14px] border p-6 mb-4"
-          style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a08)' }}
+          style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.08)' }}
         >
           <div className="flex justify-between items-baseline mb-2">
-            <div className="text-[14px]" style={{ color: 'var(--text-3)' }}>
+            <div className="text-[14px]" style={{ color: '#8a8a8a' }}>
               {formatDateDisplay(selectedDate)}
             </div>
-            <div className="text-[14px]" style={{ color: 'var(--text-1)' }}>
+            <div className="text-[14px]" style={{ color: '#f5f5f5' }}>
               {formatHour(startHour)} – {formatHour(endHour)}
             </div>
           </div>
-          <div className="flex justify-between items-baseline pt-3 border-t" style={{ borderColor: 'var(--fg-a05)' }}>
-            <div className="text-[14px]" style={{ color: 'var(--text-3)' }}>
+          <div className="flex justify-between items-baseline pt-3 border-t" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+            <div className="text-[14px]" style={{ color: '#8a8a8a' }}>
               {length} hour{length === 1 ? '' : 's'} × {formatMoney(settings.hourly_rate_cents)}
             </div>
             <div
@@ -431,7 +431,7 @@ export default function StudioBookingClient({ settings, existingBookings }) {
 
       <p
         className="text-[11px] text-center mt-4"
-        style={{ color: 'var(--fg-a4)' }}
+        style={{ color: 'rgba(255,255,255,0.4)' }}
       >
         Payment will be added in a future update. For now your booking is reserved without charge.
       </p>

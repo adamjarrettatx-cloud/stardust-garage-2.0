@@ -21,7 +21,7 @@ export default async function VenueInquiriesPage() {
       <Link
         href="/bananas"
         className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70"
-        style={{ color: 'var(--text-3)' }}
+        style={{ color: '#8a8a8a' }}
       >
         ← BACK TO ADMIN
       </Link>
@@ -32,7 +32,7 @@ export default async function VenueInquiriesPage() {
       >
         Venue Inquiries
       </h1>
-      <p className="text-[14px] mb-10" style={{ color: 'var(--text-3)' }}>
+      <p className="text-[14px] mb-10" style={{ color: '#8a8a8a' }}>
         Inquiries submitted through the Venue Rental page.
       </p>
 

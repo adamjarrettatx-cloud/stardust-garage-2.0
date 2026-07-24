@@ -26,7 +26,7 @@ import {
 const TARGET_WIDTH = 680; // css px target for the widest page; scale derived from it
 const MIN_BOX = 8; // ignore accidental micro-drags (screen px)
 
-const inputStyle = { background: 'var(--surface-3)', border: '1px solid var(--fg-a08)', color: 'white' };
+const inputStyle = { background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' };
 
 export default function FieldEditor({ fileUrl, initialLayout = [], onSave, saving = false, saveLabel = 'Save fields' }) {
   const [pages, setPages] = useState([]); // [{ width, height }] in PDF points
@@ -259,28 +259,28 @@ export default function FieldEditor({ fileUrl, initialLayout = [], onSave, savin
     <div>
       {/* Toolbar: defaults for the next field drawn */}
       <div className="rounded-[12px] border p-4 mb-4 flex flex-wrap items-end gap-3"
-        style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a06)' }}>
-        <label className="text-[12px]" style={{ color: 'var(--text-3)' }}>
+        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.06)' }}>
+        <label className="text-[12px]" style={{ color: '#8a8a8a' }}>
           New field type
           <select value={tool.type} onChange={(e) => setTool({ ...tool, type: e.target.value })}
             className="mt-1 block px-3 py-2 text-[13px] rounded-[8px] outline-none cursor-pointer" style={inputStyle}>
             {FIELD_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </label>
-        <label className="text-[12px]" style={{ color: 'var(--text-3)' }}>
+        <label className="text-[12px]" style={{ color: '#8a8a8a' }}>
           Assigned to
           <select value={tool.assigned_to} onChange={(e) => setTool({ ...tool, assigned_to: e.target.value })}
             className="mt-1 block px-3 py-2 text-[13px] rounded-[8px] outline-none cursor-pointer" style={inputStyle}>
             {ASSIGNABLE_ROLES.map((r) => <option key={r} value={r}>{roleLabel(r)}</option>)}
           </select>
         </label>
-        <label className="text-[12px] flex items-center gap-2 pb-2" style={{ color: 'var(--text-3)' }}>
+        <label className="text-[12px] flex items-center gap-2 pb-2" style={{ color: '#8a8a8a' }}>
           <input type="checkbox" checked={tool.required} onChange={(e) => setTool({ ...tool, required: e.target.checked })} />
           Required
         </label>
         <div className="flex-1" />
         <div className="flex items-center gap-2">
-          {dirty && <span className="text-[11px]" style={{ color: 'var(--st-fbbf24)' }}>Unsaved changes</span>}
+          {dirty && <span className="text-[11px]" style={{ color: '#fbbf24' }}>Unsaved changes</span>}
           <button onClick={handleSave} disabled={saving}
             className="px-5 py-2 text-[13px] font-semibold rounded-[10px] tracking-[0.06em] uppercase"
             style={{ background: 'white', color: 'black', opacity: saving ? 0.6 : 1 }}>
@@ -290,7 +290,7 @@ export default function FieldEditor({ fileUrl, initialLayout = [], onSave, savin
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-3 mb-3 text-[11px]" style={{ color: 'var(--text-3)' }}>
+      <div className="flex flex-wrap gap-3 mb-3 text-[11px]" style={{ color: '#8a8a8a' }}>
         {ASSIGNABLE_ROLES.map((r) => (
           <span key={r} className="inline-flex items-center gap-1.5">
             <span className="inline-block w-3 h-3 rounded-[3px]" style={{ background: roleColor(r) }} />
@@ -301,31 +301,31 @@ export default function FieldEditor({ fileUrl, initialLayout = [], onSave, savin
       </div>
 
       {loadError && (
-        <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: 'var(--st-fca5a5)' }}>
+        <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
           {loadError}
         </div>
       )}
       {loading && !loadError && (
-        <p className="text-[13px] mb-4" style={{ color: 'var(--text-3)' }}>Rendering PDF…</p>
+        <p className="text-[13px] mb-4" style={{ color: '#8a8a8a' }}>Rendering PDF…</p>
       )}
 
       {/* Selected-field inspector */}
       {selected && (
         <div className="rounded-[12px] border p-4 mb-4 grid grid-cols-[1fr_auto_auto_auto] gap-3 items-end"
-          style={{ background: 'var(--surface-1)', borderColor: `${roleColor(selected.assigned_to)}55` }}>
-          <label className="text-[12px]" style={{ color: 'var(--text-3)' }}>
+          style={{ background: '#141414', borderColor: `${roleColor(selected.assigned_to)}55` }}>
+          <label className="text-[12px]" style={{ color: '#8a8a8a' }}>
             Label
             <input value={selected.label} onChange={(e) => updateField(selected.id, { label: e.target.value })}
               className="mt-1 w-full px-3 py-2 text-[13px] rounded-[8px] outline-none" style={inputStyle} />
           </label>
-          <label className="text-[12px]" style={{ color: 'var(--text-3)' }}>
+          <label className="text-[12px]" style={{ color: '#8a8a8a' }}>
             Type
             <select value={selected.type} onChange={(e) => updateField(selected.id, { type: e.target.value })}
               className="mt-1 block px-3 py-2 text-[13px] rounded-[8px] outline-none cursor-pointer" style={inputStyle}>
               {FIELD_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </label>
-          <label className="text-[12px]" style={{ color: 'var(--text-3)' }}>
+          <label className="text-[12px]" style={{ color: '#8a8a8a' }}>
             Assigned to
             <select value={selected.assigned_to} onChange={(e) => updateField(selected.id, { assigned_to: e.target.value })}
               className="mt-1 block px-3 py-2 text-[13px] rounded-[8px] outline-none cursor-pointer" style={inputStyle}>
@@ -333,14 +333,14 @@ export default function FieldEditor({ fileUrl, initialLayout = [], onSave, savin
             </select>
           </label>
           <div className="flex items-center gap-2 pb-1">
-            <label className="text-[12px] flex items-center gap-1.5" style={{ color: 'var(--text-3)' }}>
+            <label className="text-[12px] flex items-center gap-1.5" style={{ color: '#8a8a8a' }}>
               <input type="checkbox" checked={selected.required !== false}
                 onChange={(e) => updateField(selected.id, { required: e.target.checked })} />
               Req
             </label>
             <button onClick={() => removeField(selected.id)}
               className="text-[12px] px-3 py-2 rounded-[8px]"
-              style={{ border: '1px solid rgba(239,68,68,0.3)', color: 'var(--st-fca5a5)' }}>Delete</button>
+              style={{ border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>Delete</button>
           </div>
         </div>
       )}
@@ -353,7 +353,7 @@ export default function FieldEditor({ fileUrl, initialLayout = [], onSave, savin
           const pageFields = fields.filter((f) => f.page_number === i);
           return (
             <div key={i}>
-              <div className="text-[11px] mb-1" style={{ color: 'var(--text-4)' }}>Page {i + 1}</div>
+              <div className="text-[11px] mb-1" style={{ color: '#6a6a6a' }}>Page {i + 1}</div>
               <div className="relative mx-auto" style={{ width: w, height: h }}>
                 <canvas
                   ref={(el) => { if (el) canvasRefs.current[i] = el; }}
@@ -387,7 +387,7 @@ export default function FieldEditor({ fileUrl, initialLayout = [], onSave, savin
                         title={`${roleLabel(f.assigned_to)} · ${f.type}${f.required !== false ? ' · required' : ''}`}
                       >
                         <span className="absolute top-0 left-0 text-[9px] px-1 leading-[1.4] font-semibold truncate max-w-full"
-                          style={{ background: color, color: 'var(--surface-3)' }}>
+                          style={{ background: color, color: '#0d0d0d' }}>
                           {f.label || roleLabel(f.assigned_to)}
                         </span>
                         {isSel && (

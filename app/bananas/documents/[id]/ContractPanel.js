@@ -13,18 +13,18 @@ import {
 
 const STATUS_LABEL = Object.fromEntries(CONTRACT_STATUSES.map((s) => [s.value, s.label]));
 const STATUS_COLOR = {
-  draft: 'var(--text-3)',
-  pending_review: 'var(--st-fbbf24)',
-  sent: 'var(--st-60a5fa)',
-  partially_signed: 'var(--st-a78bfa)',
-  signed: 'var(--st-4ade80)',
-  declined: 'var(--st-f87171)',
-  void: 'var(--text-4)',
-  expired: 'var(--st-f59e0b)',
+  draft: '#8a8a8a',
+  pending_review: '#fbbf24',
+  sent: '#60a5fa',
+  partially_signed: '#a78bfa',
+  signed: '#4ade80',
+  declined: '#f87171',
+  void: '#6b7280',
+  expired: '#f59e0b',
 };
 
 function StatusBadge({ status }) {
-  const color = STATUS_COLOR[status] || 'var(--text-3)';
+  const color = STATUS_COLOR[status] || '#8a8a8a';
   return (
     <span
       className="text-[11px] px-2 py-0.5 rounded-[5px] font-semibold tracking-[0.04em] uppercase"
@@ -203,31 +203,31 @@ export default function ContractPanel({ documentId, initialContract, events, sig
     }
   }
 
-  const inputStyle = { background: 'var(--surface-3)', border: '1px solid var(--fg-a08)', color: 'white' };
+  const inputStyle = { background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' };
 
   return (
-    <div className="rounded-[14px] border p-5 mb-6" style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a06)' }}>
+    <div className="rounded-[14px] border p-5 mb-6" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.06)' }}>
       <div className="flex items-center justify-between gap-3 mb-4">
-        <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase" style={{ color: 'var(--text-3)' }}>
+        <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase" style={{ color: '#8a8a8a' }}>
           Contract Lifecycle
         </h2>
         {contract && <StatusBadge status={status} />}
       </div>
 
       {error && (
-        <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: 'var(--st-fca5a5)' }}>
+        <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
           {error}
         </div>
       )}
       {notice && (
-        <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.3)', color: 'var(--st-86efac)' }}>
+        <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.3)', color: '#86efac' }}>
           {notice}
         </div>
       )}
 
       {!contract && !editing && (
         <div>
-          <p className="text-[13px] mb-3" style={{ color: 'var(--text-3)' }}>
+          <p className="text-[13px] mb-3" style={{ color: '#8a8a8a' }}>
             No contract lifecycle record yet. Track signature status, counterparty, and signers.
           </p>
           <button onClick={() => setEditing(true)}
@@ -249,21 +249,21 @@ export default function ContractPanel({ documentId, initialContract, events, sig
               className="px-3 py-2.5 text-[14px] rounded-[10px] outline-none" style={inputStyle} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <label className="text-[12px]" style={{ color: 'var(--text-3)' }}>
-              Effective date &amp; time <span style={{ color: 'var(--text-4)' }}>(venue time, CT)</span>
+            <label className="text-[12px]" style={{ color: '#8a8a8a' }}>
+              Effective date &amp; time <span style={{ color: '#6a6a6a' }}>(venue time, CT)</span>
               <input type="datetime-local" value={form.effective_date}
                 onChange={(e) => setForm({ ...form, effective_date: e.target.value })}
                 className="mt-1 w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none" style={inputStyle} />
             </label>
-            <label className="text-[12px]" style={{ color: 'var(--text-3)' }}>
-              Expiration date &amp; time <span style={{ color: 'var(--text-4)' }}>(venue time, CT)</span>
+            <label className="text-[12px]" style={{ color: '#8a8a8a' }}>
+              Expiration date &amp; time <span style={{ color: '#6a6a6a' }}>(venue time, CT)</span>
               <input type="datetime-local" value={form.expiration_date}
                 onChange={(e) => setForm({ ...form, expiration_date: e.target.value })}
                 className="mt-1 w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none" style={inputStyle} />
             </label>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <label className="text-[12px]" style={{ color: 'var(--text-3)' }}>
+            <label className="text-[12px]" style={{ color: '#8a8a8a' }}>
               Signature provider
               <select value={form.signature_provider}
                 onChange={(e) => setForm({ ...form, signature_provider: e.target.value })}
@@ -271,7 +271,7 @@ export default function ContractPanel({ documentId, initialContract, events, sig
                 {SIGNATURE_PROVIDERS.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
             </label>
-            <label className="text-[12px]" style={{ color: 'var(--text-3)' }}>
+            <label className="text-[12px]" style={{ color: '#8a8a8a' }}>
               Linked event
               <select value={form.event_id}
                 onChange={(e) => setForm({ ...form, event_id: e.target.value })}
@@ -284,11 +284,11 @@ export default function ContractPanel({ documentId, initialContract, events, sig
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[12px]" style={{ color: 'var(--text-3)' }}>Signers</span>
+              <span className="text-[12px]" style={{ color: '#8a8a8a' }}>Signers</span>
               <button onClick={addSigner} className="text-[12px] hover:underline" style={{ color: 'white' }}>+ Add signer</button>
             </div>
             <div className="space-y-2">
-              {signers.length === 0 && <p className="text-[12px]" style={{ color: 'var(--text-4)' }}>No signers added.</p>}
+              {signers.length === 0 && <p className="text-[12px]" style={{ color: '#6a6a6a' }}>No signers added.</p>}
               {signers.map((s, i) => (
                 <div key={i} className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-center">
                   <input placeholder="Name" value={s.name}
@@ -304,7 +304,7 @@ export default function ContractPanel({ documentId, initialContract, events, sig
                     <option value="cc">cc</option>
                   </select>
                   <button onClick={() => removeSigner(i)} className="text-[12px] px-2 py-1.5 rounded-[8px]"
-                    style={{ border: '1px solid rgba(239,68,68,0.3)', color: 'var(--st-fca5a5)' }}>✕</button>
+                    style={{ border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>✕</button>
                 </div>
               ))}
             </div>
@@ -317,7 +317,7 @@ export default function ContractPanel({ documentId, initialContract, events, sig
           <div className="flex justify-end gap-2">
             {contract && (
               <button onClick={() => setEditing(false)} disabled={saving}
-                className="px-4 py-2 text-[13px] rounded-[10px]" style={{ border: '1px solid var(--fg-a1)', color: 'white' }}>
+                className="px-4 py-2 text-[13px] rounded-[10px]" style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}>
                 Cancel
               </button>
             )}
@@ -331,56 +331,56 @@ export default function ContractPanel({ documentId, initialContract, events, sig
       ) : contract ? (
         <>
           <dl className="grid grid-cols-[140px_1fr] gap-y-2 text-[13px] mb-4">
-            <dt style={{ color: 'var(--text-3)' }}>Provider</dt><dd>{contract.signature_provider}</dd>
-            {contract.counterparty_name && (<><dt style={{ color: 'var(--text-3)' }}>Counterparty</dt><dd>{contract.counterparty_name}{contract.counterparty_email ? ` · ${contract.counterparty_email}` : ''}</dd></>)}
-            {contract.effective_date && (<><dt style={{ color: 'var(--text-3)' }}>Effective</dt><dd>{formatVenueDateTime(contract.effective_date)}</dd></>)}
-            {contract.expiration_date && (<><dt style={{ color: 'var(--text-3)' }}>Expires</dt><dd>{formatVenueDateTime(contract.expiration_date)}</dd></>)}
-            {contract.external_envelope_id && (<><dt style={{ color: 'var(--text-3)' }}>SignNow envelope</dt><dd className="font-mono text-[12px]">{contract.external_envelope_id}</dd></>)}
-            {contract.sent_at && (<><dt style={{ color: 'var(--text-3)' }}>Sent</dt><dd>{new Date(contract.sent_at).toLocaleString()}</dd></>)}
-            {contract.completed_at && (<><dt style={{ color: 'var(--text-3)' }}>Completed</dt><dd>{new Date(contract.completed_at).toLocaleString()}</dd></>)}
+            <dt style={{ color: '#8a8a8a' }}>Provider</dt><dd>{contract.signature_provider}</dd>
+            {contract.counterparty_name && (<><dt style={{ color: '#8a8a8a' }}>Counterparty</dt><dd>{contract.counterparty_name}{contract.counterparty_email ? ` · ${contract.counterparty_email}` : ''}</dd></>)}
+            {contract.effective_date && (<><dt style={{ color: '#8a8a8a' }}>Effective</dt><dd>{formatVenueDateTime(contract.effective_date)}</dd></>)}
+            {contract.expiration_date && (<><dt style={{ color: '#8a8a8a' }}>Expires</dt><dd>{formatVenueDateTime(contract.expiration_date)}</dd></>)}
+            {contract.external_envelope_id && (<><dt style={{ color: '#8a8a8a' }}>SignNow envelope</dt><dd className="font-mono text-[12px]">{contract.external_envelope_id}</dd></>)}
+            {contract.sent_at && (<><dt style={{ color: '#8a8a8a' }}>Sent</dt><dd>{new Date(contract.sent_at).toLocaleString()}</dd></>)}
+            {contract.completed_at && (<><dt style={{ color: '#8a8a8a' }}>Completed</dt><dd>{new Date(contract.completed_at).toLocaleString()}</dd></>)}
             {Array.isArray(contract.signers) && contract.signers.length > 0 && (
               <>
-                <dt style={{ color: 'var(--text-3)' }}>Signers</dt>
+                <dt style={{ color: '#8a8a8a' }}>Signers</dt>
                 <dd className="space-y-1">
                   {contract.signers.map((s, i) => (
-                    <div key={i}>{s.name} <span style={{ color: 'var(--text-3)' }}>({s.email}) · {s.role} · {s.status}</span></div>
+                    <div key={i}>{s.name} <span style={{ color: '#8a8a8a' }}>({s.email}) · {s.role} · {s.status}</span></div>
                   ))}
                 </dd>
               </>
             )}
-            {contract.notes && (<><dt style={{ color: 'var(--text-3)' }}>Notes</dt><dd className="whitespace-pre-wrap">{contract.notes}</dd></>)}
+            {contract.notes && (<><dt style={{ color: '#8a8a8a' }}>Notes</dt><dd className="whitespace-pre-wrap">{contract.notes}</dd></>)}
           </dl>
 
           <div className="flex flex-wrap items-center gap-2 mb-3">
             <button onClick={() => setEditing(true)}
-              className="text-[12px] px-3 py-1.5 rounded-[8px]" style={{ border: '1px solid var(--fg-a1)', color: 'white' }}>
+              className="text-[12px] px-3 py-1.5 rounded-[8px]" style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}>
               Edit details
             </button>
             {allowedNext.map((next) => (
               <button key={next} onClick={() => transition(next)} disabled={transitioning}
                 className="text-[12px] px-3 py-1.5 rounded-[8px]"
-                style={{ border: '1px solid var(--fg-a1)', color: 'white', opacity: transitioning ? 0.6 : 1 }}>
+                style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white', opacity: transitioning ? 0.6 : 1 }}>
                 → {STATUS_LABEL[next] || next}
               </button>
             ))}
             {allowedNext.length === 0 && (
-              <span className="text-[12px]" style={{ color: 'var(--text-4)' }}>Terminal status — no further transitions.</span>
+              <span className="text-[12px]" style={{ color: '#6a6a6a' }}>Terminal status — no further transitions.</span>
             )}
           </div>
 
           {/* SignNow readiness — degrades gracefully when unconfigured */}
-          <div className="pt-3 mt-1 border-t" style={{ borderColor: 'var(--fg-a06)' }}>
+          <div className="pt-3 mt-1 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="text-[12px]" style={{ color: 'var(--text-3)' }}>
+              <div className="text-[12px]" style={{ color: '#8a8a8a' }}>
                 SignNow:{' '}
-                <span style={{ color: signNowConfigured ? 'var(--st-86efac)' : 'var(--st-fbbf24)' }}>
+                <span style={{ color: signNowConfigured ? '#86efac' : '#fbbf24' }}>
                   {signNowConfigured ? 'configured' : 'not configured'}
                 </span>
                 {hasEnvelope && (
-                  <span style={{ color: 'var(--st-60a5fa)' }}> · envelope sent</span>
+                  <span style={{ color: '#60a5fa' }}> · envelope sent</span>
                 )}
                 {status === 'signed' && (
-                  <span style={{ color: 'var(--st-4ade80)' }}> · fully signed</span>
+                  <span style={{ color: '#4ade80' }}> · fully signed</span>
                 )}
               </div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -390,8 +390,8 @@ export default function ContractPanel({ documentId, initialContract, events, sig
                   title={canSend ? 'Send this contract for e-signature' : sendBlockedReason}
                   className="text-[12px] px-3 py-1.5 rounded-[8px]"
                   style={{
-                    border: '1px solid var(--fg-a1)',
-                    color: canSend ? 'white' : 'var(--text-4)',
+                    border: '1px solid rgba(255,255,255,0.10)',
+                    color: canSend ? 'white' : '#6a6a6a',
                     cursor: canSend ? 'pointer' : 'not-allowed',
                     opacity: sending ? 0.6 : 1,
                   }}>
@@ -404,13 +404,13 @@ export default function ContractPanel({ documentId, initialContract, events, sig
                       disabled={syncing}
                       title="Pull the latest signature status from SignNow (read-only)"
                       className="text-[12px] px-3 py-1.5 rounded-[8px]"
-                      style={{ border: '1px solid var(--fg-a1)', color: 'white', opacity: syncing ? 0.6 : 1 }}>
+                      style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white', opacity: syncing ? 0.6 : 1 }}>
                       {syncing ? 'Checking…' : 'Check status'}
                     </button>
                     <a
                       href={`/api/admin/documents/${documentId}/contract/signnow?download=1`}
                       className="text-[12px] px-3 py-1.5 rounded-[8px] inline-block"
-                      style={{ border: '1px solid var(--fg-a1)', color: 'white' }}>
+                      style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}>
                       Download signed
                     </a>
                     {status === 'signed' && (
@@ -419,7 +419,7 @@ export default function ContractPanel({ documentId, initialContract, events, sig
                         disabled={archiving}
                         title="Store the signed PDF as a new private version of this document (idempotent)"
                         className="text-[12px] px-3 py-1.5 rounded-[8px]"
-                        style={{ border: '1px solid var(--fg-a1)', color: 'white', opacity: archiving ? 0.6 : 1 }}>
+                        style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white', opacity: archiving ? 0.6 : 1 }}>
                         {archiving ? 'Archiving…' : 'Archive signed PDF'}
                       </button>
                     )}
@@ -428,15 +428,15 @@ export default function ContractPanel({ documentId, initialContract, events, sig
               </div>
             </div>
             {!canSend && (
-              <p className="text-[11px] mt-2" style={{ color: 'var(--text-4)' }}>
+              <p className="text-[11px] mt-2" style={{ color: '#6a6a6a' }}>
                 {sendBlockedReason}
                 {!signNowConfigured && ' Until then, advance status manually as signatures complete offline.'}
               </p>
             )}
             {signNowConfigured && hasEnvelope && (
-              <p className="text-[11px] mt-2 leading-relaxed" style={{ color: 'var(--text-4)' }}>
+              <p className="text-[11px] mt-2 leading-relaxed" style={{ color: '#6a6a6a' }}>
                 Status updates arrive automatically when the SignNow webhook is configured;
-                use <span style={{ color: 'var(--text-3)' }}>Check status</span> to pull on demand.
+                use <span style={{ color: '#8a8a8a' }}>Check status</span> to pull on demand.
                 {status === 'signed'
                   ? ' Once fully signed, the signed PDF is archived as a new version of this document (auto on sync, or via Archive signed PDF). Archival is idempotent — it never creates duplicates.'
                   : ' When fully signed, the signed PDF is archived into this document’s version history automatically.'}

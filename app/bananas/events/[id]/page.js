@@ -44,7 +44,7 @@ export default async function EditEventPage({ params }) {
         <Link
           href={`/bananas/events/${event.id}/financials`}
           className="text-[12px] font-semibold tracking-[0.10em] uppercase hover:text-white transition-colors"
-          style={{ color: 'var(--st-4ade80)' }}
+          style={{ color: '#4ade80' }}
         >
           Financials →
         </Link>

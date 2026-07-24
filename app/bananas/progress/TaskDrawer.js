@@ -141,16 +141,16 @@ export default function TaskDrawer({
       />
       <div
         className="relative w-full max-w-[560px] h-full overflow-y-auto"
-        style={{ background: 'var(--surface-2)', borderLeft: '1px solid rgba(255,255,255,0.08)' }}
+        style={{ background: '#0f0f0f', borderLeft: '1px solid rgba(255,255,255,0.08)' }}
       >
         <div className="sticky top-0 z-10 flex items-start justify-between gap-3 px-6 py-5"
-          style={{ background: 'var(--surface-2)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          style={{ background: '#0f0f0f', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <DeptChip slug={current.department} />
               <PriorityBadge value={current.priority} />
               {current.archived && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md" style={{ background: 'var(--fg-a08)', color: 'var(--text-3)' }}>ARCHIVED</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md" style={{ background: 'rgba(255,255,255,0.08)', color: '#8a8a8a' }}>ARCHIVED</span>
               )}
             </div>
             <h2 className="text-[20px] font-extrabold leading-tight break-words"
@@ -160,12 +160,12 @@ export default function TaskDrawer({
           </div>
           <button onClick={onClose} aria-label="Close"
             className="shrink-0 w-11 h-11 rounded-full flex items-center justify-center text-[20px] hover:bg-white/5"
-            style={{ border: '1px solid var(--fg-a12)', color: 'var(--text-3)' }}>×</button>
+            style={{ border: '1px solid rgba(255,255,255,0.12)', color: '#aaa' }}>×</button>
         </div>
 
         <div className="px-6 py-5 space-y-6">
           {error && (
-            <div className="rounded-lg px-4 py-3 text-[13px]" style={{ background: 'rgba(239,68,68,0.12)', color: 'var(--st-fca5a5)' }} role="alert">
+            <div className="rounded-lg px-4 py-3 text-[13px]" style={{ background: 'rgba(239,68,68,0.12)', color: '#fca5a5' }} role="alert">
               {error}
             </div>
           )}
@@ -182,8 +182,8 @@ export default function TaskDrawer({
 
           {current.description && (
             <div>
-              <div className="text-[11px] font-semibold tracking-[0.12em] mb-1.5" style={{ color: 'var(--text-3)' }}>DETAILS</div>
-              <p className="text-[14px] leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--text-2)' }}>{current.description}</p>
+              <div className="text-[11px] font-semibold tracking-[0.12em] mb-1.5" style={{ color: '#8a8a8a' }}>DETAILS</div>
+              <p className="text-[14px] leading-relaxed whitespace-pre-wrap" style={{ color: '#d0d0d0' }}>{current.description}</p>
             </div>
           )}
 
@@ -204,36 +204,36 @@ export default function TaskDrawer({
           )}
 
           {/* Post update — the primary action */}
-          <form onSubmit={postUpdate} className="rounded-[14px] p-4" style={{ background: 'var(--surface-1)', border: '1px solid var(--fg-a06)' }}>
-            <div className="text-[11px] font-semibold tracking-[0.12em] mb-2" style={{ color: 'var(--st-ffb84d)' }}>POST UPDATE</div>
+          <form onSubmit={postUpdate} className="rounded-[14px] p-4" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="text-[11px] font-semibold tracking-[0.12em] mb-2" style={{ color: '#ffb84d' }}>POST UPDATE</div>
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
               rows={3}
               placeholder="What progress did you make? What's blocking you?"
               className="w-full rounded-lg px-3 py-2.5 text-[14px] resize-y"
-              style={{ background: '#0a0a0a', border: '1px solid var(--fg-a1)', color: 'var(--text-1)' }}
+              style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)', color: '#f5f5f5' }}
             />
             <div className="flex flex-wrap items-center gap-3 mt-3">
-              <label className="text-[12px]" style={{ color: 'var(--text-3)' }}>
+              <label className="text-[12px]" style={{ color: '#8a8a8a' }}>
                 Status
                 <select value={statusChange} onChange={(e) => setStatusChange(e.target.value)}
                   className="ml-2 rounded-md px-2 py-1.5 text-[12px]"
-                  style={{ background: '#0a0a0a', border: '1px solid var(--fg-a1)', color: 'var(--text-1)' }}>
+                  style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)', color: '#f5f5f5' }}>
                   <option value="">No change</option>
                   {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                 </select>
               </label>
-              <label className="text-[12px]" style={{ color: 'var(--text-3)' }}>
+              <label className="text-[12px]" style={{ color: '#8a8a8a' }}>
                 %
                 <input type="number" min={0} max={100} value={percentChange}
                   onChange={(e) => setPercentChange(e.target.value)} placeholder="—"
                   className="ml-2 w-16 rounded-md px-2 py-1.5 text-[12px]"
-                  style={{ background: '#0a0a0a', border: '1px solid var(--fg-a1)', color: 'var(--text-1)' }} />
+                  style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)', color: '#f5f5f5' }} />
               </label>
               <button type="submit" disabled={posting || !body.trim()}
                 className="ml-auto px-5 py-2.5 rounded-full text-[12px] font-semibold tracking-[0.1em] disabled:opacity-40"
-                style={{ background: 'var(--st-ffb84d)', color: '#0a0a0a', border: 'none', cursor: 'pointer', minHeight: '44px' }}>
+                style={{ background: '#ffb84d', color: '#0a0a0a', border: 'none', cursor: 'pointer', minHeight: '44px' }}>
                 {posting ? 'POSTING…' : 'POST'}
               </button>
             </div>
@@ -241,19 +241,19 @@ export default function TaskDrawer({
 
           {/* Thread */}
           <div>
-            <div className="text-[11px] font-semibold tracking-[0.12em] mb-3" style={{ color: 'var(--text-3)' }}>UPDATES</div>
-            {loading && <p className="text-[13px]" style={{ color: 'var(--text-3)' }}>Loading…</p>}
+            <div className="text-[11px] font-semibold tracking-[0.12em] mb-3" style={{ color: '#8a8a8a' }}>UPDATES</div>
+            {loading && <p className="text-[13px]" style={{ color: '#8a8a8a' }}>Loading…</p>}
             {!loading && detail?.updates?.length === 0 && (
-              <p className="text-[13px]" style={{ color: 'var(--text-4)' }}>No updates yet. Be the first to post progress.</p>
+              <p className="text-[13px]" style={{ color: '#666' }}>No updates yet. Be the first to post progress.</p>
             )}
             <ul className="space-y-3">
               {(detail?.updates || []).map((u) => (
-                <li key={u.id} className="rounded-lg p-3" style={{ background: 'var(--surface-1)', border: '1px solid var(--fg-a05)' }}>
-                  <p className="text-[14px] leading-relaxed whitespace-pre-wrap break-words" style={{ color: 'var(--text-1)' }}>{u.body}</p>
-                  <div className="flex flex-wrap items-center gap-2 mt-2 text-[11px]" style={{ color: 'var(--text-4)' }}>
+                <li key={u.id} className="rounded-lg p-3" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <p className="text-[14px] leading-relaxed whitespace-pre-wrap break-words" style={{ color: '#e5e5e5' }}>{u.body}</p>
+                  <div className="flex flex-wrap items-center gap-2 mt-2 text-[11px]" style={{ color: '#777' }}>
                     <span>{formatDateTime(u.created_at)}</span>
                     {u.status_to && (
-                      <span>· status {u.status_from} → <span style={{ color: 'var(--st-ffb84d)' }}>{u.status_to}</span></span>
+                      <span>· status {u.status_from} → <span style={{ color: '#ffb84d' }}>{u.status_to}</span></span>
                     )}
                     {u.percent_to !== null && u.percent_to !== undefined && (
                       <span>· {u.percent_from}% → {u.percent_to}%</span>
@@ -267,13 +267,13 @@ export default function TaskDrawer({
           {/* Activity log */}
           {detail?.activity?.length > 0 && (
             <details>
-              <summary className="text-[11px] font-semibold tracking-[0.12em] cursor-pointer" style={{ color: 'var(--text-3)' }}>
+              <summary className="text-[11px] font-semibold tracking-[0.12em] cursor-pointer" style={{ color: '#8a8a8a' }}>
                 ACTIVITY HISTORY ({detail.activity.length})
               </summary>
               <ul className="mt-3 space-y-2">
                 {detail.activity.map((a) => (
-                  <li key={a.id} className="text-[12px] flex gap-2" style={{ color: 'var(--text-3)' }}>
-                    <span style={{ color: 'var(--text-4)' }}>{formatDateTime(a.created_at)}</span>
+                  <li key={a.id} className="text-[12px] flex gap-2" style={{ color: '#999' }}>
+                    <span style={{ color: '#555' }}>{formatDateTime(a.created_at)}</span>
                     <span>{describeActivity(a, assigneeName)}</span>
                   </li>
                 ))}
@@ -300,8 +300,8 @@ function describeActivity(a, assigneeName) {
 function Field({ label, children }) {
   return (
     <div>
-      <div className="text-[10px] font-semibold tracking-[0.12em] mb-1" style={{ color: 'var(--text-3)' }}>{label.toUpperCase()}</div>
-      <div style={{ color: 'var(--text-1)' }}>{children}</div>
+      <div className="text-[10px] font-semibold tracking-[0.12em] mb-1" style={{ color: '#8a8a8a' }}>{label.toUpperCase()}</div>
+      <div style={{ color: '#e5e5e5' }}>{children}</div>
     </div>
   );
 }
@@ -313,7 +313,7 @@ function ActionBtn({ children, onClick, disabled, danger }) {
       style={{
         minHeight: '44px',
         background: danger ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,0.06)',
-        color: danger ? 'var(--st-fca5a5)' : 'var(--text-1)',
+        color: danger ? '#fca5a5' : '#e5e5e5',
         border: `1px solid ${danger ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.12)'}`,
         cursor: 'pointer',
       }}>

@@ -51,7 +51,7 @@ function FeatureIcon({ name }) {
 }
 
 function CheckIcon({ dark = false }) {
-  return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={dark ? '#0a0a0a' : 'var(--text-1)'} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 4 }}><polyline points="20 6 9 17 4 12" /></svg>);
+  return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={dark ? '#0a0a0a' : '#f5f5f5'} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 4 }}><polyline points="20 6 9 17 4 12" /></svg>);
 }
 
 export default function MembersPage() {
@@ -60,22 +60,22 @@ export default function MembersPage() {
       {/* THE SPACE */}
       <section id="space" className="max-w-[1100px] mx-auto px-6 pt-20 pb-20 md:pt-28 md:pb-28 scroll-mt-24">
         <div className="mb-12 max-w-[640px]">
-          <div className="text-[11px] font-semibold tracking-[0.28em] mb-3" style={{ color: 'var(--fg-a5)' }}>MEMBERSHIP</div>
+          <div className="text-[11px] font-semibold tracking-[0.28em] mb-3" style={{ color: 'rgba(255,255,255,0.5)' }}>MEMBERSHIP</div>
           <h1 className="text-[28px] md:text-[40px] font-extrabold -tracking-[0.02em] leading-[1.05] mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             Built for focus.<br />
-            <span style={{ color: 'var(--fg-a5)' }}>Designed for community.</span>
+            <span style={{ color: 'rgba(255,255,255,0.5)' }}>Designed for community.</span>
           </h1>
-          <p className="text-[15px] leading-[1.65]" style={{ color: 'var(--fg-a6)' }}>
+          <p className="text-[15px] leading-[1.65]" style={{ color: 'rgba(255,255,255,0.6)' }}>
             We optimized for the things that actually make a workday good — the internet, the people, the room.
           </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {features.map((f) => (
-            <div key={f.title} className="rounded-[14px] p-7 border transition-transform hover:-translate-y-1" style={{ background: 'var(--surface-4)', borderColor: 'var(--fg-a05)' }}>
-              <div className="mb-5" style={{ color: 'var(--fg-a85)' }}><FeatureIcon name={f.icon} /></div>
+            <div key={f.title} className="rounded-[14px] p-7 border transition-transform hover:-translate-y-1" style={{ background: '#141418', borderColor: 'rgba(255,255,255,0.05)' }}>
+              <div className="mb-5" style={{ color: 'rgba(255,255,255,0.85)' }}><FeatureIcon name={f.icon} /></div>
               <h3 className="text-[16px] font-bold mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{f.title}</h3>
-              <p className="text-[13.5px] leading-[1.6]" style={{ color: 'var(--fg-a6)' }}>{f.desc}</p>
+              <p className="text-[13.5px] leading-[1.6]" style={{ color: 'rgba(255,255,255,0.6)' }}>{f.desc}</p>
             </div>
           ))}
         </div>
@@ -84,9 +84,9 @@ export default function MembersPage() {
       {/* JOIN */}
       <section id="join" className="max-w-[1100px] mx-auto px-6 pb-20 md:pb-28 scroll-mt-24">
         <div className="mb-12 max-w-[640px]">
-          <div className="text-[11px] font-semibold tracking-[0.28em] mb-3" style={{ color: 'var(--fg-a5)' }}>JOIN</div>
+          <div className="text-[11px] font-semibold tracking-[0.28em] mb-3" style={{ color: 'rgba(255,255,255,0.5)' }}>JOIN</div>
           <h2 className="text-[28px] md:text-[40px] font-extrabold -tracking-[0.02em] leading-[1.05] mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Two ways in.</h2>
-          <p className="text-[15px] leading-[1.65]" style={{ color: 'var(--fg-a6)' }}>
+          <p className="text-[15px] leading-[1.65]" style={{ color: 'rgba(255,255,255,0.6)' }}>
             One is a workday membership. The other adds a discount on every show we throw — for the people who want their nights here too.
           </p>
         </div>
@@ -95,13 +95,13 @@ export default function MembersPage() {
           {plans.map((plan) => {
             const isFeatured = plan.featured;
             return (
-              <div key={plan.slug} className="relative rounded-[18px] p-9 md:p-10 border flex flex-col" style={{ background: isFeatured ? 'var(--text-1)' : 'var(--surface-4)', borderColor: isFeatured ? 'var(--text-1)' : 'rgba(255,255,255,0.06)', color: isFeatured ? '#0a0a0a' : 'var(--text-1)' }}>
+              <div key={plan.slug} className="relative rounded-[18px] p-9 md:p-10 border flex flex-col" style={{ background: isFeatured ? '#f5f5f0' : '#141418', borderColor: isFeatured ? '#f5f5f0' : 'rgba(255,255,255,0.06)', color: isFeatured ? '#0a0a0a' : '#f5f5f5' }}>
                 <h3 className="text-[22px] font-bold -tracking-[0.01em] mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{plan.name}</h3>
-                <p className="text-[14px] leading-[1.55] mb-7" style={{ color: isFeatured ? 'var(--text-4)' : 'rgba(255,255,255,0.6)' }}>{plan.tagline}</p>
+                <p className="text-[14px] leading-[1.55] mb-7" style={{ color: isFeatured ? '#555' : 'rgba(255,255,255,0.6)' }}>{plan.tagline}</p>
 
                 <div className="flex items-baseline gap-2 mb-8">
                   <span className="text-[36px] md:text-[44px] font-extrabold -tracking-[0.02em] leading-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{plan.price}</span>
-                  <span className="text-[13px]" style={{ color: isFeatured ? 'var(--text-4)' : 'rgba(255,255,255,0.5)' }}>{plan.period}</span>
+                  <span className="text-[13px]" style={{ color: isFeatured ? '#666' : 'rgba(255,255,255,0.5)' }}>{plan.period}</span>
                 </div>
 
                 <ul className="list-none mb-9 flex-1 space-y-2.5">
@@ -113,18 +113,18 @@ export default function MembersPage() {
                   ))}
                 </ul>
 
-                <Link href={`/members/apply/${plan.slug}`} className="w-full py-3.5 rounded-full text-[12px] font-semibold tracking-[0.2em] transition-all hover:-translate-y-0.5 text-center" style={{ background: isFeatured ? '#0a0a0a' : 'var(--text-1)', color: isFeatured ? 'var(--text-1)' : '#0a0a0a' }}>APPLY</Link>
+                <Link href={`/members/apply/${plan.slug}`} className="w-full py-3.5 rounded-full text-[12px] font-semibold tracking-[0.2em] transition-all hover:-translate-y-0.5 text-center" style={{ background: isFeatured ? '#0a0a0a' : '#f5f5f0', color: isFeatured ? '#f5f5f0' : '#0a0a0a' }}>APPLY</Link>
               </div>
             );
           })}
         </div>
 
         {/* Lockers add-on */}
-        <div className="mt-5 rounded-[18px] p-8 md:p-9 border flex flex-col md:flex-row md:items-center gap-7" style={{ background: 'var(--surface-4)', borderColor: 'var(--fg-a06)' }}>
+        <div className="mt-5 rounded-[18px] p-8 md:p-9 border flex flex-col md:flex-row md:items-center gap-7" style={{ background: '#141418', borderColor: 'rgba(255,255,255,0.06)' }}>
           <div className="md:w-[260px] flex-shrink-0">
-            <div className="text-[10px] font-semibold tracking-[0.24em] mb-2" style={{ color: 'var(--fg-a45)' }}>ADD-ON</div>
+            <div className="text-[10px] font-semibold tracking-[0.24em] mb-2" style={{ color: 'rgba(255,255,255,0.45)' }}>ADD-ON</div>
             <h3 className="text-[22px] font-bold -tracking-[0.01em] mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Lockers</h3>
-            <p className="text-[12.5px]" style={{ color: 'var(--fg-a5)' }}>Requires membership</p>
+            <p className="text-[12.5px]" style={{ color: 'rgba(255,255,255,0.5)' }}>Requires membership</p>
           </div>
           <ul className="list-none flex-1 space-y-2">
             <li className="flex items-start gap-3 text-[14px] leading-[1.55]"><CheckIcon /><span>Two sizes — small and large</span></li>
@@ -135,9 +135,9 @@ export default function MembersPage() {
 
       {/* CLOSING */}
       <section className="max-w-[1100px] mx-auto px-6 pb-24 md:pb-32">
-        <div className="rounded-[20px] border p-10 md:p-14 text-center" style={{ borderColor: 'var(--fg-a08)', background: 'radial-gradient(120% 80% at 50% 0%, rgba(180,135,70,0.18) 0%, rgba(20,18,22,0.9) 60%, rgba(10,10,14,1) 100%)' }}>
+        <div className="rounded-[20px] border p-10 md:p-14 text-center" style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'radial-gradient(120% 80% at 50% 0%, rgba(180,135,70,0.18) 0%, rgba(20,18,22,0.9) 60%, rgba(10,10,14,1) 100%)' }}>
           <h2 className="text-[32px] md:text-[44px] font-extrabold -tracking-[0.02em] leading-[1.05] mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Now accepting members.</h2>
-          <p className="text-[15px] leading-[1.65] max-w-[480px] mx-auto mb-9" style={{ color: 'var(--fg-a6)' }}>
+          <p className="text-[15px] leading-[1.65] max-w-[480px] mx-auto mb-9" style={{ color: 'rgba(255,255,255,0.6)' }}>
             We accept on a rolling basis as the room has space. Tell us a little about yourself.
           </p>
           <Link href="/members/apply/cowork" className="inline-block px-8 py-4 rounded-full text-[12px] font-semibold tracking-[0.2em] transition-all hover:-translate-y-0.5" style={{ background: '#ffffff', color: '#0a0a0a' }}>APPLY NOW</Link>

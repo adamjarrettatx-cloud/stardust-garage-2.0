@@ -17,21 +17,21 @@ export default function EventsSection({ upcoming, past }) {
     <div>
       {/* Header + tabs */}
       <div className="flex items-center justify-between mb-5">
-        <div className="flex items-center gap-1 p-1 rounded-full" style={{ background: 'var(--surface-1)', border: '1px solid var(--fg-a07)' }}>
+        <div className="flex items-center gap-1 p-1 rounded-full" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.07)' }}>
           <button
             onClick={() => setTab('upcoming')}
             className="flex items-center gap-2 px-4 py-1.5 rounded-full text-[12px] font-semibold tracking-[0.12em] transition-all"
             style={{
               background: tab === 'upcoming' ? '#ffffff' : 'transparent',
-              color: tab === 'upcoming' ? '#0a0a0a' : 'var(--text-3)',
+              color: tab === 'upcoming' ? '#0a0a0a' : '#8a8a8a',
             }}
           >
             UPCOMING
             <span
               className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold"
               style={{
-                background: tab === 'upcoming' ? 'var(--st-ffb84d)' : 'rgba(255,255,255,0.1)',
-                color: tab === 'upcoming' ? '#0a0a0a' : 'var(--text-3)',
+                background: tab === 'upcoming' ? '#ffb84d' : 'rgba(255,255,255,0.1)',
+                color: tab === 'upcoming' ? '#0a0a0a' : '#8a8a8a',
               }}
             >
               {upcoming.length}
@@ -42,7 +42,7 @@ export default function EventsSection({ upcoming, past }) {
             className="flex items-center gap-2 px-4 py-1.5 rounded-full text-[12px] font-semibold tracking-[0.12em] transition-all"
             style={{
               background: tab === 'past' ? '#ffffff' : 'transparent',
-              color: tab === 'past' ? '#0a0a0a' : 'var(--text-3)',
+              color: tab === 'past' ? '#0a0a0a' : '#8a8a8a',
             }}
           >
             PAST
@@ -50,7 +50,7 @@ export default function EventsSection({ upcoming, past }) {
               className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold"
               style={{
                 background: tab === 'past' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.1)',
-                color: tab === 'past' ? 'var(--text-4)' : 'var(--text-3)',
+                color: tab === 'past' ? '#555' : '#8a8a8a',
               }}
             >
               {past.length}
@@ -68,20 +68,20 @@ export default function EventsSection({ upcoming, past }) {
 
       {/* Event list */}
       {events.length === 0 ? (
-        <div className="rounded-[14px] p-10 text-center border" style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a05)' }}>
-          <p className="text-[13px]" style={{ color: 'var(--text-4)' }}>
+        <div className="rounded-[14px] p-10 text-center border" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}>
+          <p className="text-[13px]" style={{ color: '#555' }}>
             {tab === 'upcoming' ? 'No upcoming events. Click "+ NEW EVENT" to create one.' : 'No past events yet.'}
           </p>
         </div>
       ) : (
         <div className={`space-y-3 ${tab === 'past' ? 'opacity-70' : ''}`}>
           {events.map((event) => (
-            <div key={event.id} className="rounded-[14px] border p-5 flex items-center gap-5" style={{ background: 'var(--surface-1)', borderColor: 'var(--fg-a05)' }}>
-              <div className="w-20 h-20 rounded-[10px] overflow-hidden flex-shrink-0 bg-[var(--surface-4)]">
+            <div key={event.id} className="rounded-[14px] border p-5 flex items-center gap-5" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}>
+              <div className="w-20 h-20 rounded-[10px] overflow-hidden flex-shrink-0 bg-[#1a1a1a]">
                 {event.image_url && <img src={event.image_url} alt={event.title} className="w-full h-full object-cover" />}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[12px] mb-1" style={{ color: 'var(--text-3)' }}>
+                <div className="text-[12px] mb-1" style={{ color: '#8a8a8a' }}>
                   {formatDate(event.event_date)}{event.event_time ? ` · ${event.event_time}` : ''}
                 </div>
                 <div className="flex items-center gap-2 min-w-0">
@@ -89,7 +89,7 @@ export default function EventsSection({ upcoming, past }) {
                   {event.status === 'draft' && (
                     <span
                       className="flex-shrink-0 text-[10px] font-semibold tracking-[0.12em] px-2 py-0.5 rounded-full"
-                      style={{ color: '#0a0a0a', background: 'var(--st-ffb84d)' }}
+                      style={{ color: '#0a0a0a', background: '#ffb84d' }}
                     >
                       DRAFT
                     </span>
@@ -97,20 +97,20 @@ export default function EventsSection({ upcoming, past }) {
                   {event.visibility === 'internal' && (
                     <span
                       className="flex-shrink-0 text-[10px] font-semibold tracking-[0.12em] px-2 py-0.5 rounded-full"
-                      style={{ color: '#0a0a0a', background: 'var(--st-f59e0b)' }}
+                      style={{ color: '#0a0a0a', background: '#f59e0b' }}
                       title="Internal micro party — hidden from the public events page"
                     >
                       INTERNAL
                     </span>
                   )}
                 </div>
-                <div className="text-[12px] mt-1" style={{ color: 'var(--text-4)' }}>/events/{event.slug}</div>
+                <div className="text-[12px] mt-1" style={{ color: '#555' }}>/events/{event.slug}</div>
               </div>
               <div className="flex gap-2 flex-shrink-0">
                 <Link
                   href={`/bananas/events/${event.id}`}
                   className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5"
-                  style={{ borderColor: 'var(--fg-a15)', color: 'var(--text-1)' }}
+                  style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
                 >
                   EDIT
                 </Link>
