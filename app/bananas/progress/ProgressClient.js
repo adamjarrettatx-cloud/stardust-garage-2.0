@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -13,6 +13,58 @@ import {
 import TaskDrawer from './TaskDrawer';
 import TaskFormModal from './TaskFormModal';
 import ImportModal from './ImportModal';
+import ThemeToggle from '@/app/components/ThemeToggle';
+
+const THEME_KEY = 'sdg-admin-progress-theme';
+
+// Local, page-scoped light/dark palette — mirrors the pattern used by the
+// admin Team Calendar (app/bananas/calendar/CalendarClient.js). Dark values
+// are the original hardcoded colors this page always used; light values are
+// new. No global theme system involved. Semantic colors (KPI accents, status
+// badges, priority badges) stay literal in both themes — they're tinted pills
+// that already read fine on light or dark surfaces.
+const THEMES = {
+  dark: {
+    text: '#f0f0f0',
+    muted: '#8a8a8a',
+    mutedStrong: '#c0c0c0',
+    pageBg: 'transparent',
+    cardBg: '#141414',
+    cardBorder: 'rgba(255,255,255,0.05)',
+    tableBorder: 'rgba(255,255,255,0.06)',
+    rowBorder: 'rgba(255,255,255,0.05)',
+    theadBg: '#161616',
+    inputBg: '#0a0a0a',
+    inputBorder: 'rgba(255,255,255,0.1)',
+    inputText: '#e5e5e5',
+    ghostBorder: 'rgba(255,255,255,0.15)',
+    ghostText: '#aaa',
+    attentionBorder: 'rgba(239,68,68,0.3)',
+    attentionRowBg: 'rgba(239,68,68,0.04)',
+    overdue: '#fca5a5',
+    rowHoverClass: 'hover:bg-white/[0.03]',
+  },
+  light: {
+    text: '#1a1a1d',
+    muted: '#5c5c63',
+    mutedStrong: '#4a4a52',
+    pageBg: '#f2efe8',
+    cardBg: '#ffffff',
+    cardBorder: 'rgba(0,0,0,0.08)',
+    tableBorder: 'rgba(0,0,0,0.1)',
+    rowBorder: 'rgba(0,0,0,0.07)',
+    theadBg: '#efece6',
+    inputBg: '#ffffff',
+    inputBorder: 'rgba(0,0,0,0.15)',
+    inputText: '#1a1a1d',
+    ghostBorder: 'rgba(0,0,0,0.18)',
+    ghostText: '#5c5c63',
+    attentionBorder: 'rgba(220,38,38,0.35)',
+    attentionRowBg: 'rgba(220,38,38,0.05)',
+    overdue: '#b91c1c',
+    rowHoverClass: 'hover:bg-black/[0.03]',
+  },
+};
 
 const KPI_DEFS = [
   { key: 'overdue', label: 'Overdue', color: '#ef4444' },
@@ -26,6 +78,24 @@ const KPI_DEFS = [
 export default function ProgressClient({ initialTasks, assignees, isOwner, todayIso }) {
   const router = useRouter();
   const todayStr = toDateString(todayIso);
+
+  const [theme, setTheme] = useState('dark');
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(THEME_KEY);
+      if (saved === 'light' || saved === 'dark') setTheme(saved);
+    } catch {
+      // localStorage unavailable — fall back to default dark theme silently.
+    }
+  }, []);
+  const toggleTheme = () => {
+    setTheme((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      try { window.localStorage.setItem(THEME_KEY, next); } catch {}
+      return next;
+    });
+  };
+  const t = THEMES[theme];
 
   const [filters, setFilters] = useState({
     department: '', status: '', priority: '', assigneeId: '', archived: false,
@@ -52,27 +122,28 @@ export default function ProgressClient({ initialTasks, assignees, isOwner, today
   const setFilter = (k, v) => setFilters((f) => ({ ...f, [k]: v }));
 
   const selectStyle = {
-    background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)', color: '#e5e5e5',
+    background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText,
     minHeight: '44px',
   };
 
   return (
-    <main className="max-w-[1400px] mx-auto px-6 py-12">
+    <main className="max-w-[1400px] mx-auto px-6 py-12 transition-colors duration-150" style={{ background: t.pageBg, color: t.text }}>
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
         <div>
-          <Link href="/bananas" className="text-[12px] tracking-[0.1em] hover:underline" style={{ color: '#8a8a8a' }}>← ADMIN</Link>
-          <h1 className="text-[40px] font-extrabold -tracking-[0.02em] leading-[1.1] mt-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+          <Link href="/bananas" className="text-[12px] tracking-[0.1em] hover:underline" style={{ color: t.muted }}>← ADMIN</Link>
+          <h1 className="text-[40px] font-extrabold -tracking-[0.02em] leading-[1.1] mt-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.text }}>
             Progress
           </h1>
-          <p className="text-[13px] mt-1" style={{ color: '#8a8a8a' }}>
+          <p className="text-[13px] mt-1" style={{ color: t.muted }}>
             Department deliverables, updates and accountability.
           </p>
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
           <button onClick={() => setShowImport(true)}
             className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.12em] hover:bg-white/5"
-            style={{ minHeight: '44px', border: '1px solid rgba(255,255,255,0.15)', color: '#aaa', cursor: 'pointer' }}>
+            style={{ minHeight: '44px', border: `1px solid ${t.ghostBorder}`, color: t.ghostText, cursor: 'pointer' }}>
             IMPORT CSV
           </button>
           <button onClick={() => setFormTask(null)}
@@ -86,11 +157,11 @@ export default function ProgressClient({ initialTasks, assignees, isOwner, today
       {/* KPI summary */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
         {KPI_DEFS.map((k) => (
-          <div key={k.key} className="rounded-[14px] p-4" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.05)' }}>
+          <div key={k.key} className="rounded-[14px] p-4" style={{ background: t.cardBg, border: `1px solid ${t.cardBorder}` }}>
             <div className="text-[28px] font-extrabold leading-none" style={{ color: k.color, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
               {kpis[k.key]}
             </div>
-            <div className="text-[11px] font-semibold tracking-[0.1em] mt-1.5" style={{ color: '#8a8a8a' }}>
+            <div className="text-[11px] font-semibold tracking-[0.1em] mt-1.5" style={{ color: t.muted }}>
               {k.label.toUpperCase()}
             </div>
           </div>
@@ -128,23 +199,23 @@ export default function ProgressClient({ initialTasks, assignees, isOwner, today
         <button
           onClick={() => setFilter('archived', !filters.archived)}
           className="rounded-full px-4 text-[12px] font-semibold tracking-[0.08em]"
-          style={{ ...selectStyle, color: filters.archived ? '#ffb84d' : '#8a8a8a', cursor: 'pointer' }}>
+          style={{ ...selectStyle, color: filters.archived ? '#ffb84d' : t.muted, cursor: 'pointer' }}>
           {filters.archived ? 'ARCHIVED' : 'ACTIVE'}
         </button>
       </div>
 
       {/* List */}
       {visible.length === 0 ? (
-        <div className="rounded-[14px] p-12 text-center" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.05)' }}>
-          <p className="text-[15px]" style={{ color: '#8a8a8a' }}>No tasks match. Create one or adjust your filters.</p>
+        <div className="rounded-[14px] p-12 text-center" style={{ background: t.cardBg, border: `1px solid ${t.cardBorder}` }}>
+          <p className="text-[15px]" style={{ color: t.muted }}>No tasks match. Create one or adjust your filters.</p>
         </div>
       ) : (
         <>
           {/* Desktop table */}
-          <div className="hidden md:block rounded-[14px] overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="hidden md:block rounded-[14px] overflow-hidden" style={{ border: `1px solid ${t.tableBorder}` }}>
             <table className="w-full text-[13px]">
               <thead>
-                <tr style={{ background: '#161616', color: '#8a8a8a' }}>
+                <tr style={{ background: t.theadBg, color: t.muted }}>
                   <th className="text-left px-4 py-3 font-semibold tracking-[0.08em]">DELIVERABLE</th>
                   <th className="text-left px-4 py-3 font-semibold tracking-[0.08em]">DEPT</th>
                   <th className="text-left px-4 py-3 font-semibold tracking-[0.08em]">ASSIGNEE</th>
@@ -154,22 +225,22 @@ export default function ProgressClient({ initialTasks, assignees, isOwner, today
                 </tr>
               </thead>
               <tbody>
-                {visible.map((t) => {
-                  const c = classifyTask(t, todayStr);
+                {visible.map((task) => {
+                  const c = classifyTask(task, todayStr);
                   return (
-                    <tr key={t.id} onClick={() => setDrawerTask(t)}
-                      className="cursor-pointer hover:bg-white/[0.03]"
-                      style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: c.needsAttention ? 'rgba(239,68,68,0.04)' : 'transparent' }}>
+                    <tr key={task.id} onClick={() => setDrawerTask(task)}
+                      className={`cursor-pointer ${t.rowHoverClass}`}
+                      style={{ borderTop: `1px solid ${t.rowBorder}`, background: c.needsAttention ? t.attentionRowBg : 'transparent' }}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <PriorityBadge value={t.priority} />
-                          <span className="font-semibold" style={{ color: '#f0f0f0' }}>{t.title}</span>
+                          <PriorityBadge value={task.priority} />
+                          <span className="font-semibold" style={{ color: t.text }}>{task.title}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3"><DeptChip slug={t.department} /></td>
-                      <td className="px-4 py-3" style={{ color: '#c0c0c0' }}>{assignees.find((a) => a.id === t.assignee_id)?.label || '—'}</td>
-                      <td className="px-4 py-3"><StatusBadge value={t.status} /></td>
-                      <td className="px-4 py-3" style={{ color: c.overdue ? '#fca5a5' : '#c0c0c0' }}>{formatDate(t.due_date)}</td>
+                      <td className="px-4 py-3"><DeptChip slug={task.department} theme={theme} /></td>
+                      <td className="px-4 py-3" style={{ color: t.mutedStrong }}>{assignees.find((a) => a.id === task.assignee_id)?.label || '—'}</td>
+                      <td className="px-4 py-3"><StatusBadge value={task.status} /></td>
+                      <td className="px-4 py-3" style={{ color: c.overdue ? t.overdue : t.mutedStrong }}>{formatDate(task.due_date)}</td>
                       <td className="px-4 py-3"><AttentionFlags flags={c} /></td>
                     </tr>
                   );
@@ -180,21 +251,21 @@ export default function ProgressClient({ initialTasks, assignees, isOwner, today
 
           {/* Mobile cards */}
           <div className="md:hidden space-y-3">
-            {visible.map((t) => {
-              const c = classifyTask(t, todayStr);
+            {visible.map((task) => {
+              const c = classifyTask(task, todayStr);
               return (
-                <button key={t.id} onClick={() => setDrawerTask(t)}
+                <button key={task.id} onClick={() => setDrawerTask(task)}
                   className="w-full text-left rounded-[14px] p-4"
-                  style={{ background: '#141414', border: `1px solid ${c.needsAttention ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.06)'}`, cursor: 'pointer' }}>
+                  style={{ background: t.cardBg, border: `1px solid ${c.needsAttention ? t.attentionBorder : t.tableBorder}`, cursor: 'pointer' }}>
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <PriorityBadge value={t.priority} />
-                    <DeptChip slug={t.department} />
+                    <PriorityBadge value={task.priority} />
+                    <DeptChip slug={task.department} theme={theme} />
                   </div>
-                  <div className="text-[15px] font-bold mb-2" style={{ color: '#f0f0f0' }}>{t.title}</div>
+                  <div className="text-[15px] font-bold mb-2" style={{ color: t.text }}>{task.title}</div>
                   <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <StatusBadge value={t.status} />
-                    <span className="text-[12px]" style={{ color: c.overdue ? '#fca5a5' : '#8a8a8a' }}>
-                      {assignees.find((a) => a.id === t.assignee_id)?.label || 'Unassigned'} · {formatDate(t.due_date)}
+                    <StatusBadge value={task.status} />
+                    <span className="text-[12px]" style={{ color: c.overdue ? t.overdue : t.muted }}>
+                      {assignees.find((a) => a.id === task.assignee_id)?.label || 'Unassigned'} · {formatDate(task.due_date)}
                     </span>
                   </div>
                   <div className="mt-2"><AttentionFlags flags={c} /></div>
