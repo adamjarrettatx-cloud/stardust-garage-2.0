@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Wordmark from '@/app/components/Wordmark';
 
-export default function MemberLoginPage() {
+export default function UnifiedLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -30,8 +30,26 @@ export default function MemberLoginPage() {
       return;
     }
 
-    const isAdmin = Boolean(data?.user?.user_metadata?.is_admin);
-    router.push(isAdmin ? '/bananas' : '/member');
+    // Role is sourced from team_members.role (server-verified table), not
+    // client-trusted user_metadata. The legacy is_admin metadata flag is kept
+    // as a fallback only, matching middleware.js's existing behavior.
+    const { data: tm } = await supabase
+      .from('team_members')
+      .select('role')
+      .eq('user_id', data.user.id)
+      .maybeSingle();
+
+    const role = tm?.role || (data?.user?.user_metadata?.is_admin ? 'admin' : null);
+    // Read the redirect-back param directly (avoids useSearchParams, which
+    // would force a Suspense boundary around this client page).
+    const next = new URLSearchParams(window.location.search).get('next');
+
+    let destination;
+    if (role === 'admin') destination = next || '/bananas';
+    else if (role === 'team') destination = next || '/team/calendar';
+    else destination = next || '/member';
+
+    router.push(destination);
     router.refresh();
   };
 
@@ -42,10 +60,10 @@ export default function MemberLoginPage() {
           <Wordmark size="md" align="center" />
         </div>
         <h1 className="text-[28px] font-extrabold -tracking-[0.02em] mb-2 text-center leading-[1.1]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-          Member Login
+          Sign In
         </h1>
         <p className="text-[13px] text-center mb-10" style={{ color: '#8a8a8a' }}>
-          Sign in to access your member account
+          Members, team and admin all sign in here
         </p>
 
         <form onSubmit={handleLogin} className="space-y-4">

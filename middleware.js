@@ -68,12 +68,14 @@ export async function middleware(request) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Not logged in -> bounce to appropriate login
+  // Not logged in -> bounce to the unified login, with a next= param so the
+  // login page can send them back to where they were headed after sign-in.
   if (!user) {
     const url = request.nextUrl.clone();
-    if (isAdminRoute) url.pathname = '/bananas/login';
-    else if (isTeamRoute || isCapacityRoute) url.pathname = '/team/login';
-    else url.pathname = '/login';
+    const originalPath = pathname + (request.nextUrl.search || '');
+    url.pathname = '/login';
+    url.search = '';
+    url.searchParams.set('next', originalPath);
     return NextResponse.redirect(url);
   }
 
@@ -100,10 +102,12 @@ export async function middleware(request) {
     return NextResponse.redirect(url);
   }
 
-  // /team/* requires team role (or admin)
+  // /team/* requires team role (or admin). Already authenticated with the
+  // wrong role -> straight to /member, same pattern as the admin branch above
+  // (no need to route back through the login page).
   if (isTeamRoute && !isAdmin && teamRole !== 'team') {
     const url = request.nextUrl.clone();
-    url.pathname = '/team/login';
+    url.pathname = '/member';
     return NextResponse.redirect(url);
   }
 
@@ -111,7 +115,7 @@ export async function middleware(request) {
   // further restricts /capacity/admin.
   if (isCapacityRoute && !isAdmin && teamRole !== 'team') {
     const url = request.nextUrl.clone();
-    url.pathname = '/team/login';
+    url.pathname = '/member';
     return NextResponse.redirect(url);
   }
 
