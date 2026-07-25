@@ -20,10 +20,42 @@ const links = [
 
 export default function NavLinks() {
   const pathname = usePathname();
+  const isAuthRoute = pathname?.startsWith('/bananas') || pathname?.startsWith('/team');
   const [openDropdown, setOpenDropdown] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileExpanded, setMobileExpanded] = useState(null);
   const dropdownRef = useRef(null);
+  const palette = isAuthRoute
+    ? {
+        active: 'var(--auth-text-strong)',
+        inactive: 'var(--auth-muted)',
+        dropdownBg: 'color-mix(in srgb, var(--auth-card-bg) 96%, transparent)',
+        dropdownBorder: 'var(--auth-card-border-strong)',
+        dropdownText: 'var(--auth-muted-strong)',
+        dropdownHover: 'var(--auth-hover-bg)',
+        menuBg: 'color-mix(in srgb, var(--auth-panel-bg) 92%, var(--auth-root-bg))',
+        menuBorder: 'var(--auth-card-border)',
+        menuMuted: 'var(--auth-muted)',
+        menuText: 'var(--auth-text-strong)',
+        menuTextInactive: 'var(--auth-muted-strong)',
+        icon: 'var(--auth-text-strong)',
+        iconMuted: 'var(--auth-muted)',
+      }
+    : {
+        active: '#f5f5f5',
+        inactive: '#8a8a8a',
+        dropdownBg: '#141414',
+        dropdownBorder: 'rgba(255,255,255,0.1)',
+        dropdownText: '#c0c0c0',
+        dropdownHover: 'rgba(255,255,255,0.05)',
+        menuBg: 'rgba(0,0,0,0.95)',
+        menuBorder: 'rgba(255,255,255,0.08)',
+        menuMuted: '#8a8a8a',
+        menuText: '#f5f5f5',
+        menuTextInactive: '#c0c0c0',
+        icon: '#f5f5f5',
+        iconMuted: '#8a8a8a',
+      };
 
   const isActive = (href) => {
     if (href === '/events') return pathname === '/events' || pathname.startsWith('/events/');
@@ -73,7 +105,7 @@ export default function NavLinks() {
                   type="button"
                   onClick={() => setOpenDropdown(isOpen ? null : link.label)}
                   className="text-[13px] font-medium tracking-[0.12em] transition-colors flex items-center gap-1.5"
-                  style={{ color: isDropdownActive || isOpen ? '#f5f5f5' : '#8a8a8a' }}
+                  style={{ color: isDropdownActive || isOpen ? palette.active : palette.inactive }}
                 >
                   {link.label}
                   <svg
@@ -94,9 +126,9 @@ export default function NavLinks() {
                   <div
                     className="absolute top-full right-0 mt-3 rounded-[12px] border overflow-hidden min-w-[160px]"
                     style={{
-                      background: '#141414',
-                      borderColor: 'rgba(255,255,255,0.1)',
-                      boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                      background: palette.dropdownBg,
+                      borderColor: palette.dropdownBorder,
+                      boxShadow: isAuthRoute ? '0 12px 28px rgba(0,0,0,0.14)' : '0 8px 24px rgba(0,0,0,0.5)',
                     }}
                   >
                     {link.dropdown.map((item) => (
@@ -105,7 +137,10 @@ export default function NavLinks() {
                         href={item.href}
                         onClick={() => setOpenDropdown(null)}
                         className="block px-5 py-3 text-[13px] font-medium tracking-[0.08em] transition-colors hover:bg-white/5"
-                        style={{ color: isActive(item.href) ? '#f5f5f5' : '#c0c0c0' }}
+                        style={{
+                          color: isActive(item.href) ? palette.active : palette.dropdownText,
+                          background: 'transparent',
+                        }}
                       >
                         {item.label}
                       </Link>
@@ -121,7 +156,7 @@ export default function NavLinks() {
               <Link
                 href={link.href}
                 className="text-[13px] font-medium tracking-[0.12em] transition-colors"
-                style={{ color: isActive(link.href) ? '#f5f5f5' : '#8a8a8a' }}
+                style={{ color: isActive(link.href) ? palette.active : palette.inactive }}
               >
                 {link.label}
               </Link>
@@ -137,7 +172,7 @@ export default function NavLinks() {
         className="md:hidden p-2 -mr-2"
         aria-label="Open menu"
       >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f5f5f5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={palette.icon} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <line x1="3" y1="6" x2="21" y2="6" />
           <line x1="3" y1="12" x2="21" y2="12" />
           <line x1="3" y1="18" x2="21" y2="18" />
@@ -148,10 +183,10 @@ export default function NavLinks() {
       {mobileOpen && (
         <div
           className="md:hidden fixed inset-0 z-50"
-          style={{ background: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(10px)' }}
+          style={{ background: palette.menuBg, backdropFilter: 'blur(10px)' }}
         >
           <div className="flex items-center justify-between px-6 pt-8">
-            <span className="text-[11px] font-semibold tracking-[0.2em]" style={{ color: '#8a8a8a' }}>
+            <span className="text-[11px] font-semibold tracking-[0.2em]" style={{ color: palette.menuMuted }}>
               MENU
             </span>
             <button
@@ -160,7 +195,7 @@ export default function NavLinks() {
               className="p-2 -mr-2"
               aria-label="Close menu"
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f5f5f5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={palette.icon} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
@@ -178,13 +213,13 @@ export default function NavLinks() {
                         type="button"
                         onClick={() => setMobileExpanded(isExpanded ? null : link.label)}
                         className="w-full flex items-center justify-between py-5 text-left border-b"
-                        style={{ borderColor: 'rgba(255,255,255,0.08)' }}
+                        style={{ borderColor: palette.menuBorder }}
                       >
                         <span
                           className="text-[22px] font-extrabold -tracking-[0.01em]"
                           style={{
                             fontFamily: "'Plus Jakarta Sans', sans-serif",
-                            color: '#f5f5f5',
+                            color: palette.menuText,
                           }}
                         >
                           {link.label}
@@ -194,7 +229,7 @@ export default function NavLinks() {
                           height="18"
                           viewBox="0 0 24 24"
                           fill="none"
-                          stroke="#8a8a8a"
+                          stroke={palette.iconMuted}
                           strokeWidth="2"
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -214,7 +249,7 @@ export default function NavLinks() {
                                 href={item.href}
                                 onClick={() => setMobileOpen(false)}
                                 className="block text-[16px] font-medium tracking-[0.06em] py-1.5"
-                                style={{ color: '#c0c0c0' }}
+                                style={{ color: palette.menuTextInactive }}
                               >
                                 {item.label}
                               </Link>
@@ -233,9 +268,9 @@ export default function NavLinks() {
                       onClick={() => setMobileOpen(false)}
                       className="block py-5 border-b text-[22px] font-extrabold -tracking-[0.01em]"
                       style={{
-                        borderColor: 'rgba(255,255,255,0.08)',
+                        borderColor: palette.menuBorder,
                         fontFamily: "'Plus Jakarta Sans', sans-serif",
-                        color: isActive(link.href) ? '#f5f5f5' : '#c0c0c0',
+                        color: isActive(link.href) ? palette.menuText : palette.menuTextInactive,
                       }}
                     >
                       {link.label}

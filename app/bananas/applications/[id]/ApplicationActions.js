@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { adminFetch } from '@/lib/admin-fetch';
+import useSubmissionStatus from '@/app/bananas/components/useSubmissionStatus';
+import { canResetSubmissionToNew } from '@/lib/submission-workflow';
 
 export default function ApplicationActions({
   applicationId,
@@ -12,21 +14,10 @@ export default function ApplicationActions({
   hasPhoto,
 }) {
   const router = useRouter();
-  const [working, setWorking] = useState(false);
+  const { status, working, notice, error, setError, updateStatus } = useSubmissionStatus('applications', applicationId, currentStatus);
   const [approveError, setApproveError] = useState('');
-
-  // Auto-mark as reviewed when the detail page is first opened (if still 'new')
-  useEffect(() => {
-    if (currentStatus === 'new') {
-      const supabase = createClient();
-      supabase
-        .from('membership_applications')
-        .update({ status: 'reviewed' })
-        .eq('id', applicationId)
-        .then(() => router.refresh());
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const [actionBusy, setActionBusy] = useState(false);
+  const busy = working || actionBusy;
 
   // Approving: call the API so we create an auth user + member profile
   // + send welcome email. The API is idempotent — calling it again on
@@ -47,7 +38,7 @@ export default function ApplicationActions({
       if (!confirmed) return;
     }
 
-    setWorking(true);
+    setActionBusy(true);
     try {
       const body = await adminFetch('/api/admin/approve-member', {
         method: 'POST',
@@ -69,32 +60,15 @@ export default function ApplicationActions({
     } catch (err) {
       alert('Error: ' + (err?.message || 'Unknown'));
     } finally {
-      setWorking(false);
+      setActionBusy(false);
     }
-  };
-
-  const updateStatus = async (newStatus) => {
-    setWorking(true);
-    const supabase = createClient();
-    const { error } = await supabase
-      .from('membership_applications')
-      .update({ status: newStatus })
-      .eq('id', applicationId);
-
-    if (error) {
-      alert('Error: ' + error.message);
-      setWorking(false);
-      return;
-    }
-    router.refresh();
-    setWorking(false);
   };
 
   const handleDelete = async () => {
     const confirmed = window.confirm('Permanently delete this application?');
     if (!confirmed) return;
 
-    setWorking(true);
+    setActionBusy(true);
     const supabase = createClient();
     const { error } = await supabase
       .from('membership_applications')
@@ -102,8 +76,8 @@ export default function ApplicationActions({
       .eq('id', applicationId);
 
     if (error) {
-      alert('Error: ' + error.message);
-      setWorking(false);
+      setError(error.message);
+      setActionBusy(false);
       return;
     }
     router.push('/bananas/applications');
@@ -117,32 +91,30 @@ export default function ApplicationActions({
     <div>
       <div className="flex flex-wrap gap-2">
         {/* ── Accept / create account ───────────────────── */}
-        {currentStatus !== 'approved' && (
+        {status !== 'approved' && (
           <button
             onClick={handleApprove}
-            disabled={working}
-            className={btnBase}
-            style={{ background: '#ffffff', color: '#0a0a0a' }}
+            disabled={busy}
+            className={`${btnBase} auth-theme-solid-button`}
           >
             {accountCreated ? 'ACCEPT' : 'ACCEPT & CREATE ACCOUNT'}
           </button>
         )}
-        {currentStatus === 'approved' && !accountCreated && (
+        {status === 'approved' && !accountCreated && (
           <button
             onClick={handleApprove}
-            disabled={working}
-            className={btnBase}
-            style={{ background: '#ffffff', color: '#0a0a0a' }}
+            disabled={busy}
+            className={`${btnBase} auth-theme-solid-button`}
           >
             CREATE MEMBER ACCOUNT
           </button>
         )}
 
         {/* ── Mark Reviewed ─────────────────────────────── */}
-        {currentStatus !== 'reviewed' && currentStatus !== 'approved' && currentStatus !== 'rejected' && (
+        {status !== 'reviewed' && status !== 'approved' && status !== 'rejected' && (
           <button
             onClick={() => updateStatus('reviewed')}
-            disabled={working}
+            disabled={busy}
             className={btnBase}
             style={{
               background: 'rgba(168,85,247,0.12)',
@@ -150,29 +122,40 @@ export default function ApplicationActions({
               border: '1px solid rgba(168,85,247,0.3)',
             }}
           >
-            MARK REVIEWED
+            MARK AS SEEN
+          </button>
+        )}
+
+        {canResetSubmissionToNew(status) && (
+          <button
+            onClick={() => updateStatus('new')}
+            disabled={busy}
+            className={`${btnBase} border`}
+            style={{ borderColor: 'var(--auth-warn-border)', color: 'var(--auth-warn-strong)' }}
+          >
+            MARK AS NEW
           </button>
         )}
 
         {/* ── Mark Pending ──────────────────────────────── */}
-        {currentStatus !== 'pending' && (
+        {status !== 'pending' && (
           <button
             onClick={() => updateStatus('pending')}
-            disabled={working}
-            className={`${btnBase} border hover:bg-white/5`}
-            style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
+            disabled={busy}
+            className={`${btnBase} border auth-theme-border-button`}
+            style={{ color: 'var(--auth-muted-strong)' }}
           >
             MARK PENDING
           </button>
         )}
 
         {/* ── Reject ────────────────────────────────────── */}
-        {currentStatus !== 'rejected' && (
+        {status !== 'rejected' && (
           <button
             onClick={() => updateStatus('rejected')}
-            disabled={working}
+            disabled={busy}
             className={`${btnBase} border hover:bg-red-500/10 hover:border-red-500/40`}
-            style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
+            style={{ borderColor: 'var(--auth-danger-border)', color: 'var(--auth-text)' }}
           >
             REJECT
           </button>
@@ -181,16 +164,21 @@ export default function ApplicationActions({
         {/* ── Delete ────────────────────────────────────── */}
         <button
           onClick={handleDelete}
-          disabled={working}
+          disabled={busy}
           className={`ml-auto ${btnBase} border hover:bg-red-500/10 hover:border-red-500/40`}
-          style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
+          style={{ borderColor: 'var(--auth-danger-border)', color: 'var(--auth-text)' }}
         >
           DELETE
         </button>
       </div>
 
       {approveError && (
-        <div className="text-[13px] text-red-400 mt-3">{approveError}</div>
+        <div className="text-[13px] mt-3" style={{ color: 'var(--auth-danger)' }}>{approveError}</div>
+      )}
+      {(notice || error) && (
+        <div className="text-[13px] mt-3" style={{ color: error ? 'var(--auth-danger)' : 'var(--auth-muted)' }}>
+          {error || notice}
+        </div>
       )}
     </div>
   );

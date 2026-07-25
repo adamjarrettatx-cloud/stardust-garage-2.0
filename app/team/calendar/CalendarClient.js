@@ -1,19 +1,18 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import TeamEventModal from '@/app/bananas/calendar/TeamEventModal';
 import ThemeToggle from '@/app/components/ThemeToggle';
+import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
-
-const THEME_KEY = 'sdg-admin-calendar-theme';
 
 // Category config: label, swatch color, a darker variant for readable text on
 // light backgrounds, and the text color used on a fully-filled chip (e.g. the
@@ -120,34 +119,14 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
   const router = useRouter();
   const supabase = createClient();
   const today = new Date();
+  const { theme, toggleTheme } = useAuthenticatedTheme();
 
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth()); // 0-indexed
   const [teamEvents, setTeamEvents] = useState(initialTeamEvents);
   const [modalState, setModalState] = useState(null); // null | { mode:'create', date } | { mode:'edit', event }
   const [selectedDay, setSelectedDay] = useState(null);
-  const [theme, setTheme] = useState('dark');
   const [signingOut, setSigningOut] = useState(false);
-
-  // Restore saved theme preference on mount (admin only — team members always
-  // see the dark view, unchanged from before this page was unified).
-  useEffect(() => {
-    if (!isAdmin) return;
-    try {
-      const saved = window.localStorage.getItem(THEME_KEY);
-      if (saved === 'light' || saved === 'dark') setTheme(saved);
-    } catch {
-      // localStorage unavailable — fall back to default dark theme silently.
-    }
-  }, [isAdmin]);
-
-  const toggleTheme = () => {
-    setTheme(prev => {
-      const next = prev === 'dark' ? 'light' : 'dark';
-      try { window.localStorage.setItem(THEME_KEY, next); } catch {}
-      return next;
-    });
-  };
 
   const t = THEMES[theme];
 
@@ -269,26 +248,34 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {isAdmin ? (
-            // Light / Dark theme toggle — scoped to this page only
-            <ThemeToggle theme={theme} onToggle={toggleTheme} />
-          ) : (
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+          {isAdmin ? null : (
             <>
               <Link
                 href="/team/chat"
-                className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"
-                style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#ffb84d' }}
+                className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors"
+                style={{ borderColor: 'var(--auth-ghost-border)', color: 'var(--auth-accent)' }}
               >
                 CHAT
               </Link>
               <Link
                 href="/team/progress"
-                className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"
-                style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#ffb84d' }}
+                className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors"
+                style={{ borderColor: 'var(--auth-ghost-border)', color: 'var(--auth-accent)' }}
               >
                 PROGRESS
               </Link>
             </>
+          )}
+          {!isAdmin && (
+            <button
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="px-4 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors disabled:opacity-50"
+              style={{ borderColor: 'var(--auth-ghost-border)', color: t.muted }}
+            >
+              {signingOut ? 'SIGNING OUT...' : 'SIGN OUT'}
+            </button>
           )}
           <button
             onClick={() => setModalState({ mode: 'create', date: today })}
@@ -297,16 +284,6 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
           >
             + ADD EVENT
           </button>
-          {!isAdmin && (
-            <button
-              onClick={handleSignOut}
-              disabled={signingOut}
-              className="px-4 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5 disabled:opacity-50"
-              style={{ borderColor: 'rgba(255,255,255,0.15)', color: t.muted }}
-            >
-              {signingOut ? 'SIGNING OUT...' : 'SIGN OUT'}
-            </button>
-          )}
         </div>
       </div>
 

@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   DEPARTMENTS, STATUSES, PRIORITIES,
-  classifyTask, computeKpis, filterTasks, sortTasks, toDateString,
+  classifyTask, computeKpis, filterTasks, persistDepartmentFilter,
+  readPersistedDepartment, sortTasks, toDateString,
 } from '@/lib/progress';
 import {
   StatusBadge, PriorityBadge, DeptChip, AttentionFlags, formatDate,
@@ -14,6 +15,7 @@ import TaskDrawer from '@/app/bananas/progress/TaskDrawer';
 import TaskFormModal from '@/app/bananas/progress/TaskFormModal';
 import ImportModal from '@/app/bananas/progress/ImportModal';
 import ThemeToggle from '@/app/components/ThemeToggle';
+import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
 
 // Unified Progress route (/team/progress). Admins and the owner get the full
 // management table (filters, sort, KPIs, CSV import, hard-delete for the
@@ -23,7 +25,15 @@ import ThemeToggle from '@/app/components/ThemeToggle';
 // picks between two purpose-built inner views based on isAdmin. Either way,
 // it's one file, one route, one server-verified role check (page.js) — no
 // admin dataset is ever fetched and hidden client-side for team members.
-export default function ProgressClient({ isAdmin, initialTasks, assignees, isOwner, currentUserName, todayIso }) {
+export default function ProgressClient({
+  isAdmin,
+  initialTasks,
+  assignees,
+  isOwner,
+  currentUserName,
+  currentTeamMemberId,
+  todayIso,
+}) {
   if (!isAdmin) {
     return (
       <TeamProgressView
@@ -39,6 +49,7 @@ export default function ProgressClient({ isAdmin, initialTasks, assignees, isOwn
       initialTasks={initialTasks}
       assignees={assignees}
       isOwner={isOwner}
+      currentTeamMemberId={currentTeamMemberId}
       todayIso={todayIso}
     />
   );
@@ -47,8 +58,6 @@ export default function ProgressClient({ isAdmin, initialTasks, assignees, isOwn
 // ---------------------------------------------------------------------------
 // Admin / owner view — full management table.
 // ---------------------------------------------------------------------------
-
-const ADMIN_THEME_KEY = 'sdg-admin-progress-theme';
 
 // Local, page-scoped light/dark palette — mirrors the pattern used by the
 // admin Team Calendar (app/team/calendar/CalendarClient.js). Dark values are
@@ -108,26 +117,58 @@ const KPI_DEFS = [
   { key: 'total', label: 'Active total', color: '#8a8a8a' },
 ];
 
-function AdminProgressView({ initialTasks, assignees, isOwner, todayIso }) {
+function DepartmentTabs({ value, onChange }) {
+  return (
+    <div
+      className="flex gap-2 overflow-x-auto pb-1 md:flex-wrap"
+      role="tablist"
+      aria-label="Department filter"
+      data-testid="progress-department-tabs"
+    >
+      <DepartmentTab
+        slug=""
+        label="All"
+        active={value === ''}
+        onSelect={() => onChange('')}
+      />
+      {DEPARTMENTS.map((d) => (
+        <DepartmentTab
+          key={d.slug}
+          slug={d.slug}
+          label={d.label}
+          active={value === d.slug}
+          onSelect={() => onChange(d.slug)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function DepartmentTab({ slug, label, active, onSelect }) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      data-testid={`progress-department-tab-${slug || 'all'}`}
+      onClick={onSelect}
+      className="whitespace-nowrap rounded-full px-4 py-2 text-[12px] font-semibold tracking-[0.08em] transition-colors"
+      style={{
+        background: active ? 'var(--auth-accent)' : 'var(--auth-ghost-bg)',
+        color: active ? 'var(--auth-accent-text)' : 'var(--auth-ghost-text)',
+        border: `1px solid ${active ? 'var(--auth-accent)' : 'var(--auth-ghost-border)'}`,
+        minHeight: '40px',
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function AdminProgressView({ initialTasks, assignees, isOwner, currentTeamMemberId, todayIso }) {
   const router = useRouter();
   const todayStr = toDateString(todayIso);
-
-  const [theme, setTheme] = useState('dark');
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(ADMIN_THEME_KEY);
-      if (saved === 'light' || saved === 'dark') setTheme(saved);
-    } catch {
-      // localStorage unavailable — fall back to default dark theme silently.
-    }
-  }, []);
-  const toggleTheme = () => {
-    setTheme((prev) => {
-      const next = prev === 'dark' ? 'light' : 'dark';
-      try { window.localStorage.setItem(ADMIN_THEME_KEY, next); } catch {}
-      return next;
-    });
-  };
+  const { theme, toggleTheme } = useAuthenticatedTheme();
   const t = ADMIN_THEMES[theme];
 
   const [filters, setFilters] = useState({
@@ -153,6 +194,13 @@ function AdminProgressView({ initialTasks, assignees, isOwner, todayIso }) {
 
   const refresh = () => router.refresh();
   const setFilter = (k, v) => setFilters((f) => ({ ...f, [k]: v }));
+
+  useEffect(() => {
+    const saved = readPersistedDepartment(typeof window !== 'undefined' ? window.localStorage : null, currentTeamMemberId);
+    if (saved) {
+      setFilters((f) => ({ ...f, department: saved }));
+    }
+  }, [currentTeamMemberId]);
 
   const selectStyle = {
     background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText,
@@ -205,10 +253,6 @@ function AdminProgressView({ initialTasks, assignees, isOwner, todayIso }) {
       <div className="flex flex-wrap gap-3 mb-6">
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search deliverables…"
           className="flex-1 min-w-[180px] rounded-full px-4 text-[13px]" style={selectStyle} aria-label="Search" />
-        <select value={filters.department} onChange={(e) => setFilter('department', e.target.value)} className="rounded-full px-4 text-[13px]" style={selectStyle} aria-label="Department filter">
-          <option value="">All departments</option>
-          {DEPARTMENTS.map((d) => <option key={d.slug} value={d.slug}>{d.label}</option>)}
-        </select>
         <select value={filters.status} onChange={(e) => setFilter('status', e.target.value)} className="rounded-full px-4 text-[13px]" style={selectStyle} aria-label="Status filter">
           <option value="">All statuses</option>
           {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
@@ -235,6 +279,17 @@ function AdminProgressView({ initialTasks, assignees, isOwner, todayIso }) {
           style={{ ...selectStyle, color: filters.archived ? '#ffb84d' : t.muted, cursor: 'pointer' }}>
           {filters.archived ? 'ARCHIVED' : 'ACTIVE'}
         </button>
+      </div>
+      <div className="mb-6">
+        <DepartmentTabs
+          value={filters.department}
+          onChange={(nextDepartment) => {
+            setFilter('department', nextDepartment);
+            if (typeof window !== 'undefined') {
+              persistDepartmentFilter(window.localStorage, currentTeamMemberId, nextDepartment);
+            }
+          }}
+        />
       </div>
 
       {/* List */}
@@ -340,8 +395,6 @@ function AdminProgressView({ initialTasks, assignees, isOwner, todayIso }) {
 // Team view — personal task list (read-mostly, tap to post an update).
 // ---------------------------------------------------------------------------
 
-const TEAM_THEME_KEY = 'sdg-team-progress-theme';
-
 const TEAM_THEMES = {
   dark: {
     text: '#f0f0f0',
@@ -373,23 +426,7 @@ function TeamProgressView({ initialTasks, assignees, currentUserName, todayIso }
   const router = useRouter();
   const todayStr = toDateString(todayIso);
   const [drawerTask, setDrawerTask] = useState(null);
-
-  const [theme, setTheme] = useState('dark');
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(TEAM_THEME_KEY);
-      if (saved === 'light' || saved === 'dark') setTheme(saved);
-    } catch {
-      // localStorage unavailable — fall back to default dark theme silently.
-    }
-  }, []);
-  const toggleTheme = () => {
-    setTheme((prev) => {
-      const next = prev === 'dark' ? 'light' : 'dark';
-      try { window.localStorage.setItem(TEAM_THEME_KEY, next); } catch {}
-      return next;
-    });
-  };
+  const { theme, toggleTheme } = useAuthenticatedTheme();
   const t = TEAM_THEMES[theme];
 
   const { attention, rest } = useMemo(() => {

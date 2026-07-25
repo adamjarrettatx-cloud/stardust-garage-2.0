@@ -50,18 +50,18 @@ export default function PublishEventButton({ eventId, status, ttEventSeriesId })
   return (
     <div
       className="rounded-[12px] border p-5 mb-6"
-      style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.08)' }}
+      style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}
     >
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
-          <span className="text-[12px] font-semibold tracking-[0.14em]" style={{ color: '#8a8a8a' }}>
+          <span className="text-[12px] font-semibold tracking-[0.14em]" style={{ color: 'var(--auth-muted)' }}>
             STATUS
           </span>
           <span
             className="text-[11px] font-semibold tracking-[0.12em] px-2.5 py-1 rounded-full"
             style={{
-              color: isDraft ? '#0a0a0a' : '#0f1a12',
-              background: isDraft ? '#ffb84d' : '#4ade80',
+              color: isDraft ? 'var(--auth-accent-text)' : 'var(--auth-strong-surface-text)',
+              background: isDraft ? 'var(--auth-accent)' : 'var(--auth-success)',
             }}
           >
             {isDraft ? 'DRAFT' : 'PUBLISHED'}
@@ -74,14 +74,14 @@ export default function PublishEventButton({ eventId, status, ttEventSeriesId })
             onClick={publish}
             disabled={publishing}
             className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-40"
-            style={{ background: '#4ade80', color: '#0a0a0a' }}
+            style={{ background: 'var(--auth-success)', color: 'var(--auth-strong-surface-text)' }}
           >
             {publishing ? 'PUBLISHING…' : 'PUBLISH WEBSITE + TICKETTAILOR'}
           </button>
         )}
       </div>
 
-      <p className="text-[11px] mt-3" style={{ color: '#555' }}>
+      <p className="text-[11px] mt-3" style={{ color: 'var(--auth-muted)' }}>
         {isDraft
           ? ttEventSeriesId
             ? 'Publishing makes this event public and sets its TicketTailor series to "published" so tickets go on sale.'
@@ -90,12 +90,12 @@ export default function PublishEventButton({ eventId, status, ttEventSeriesId })
       </p>
 
       {msg && (
-        <p className="text-[13px] mt-3" style={{ color: '#86efac' }}>
+        <p className="text-[13px] mt-3" style={{ color: 'var(--auth-success-strong)' }}>
           {msg}
         </p>
       )}
       {error && (
-        <p className="text-[13px] mt-3" style={{ color: '#ff8080' }}>
+        <p className="text-[13px] mt-3" style={{ color: 'var(--auth-danger)' }}>
           {error}
         </p>
       )}

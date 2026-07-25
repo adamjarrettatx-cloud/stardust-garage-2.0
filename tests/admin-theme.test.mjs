@@ -1,14 +1,23 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import {
   FINANCIAL_THEMES,
   ANALYTICS_THEMES,
-  FINANCIAL_THEME_KEY,
-  ANALYTICS_THEME_KEY,
   STATE_TONE,
   stateColor,
 } from '../lib/admin-theme.js';
+import {
+  AUTH_THEME_STORAGE_KEYS,
+  AUTH_THEMES,
+  AUTH_THEME_INLINE_TOGGLE_PATHS,
+  resolveAuthenticatedThemeScope,
+  resolveAuthTheme,
+} from '../lib/authenticated-theme.js';
 import { ENTRY_STATE } from '../lib/financial-calendar.js';
+
+const REPO_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 
 // --- Palette parity ---------------------------------------------------------
 // The light theme is applied by swapping token values, never by adding/removing
@@ -28,10 +37,18 @@ test('Event Analytics palette: dark and light expose identical tokens', () => {
   assertSameKeys(ANALYTICS_THEMES.dark, ANALYTICS_THEMES.light, 'analytics');
 });
 
-test('theme storage keys are distinct and page-scoped', () => {
-  assert.equal(FINANCIAL_THEME_KEY, 'sdg-admin-financial-theme');
-  assert.equal(ANALYTICS_THEME_KEY, 'sdg-admin-analytics-theme');
-  assert.notEqual(FINANCIAL_THEME_KEY, ANALYTICS_THEME_KEY);
+test('authenticated theme storage keys are shared by scope', () => {
+  assert.deepEqual(AUTH_THEME_STORAGE_KEYS, {
+    admin: 'sdg-auth-admin-theme',
+    team: 'sdg-auth-team-theme',
+  });
+});
+
+test('authenticated themes expose identical dark/light token keys and safe fallback', () => {
+  assertSameKeys(AUTH_THEMES.dark, AUTH_THEMES.light, 'authenticated');
+  assert.equal(resolveAuthTheme('light'), 'light');
+  assert.equal(resolveAuthTheme('dark'), 'dark');
+  assert.equal(resolveAuthTheme('bogus'), 'dark');
 });
 
 // --- Light-mode readability ------------------------------------------------
@@ -64,6 +81,46 @@ test('primary text and today marker invert between themes (no dark-on-dark)', ()
   // The today pill flips: dark shows a white pill w/ dark text, light the reverse.
   assert.equal(l.todayBg, '#1a1a1d');
   assert.equal(l.todayText, '#ffffff');
+});
+
+test('authenticated route scope covers every team/admin page except logins and capacity', () => {
+  const bananasPages = fs
+    .readdirSync(path.join(REPO_ROOT, 'app/bananas'), { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name === 'page.js')
+    .map((entry) => `/bananas/${path.dirname(entry.parentPath.replace(`${path.join(REPO_ROOT, 'app/bananas')}${path.sep}`, '')).replace(/\\/g, '/')}`)
+    .map((route) => route === '/bananas/.' ? '/bananas' : route.replace(/\/\.$/, ''));
+
+  const teamPages = fs
+    .readdirSync(path.join(REPO_ROOT, 'app/team'), { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name === 'page.js')
+    .map((entry) => `/team/${path.dirname(entry.parentPath.replace(`${path.join(REPO_ROOT, 'app/team')}${path.sep}`, '')).replace(/\\/g, '/')}`)
+    .map((route) => route === '/team/.' ? '/team' : route.replace(/\/\.$/, ''));
+
+  const expectedAdminRoutes = bananasPages.filter((route) => route !== '/bananas/login');
+  const expectedTeamRoutes = teamPages.filter((route) => route !== '/team/login');
+
+  for (const route of expectedAdminRoutes) {
+    assert.equal(resolveAuthenticatedThemeScope(route), 'admin', `${route} should use admin authenticated theming`);
+  }
+  for (const route of expectedTeamRoutes) {
+    assert.equal(resolveAuthenticatedThemeScope(route), 'team', `${route} should use team authenticated theming`);
+  }
+
+  assert.equal(resolveAuthenticatedThemeScope('/bananas/login'), null);
+  assert.equal(resolveAuthenticatedThemeScope('/team/login'), null);
+  assert.equal(resolveAuthenticatedThemeScope('/capacity'), null);
+  assert.equal(resolveAuthenticatedThemeScope('/capacity/front-door'), null);
+  assert.equal(resolveAuthenticatedThemeScope('/capacity/admin'), null);
+});
+
+test('inline theme toggle is limited to the already-themed authenticated pages', () => {
+  assert.deepEqual([...AUTH_THEME_INLINE_TOGGLE_PATHS].sort(), [
+    '/bananas/analytics',
+    '/bananas/financial-calendar',
+    '/team/calendar',
+    '/team/chat',
+    '/team/progress',
+  ]);
 });
 
 // --- State tone resolution --------------------------------------------------

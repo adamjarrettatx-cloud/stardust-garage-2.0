@@ -9,6 +9,9 @@ import {
   mapImportStatus,
   dayDiff,
   departmentLabel,
+  persistDepartmentFilter,
+  progressDepartmentStorageKey,
+  readPersistedDepartment,
   statusLabel,
 } from '../lib/progress.js';
 
@@ -163,4 +166,32 @@ test('label helpers fall back gracefully', () => {
   assert.equal(departmentLabel('unknown'), 'unknown');
   assert.equal(statusLabel('blocked'), 'Blocked');
   assert.equal(statusLabel(null), '—');
+});
+
+test('department filter persistence is team-member scoped with stale-value fallback', () => {
+  const storage = new Map();
+  const api = {
+    getItem(key) {
+      return storage.has(key) ? storage.get(key) : null;
+    },
+    setItem(key, value) {
+      storage.set(key, value);
+    },
+    removeItem(key) {
+      storage.delete(key);
+    },
+  };
+
+  assert.equal(progressDepartmentStorageKey('member-1'), 'sdg-progress-department:member-1');
+  assert.equal(readPersistedDepartment(api, 'member-1'), '');
+
+  assert.equal(persistDepartmentFilter(api, 'member-1', 'marketing'), 'marketing');
+  assert.equal(readPersistedDepartment(api, 'member-1'), 'marketing');
+  assert.equal(readPersistedDepartment(api, 'member-2'), '');
+
+  storage.set(progressDepartmentStorageKey('member-1'), 'stale-value');
+  assert.equal(readPersistedDepartment(api, 'member-1'), '');
+
+  assert.equal(persistDepartmentFilter(api, 'member-1', ''), '');
+  assert.equal(readPersistedDepartment(api, 'member-1'), '');
 });

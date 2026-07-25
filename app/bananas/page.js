@@ -29,16 +29,16 @@ export default async function AdminDashboard() {
     venueInquiriesCount,
     microPartiesCount,
     collaborationsCount,
-    recentSignupsCount,
+    newSignupsCount,
     upcomingBookingsCount,
     activeMembersCount,
     pastDueMembersCount,
   ] = await Promise.all([
-    supabase.from('membership_applications').select('*', { count: 'exact', head: true }).eq('status', 'new'),
-    supabase.from('venue_inquiries').select('*', { count: 'exact', head: true }).eq('status', 'new'),
-    supabase.from('micro_party_inquiries').select('*', { count: 'exact', head: true }).eq('status', 'new'),
-    supabase.from('collaborations').select('*', { count: 'exact', head: true }).eq('status', 'new'),
-    supabase.from('signups').select('*', { count: 'exact', head: true }).gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+    supabase.from('membership_applications').select('*', { count: 'exact', head: true }).or('status.eq.new,status.is.null'),
+    supabase.from('venue_inquiries').select('*', { count: 'exact', head: true }).or('status.eq.new,status.is.null'),
+    supabase.from('micro_party_inquiries').select('*', { count: 'exact', head: true }).or('status.eq.new,status.is.null'),
+    supabase.from('collaborations').select('*', { count: 'exact', head: true }).or('status.eq.new,status.is.null'),
+    supabase.from('signups').select('*', { count: 'exact', head: true }).or('status.eq.new,status.is.null'),
     supabase.from('studio_bookings').select('*', { count: 'exact', head: true }).eq('status', 'confirmed').gte('booking_date', today),
     supabase.from('member_profiles').select('*', { count: 'exact', head: true }).eq('is_active', true),
     supabase.from('member_profiles').select('*', { count: 'exact', head: true }).eq('subscription_status', 'past_due'),
@@ -51,7 +51,7 @@ export default async function AdminDashboard() {
     venueInquiries: venueInquiriesCount?.count || 0,
     microParties: microPartiesCount?.count || 0,
     collaborations: collaborationsCount?.count || 0,
-    recentSignups: recentSignupsCount?.count || 0,
+    newSignups: newSignupsCount?.count || 0,
     upcomingBookings: upcomingBookingsCount?.count || 0,
     activeMembers: activeMembersCount?.count || 0,
     pastDueMembers: pastDueMembersCount?.count || 0,
@@ -67,7 +67,7 @@ export default async function AdminDashboard() {
           >
             Admin
           </h1>
-          <p className="text-[14px] mt-2" style={{ color: '#8a8a8a' }}>
+          <p className="text-[14px] mt-2" style={{ color: 'var(--auth-muted)' }}>
             Signed in as {user?.email}
           </p>
         </div>

@@ -103,46 +103,46 @@ export default function MfaEnrollClient() {
   }
 
   if (loading) {
-    return <p className="text-[13px]" style={{ color: '#8a8a8a' }}>Loading MFA status…</p>;
+    return <p className="text-[13px]" style={{ color: 'var(--auth-muted)' }}>Loading MFA status…</p>;
   }
 
   return (
     <div className="space-y-5">
       {error && (
-        <div className="p-3 rounded-[10px] text-[13px]" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
+        <div className="p-3 rounded-[10px] text-[13px]" style={{ background: 'var(--auth-danger-bg)', border: '1px solid var(--auth-danger-border)', color: 'var(--auth-danger)' }}>
           {error}
         </div>
       )}
       {notice && (
-        <div className="p-3 rounded-[10px] text-[13px]" style={{ background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.3)', color: '#86efac' }}>
+        <div className="p-3 rounded-[10px] text-[13px]" style={{ background: 'var(--auth-success-bg)', border: '1px solid var(--auth-success-border)', color: 'var(--auth-success-strong)' }}>
           {notice}
         </div>
       )}
 
-      <div className="rounded-[14px] border p-5" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.06)' }}>
-        <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase mb-3" style={{ color: '#8a8a8a' }}>
+      <div className="rounded-[14px] border p-5" style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}>
+        <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase mb-3" style={{ color: 'var(--auth-muted)' }}>
           Authenticator Apps
         </h2>
 
         {factors.length === 0 ? (
-          <p className="text-[13px] mb-4" style={{ color: '#8a8a8a' }}>
+          <p className="text-[13px] mb-4" style={{ color: 'var(--auth-muted)' }}>
             No authenticator enrolled. Add one to secure your account with a second factor.
           </p>
         ) : (
           <ul className="space-y-2 mb-4">
             {factors.map((f) => (
               <li key={f.id} className="flex items-center justify-between rounded-[10px] border p-3"
-                style={{ background: '#0d0d0d', borderColor: 'rgba(255,255,255,0.06)' }}>
+                style={{ background: 'var(--auth-card-bg-alt)', borderColor: 'var(--auth-card-border)' }}>
                 <div className="text-[13px]">
                   <span className="font-semibold">{f.friendly_name || 'Authenticator'}</span>
                   <span className="ml-2 text-[11px] px-1.5 py-0.5 rounded-[4px]"
-                    style={{ background: f.status === 'verified' ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.06)', color: f.status === 'verified' ? '#4ade80' : '#8a8a8a' }}>
+                    style={{ background: f.status === 'verified' ? 'var(--auth-success-bg)' : 'var(--auth-ghost-bg)', color: f.status === 'verified' ? 'var(--auth-success)' : 'var(--auth-muted)' }}>
                     {f.status}
                   </span>
                 </div>
                 <button onClick={() => removeFactor(f.id)}
                   className="text-[12px] px-3 py-1.5 rounded-[8px]"
-                  style={{ border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
+                  style={{ border: '1px solid var(--auth-danger-border)', color: 'var(--auth-danger)' }}>
                   Remove
                 </button>
               </li>
@@ -153,7 +153,7 @@ export default function MfaEnrollClient() {
         {!enrolling && (
           <button onClick={startEnroll}
             className="px-5 py-2.5 text-[13px] font-semibold rounded-[10px] tracking-[0.06em] uppercase"
-            style={{ background: 'white', color: 'black' }}>
+            style={{ background: 'var(--auth-text-strong)', color: 'var(--auth-strong-surface-text)' }}>
             Add authenticator
           </button>
         )}
@@ -164,11 +164,13 @@ export default function MfaEnrollClient() {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={pending.qr} alt="Scan this QR code in your authenticator app"
                 width={180} height={180}
-                className="rounded-[10px] bg-white p-2" />
+                className="rounded-[10px] p-2"
+                style={{ background: '#ffffff' }} />
             )}
             {pending.secret && (
-              <p className="text-[12px]" style={{ color: '#8a8a8a' }}>
-                Or enter this key manually: <code className="text-white">{pending.secret}</code>
+              <p className="text-[12px]" style={{ color: 'var(--auth-muted)' }}>
+                Or enter this key manually:{' '}
+                <code style={{ color: 'var(--auth-text)', wordBreak: 'break-all' }}>{pending.secret}</code>
               </p>
             )}
             <input
@@ -177,17 +179,17 @@ export default function MfaEnrollClient() {
               inputMode="numeric"
               placeholder="6-digit code"
               className="w-full max-w-[200px] px-3 py-2.5 text-[14px] rounded-[10px] outline-none"
-              style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+              style={{ background: 'var(--auth-input-bg)', border: '1px solid var(--auth-input-border)', color: 'var(--auth-input-text)' }}
             />
             <div className="flex gap-2">
               <button onClick={verify} disabled={verifying || !code.trim()}
                 className="px-5 py-2 text-[13px] font-semibold rounded-[10px] tracking-[0.06em] uppercase"
-                style={{ background: 'white', color: 'black', opacity: verifying || !code.trim() ? 0.6 : 1 }}>
+                style={{ background: 'var(--auth-text-strong)', color: 'var(--auth-strong-surface-text)', opacity: verifying || !code.trim() ? 0.6 : 1 }}>
                 {verifying ? 'Verifying…' : 'Verify & activate'}
               </button>
               <button onClick={cancelEnroll} disabled={verifying}
                 className="px-4 py-2 text-[13px] rounded-[10px]"
-                style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}>
+                style={{ border: '1px solid var(--auth-ghost-border)', color: 'var(--auth-text)' }}>
                 Cancel
               </button>
             </div>
@@ -195,7 +197,7 @@ export default function MfaEnrollClient() {
         )}
       </div>
 
-      <p className="text-[12px]" style={{ color: '#6a6a6a' }}>
+      <p className="text-[12px]" style={{ color: 'var(--auth-faint)' }}>
         Two-factor authentication is currently <strong>optional</strong>. Once all admins and team
         members have enrolled, it will be required at sign-in.
       </p>

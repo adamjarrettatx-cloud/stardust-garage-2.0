@@ -1,48 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import useSubmissionStatus from '@/app/bananas/components/useSubmissionStatus';
+import { canResetSubmissionToNew } from '@/lib/submission-workflow';
 
 export default function InquiryActions({ inquiryId, currentStatus }) {
   const router = useRouter();
-  const [working, setWorking] = useState(false);
-
-  // Auto-mark as reviewed when the detail page is first opened (if still 'new')
-  useEffect(() => {
-    if (currentStatus === 'new') {
-      const supabase = createClient();
-      supabase
-        .from('venue_inquiries')
-        .update({ status: 'reviewed' })
-        .eq('id', inquiryId)
-        .then(() => router.refresh());
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const updateStatus = async (newStatus) => {
-    setWorking(true);
-    const supabase = createClient();
-    const { error } = await supabase
-      .from('venue_inquiries')
-      .update({ status: newStatus })
-      .eq('id', inquiryId);
-
-    if (error) {
-      alert('Error: ' + error.message);
-      setWorking(false);
-      return;
-    }
-    router.refresh();
-    setWorking(false);
-  };
+  const { status, working, notice, error, updateStatus } = useSubmissionStatus('venue-inquiries', inquiryId, currentStatus);
+  const [deleteError, setDeleteError] = useState('');
 
   const handleDelete = async () => {
     const confirmed = window.confirm('Permanently delete this inquiry?');
     if (!confirmed) return;
 
-    setWorking(true);
+    setDeleteError('');
     const supabase = createClient();
     const { error } = await supabase
       .from('venue_inquiries')
@@ -50,8 +23,7 @@ export default function InquiryActions({ inquiryId, currentStatus }) {
       .eq('id', inquiryId);
 
     if (error) {
-      alert('Error: ' + error.message);
-      setWorking(false);
+      setDeleteError(error.message);
       return;
     }
     router.push('/bananas/venue-inquiries');
@@ -64,19 +36,18 @@ export default function InquiryActions({ inquiryId, currentStatus }) {
   return (
     <div className="flex flex-wrap gap-2">
       {/* ── Approve ───────────────────────────────────── */}
-      {currentStatus !== 'approved' && (
+      {status !== 'approved' && (
         <button
           onClick={() => updateStatus('approved')}
           disabled={working}
-          className={btnBase}
-          style={{ background: '#ffffff', color: '#0a0a0a' }}
+          className={`${btnBase} auth-theme-solid-button`}
         >
           APPROVE
         </button>
       )}
 
       {/* ── Mark Reviewed ─────────────────────────────── */}
-      {currentStatus !== 'reviewed' && currentStatus !== 'approved' && currentStatus !== 'rejected' && (
+      {status !== 'reviewed' && status !== 'approved' && status !== 'rejected' && (
         <button
           onClick={() => updateStatus('reviewed')}
           disabled={working}
@@ -87,29 +58,40 @@ export default function InquiryActions({ inquiryId, currentStatus }) {
             border: '1px solid rgba(168,85,247,0.3)',
           }}
         >
-          MARK REVIEWED
+          MARK AS SEEN
+        </button>
+      )}
+
+      {canResetSubmissionToNew(status) && (
+        <button
+          onClick={() => updateStatus('new')}
+          disabled={working}
+          className={`${btnBase} border`}
+          style={{ borderColor: 'var(--auth-warn-border)', color: 'var(--auth-warn-strong)' }}
+        >
+          MARK AS NEW
         </button>
       )}
 
       {/* ── Mark Pending ──────────────────────────────── */}
-      {currentStatus !== 'pending' && (
+      {status !== 'pending' && (
         <button
           onClick={() => updateStatus('pending')}
           disabled={working}
-          className={`${btnBase} border hover:bg-white/5`}
-          style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
+          className={`${btnBase} border auth-theme-border-button`}
+          style={{ color: 'var(--auth-muted-strong)' }}
         >
           MARK PENDING
         </button>
       )}
 
       {/* ── Reject ────────────────────────────────────── */}
-      {currentStatus !== 'rejected' && (
+      {status !== 'rejected' && (
         <button
           onClick={() => updateStatus('rejected')}
           disabled={working}
           className={`${btnBase} border hover:bg-red-500/10 hover:border-red-500/40`}
-          style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
+          style={{ borderColor: 'var(--auth-danger-border)', color: 'var(--auth-text)' }}
         >
           REJECT
         </button>
@@ -120,10 +102,15 @@ export default function InquiryActions({ inquiryId, currentStatus }) {
         onClick={handleDelete}
         disabled={working}
         className={`ml-auto ${btnBase} border hover:bg-red-500/10 hover:border-red-500/40`}
-        style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
+        style={{ borderColor: 'var(--auth-danger-border)', color: 'var(--auth-text)' }}
       >
         DELETE
       </button>
+      {(notice || error || deleteError) && (
+        <div className="basis-full text-[13px] mt-2" style={{ color: deleteError || error ? 'var(--auth-danger)' : 'var(--auth-muted)' }}>
+          {deleteError || error || notice}
+        </div>
+      )}
     </div>
   );
 }

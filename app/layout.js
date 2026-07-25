@@ -2,6 +2,7 @@ import './globals.css';
 import Navbar from './components/Navbar';
 import NavbarVisibility from './components/NavbarVisibility';
 import CosmosBackground from './components/CosmosBackground';
+import AuthenticatedRouteShell from './components/AuthenticatedRouteShell';
 
 export const metadata = {
   title: 'Stardust Garage',
@@ -28,12 +29,14 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <CosmosBackground />
-        <div className="relative z-10">
-          <NavbarVisibility>
-            <Navbar />
-          </NavbarVisibility>
-          {children}
-        </div>
+        <AuthenticatedRouteShell>
+          <div className="relative z-10">
+            <NavbarVisibility>
+              <Navbar />
+            </NavbarVisibility>
+            {children}
+          </div>
+        </AuthenticatedRouteShell>
       </body>
     </html>
   );

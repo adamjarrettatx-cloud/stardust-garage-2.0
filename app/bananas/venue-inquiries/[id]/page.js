@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
 import InquiryActions from './InquiryActions';
+import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
 
 export const revalidate = 0;
 
@@ -25,12 +26,12 @@ function formatDate(iso) {
 
 function Field({ label, children }) {
   return (
-    <div className="py-5 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-      <div className="text-[11px] font-semibold tracking-[0.14em] mb-2" style={{ color: '#8a8a8a' }}>
+    <div className="py-5 border-t" style={{ borderColor: 'var(--auth-row-border)' }}>
+      <div className="text-[11px] font-semibold tracking-[0.14em] mb-2" style={{ color: 'var(--auth-muted)' }}>
         {label}
       </div>
       <div className="text-[15px] leading-[1.6]" style={{ whiteSpace: 'pre-wrap' }}>
-        {children || <span style={{ color: '#555' }}>—</span>}
+        {children || <span style={{ color: 'var(--auth-muted)' }}>—</span>}
       </div>
     </div>
   );
@@ -54,8 +55,7 @@ export default async function InquiryDetail({ params }) {
     <main className="max-w-[800px] mx-auto px-6 py-16">
       <Link
         href="/bananas/venue-inquiries"
-        className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70"
-        style={{ color: '#8a8a8a' }}
+        className="auth-theme-page-link inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-colors"
       >
         ← BACK TO INQUIRIES
       </Link>
@@ -67,33 +67,15 @@ export default async function InquiryDetail({ params }) {
               <div
                 className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full"
                 style={{
-                  background: '#1a1a1a',
-                  color: '#f5f5f5',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  background: 'var(--auth-card-bg-alt)',
+                  color: 'var(--auth-text)',
+                  border: '1px solid var(--auth-card-border-strong)',
                 }}
               >
                 {TYPE_LABELS[i.inquiry_type].toUpperCase()}
               </div>
             )}
-            <div
-              className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full uppercase"
-              style={{
-                background:
-                  i.status === 'approved' ? 'rgba(34,197,94,0.15)' :
-                  i.status === 'rejected' ? 'rgba(239,68,68,0.15)' :
-                  i.status === 'reviewed' ? 'rgba(168,85,247,0.12)' :
-                  i.status === 'pending' ? 'rgba(255,255,255,0.06)' :
-                  'rgba(255,184,77,0.15)',
-                color:
-                  i.status === 'approved' ? '#4ade80' :
-                  i.status === 'rejected' ? '#f87171' :
-                  i.status === 'reviewed' ? '#c084fc' :
-                  i.status === 'pending' ? '#a0a0a0' :
-                  '#ffb84d',
-              }}
-            >
-              {i.status || 'new'}
-            </div>
+            <SubmissionStatusBadge status={i.status || 'new'} />
           </div>
           <h1
             className="text-[36px] font-extrabold -tracking-[0.02em] leading-[1.1]"
@@ -101,10 +83,10 @@ export default async function InquiryDetail({ params }) {
           >
             {i.event_name}
           </h1>
-          <p className="text-[15px] mt-1" style={{ color: '#8a8a8a' }}>
+          <p className="text-[15px] mt-1" style={{ color: 'var(--auth-muted)' }}>
             {i.event_type}
           </p>
-          <p className="text-[12px] mt-3" style={{ color: '#666' }}>
+          <p className="text-[12px] mt-3" style={{ color: 'var(--auth-faint)' }}>
             Submitted {formatDate(i.created_at)}
           </p>
         </div>
@@ -114,7 +96,7 @@ export default async function InquiryDetail({ params }) {
 
       <section
         className="rounded-[14px] p-8 border mt-8 mb-6"
-        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
+        style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}
       >
         <h2 className="text-[13px] font-bold tracking-[0.14em] pb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           CONTACT
@@ -138,7 +120,7 @@ export default async function InquiryDetail({ params }) {
 
       <section
         className="rounded-[14px] p-8 border mb-6"
-        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
+        style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}
       >
         <h2 className="text-[13px] font-bold tracking-[0.14em] pb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           EVENT DETAILS
@@ -152,7 +134,7 @@ export default async function InquiryDetail({ params }) {
 
       <section
         className="rounded-[14px] p-8 border mb-6"
-        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
+        style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}
       >
         <h2 className="text-[13px] font-bold tracking-[0.14em] pb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           SPACE &amp; PRODUCTION
@@ -164,7 +146,7 @@ export default async function InquiryDetail({ params }) {
                 <span
                   key={area}
                   className="text-[12px] font-medium px-3 py-1 rounded-full"
-                  style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)' }}
+                  style={{ background: 'var(--auth-card-bg-alt)', border: '1px solid var(--auth-card-border-strong)' }}
                 >
                   {area}
                 </span>
@@ -179,7 +161,7 @@ export default async function InquiryDetail({ params }) {
 
       <section
         className="rounded-[14px] p-8 border mb-6"
-        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
+        style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}
       >
         <h2 className="text-[13px] font-bold tracking-[0.14em] pb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           VISION &amp; ADDITIONAL INFO
@@ -193,14 +175,14 @@ export default async function InquiryDetail({ params }) {
 
       <section
         className="rounded-[14px] p-8 border"
-        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
+        style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}
       >
         <h2 className="text-[13px] font-bold tracking-[0.14em] mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           ACKNOWLEDGMENT
         </h2>
         <div className="flex items-start gap-3 text-[14px]">
           <span>{i.acknowledged_terms ? '✓' : '✗'}</span>
-          <span style={{ color: i.acknowledged_terms ? '#f5f5f5' : '#888' }}>
+          <span style={{ color: i.acknowledged_terms ? 'var(--auth-text)' : 'var(--auth-muted)' }}>
             Acknowledged Stardust Garage is an intentional, creative venue and rentals are subject to management approval.
           </span>
         </div>
