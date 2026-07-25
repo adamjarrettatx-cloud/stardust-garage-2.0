@@ -105,9 +105,13 @@ export async function POST(request) {
     return NextResponse.json({ received: true, skipped: 'bad_json' });
   }
 
+  // Ticket Tailor sends this as "ORDER.CREATED" / "ORDER.UPDATED" (uppercase)
+  // in production, despite docs examples showing lowercase - normalize before
+  // comparing so we don't silently ignore every real delivery.
   const eventType = envelope?.event;
+  const normalizedEventType = typeof eventType === 'string' ? eventType.toLowerCase() : eventType;
   const order = envelope?.payload;
-  if (!order || !['order.created', 'order.updated'].includes(eventType)) {
+  if (!order || !['order.created', 'order.updated'].includes(normalizedEventType)) {
     await logDebug(debugAdmin, {
       error_message: `ignored_event_type: ${eventType || 'undefined'}`,
       raw_body: rawBody.slice(0, 8000),
@@ -116,7 +120,7 @@ export async function POST(request) {
   }
 
   const orderId = order.id;
-  const status = order.status; // 'completed' | 'pending' | 'canceled' per TT docs
+  const status = typeof order.status === 'string' ? order.status.toLowerCase() : order.status; // 'completed' | 'pending' | 'canceled' per TT docs
   const buyerEmail = order.buyer_details?.email || null;
   const totalPaidCents = Number(order.total_paid ?? order.total ?? 0);
   const currency = order.currency?.code?.toUpperCase() || 'USD';
