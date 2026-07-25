@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { centsToUsd } from '@/lib/event-analytics';
 import ThemeToggle from '@/app/components/ThemeToggle';
-import { ANALYTICS_THEMES as THEMES, ANALYTICS_THEME_KEY as THEME_KEY } from '@/lib/admin-theme';
+import { ANALYTICS_THEMES as THEMES } from '@/lib/admin-theme';
 import RefreshMetricsButton from './RefreshMetricsButton';
 import RowRefreshButton from './RowRefreshButton';
+import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
 
 const CATEGORY_COLOR = {
   workshop: '#ffb84d', yoga: '#4ade80', party: '#f472b6', other: '#8a8a8a',
@@ -23,22 +23,7 @@ function fmtFetched(iso) {
 }
 
 export default function AnalyticsClient({ rows, totals, lastFetched, hasAnyMetrics }) {
-  const [theme, setTheme] = useState('dark');
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(THEME_KEY);
-      if (saved === 'light' || saved === 'dark') setTheme(saved);
-    } catch {
-      // localStorage unavailable — fall back to default dark theme silently.
-    }
-  }, []);
-  const toggleTheme = () => {
-    setTheme((prev) => {
-      const next = prev === 'dark' ? 'light' : 'dark';
-      try { window.localStorage.setItem(THEME_KEY, next); } catch {}
-      return next;
-    });
-  };
+  const { theme, toggleTheme } = useAuthenticatedTheme();
   const t = THEMES[theme];
 
   const gridCols = 'grid-cols-[1fr_100px_90px_90px_70px_70px_80px]';

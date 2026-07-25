@@ -1,45 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import useSubmissionStatus from '@/app/bananas/components/useSubmissionStatus';
+import { canResetSubmissionToNew } from '@/lib/submission-workflow';
 
 export default function MicroPartyActions({ inquiryId, currentStatus }) {
-  const router = useRouter();
-  const [updating, setUpdating] = useState(false);
-  const [error, setError] = useState('');
-
-  // Auto-mark as reviewed when the detail page is first opened (if still 'new')
-  useEffect(() => {
-    if (currentStatus === 'new') {
-      const supabase = createClient();
-      supabase
-        .from('micro_party_inquiries')
-        .update({ status: 'reviewed' })
-        .eq('id', inquiryId)
-        .then(() => router.refresh());
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const updateStatus = async (newStatus) => {
-    setUpdating(true);
-    setError('');
-    const supabase = createClient();
-    const { error: updateError } = await supabase
-      .from('micro_party_inquiries')
-      .update({ status: newStatus })
-      .eq('id', inquiryId);
-
-    if (updateError) {
-      setError(updateError.message);
-      setUpdating(false);
-      return;
-    }
-
-    setUpdating(false);
-    router.refresh();
-  };
+  const { status, working, notice, error, updateStatus } = useSubmissionStatus('micro-parties', inquiryId, currentStatus);
 
   const btnBase =
     'px-5 py-2.5 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-50';
@@ -50,23 +15,23 @@ export default function MicroPartyActions({ inquiryId, currentStatus }) {
         {/* ── Approve ───────────────────────────────────── */}
         <button
           type="button"
-          disabled={updating || currentStatus === 'approved'}
+          disabled={working || status === 'approved'}
           onClick={() => updateStatus('approved')}
-          className={btnBase}
+          className={`${btnBase} ${status === 'approved' ? '' : 'auth-theme-solid-button'}`}
           style={{
-            background: currentStatus === 'approved' ? 'rgba(34,197,94,0.15)' : '#22c55e',
-            color: currentStatus === 'approved' ? '#4ade80' : '#0a0a0a',
-            border: '1px solid rgba(34,197,94,0.3)',
+            background: status === 'approved' ? 'var(--auth-success-bg)' : undefined,
+            color: status === 'approved' ? 'var(--auth-success)' : undefined,
+            border: status === 'approved' ? '1px solid var(--auth-success-border)' : 'none',
           }}
         >
-          {currentStatus === 'approved' ? '✓ APPROVED' : 'APPROVE'}
+          {status === 'approved' ? '✓ APPROVED' : 'APPROVE'}
         </button>
 
         {/* ── Mark Reviewed ─────────────────────────────── */}
-        {currentStatus !== 'reviewed' && currentStatus !== 'approved' && currentStatus !== 'rejected' && (
+        {status !== 'reviewed' && status !== 'approved' && status !== 'rejected' && (
           <button
             type="button"
-            disabled={updating}
+            disabled={working}
             onClick={() => updateStatus('reviewed')}
             className={btnBase}
             style={{
@@ -75,21 +40,37 @@ export default function MicroPartyActions({ inquiryId, currentStatus }) {
               border: '1px solid rgba(168,85,247,0.3)',
             }}
           >
-            MARK REVIEWED
+            MARK AS SEEN
+          </button>
+        )}
+
+        {canResetSubmissionToNew(status) && (
+          <button
+            type="button"
+            disabled={working}
+            onClick={() => updateStatus('new')}
+            className={btnBase}
+            style={{
+              background: 'transparent',
+              color: 'var(--auth-warn-strong)',
+              border: '1px solid var(--auth-warn-border)',
+            }}
+          >
+            MARK AS NEW
           </button>
         )}
 
         {/* ── Mark Pending ──────────────────────────────── */}
-        {currentStatus !== 'pending' && (
+        {status !== 'pending' && (
           <button
             type="button"
-            disabled={updating}
+            disabled={working}
             onClick={() => updateStatus('pending')}
-            className={btnBase}
+            className={`${btnBase} auth-theme-border-button`}
             style={{
               background: 'transparent',
-              color: '#a0a0a0',
-              border: '1px solid rgba(255,255,255,0.15)',
+              color: 'var(--auth-muted-strong)',
+              border: '1px solid var(--auth-ghost-border)',
             }}
           >
             MARK PENDING
@@ -99,22 +80,22 @@ export default function MicroPartyActions({ inquiryId, currentStatus }) {
         {/* ── Reject ────────────────────────────────────── */}
         <button
           type="button"
-          disabled={updating || currentStatus === 'rejected'}
+          disabled={working || status === 'rejected'}
           onClick={() => updateStatus('rejected')}
           className={btnBase}
           style={{
-            background: currentStatus === 'rejected' ? 'rgba(239,68,68,0.15)' : 'transparent',
-            color: currentStatus === 'rejected' ? '#f87171' : '#f5f5f5',
-            border: '1px solid rgba(239,68,68,0.3)',
+            background: status === 'rejected' ? 'var(--auth-danger-bg)' : 'transparent',
+            color: status === 'rejected' ? 'var(--auth-danger)' : 'var(--auth-text)',
+            border: '1px solid var(--auth-danger-border)',
           }}
         >
-          {currentStatus === 'rejected' ? '✗ REJECTED' : 'REJECT'}
+          {status === 'rejected' ? '✗ REJECTED' : 'REJECT'}
         </button>
       </div>
 
-      {error && (
-        <div className="text-[13px] text-red-400 mt-3">
-          {error}
+      {(notice || error) && (
+        <div className="text-[13px] mt-3" style={{ color: error ? 'var(--auth-danger)' : 'var(--auth-muted)' }}>
+          {error || notice}
         </div>
       )}
     </div>

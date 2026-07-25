@@ -1,18 +1,17 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import ThemeToggle from '@/app/components/ThemeToggle';
+import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
 import {
   channelDisplayName,
   channelHasUnread,
   lastMessagePerChannel,
   formatMessageTime,
 } from '@/lib/chat';
-
-const THEME_KEY = 'sdg-team-chat-theme';
 
 // Local, page-scoped light/dark palette — mirrors the pattern used by the
 // admin Team Calendar (app/bananas/calendar/CalendarClient.js). Dark values
@@ -56,23 +55,7 @@ const THEMES = {
 export default function TeamChatClient({ currentUserId, currentUserName }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-
-  const [theme, setTheme] = useState('dark');
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(THEME_KEY);
-      if (saved === 'light' || saved === 'dark') setTheme(saved);
-    } catch {
-      // localStorage unavailable — fall back to default dark theme silently.
-    }
-  }, []);
-  const toggleTheme = () => {
-    setTheme((prev) => {
-      const next = prev === 'dark' ? 'light' : 'dark';
-      try { window.localStorage.setItem(THEME_KEY, next); } catch {}
-      return next;
-    });
-  };
+  const { theme, toggleTheme } = useAuthenticatedTheme();
   const t = THEMES[theme];
 
   const [channels, setChannels] = useState([]);        // chat_channels rows I belong to

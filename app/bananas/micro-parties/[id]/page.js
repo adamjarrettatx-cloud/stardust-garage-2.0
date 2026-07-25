@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
 import MicroPartyActions from './MicroPartyActions';
+import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
 
 export const revalidate = 0;
 
@@ -37,12 +38,12 @@ function formatTime(t) {
 
 function Field({ label, children }) {
   return (
-    <div className="py-5 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-      <div className="text-[11px] font-semibold tracking-[0.14em] mb-2" style={{ color: '#8a8a8a' }}>
+    <div className="py-5 border-t" style={{ borderColor: 'var(--auth-row-border)' }}>
+      <div className="text-[11px] font-semibold tracking-[0.14em] mb-2" style={{ color: 'var(--auth-muted)' }}>
         {label}
       </div>
       <div className="text-[15px] leading-[1.6]" style={{ whiteSpace: 'pre-wrap' }}>
-        {children || <span style={{ color: '#555' }}>—</span>}
+        {children || <span style={{ color: 'var(--auth-muted)' }}>—</span>}
       </div>
     </div>
   );
@@ -66,8 +67,7 @@ export default async function MicroPartyDetail({ params }) {
     <main className="max-w-[800px] mx-auto px-6 py-16">
       <Link
         href="/bananas/micro-parties"
-        className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70"
-        style={{ color: '#8a8a8a' }}
+        className="auth-theme-page-link inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-colors"
       >
         ← BACK TO MICRO PARTY INQUIRIES
       </Link>
@@ -80,37 +80,19 @@ export default async function MicroPartyDetail({ params }) {
           >
             {i.event_name || i.full_name}
           </h1>
-          <div className="text-[13px]" style={{ color: '#8a8a8a' }}>
+          <div className="text-[13px]" style={{ color: 'var(--auth-muted)' }}>
             Submitted {formatDate(i.created_at)}
           </div>
         </div>
 
-        <div
-          className="flex-shrink-0 inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full uppercase"
-          style={{
-            background:
-              i.status === 'approved' ? 'rgba(34,197,94,0.15)' :
-              i.status === 'rejected' ? 'rgba(239,68,68,0.15)' :
-              i.status === 'reviewed' ? 'rgba(168,85,247,0.12)' :
-              i.status === 'pending' ? 'rgba(255,255,255,0.06)' :
-              'rgba(255,184,77,0.15)',
-            color:
-              i.status === 'approved' ? '#4ade80' :
-              i.status === 'rejected' ? '#f87171' :
-              i.status === 'reviewed' ? '#c084fc' :
-              i.status === 'pending' ? '#a0a0a0' :
-              '#ffb84d',
-          }}
-        >
-          {i.status || 'new'}
-        </div>
+        <SubmissionStatusBadge status={i.status || 'new'} />
       </div>
 
       <MicroPartyActions inquiryId={i.id} currentStatus={i.status || 'new'} />
 
       <section
         className="rounded-[14px] p-7 border mt-10"
-        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
+        style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}
       >
         <h2 className="text-[16px] font-bold mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           Contact Info
@@ -118,7 +100,7 @@ export default async function MicroPartyDetail({ params }) {
 
         <Field label="FULL NAME">{i.full_name}</Field>
         <Field label="EMAIL">
-          <a href={`mailto:${i.email}`} style={{ color: '#f5f5f5', textDecoration: 'underline' }}>
+          <a href={`mailto:${i.email}`} style={{ color: 'var(--auth-text)', textDecoration: 'underline' }}>
             {i.email}
           </a>
         </Field>
@@ -131,7 +113,7 @@ export default async function MicroPartyDetail({ params }) {
 
       <section
         className="rounded-[14px] p-7 border mt-6"
-        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
+        style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}
       >
         <h2 className="text-[16px] font-bold mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           Event Details
@@ -150,7 +132,7 @@ export default async function MicroPartyDetail({ params }) {
 
       <section
         className="rounded-[14px] p-7 border mt-6"
-        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
+        style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}
       >
         <h2 className="text-[16px] font-bold mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           Vision &amp; Additional Info

@@ -59,6 +59,7 @@ export default async function TeamProgressPage() {
         initialTasks={enriched}
         assignees={assignees}
         isOwner={isOwner}
+        currentTeamMemberId={teamMember.id}
         todayIso={todayIso}
       />
     );
@@ -94,6 +95,7 @@ export default async function TeamProgressPage() {
       initialTasks={enriched}
       assignees={assignees}
       currentUserName={teamMember.full_name || teamMember.email}
+      currentTeamMemberId={teamMember.id}
       todayIso={todayIso}
     />
   );

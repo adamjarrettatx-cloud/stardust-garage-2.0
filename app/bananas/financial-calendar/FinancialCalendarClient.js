@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { centsToUsd } from '@/lib/event-analytics';
@@ -9,8 +9,9 @@ import { MANUAL_CATEGORIES } from '@/lib/manual-income';
 import { adminFetch } from '@/lib/admin-fetch';
 import RefreshMetricsButton from '@/app/bananas/analytics/RefreshMetricsButton';
 import ThemeToggle from '@/app/components/ThemeToggle';
-import { FINANCIAL_THEMES as THEMES, FINANCIAL_THEME_KEY as THEME_KEY, stateColor } from '@/lib/admin-theme';
+import { FINANCIAL_THEMES as THEMES, stateColor } from '@/lib/admin-theme';
 import ManualIncomeDialog from './ManualIncomeDialog';
+import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
 
 const MANUAL_CATEGORY_LABEL = Object.fromEntries(MANUAL_CATEGORIES.map((c) => [c.value, c.label]));
 
@@ -66,28 +67,11 @@ function cellIncomeLabel(entry) {
 export default function FinancialCalendarClient({ entries, todayIso }) {
   const router = useRouter();
   const today = useMemo(() => new Date(todayIso), [todayIso]);
+  const { theme, toggleTheme } = useAuthenticatedTheme();
 
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [selectedDay, setSelectedDay] = useState(null);
-
-  // Per-page light/dark theme, matching the Team Calendar convention.
-  const [theme, setTheme] = useState('dark');
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(THEME_KEY);
-      if (saved === 'light' || saved === 'dark') setTheme(saved);
-    } catch {
-      // localStorage unavailable — fall back to default dark theme silently.
-    }
-  }, []);
-  const toggleTheme = () => {
-    setTheme((prev) => {
-      const next = prev === 'dark' ? 'light' : 'dark';
-      try { window.localStorage.setItem(THEME_KEY, next); } catch {}
-      return next;
-    });
-  };
   const t = THEMES[theme];
 
   // Manual-income add/edit dialog + delete state.

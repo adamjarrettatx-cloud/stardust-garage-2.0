@@ -13,13 +13,13 @@ function Tile({ href, eyebrow, title, count = 0 }) {
       href={href}
       className="relative rounded-[14px] p-5 border transition-colors hover:border-white/20"
       style={{
-        background: isHighlighted ? '#1f1c14' : '#141414',
-        borderColor: isHighlighted ? 'rgba(255,200,80,0.25)' : 'rgba(255,255,255,0.05)',
+        background: isHighlighted ? 'var(--auth-warn-bg)' : 'var(--auth-card-bg)',
+        borderColor: isHighlighted ? 'var(--auth-warn-border)' : 'var(--auth-card-border)',
       }}
     >
       <div
         className="text-[10px] font-semibold tracking-[0.14em] mb-1.5"
-        style={{ color: '#8a8a8a' }}
+        style={{ color: 'var(--auth-muted)' }}
       >
         {eyebrow}
       </div>
@@ -33,8 +33,8 @@ function Tile({ href, eyebrow, title, count = 0 }) {
         <span
           className="absolute top-3 right-3 inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-[11px] font-bold leading-none"
           style={{
-            background: '#ffb84d',
-            color: '#0a0a0a',
+            background: 'var(--auth-accent)',
+            color: 'var(--auth-accent-text)',
             fontFamily: "'Plus Jakarta Sans', sans-serif",
           }}
           aria-label={`${count} new`}
@@ -62,10 +62,10 @@ function TabBar({ tabs, active, onChange }) {
             onClick={() => onChange(tab.id)}
             className="px-4 py-2 rounded-full text-[12px] font-semibold tracking-[0.1em] transition-colors"
             style={{
-              background: isActive ? '#ffb84d' : 'rgba(255,255,255,0.06)',
-              color: isActive ? '#0a0a0a' : '#c0c0c0',
+              background: isActive ? 'var(--auth-accent)' : 'var(--auth-ghost-bg)',
+              color: isActive ? 'var(--auth-accent-text)' : 'var(--auth-ghost-text)',
               fontFamily: "'Plus Jakarta Sans', sans-serif",
-              border: 'none',
+              border: `1px solid ${isActive ? 'var(--auth-accent)' : 'var(--auth-ghost-border)'}`,
               cursor: 'pointer',
             }}
           >
@@ -74,8 +74,8 @@ function TabBar({ tabs, active, onChange }) {
               <span
                 className="ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-none"
                 style={{
-                  background: isActive ? 'rgba(0,0,0,0.25)' : '#ffb84d',
-                  color: isActive ? '#0a0a0a' : '#0a0a0a',
+                  background: isActive ? 'rgba(0,0,0,0.25)' : 'var(--auth-accent)',
+                  color: 'var(--auth-accent-text)',
                 }}
               >
                 {tab.badge > 99 ? '99+' : tab.badge}
@@ -97,12 +97,13 @@ export default function AdminDashboardClient({ isOwner, counts }) {
     counts.applications +
     counts.venueInquiries +
     counts.microParties +
-    counts.collaborations;
+    counts.collaborations +
+    counts.newSignups;
 
   const allTabs = [
+    { id: 'team', label: 'Team', ownerOnly: false, badge: 0 },
     { id: 'submissions', label: 'Submissions', ownerOnly: false, badge: submissionsBadge },
     { id: 'studio', label: 'Studio', ownerOnly: false, badge: counts.upcomingBookings },
-    { id: 'team', label: 'Team', ownerOnly: false, badge: 0 },
     { id: 'documents', label: 'Documents', ownerOnly: false, badge: 0 },
     { id: 'analytics', label: 'Analytics', ownerOnly: true, badge: 0 },
     { id: 'settings', label: 'Settings', ownerOnly: true, badge: 0 },
@@ -110,7 +111,7 @@ export default function AdminDashboardClient({ isOwner, counts }) {
 
   const visibleTabs = allTabs.filter((t) => !t.ownerOnly || isOwner);
 
-  const [activeTab, setActiveTab] = useState(visibleTabs[0]?.id || 'submissions');
+  const [activeTab, setActiveTab] = useState('submissions');
 
   return (
     <div>
@@ -153,7 +154,7 @@ export default function AdminDashboardClient({ isOwner, counts }) {
             href="/bananas/signups"
             eyebrow="VIEW"
             title="Signups"
-            count={counts.recentSignups}
+            count={counts.newSignups}
           />
         </div>
       )}
@@ -185,8 +186,8 @@ export default function AdminDashboardClient({ isOwner, counts }) {
         </div>
       )}
 
-      {/* DOCUMENTS — owner only */}
-      {activeTab === 'documents' && isOwner && (
+      {/* DOCUMENTS */}
+      {activeTab === 'documents' && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           <Tile href="/bananas/documents" eyebrow="PRIVATE" title="Documents" />
         </div>
