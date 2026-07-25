@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import TeamEventModal from '@/app/bananas/calendar/TeamEventModal';
-import ThemeToggle from '@/app/components/ThemeToggle';
+import AuthenticatedThemeToggleControl from '@/app/components/AuthenticatedThemeToggleControl';
 import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -248,7 +248,7 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+          <AuthenticatedThemeToggleControl theme={theme} onToggle={toggleTheme} />
           {isAdmin ? null : (
             <>
               <Link
