@@ -67,7 +67,7 @@ export default function TeamManagementClient({ members: initialMembers }) {
       return;
     }
 
-    setInviteSuccess(`${inviteEmail} added as ${inviteRole}. They can now log in at sdgatx.com/team/login`);
+    setInviteSuccess(`${inviteEmail} added as ${inviteRole}. They can now log in at sdgatx.com/login`);
     setMembers(prev => [...prev, result.member]);
     setInviteEmail('');
     setInviteName('');
@@ -256,9 +256,9 @@ export default function TeamManagementClient({ members: initialMembers }) {
                   {cfg.label.toUpperCase()}
                 </span>
 
-                {/* Login link */}
+                {/* Login link — one shared sign-in page for every role */}
                 <span className="text-[11px] flex-shrink-0" style={{ color: '#555' }}>
-                  {member.role === 'team' ? '/team/login' : '/bananas/login'}
+                  /login
                 </span>
 
                 {/* Remove */}

@@ -178,8 +178,8 @@ export default function AdminDashboardClient({ isOwner, counts }) {
       {/* TEAM */}
       {activeTab === 'team' && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          <Tile href="/bananas/progress" eyebrow="TRACK" title="Progress" />
-          <Tile href="/bananas/calendar" eyebrow="TEAM ONLY" title="Team Calendar" />
+          <Tile href="/team/progress" eyebrow="TRACK" title="Progress" />
+          <Tile href="/team/calendar" eyebrow="TEAM ONLY" title="Team Calendar" />
           <Tile href="/bananas/team" eyebrow="MANAGE" title="Team Members" />
           <Tile href="/team/chat" eyebrow="NEW" title="Team Chat" />
         </div>

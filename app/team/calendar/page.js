@@ -1,23 +1,30 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import TeamCalendarClient from './TeamCalendarClient';
+import CalendarClient from './CalendarClient';
 
 export const revalidate = 0;
 
+// Unified Team Calendar — reachable by both admins and team members. Role
+// comes from the server-verified team_members table (never trusted from the
+// client). The query itself is identical for both roles; RLS on team_events
+// already scopes what each role is permitted to read, so there is no risk of
+// fetching admin-only data and hiding it client-side.
 export default async function TeamCalendarPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) redirect('/team/login');
+  if (!user) redirect('/login');
 
   // Get this user's team record
   const { data: teamMember } = await supabase
     .from('team_members')
     .select('id, full_name, role, email')
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
-  if (!teamMember) redirect('/team/login');
+  if (!teamMember) redirect('/login');
+
+  const isAdmin = teamMember.role === 'admin';
 
   // Website events (read-only). Includes internal micro-party events so the
   // team can see them on the calendar; they are visually distinguished and are
@@ -27,16 +34,18 @@ export default async function TeamCalendarPage() {
     .select('id, title, event_date, event_time, slug, visibility, event_type')
     .order('event_date', { ascending: true });
 
-  // Team events — RLS already filters to readable ones
+  // Team events — RLS already scopes this to everything for admins, and to
+  // the caller's readable set for team members.
   const { data: teamEvents } = await supabase
     .from('team_events')
     .select('*')
     .order('event_date', { ascending: true });
 
   return (
-    <TeamCalendarClient
+    <CalendarClient
       publicEvents={publicEvents || []}
       teamEvents={teamEvents || []}
+      isAdmin={isAdmin}
       currentUserId={user.id}
       currentUserName={teamMember.full_name || teamMember.email}
     />
