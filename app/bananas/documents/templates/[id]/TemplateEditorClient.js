@@ -3,8 +3,13 @@
 import { useEffect, useState } from 'react';
 import { adminFetch } from '@/lib/admin-fetch';
 import FieldEditor from '../../FieldEditor';
+import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 
-const inputStyle = { background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' };
+const inputStyle = {
+  background: 'var(--auth-input-bg)',
+  border: '1px solid var(--auth-input-border)',
+  color: 'var(--auth-input-text)',
+};
 
 export default function TemplateEditorClient({ templateId, categories }) {
   const [template, setTemplate] = useState(null);
@@ -68,15 +73,19 @@ export default function TemplateEditorClient({ templateId, categories }) {
     }
   }
 
-  if (loading) return <p className="text-[13px]" style={{ color: '#8a8a8a' }}>Loading template…</p>;
+  if (loading) return <p className="text-[13px]" style={{ color: 'var(--auth-muted)' }}>Loading template…</p>;
   if (error && !template) return <p className="text-[13px]" style={{ color: '#fca5a5' }}>{error}</p>;
   if (!template) return null;
 
   return (
     <>
-      <h1 className="text-[28px] font-extrabold -tracking-[0.02em] leading-[1.15] mb-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-        {template.title}
-      </h1>
+      <AuthenticatedPageHeader
+        backHref="/bananas/documents/templates"
+        backLabel="← BACK TO TEMPLATES"
+        title={template.title}
+        titleClassName="text-[28px] font-extrabold -tracking-[0.02em] leading-[1.15]"
+        className="mb-6"
+      />
 
       {error && (
         <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>{error}</div>
@@ -86,7 +95,7 @@ export default function TemplateEditorClient({ templateId, categories }) {
       )}
 
       {/* Template metadata */}
-      <div className="rounded-[14px] border p-5 mb-6" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.06)' }}>
+      <div className="rounded-[14px] border p-5 mb-6" style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}>
         <div className="grid grid-cols-2 gap-3 mb-3">
           <input value={meta.title} onChange={(e) => setMeta({ ...meta, title: e.target.value })}
             className="px-3 py-2.5 text-[14px] rounded-[10px] outline-none" style={inputStyle} />
@@ -99,7 +108,7 @@ export default function TemplateEditorClient({ templateId, categories }) {
           className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none mb-3" style={inputStyle} />
         <div className="flex justify-end">
           <button onClick={saveMeta} disabled={savingMeta}
-            className="px-4 py-2 text-[13px] rounded-[10px]" style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white', opacity: savingMeta ? 0.6 : 1 }}>
+            className="px-4 py-2 text-[13px] rounded-[10px]" style={{ border: '1px solid var(--auth-ghost-border)', color: 'var(--auth-ghost-text)', opacity: savingMeta ? 0.6 : 1 }}>
             {savingMeta ? 'Saving…' : 'Save details'}
           </button>
         </div>

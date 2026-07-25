@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { redirect, notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
@@ -63,13 +62,6 @@ export default async function DocumentDetailPage({ params }) {
 
   return (
     <main className="max-w-[900px] mx-auto px-6 py-16">
-      <Link
-        href="/bananas/documents"
-        className="text-[12px] tracking-[0.14em] mb-4 inline-block hover:text-white transition-colors"
-        style={{ color: '#8a8a8a' }}
-      >
-        ← BACK TO DOCUMENTS
-      </Link>
       <DocumentDetailClient
         document={doc}
         versions={versions || []}

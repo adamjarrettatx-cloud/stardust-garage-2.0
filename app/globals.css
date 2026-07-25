@@ -37,8 +37,19 @@ body {
 }
 
 .auth-theme-root {
+  position: relative;
+  isolation: isolate;
   color: var(--auth-text);
   background: var(--auth-root-bg);
+}
+
+.auth-theme-root::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: var(--auth-root-bg);
+  z-index: -1;
 }
 
 .auth-theme-root[data-auth-theme='light'] {
@@ -149,6 +160,22 @@ body {
   background: var(--auth-card-bg-alt) !important;
 }
 
+.auth-theme-root[data-auth-theme='light'] [style*='#16140d'] {
+  background: var(--auth-warn-bg) !important;
+}
+
+.auth-theme-root[data-auth-theme='light'] [style*='#1f1410'] {
+  background: var(--auth-danger-bg) !important;
+}
+
+.auth-theme-root[data-auth-theme='light'] [style*='#0f1a12'] {
+  background: var(--auth-success-bg) !important;
+}
+
+.auth-theme-root[data-auth-theme='light'] [style*='#1a0f16'] {
+  background: color-mix(in srgb, #f472b6 12%, var(--auth-card-bg)) !important;
+}
+
 .auth-theme-root[data-auth-theme='light'] [style*='#0d0d0d'],
 .auth-theme-root[data-auth-theme='light'] [style*='#0a0a0a'],
 .auth-theme-root[data-auth-theme='light'] [style*='#0f0f0f'],
@@ -163,6 +190,10 @@ body {
 .auth-theme-root[data-auth-theme='light'] [style*='rgba(255,255,255,0.1)'],
 .auth-theme-root[data-auth-theme='light'] [style*='rgba(255,255,255,0.12)'],
 .auth-theme-root[data-auth-theme='light'] [style*='rgba(255,255,255,0.15)'] {
+  border-color: var(--auth-card-border) !important;
+}
+
+.auth-theme-root[data-auth-theme='light'] [style*='#2a2a2a'] {
   border-color: var(--auth-card-border) !important;
 }
 
@@ -194,6 +225,13 @@ body {
 .auth-theme-root[data-auth-theme='light'] [style*='color:#c0c0c0'],
 .auth-theme-root[data-auth-theme='light'] [style*='color: #c8c8c8'],
 .auth-theme-root[data-auth-theme='light'] [style*='color:#c8c8c8'] {
+  color: var(--auth-muted-strong) !important;
+}
+
+.auth-theme-root[data-auth-theme='light'] [style*='color: #a0a0a0'],
+.auth-theme-root[data-auth-theme='light'] [style*='color:#a0a0a0'],
+.auth-theme-root[data-auth-theme='light'] [style*='color: #80c878'],
+.auth-theme-root[data-auth-theme='light'] [style*='color:#80c878'] {
   color: var(--auth-muted-strong) !important;
 }
 

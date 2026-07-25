@@ -1,9 +1,9 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
 import { PLAN_DISPLAY } from '@/lib/stripe-prices';
 import AdminMemberActions from './AdminMemberActions';
+import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 
 export const revalidate = 0;
 
@@ -28,7 +28,6 @@ function initials(name, email) {
 
 function Avatar({ member }) {
   if (member.photo_url) {
-    // eslint-disable-next-line @next/next/no-img-element
     return (
       <img
         src={member.photo_url}
@@ -70,19 +69,13 @@ export default async function AdminMembersPage() {
 
   return (
     <main className="max-w-[1100px] mx-auto px-6 py-16">
-      <Link
-        href="/bananas"
-        className="text-[12px] tracking-[0.14em] mb-4 inline-block hover:text-white transition-colors"
-        style={{ color: '#8a8a8a' }}
-      >
-        ← BACK TO ADMIN
-      </Link>
-      <h1
-        className="text-[32px] font-extrabold -tracking-[0.02em] leading-[1.1] mb-10"
-        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-      >
-        Members
-      </h1>
+      <AuthenticatedPageHeader
+        backHref="/bananas"
+        backLabel="← BACK TO ADMIN"
+        title="Members"
+        titleClassName="text-[32px] font-extrabold -tracking-[0.02em] leading-[1.1]"
+        className="mb-10"
+      />
 
       <div className="mb-12">
         <div className="text-[11px] font-semibold tracking-[0.18em] mb-4" style={{ color: '#8a8a8a' }}>

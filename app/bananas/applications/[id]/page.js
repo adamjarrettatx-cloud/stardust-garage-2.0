@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
 import ApplicationActions from './ApplicationActions';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
+import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 
 export const revalidate = 0;
 
@@ -63,12 +64,12 @@ export default async function ApplicationDetail({ params }) {
 
   return (
     <main className="max-w-[800px] mx-auto px-6 py-16">
-      <Link
-        href="/bananas/applications"
-        className="auth-theme-page-link inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-colors"
-      >
-        ← BACK TO APPLICATIONS
-      </Link>
+      <AuthenticatedPageHeader
+        backHref="/bananas/applications"
+        backLabel="← BACK TO APPLICATIONS"
+        title="Membership Application"
+        className="mb-8"
+      />
 
       <div className="flex items-start gap-5 mb-8">
         {app.photo_url ? (

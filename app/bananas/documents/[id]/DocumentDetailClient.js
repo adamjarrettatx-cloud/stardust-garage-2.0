@@ -6,6 +6,7 @@ import { adminFetch } from '@/lib/admin-fetch';
 import ContractPanel from './ContractPanel';
 import ContractFieldsPanel from './ContractFieldsPanel';
 import ContractFinancialsPanel from './ContractFinancialsPanel';
+import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 
 function formatBytes(n) {
   if (!n) return '—';
@@ -92,20 +93,23 @@ export default function DocumentDetailClient({ document: doc, versions, audit, e
 
   return (
     <>
-      <div className="flex items-baseline justify-between gap-3 mb-6">
-        <h1 className="text-[28px] font-extrabold -tracking-[0.02em] leading-[1.15]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-          {doc.title}
-        </h1>
+      <AuthenticatedPageHeader
+        backHref="/bananas/documents"
+        backLabel="← BACK TO DOCUMENTS"
+        title={doc.title}
+        titleClassName="text-[28px] font-extrabold -tracking-[0.02em] leading-[1.15]"
+        className="mb-6"
+      >
         {!editing && (
           <button
             onClick={() => setEditing(true)}
             className="text-[12px] px-3 py-1.5 rounded-[8px]"
-            style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}
+            style={{ border: '1px solid var(--auth-ghost-border)', color: 'var(--auth-ghost-text)' }}
           >
             Edit
           </button>
         )}
-      </div>
+      </AuthenticatedPageHeader>
 
       {error && (
         <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
@@ -114,24 +118,24 @@ export default function DocumentDetailClient({ document: doc, versions, audit, e
       )}
 
       {/* Metadata card */}
-      <div className="rounded-[14px] border p-5 mb-6" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.06)' }}>
+      <div className="rounded-[14px] border p-5 mb-6" style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}>
         {editing ? (
           <div className="space-y-3">
             <input
               value={edit.title}
               onChange={(e) => setEdit({ ...edit, title: e.target.value })}
               className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none"
-              style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+              style={{ background: 'var(--auth-input-bg)', border: '1px solid var(--auth-input-border)', color: 'var(--auth-input-text)' }}
             />
             <div className="grid grid-cols-2 gap-3">
               <select value={edit.category} onChange={(e) => setEdit({ ...edit, category: e.target.value })}
                 className="px-3 py-2.5 text-[14px] rounded-[10px] outline-none cursor-pointer"
-                style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}>
+                style={{ background: 'var(--auth-input-bg)', border: '1px solid var(--auth-input-border)', color: 'var(--auth-input-text)' }}>
                 {categories.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
               <select value={edit.status} onChange={(e) => setEdit({ ...edit, status: e.target.value })}
                 className="px-3 py-2.5 text-[14px] rounded-[10px] outline-none cursor-pointer"
-                style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}>
+                style={{ background: 'var(--auth-input-bg)', border: '1px solid var(--auth-input-border)', color: 'var(--auth-input-text)' }}>
                 <option value="active">Active</option>
                 <option value="draft">Draft</option>
                 <option value="archived">Archived</option>
@@ -140,52 +144,52 @@ export default function DocumentDetailClient({ document: doc, versions, audit, e
             <input placeholder="Counterparty" value={edit.counterparty}
               onChange={(e) => setEdit({ ...edit, counterparty: e.target.value })}
               className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none"
-              style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+              style={{ background: 'var(--auth-input-bg)', border: '1px solid var(--auth-input-border)', color: 'var(--auth-input-text)' }}
             />
             <select value={edit.event_id} onChange={(e) => setEdit({ ...edit, event_id: e.target.value })}
               className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none cursor-pointer"
-              style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}>
+              style={{ background: 'var(--auth-input-bg)', border: '1px solid var(--auth-input-border)', color: 'var(--auth-input-text)' }}>
               <option value="">No event link</option>
               {events.map((ev) => <option key={ev.id} value={ev.id}>{ev.title}{ev.event_date ? ` · ${ev.event_date}` : ''}</option>)}
             </select>
             <input placeholder="Tags (comma-separated)" value={edit.tags}
               onChange={(e) => setEdit({ ...edit, tags: e.target.value })}
               className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none"
-              style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+              style={{ background: 'var(--auth-input-bg)', border: '1px solid var(--auth-input-border)', color: 'var(--auth-input-text)' }}
             />
             <textarea placeholder="Description" value={edit.description} rows={3}
               onChange={(e) => setEdit({ ...edit, description: e.target.value })}
               className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none resize-none"
-              style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+              style={{ background: 'var(--auth-input-bg)', border: '1px solid var(--auth-input-border)', color: 'var(--auth-input-text)' }}
             />
             <div className="flex justify-end gap-2">
               <button onClick={() => setEditing(false)} disabled={saving}
                 className="px-4 py-2 text-[13px] rounded-[10px]"
-                style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}>Cancel</button>
+                style={{ border: '1px solid var(--auth-ghost-border)', color: 'var(--auth-ghost-text)' }}>Cancel</button>
               <button onClick={save} disabled={saving}
                 className="px-5 py-2 text-[13px] font-semibold rounded-[10px] tracking-[0.06em] uppercase"
-                style={{ background: 'white', color: 'black', opacity: saving ? 0.6 : 1 }}>
+                style={{ background: 'var(--auth-text-strong)', color: 'var(--auth-strong-surface-text)', opacity: saving ? 0.6 : 1 }}>
                 {saving ? 'Saving…' : 'Save'}
               </button>
             </div>
           </div>
         ) : (
           <dl className="grid grid-cols-[120px_1fr] gap-y-2 text-[13px]">
-            <dt style={{ color: '#8a8a8a' }}>Category</dt><dd>{doc.category}</dd>
-            <dt style={{ color: '#8a8a8a' }}>Status</dt><dd>{doc.status}</dd>
-            {doc.counterparty && (<><dt style={{ color: '#8a8a8a' }}>Counterparty</dt><dd>{doc.counterparty}</dd></>)}
-            {doc.events && (<><dt style={{ color: '#8a8a8a' }}>Event</dt><dd>{doc.events.title}{doc.events.event_date ? ` · ${doc.events.event_date}` : ''}</dd></>)}
-            {doc.description && (<><dt style={{ color: '#8a8a8a' }}>Notes</dt><dd className="whitespace-pre-wrap">{doc.description}</dd></>)}
+            <dt style={{ color: 'var(--auth-muted)' }}>Category</dt><dd>{doc.category}</dd>
+            <dt style={{ color: 'var(--auth-muted)' }}>Status</dt><dd>{doc.status}</dd>
+            {doc.counterparty && (<><dt style={{ color: 'var(--auth-muted)' }}>Counterparty</dt><dd>{doc.counterparty}</dd></>)}
+            {doc.events && (<><dt style={{ color: 'var(--auth-muted)' }}>Event</dt><dd>{doc.events.title}{doc.events.event_date ? ` · ${doc.events.event_date}` : ''}</dd></>)}
+            {doc.description && (<><dt style={{ color: 'var(--auth-muted)' }}>Notes</dt><dd className="whitespace-pre-wrap">{doc.description}</dd></>)}
             {tags.length > 0 && (
               <>
-                <dt style={{ color: '#8a8a8a' }}>Tags</dt>
+                <dt style={{ color: 'var(--auth-muted)' }}>Tags</dt>
                 <dd className="flex flex-wrap gap-1">
-                  {tags.map((t) => <span key={t} className="text-[11px] px-1.5 py-0.5 rounded-[4px]" style={{ background: 'rgba(255,255,255,0.05)', color: '#a8a8a8' }}>#{t}</span>)}
+                  {tags.map((t) => <span key={t} className="text-[11px] px-1.5 py-0.5 rounded-[4px]" style={{ background: 'var(--auth-card-bg-alt)', color: 'var(--auth-muted-strong)' }}>#{t}</span>)}
                 </dd>
               </>
             )}
-            <dt style={{ color: '#8a8a8a' }}>Created</dt><dd>{formatDateTime(doc.created_at)}</dd>
-            <dt style={{ color: '#8a8a8a' }}>Updated</dt><dd>{formatDateTime(doc.updated_at)}</dd>
+            <dt style={{ color: 'var(--auth-muted)' }}>Created</dt><dd>{formatDateTime(doc.created_at)}</dd>
+            <dt style={{ color: 'var(--auth-muted)' }}>Updated</dt><dd>{formatDateTime(doc.updated_at)}</dd>
           </dl>
         )}
       </div>

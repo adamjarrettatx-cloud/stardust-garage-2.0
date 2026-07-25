@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { redirect, notFound } from 'next/navigation';
 import { adminPageGate } from '@/lib/auth-helpers';
 import { DOCUMENT_CATEGORIES } from '@/lib/document-helpers';
@@ -21,13 +20,6 @@ export default async function TemplateEditorPage({ params }) {
 
   return (
     <main className="max-w-[900px] mx-auto px-6 py-16">
-      <Link
-        href="/bananas/documents/templates"
-        className="text-[12px] tracking-[0.14em] mb-4 inline-block hover:text-white transition-colors"
-        style={{ color: '#8a8a8a' }}
-      >
-        ← BACK TO TEMPLATES
-      </Link>
       <TemplateEditorClient templateId={id} categories={DOCUMENT_CATEGORIES} />
     </main>
   );

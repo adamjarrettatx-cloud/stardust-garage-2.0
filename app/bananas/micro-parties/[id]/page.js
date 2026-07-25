@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
 import MicroPartyActions from './MicroPartyActions';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
+import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 
 export const revalidate = 0;
 
@@ -65,12 +66,12 @@ export default async function MicroPartyDetail({ params }) {
 
   return (
     <main className="max-w-[800px] mx-auto px-6 py-16">
-      <Link
-        href="/bananas/micro-parties"
-        className="auth-theme-page-link inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-colors"
-      >
-        ← BACK TO MICRO PARTY INQUIRIES
-      </Link>
+      <AuthenticatedPageHeader
+        backHref="/bananas/micro-parties"
+        backLabel="← BACK TO MICRO PARTY INQUIRIES"
+        title="Micro Party Inquiry"
+        className="mb-8"
+      />
 
       <div className="flex items-start justify-between gap-4 mb-8">
         <div>

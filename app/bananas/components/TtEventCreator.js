@@ -1,10 +1,11 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { adminFetch } from '@/lib/admin-fetch';
+import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 
 const CATEGORY_OPTIONS = [
   { value: 'workshop', label: 'Workshop' },
@@ -155,34 +156,26 @@ export default function TtEventCreator() {
     }
   };
 
-  const inputStyle = { background: '#141414', borderColor: 'rgba(255,255,255,0.1)', color: '#f5f5f5' };
+  const inputStyle = {
+    background: 'var(--auth-input-bg)',
+    borderColor: 'var(--auth-input-border)',
+    color: 'var(--auth-input-text)',
+  };
   const labelClass = 'block text-[12px] font-semibold tracking-[0.14em] mb-2';
-  const labelStyle = { color: '#8a8a8a' };
+  const labelStyle = { color: 'var(--auth-muted)' };
   const inputClass =
     'w-full px-5 py-3.5 rounded-[10px] text-[14px] outline-none border transition-colors focus:border-white/30';
 
   return (
     <main className="max-w-[700px] mx-auto px-6 py-16">
-      <Link
-        href="/bananas"
-        className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70"
-        style={{ color: '#8a8a8a' }}
-      >
-        ← BACK TO ADMIN
-      </Link>
-
-      <h1
-        className="text-[36px] font-extrabold -tracking-[0.02em] leading-[1.1] mb-3"
-        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-      >
-        New Ticketed Event
-      </h1>
-      <p className="text-[13px] mb-10" style={{ color: '#8a8a8a' }}>
-        Creates and publishes a website event and a TicketTailor event series together — date, times
-        and ticket types included. Both go live as soon as TicketTailor confirms the box office and
-        returns a ticket link; if anything fails, the website event is kept as a hidden draft so the
-        public page never shows an event you can&rsquo;t buy tickets for.
-      </p>
+      <AuthenticatedPageHeader
+        backHref="/bananas"
+        backLabel="← BACK TO ADMIN"
+        title="New Ticketed Event"
+        description="Creates and publishes a website event and a TicketTailor event series together — date, times and ticket types included. Both go live as soon as TicketTailor confirms the box office and returns a ticket link; if anything fails, the website event is kept as a hidden draft so the public page never shows an event you can’t buy tickets for."
+        titleClassName="text-[36px] font-extrabold -tracking-[0.02em] leading-[1.1]"
+        className="mb-10"
+      />
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
@@ -358,6 +351,7 @@ export default function TtEventCreator() {
           <label className={labelClass} style={labelStyle}>IMAGE</label>
           {imageUrl && (
             <div className="mb-3 rounded-[10px] overflow-hidden border" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={imageUrl} alt="Event preview" className="w-full h-auto max-h-[300px] object-cover" />
             </div>
           )}

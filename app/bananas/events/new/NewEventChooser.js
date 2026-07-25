@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import EventForm from '../../components/EventForm';
 import TtEventCreator from '../../components/TtEventCreator';
+import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 
 // Lets the admin pick how to create a new event:
 //   - "ticketed": create AND publish the website event together with a
@@ -16,27 +16,18 @@ export default function NewEventChooser() {
   if (mode === 'ticketed') return <TtEventCreator />;
   if (mode === 'manual') return <EventForm />;
 
-  const cardStyle = { background: '#141414', borderColor: 'rgba(255,255,255,0.08)' };
+  const cardStyle = { background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' };
 
   return (
     <main className="max-w-[700px] mx-auto px-6 py-16">
-      <Link
-        href="/bananas"
-        className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70"
-        style={{ color: '#8a8a8a' }}
-      >
-        ← BACK TO ADMIN
-      </Link>
-
-      <h1
-        className="text-[36px] font-extrabold -tracking-[0.02em] leading-[1.1] mb-3"
-        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-      >
-        New Event
-      </h1>
-      <p className="text-[13px] mb-10" style={{ color: '#8a8a8a' }}>
-        How do you want to create this event?
-      </p>
+      <AuthenticatedPageHeader
+        backHref="/bananas"
+        backLabel="← BACK TO ADMIN"
+        title="New Event"
+        description="How do you want to create this event?"
+        titleClassName="text-[36px] font-extrabold -tracking-[0.02em] leading-[1.1]"
+        className="mb-10"
+      />
 
       <div className="grid gap-4">
         <button
@@ -48,7 +39,7 @@ export default function NewEventChooser() {
           <div className="text-[17px] font-bold mb-1.5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             Ticketed event (TicketTailor)
           </div>
-          <div className="text-[13px] leading-[1.6]" style={{ color: '#8a8a8a' }}>
+          <div className="text-[13px] leading-[1.6]" style={{ color: 'var(--auth-muted)' }}>
             Creates and publishes the website event and a TicketTailor event series together — date,
             times and ticket types included. Both go live immediately.
           </div>
@@ -63,7 +54,7 @@ export default function NewEventChooser() {
           <div className="text-[17px] font-bold mb-1.5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             Manual / private event
           </div>
-          <div className="text-[13px] leading-[1.6]" style={{ color: '#8a8a8a' }}>
+          <div className="text-[13px] leading-[1.6]" style={{ color: 'var(--auth-muted)' }}>
             The classic form — website event only. Link an existing TicketTailor series or paste an
             external ticket URL, or leave it as a private (no-ticket) event.
           </div>

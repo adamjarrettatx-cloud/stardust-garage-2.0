@@ -5,6 +5,7 @@ import LogoutButton from './components/LogoutButton';
 import EventsSection from './components/EventsSection';
 import AdminDashboardClient from './AdminDashboardClient';
 import { getTodayInAustin } from '@/lib/studio-helpers';
+import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 
 export const revalidate = 0;
 
@@ -59,20 +60,14 @@ export default async function AdminDashboard() {
 
   return (
     <main className="max-w-[1200px] mx-auto px-6 py-16">
-      <div className="flex items-center justify-between mb-10">
-        <div>
-          <h1
-            className="text-[40px] font-extrabold -tracking-[0.02em] leading-[1.1]"
-            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-          >
-            Admin
-          </h1>
-          <p className="text-[14px] mt-2" style={{ color: 'var(--auth-muted)' }}>
-            Signed in as {user?.email}
-          </p>
-        </div>
+      <AuthenticatedPageHeader
+        title="Admin"
+        description={`Signed in as ${user?.email}`}
+        titleClassName="text-[40px] font-extrabold -tracking-[0.02em] leading-[1.1]"
+        className="mb-10"
+      >
         <LogoutButton />
-      </div>
+      </AuthenticatedPageHeader>
 
       <AdminDashboardClient isOwner={isOwner} counts={counts} />
 

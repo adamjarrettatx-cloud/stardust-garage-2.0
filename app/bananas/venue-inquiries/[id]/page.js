@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
 import InquiryActions from './InquiryActions';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
+import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 
 export const revalidate = 0;
 
@@ -53,12 +54,12 @@ export default async function InquiryDetail({ params }) {
 
   return (
     <main className="max-w-[800px] mx-auto px-6 py-16">
-      <Link
-        href="/bananas/venue-inquiries"
-        className="auth-theme-page-link inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-colors"
-      >
-        ← BACK TO INQUIRIES
-      </Link>
+      <AuthenticatedPageHeader
+        backHref="/bananas/venue-inquiries"
+        backLabel="← BACK TO INQUIRIES"
+        title="Venue Inquiry"
+        className="mb-8"
+      />
 
       <div className="flex items-start justify-between gap-4 mb-8">
         <div>

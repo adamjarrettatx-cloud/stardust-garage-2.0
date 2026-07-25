@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
 import CollaborationActions from './CollaborationActions';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
+import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 
 export const revalidate = 0;
 
@@ -52,12 +53,12 @@ export default async function CollaborationDetail({ params }) {
 
   return (
     <main className="max-w-[800px] mx-auto px-6 py-16">
-      <Link
-        href="/bananas/collaborations"
-        className="auth-theme-page-link inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-colors"
-      >
-        ← BACK TO COLLABORATIONS
-      </Link>
+      <AuthenticatedPageHeader
+        backHref="/bananas/collaborations"
+        backLabel="← BACK TO COLLABORATIONS"
+        title="Collaboration Submission"
+        className="mb-8"
+      />
 
       <div className="flex items-start justify-between gap-4 mb-8">
         <div>

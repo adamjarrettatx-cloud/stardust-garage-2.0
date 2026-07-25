@@ -5,11 +5,7 @@ import path from 'node:path';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import AuthenticatedThemeToggleControl from '../app/components/AuthenticatedThemeToggleControl.js';
-import {
-  AUTH_THEME_INLINE_TOGGLE_PATHS,
-  authThemeVars,
-  resolveAuthenticatedThemeToggleMode,
-} from '../lib/authenticated-theme.js';
+import { authThemeVars, resolveAuthenticatedThemeScope } from '../lib/authenticated-theme.js';
 
 const REPO_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 
@@ -37,14 +33,12 @@ function listPageRoutes(base, prefix) {
     .sort();
 }
 
-function renderToggleMarkupForRoute(route, theme = 'dark') {
-  const mode = resolveAuthenticatedThemeToggleMode(route);
-  if (mode === 'none') return '';
+function renderInlineToggle(theme = 'dark') {
   return renderToStaticMarkup(
     createElement(AuthenticatedThemeToggleControl, {
       theme,
       onToggle: () => {},
-      mode,
+      mode: 'inline',
     }),
   );
 }
@@ -61,20 +55,13 @@ const redirectRoutes = new Map([
   ['/bananas/progress', '/team/progress'],
 ]);
 const domRoutes = authenticatedRoutes.filter((route) => !redirectRoutes.has(route)).sort();
-const inlineRoutes = [...AUTH_THEME_INLINE_TOGGLE_PATHS].sort();
-const shellRoutes = domRoutes.filter((route) => !inlineRoutes.includes(route)).sort();
 
-test('authenticated toggle route matrix covers every current DOM-serving admin/team route exactly once', () => {
-  const actualInline = domRoutes
-    .filter((route) => resolveAuthenticatedThemeToggleMode(route) === 'inline')
-    .sort();
-  const actualShell = domRoutes
-    .filter((route) => resolveAuthenticatedThemeToggleMode(route) === 'shell')
-    .sort();
-
-  assert.deepEqual(actualInline, inlineRoutes);
-  assert.deepEqual(actualShell, shellRoutes);
-  assert.equal(actualInline.length + actualShell.length, domRoutes.length);
+test('authenticated route matrix covers every current DOM-serving admin/team route except capacity and redirects', () => {
+  assert.ok(domRoutes.length > 0);
+  for (const route of domRoutes) {
+    assert.notEqual(resolveAuthenticatedThemeScope(route), null, `${route} should be authenticated themed`);
+    assert.equal(route.startsWith('/capacity'), false, `${route} should not be a capacity route`);
+  }
 });
 
 test('authenticated redirect aliases point only to already-themed routes with their own visible toggles', () => {
@@ -82,47 +69,62 @@ test('authenticated redirect aliases point only to already-themed routes with th
     const relativePath = `app${route}/page.js`.replace(/\[(.+?)\]/g, '[$1]');
     const content = fs.readFileSync(path.join(REPO_ROOT, relativePath), 'utf8');
     assert.match(content, new RegExp(`redirect\\('${target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'\\)`));
-    assert.notEqual(resolveAuthenticatedThemeToggleMode(target), 'none');
+    assert.notEqual(resolveAuthenticatedThemeScope(target), null);
   }
 });
 
-test('every DOM-serving authenticated route resolves to visible toggle markup', () => {
-  for (const route of domRoutes) {
-    const mode = resolveAuthenticatedThemeToggleMode(route);
-    const markup = renderToggleMarkupForRoute(route);
-    const expectedTestId = mode === 'inline' ? 'auth-theme-toggle-inline' : 'auth-theme-toggle-shell';
+test('shared inline toggle renders visible button markup with the inline test id', () => {
+  const darkMarkup = renderInlineToggle('dark');
+  const lightMarkup = renderInlineToggle('light');
 
-    assert.match(markup, new RegExp(`data-testid="${expectedTestId}"`), `${route} should render ${mode} toggle markup`);
-    assert.match(markup, /data-testid="theme-toggle-button"/, `${route} should render the actual theme button`);
-    assert.match(markup, /aria-label="Switch to light mode"/, `${route} should expose an accessible light-mode label in dark mode`);
+  assert.match(darkMarkup, /data-testid="auth-theme-toggle-inline"/);
+  assert.match(darkMarkup, /data-testid="theme-toggle-button"/);
+  assert.match(darkMarkup, /aria-label="Switch to light mode"/);
+  assert.match(lightMarkup, /aria-label="Switch to dark mode"/);
+});
+
+test('capacity routes remain outside the authenticated theme shell', () => {
+  assert.equal(resolveAuthenticatedThemeScope('/capacity'), null);
+  assert.equal(resolveAuthenticatedThemeScope('/capacity/admin'), null);
+  assert.equal(resolveAuthenticatedThemeScope('/capacity/front-door'), null);
+  assert.equal(resolveAuthenticatedThemeScope('/capacity/exit-door'), null);
+});
+
+test('global navbar no longer renders an authenticated theme toggle', () => {
+  const navbarContent = fs.readFileSync(path.join(REPO_ROOT, 'app/components/Navbar.js'), 'utf8');
+  assert.doesNotMatch(navbarContent, /AuthenticatedNavbarThemeToggle/);
+  assert.doesNotMatch(navbarContent, /theme-toggle/i);
+});
+
+test('shared inline page header owns the toggle contract for authenticated routes', () => {
+  const headerContent = fs.readFileSync(path.join(REPO_ROOT, 'app/components/AuthenticatedPageHeader.js'), 'utf8');
+  const toggleContent = fs.readFileSync(path.join(REPO_ROOT, 'app/components/AuthenticatedPageThemeToggle.js'), 'utf8');
+
+  assert.match(headerContent, /data-testid="auth-page-header"/);
+  assert.match(toggleContent, /mode="inline"/);
+  assert.match(toggleContent, /AuthenticatedThemeToggleControl/);
+});
+
+test('representative authenticated routes render inline headers and avoid navbar-shell toggle markup', () => {
+  const representativeFiles = [
+    'app/bananas/page.js',
+    'app/bananas/applications/page.js',
+    'app/bananas/documents/page.js',
+    'app/bananas/events/[id]/financials/page.js',
+    'app/bananas/team/TeamManagementClient.js',
+    'app/bananas/components/EventForm.js',
+    'app/bananas/components/TtEventCreator.js',
+  ];
+
+  for (const relativePath of representativeFiles) {
+    const content = fs.readFileSync(path.join(REPO_ROOT, relativePath), 'utf8');
+    assert.match(content, /AuthenticatedPageHeader/);
+    assert.doesNotMatch(content, /auth-theme-toggle-shell/);
   }
 });
 
-test('shared navbar shell toggle covers representative admin routes and capacity stays excluded', () => {
-  const applications = renderToggleMarkupForRoute('/bananas/applications');
-  const members = renderToggleMarkupForRoute('/bananas/members', 'light');
-
-  assert.match(applications, /data-testid="auth-theme-toggle-shell"/);
-  assert.match(applications, /data-testid="theme-toggle-button"/);
-  assert.match(applications, /aria-label="Switch to light mode"/);
-  assert.match(members, /data-testid="auth-theme-toggle-shell"/);
-  assert.match(members, /aria-label="Switch to dark mode"/);
-  assert.equal(renderToggleMarkupForRoute('/capacity'), '');
-  assert.equal(renderToggleMarkupForRoute('/capacity/admin'), '');
-});
-
-test('representative inline admin/team routes render the shared visible toggle control in DOM markup', () => {
-  const analytics = renderToggleMarkupForRoute('/bananas/analytics');
-  const progress = renderToggleMarkupForRoute('/team/progress');
-
-  assert.match(analytics, /data-testid="auth-theme-toggle-inline"/);
-  assert.match(analytics, /data-testid="theme-toggle-button"/);
-  assert.match(progress, /data-testid="auth-theme-toggle-inline"/);
-  assert.match(progress, /data-testid="theme-toggle-button"/);
-});
-
-test('inline routes are explicitly wired to the shared authenticated toggle control', () => {
-  const inlineFiles = [
+test('existing reference pages still render a single inline toggle in their page header', () => {
+  const inlineReferenceFiles = [
     'app/bananas/analytics/AnalyticsClient.js',
     'app/bananas/financial-calendar/FinancialCalendarClient.js',
     'app/team/calendar/CalendarClient.js',
@@ -130,17 +132,11 @@ test('inline routes are explicitly wired to the shared authenticated toggle cont
     'app/team/progress/ProgressClient.js',
   ];
 
-  for (const relativePath of inlineFiles) {
+  for (const relativePath of inlineReferenceFiles) {
     const content = fs.readFileSync(path.join(REPO_ROOT, relativePath), 'utf8');
     assert.match(content, /AuthenticatedThemeToggleControl/);
-    assert.equal(content.includes('<ThemeToggle'), false, `${relativePath} should use the shared wrapper`);
+    assert.equal(content.includes('AuthenticatedPageHeader'), false, `${relativePath} should keep its existing inline header implementation`);
   }
-
-  const navbarContent = fs.readFileSync(
-    path.join(REPO_ROOT, 'app/components/Navbar.js'),
-    'utf8',
-  );
-  assert.match(navbarContent, /AuthenticatedNavbarThemeToggle/);
 });
 
 test('authenticated theme token swap changes page-surface variables between dark and light', () => {
