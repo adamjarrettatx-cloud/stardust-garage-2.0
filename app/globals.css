@@ -47,6 +47,63 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
 }
 
+.progress-drawer .progress-drawer-panel {
+  overscroll-behavior: contain;
+}
+
+.progress-drawer .progress-drawer-close,
+.progress-drawer .progress-drawer-summary,
+.progress-drawer .progress-drawer-input,
+.progress-drawer .progress-drawer-action,
+.progress-drawer .progress-drawer-submit {
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease,
+    filter 150ms ease,
+    opacity 150ms ease;
+}
+
+.progress-drawer .progress-drawer-close:hover,
+.progress-drawer .progress-drawer-close:focus-visible,
+.progress-drawer .progress-drawer-summary:hover,
+.progress-drawer .progress-drawer-summary:focus-visible {
+  background: var(--progress-drawer-hover-bg);
+  color: var(--progress-drawer-text);
+  outline: none;
+}
+
+.progress-drawer .progress-drawer-input::placeholder {
+  color: var(--progress-drawer-placeholder);
+  opacity: 1;
+}
+
+.progress-drawer .progress-drawer-input:hover:not(:disabled) {
+  border-color: var(--progress-drawer-focus-border);
+}
+
+.progress-drawer .progress-drawer-input:focus-visible {
+  outline: none;
+  border-color: var(--progress-drawer-focus-border);
+  box-shadow: 0 0 0 3px var(--progress-drawer-focus-ring);
+}
+
+.progress-drawer .progress-drawer-close:focus-visible,
+.progress-drawer .progress-drawer-summary:focus-visible,
+.progress-drawer .progress-drawer-action:focus-visible:not(:disabled),
+.progress-drawer .progress-drawer-submit:focus-visible:not(:disabled) {
+  box-shadow: 0 0 0 3px var(--progress-drawer-focus-ring);
+}
+
+.progress-drawer .progress-drawer-action:hover:not(:disabled),
+.progress-drawer .progress-drawer-action:focus-visible:not(:disabled),
+.progress-drawer .progress-drawer-submit:hover:not(:disabled),
+.progress-drawer .progress-drawer-submit:focus-visible:not(:disabled) {
+  filter: brightness(1.04);
+  outline: none;
+}
+
 @keyframes float-logo {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-12px); }
