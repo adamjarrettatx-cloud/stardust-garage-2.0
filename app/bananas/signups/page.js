@@ -3,6 +3,10 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
 import SignupsClient from './SignupsClient';
+import {
+  AuthenticatedPageHeader,
+  AuthenticatedPageSurface,
+} from '@/app/components/AuthenticatedPageTheme';
 
 export const revalidate = 0;
 
@@ -31,29 +35,20 @@ export default async function SignupsPage() {
   const csvHref = `data:text/csv;charset=utf-8,${encodeURIComponent(csvContent)}`;
 
   return (
-    <main className="max-w-[1100px] mx-auto px-6 py-16">
-      <Link
-        href="/bananas"
-        className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70"
-        style={{ color: '#8a8a8a' }}
-      >
-        ← BACK TO ADMIN
-      </Link>
-
-      <div className="flex items-start justify-between mb-10">
-        <div>
-          <h1
-            className="text-[40px] font-extrabold -tracking-[0.02em] leading-[1.1] mb-2"
-            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-          >
-            Signups
-          </h1>
-          <p className="text-[14px]" style={{ color: '#8a8a8a' }}>
-            People who signed up via &quot;Stay in the loop&quot; on the homepage.
-          </p>
-        </div>
-      </div>
+    <AuthenticatedPageSurface
+      scope="admin"
+      width="max-w-[1100px]"
+      className="transition-colors duration-150"
+      testId="route-bananas-signups"
+    >
+      <AuthenticatedPageHeader
+        scope="admin"
+        backHref="/bananas"
+        title="Signups"
+        subtitle='People who signed up via "Stay in the loop" on the homepage.'
+        titleClassName="text-[40px]"
+      />
       <SignupsClient signups={signups || []} csvHref={csvHref} />
-    </main>
+    </AuthenticatedPageSurface>
   );
 }

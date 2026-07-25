@@ -3,6 +3,10 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
 import MicroPartiesList from './MicroPartiesList';
+import {
+  AuthenticatedPageHeader,
+  AuthenticatedPageSurface,
+} from '@/app/components/AuthenticatedPageTheme';
 
 export const revalidate = 0;
 
@@ -17,26 +21,20 @@ export default async function MicroPartyInquiriesPage() {
     .order('created_at', { ascending: false });
 
   return (
-    <main className="max-w-[1200px] mx-auto px-6 py-16">
-      <Link
-        href="/bananas"
-        className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70"
-        style={{ color: '#8a8a8a' }}
-      >
-        ← BACK TO ADMIN
-      </Link>
-
-      <h1
-        className="text-[40px] font-extrabold -tracking-[0.02em] leading-[1.1] mb-2"
-        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-      >
-        Micro Party Inquiries
-      </h1>
-      <p className="text-[14px] mb-10" style={{ color: '#8a8a8a' }}>
-        Inquiries submitted through the Micro Parties / Birthdays form.
-      </p>
-
+    <AuthenticatedPageSurface
+      scope="admin"
+      width="max-w-[1200px]"
+      className="transition-colors duration-150"
+      testId="route-bananas-micro-parties"
+    >
+      <AuthenticatedPageHeader
+        scope="admin"
+        backHref="/bananas"
+        title="Micro Party Inquiries"
+        subtitle="Inquiries submitted through the Micro Parties / Birthdays form."
+        titleClassName="text-[40px]"
+      />
       <MicroPartiesList inquiries={inquiries || []} />
-    </main>
+    </AuthenticatedPageSurface>
   );
 }

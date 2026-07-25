@@ -34,22 +34,27 @@ export default async function EditEventPage({ params }) {
   if (!metricsRes.error) metrics = metricsRes.data || null;
 
   return (
-    <>
-      <div className="max-w-[700px] mx-auto px-6 pt-16 -mb-10 flex items-center justify-between gap-4">
-        <PublishEventButton
-          eventId={event.id}
-          status={event.status}
-          ttEventSeriesId={event.tt_event_series_id}
-        />
+    <EventForm
+      event={event}
+      metrics={metrics}
+      headerActions={(
         <Link
           href={`/bananas/events/${event.id}/financials`}
-          className="text-[12px] font-semibold tracking-[0.10em] uppercase hover:text-white transition-colors"
-          style={{ color: '#4ade80' }}
+          className="text-[12px] font-semibold tracking-[0.10em] uppercase transition-colors"
+          style={{ color: 'var(--auth-success)' }}
         >
           Financials →
         </Link>
-      </div>
-      <EventForm event={event} metrics={metrics} />
-    </>
+      )}
+      topContent={(
+        <div className="mb-6">
+          <PublishEventButton
+            eventId={event.id}
+            status={event.status}
+            ttEventSeriesId={event.tt_event_series_id}
+          />
+        </div>
+      )}
+    />
   );
 }

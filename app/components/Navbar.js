@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import NavLinks from './NavLinks';
 import NavBrand from './NavBrand';
-import AuthenticatedNavbarThemeToggle from './AuthenticatedNavbarThemeToggle';
 
 export default async function Navbar() {
   const supabase = await createClient();
@@ -19,7 +18,6 @@ export default async function Navbar() {
         <NavBrand logoUrl={logoUrl} />
         <div className="flex items-center gap-3 md:gap-5">
           <NavLinks />
-          <AuthenticatedNavbarThemeToggle />
         </div>
       </nav>
     </div>

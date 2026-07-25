@@ -1,10 +1,13 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
 import { DOCUMENT_CATEGORIES } from '@/lib/document-helpers';
 import { isContractTemplatesEnabled } from '@/lib/feature-flags';
 import DocumentsClient from './DocumentsClient';
+import {
+  AuthenticatedPageHeader,
+  AuthenticatedPageSurface,
+} from '@/app/components/AuthenticatedPageTheme';
 
 export const revalidate = 0;
 export const dynamic = 'force-dynamic';
@@ -52,29 +55,23 @@ export default async function DocumentsPage({ searchParams }) {
     .limit(200);
 
   return (
-    <main className="max-w-[1100px] mx-auto px-6 py-16">
-      <Link
-        href="/bananas"
-        className="text-[12px] tracking-[0.14em] mb-4 inline-block hover:text-white transition-colors"
-        style={{ color: '#8a8a8a' }}
-      >
-        ← BACK TO ADMIN
-      </Link>
-      <div className="flex items-baseline justify-between gap-4 mb-2">
-        <h1
-          className="text-[32px] font-extrabold -tracking-[0.02em] leading-[1.1]"
-          style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-        >
-          Documents
-        </h1>
-        <div className="text-[11px] tracking-[0.18em]" style={{ color: '#8a8a8a' }}>
-          PRIVATE · ADMIN ONLY
-        </div>
-      </div>
-      <p className="mb-8 text-[14px]" style={{ color: '#8a8a8a' }}>
-        Contracts, vendor docs, SOPs, finance — every upload is logged. Files never leave a private bucket.
-      </p>
-
+    <AuthenticatedPageSurface
+      scope="admin"
+      width="max-w-[1100px]"
+      className="transition-colors duration-150"
+      testId="route-bananas-documents"
+    >
+      <AuthenticatedPageHeader
+        scope="admin"
+        backHref="/bananas"
+        title="Documents"
+        subtitle="Contracts, vendor docs, SOPs, finance — every upload is logged. Files never leave a private bucket."
+        right={(
+          <div className="text-[11px] tracking-[0.18em]" style={{ color: 'var(--auth-muted)' }}>
+            PRIVATE · ADMIN ONLY
+          </div>
+        )}
+      />
       <DocumentsClient
         initialDocuments={documents || []}
         initialError={error?.message || null}
@@ -83,6 +80,6 @@ export default async function DocumentsPage({ searchParams }) {
         filters={{ q, category, status }}
         contractTemplatesEnabled={isContractTemplatesEnabled()}
       />
-    </main>
+    </AuthenticatedPageSurface>
   );
 }

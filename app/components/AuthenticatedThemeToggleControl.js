@@ -3,16 +3,14 @@
 import { createElement } from 'react';
 import ThemeToggle from './ThemeToggle.js';
 
-const MODE_TEST_IDS = {
-  shell: 'auth-theme-toggle-shell',
-  inline: 'auth-theme-toggle-inline',
-};
+const INLINE_TEST_ID = 'auth-theme-toggle-inline';
 
 export default function AuthenticatedThemeToggleControl({
   theme,
   onToggle,
   mode = 'inline',
   className = '',
+  testId,
 }) {
   if (mode === 'none') return null;
 
@@ -20,7 +18,7 @@ export default function AuthenticatedThemeToggleControl({
     'div',
     {
       className: className.trim(),
-      'data-testid': MODE_TEST_IDS[mode] || MODE_TEST_IDS.inline,
+      'data-testid': testId || INLINE_TEST_ID,
       'data-theme-toggle-mode': mode,
     },
     createElement(ThemeToggle, {

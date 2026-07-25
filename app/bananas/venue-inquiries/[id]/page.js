@@ -4,6 +4,10 @@ import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
 import InquiryActions from './InquiryActions';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
+import {
+  AuthenticatedInlineThemeToggle,
+  AuthenticatedPageSurface,
+} from '@/app/components/AuthenticatedPageTheme';
 
 export const revalidate = 0;
 
@@ -52,7 +56,12 @@ export default async function InquiryDetail({ params }) {
   if (error || !i) notFound();
 
   return (
-    <main className="max-w-[800px] mx-auto px-6 py-16">
+    <AuthenticatedPageSurface
+      scope="admin"
+      width="max-w-[800px]"
+      className="transition-colors duration-150"
+      testId="route-bananas-venue-inquiries-id"
+    >
       <Link
         href="/bananas/venue-inquiries"
         className="auth-theme-page-link inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-colors"
@@ -62,20 +71,23 @@ export default async function InquiryDetail({ params }) {
 
       <div className="flex items-start justify-between gap-4 mb-8">
         <div>
-          <div className="flex items-center gap-3 mb-3 flex-wrap">
-            {i.inquiry_type && TYPE_LABELS[i.inquiry_type] && (
-              <div
-                className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full"
-                style={{
-                  background: 'var(--auth-card-bg-alt)',
-                  color: 'var(--auth-text)',
-                  border: '1px solid var(--auth-card-border-strong)',
-                }}
-              >
-                {TYPE_LABELS[i.inquiry_type].toUpperCase()}
-              </div>
-            )}
-            <SubmissionStatusBadge status={i.status || 'new'} />
+          <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
+            <div className="flex items-center gap-3 flex-wrap">
+              {i.inquiry_type && TYPE_LABELS[i.inquiry_type] && (
+                <div
+                  className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full"
+                  style={{
+                    background: 'var(--auth-card-bg-alt)',
+                    color: 'var(--auth-text)',
+                    border: '1px solid var(--auth-card-border-strong)',
+                  }}
+                >
+                  {TYPE_LABELS[i.inquiry_type].toUpperCase()}
+                </div>
+              )}
+              <SubmissionStatusBadge status={i.status || 'new'} />
+            </div>
+            <AuthenticatedInlineThemeToggle />
           </div>
           <h1
             className="text-[36px] font-extrabold -tracking-[0.02em] leading-[1.1]"
@@ -187,6 +199,6 @@ export default async function InquiryDetail({ params }) {
           </span>
         </div>
       </section>
-    </main>
+    </AuthenticatedPageSurface>
   );
 }

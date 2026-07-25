@@ -4,6 +4,10 @@ import { adminPageGate } from '@/lib/auth-helpers';
 import LogoutButton from './components/LogoutButton';
 import EventsSection from './components/EventsSection';
 import AdminDashboardClient from './AdminDashboardClient';
+import {
+  AuthenticatedInlineThemeToggle,
+  AuthenticatedPageSurface,
+} from '@/app/components/AuthenticatedPageTheme';
 import { getTodayInAustin } from '@/lib/studio-helpers';
 
 export const revalidate = 0;
@@ -58,12 +62,17 @@ export default async function AdminDashboard() {
   };
 
   return (
-    <main className="max-w-[1200px] mx-auto px-6 py-16">
+    <AuthenticatedPageSurface
+      scope="admin"
+      width="max-w-[1200px]"
+      className="transition-colors duration-150"
+      testId="route-bananas"
+    >
       <div className="flex items-center justify-between mb-10">
         <div>
           <h1
             className="text-[40px] font-extrabold -tracking-[0.02em] leading-[1.1]"
-            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: 'var(--auth-text-strong)' }}
           >
             Admin
           </h1>
@@ -71,14 +80,17 @@ export default async function AdminDashboard() {
             Signed in as {user?.email}
           </p>
         </div>
-        <LogoutButton />
+        <div className="flex flex-wrap items-center gap-3">
+          <AuthenticatedInlineThemeToggle />
+          <LogoutButton />
+        </div>
       </div>
 
       <AdminDashboardClient isOwner={isOwner} counts={counts} />
 
       <h2
         className="text-[18px] font-bold tracking-[0.12em] mb-5 mt-14"
-        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: 'var(--auth-text-strong)' }}
       >
         EVENTS
       </h2>
@@ -86,6 +98,6 @@ export default async function AdminDashboard() {
         upcoming={(events || []).filter((e) => e.event_date >= today)}
         past={(events || []).filter((e) => e.event_date < today).reverse()}
       />
-    </main>
+    </AuthenticatedPageSurface>
   );
 }

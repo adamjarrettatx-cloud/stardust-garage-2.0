@@ -1,8 +1,11 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ownerPageGate } from '@/lib/auth-helpers';
 import SettingsForm from './SettingsForm';
+import {
+  AuthenticatedPageHeader,
+  AuthenticatedPageSurface,
+} from '@/app/components/AuthenticatedPageTheme';
 
 export const revalidate = 0;
 
@@ -19,23 +22,19 @@ export default async function SettingsPage() {
   });
 
   return (
-    <main className="max-w-[800px] mx-auto px-6 py-16">
-      <Link
-        href="/bananas"
-        className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70"
-        style={{ color: '#8a8a8a' }}
-      >
-        ← BACK TO ADMIN
-      </Link>
-
-      <h1
-        className="text-[40px] font-extrabold -tracking-[0.02em] leading-[1.1] mb-10"
-        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-      >
-        Site Settings
-      </h1>
-
+    <AuthenticatedPageSurface
+      scope="admin"
+      width="max-w-[800px]"
+      className="transition-colors duration-150"
+      testId="route-bananas-settings"
+    >
+      <AuthenticatedPageHeader
+        scope="admin"
+        backHref="/bananas"
+        title="Site Settings"
+        titleClassName="text-[40px]"
+      />
       <SettingsForm initialSettings={settings} />
-    </main>
+    </AuthenticatedPageSurface>
   );
 }

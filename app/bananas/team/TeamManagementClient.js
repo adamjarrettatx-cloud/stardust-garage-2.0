@@ -1,10 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { adminFetch } from '@/lib/admin-fetch';
+import {
+  AuthenticatedPageHeader,
+  AuthenticatedPageSurface,
+} from '@/app/components/AuthenticatedPageTheme';
 
 const ROLE_CONFIG = {
   admin: {
@@ -101,34 +104,38 @@ export default function TeamManagementClient({ members: initialMembers }) {
     router.refresh();
   };
 
-  const inputStyle = { background: '#1a1a1a', borderColor: 'rgba(255,255,255,0.12)', color: '#f5f5f5' };
+  const inputStyle = {
+    background: 'var(--auth-input-bg)',
+    borderColor: 'var(--auth-input-border)',
+    color: 'var(--auth-input-text)',
+  };
   const inputClass = 'w-full px-4 py-3 rounded-[10px] text-[14px] outline-none border transition-colors focus:border-white/30';
   const labelClass = 'block text-[11px] font-semibold tracking-[0.14em] mb-1.5';
-  const labelStyle = { color: '#8a8a8a' };
+  const labelStyle = { color: 'var(--auth-muted)' };
 
   return (
-    <main className="max-w-[900px] mx-auto px-6 py-16">
-      <Link href="/bananas" className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70" style={{ color: '#8a8a8a' }}>
-        ← BACK TO ADMIN
-      </Link>
-
-      <div className="flex items-center justify-between mb-10">
-        <div>
-          <h1 className="text-[36px] font-extrabold -tracking-[0.02em] leading-[1.1]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Team Members
-          </h1>
-          <p className="text-[13px] mt-2" style={{ color: '#8a8a8a' }}>
-            Manage who has access to the team portal
-          </p>
-        </div>
-        <button
-          onClick={() => { setShowInvite(v => !v); setInviteError(''); setInviteSuccess(''); }}
-          className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5"
-          style={{ background: '#ffffff', color: '#0a0a0a' }}
-        >
-          {showInvite ? 'CANCEL' : '+ ADD MEMBER'}
-        </button>
-      </div>
+    <AuthenticatedPageSurface
+      scope="admin"
+      width="max-w-[900px]"
+      className="transition-colors duration-150"
+      testId="route-bananas-team"
+    >
+      <AuthenticatedPageHeader
+        scope="admin"
+        backHref="/bananas"
+        title="Team Members"
+        subtitle="Manage who has access to the team portal"
+        titleClassName="text-[36px]"
+        subtitleClassName="text-[13px]"
+        right={(
+          <button
+            onClick={() => { setShowInvite(v => !v); setInviteError(''); setInviteSuccess(''); }}
+            className="auth-theme-solid-button px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5"
+          >
+            {showInvite ? 'CANCEL' : '+ ADD MEMBER'}
+          </button>
+        )}
+      />
 
       {/* Role legend */}
       <div className="grid grid-cols-2 gap-4 mb-8">
@@ -137,14 +144,14 @@ export default function TeamManagementClient({ members: initialMembers }) {
             <div className="text-[13px] font-bold mb-1" style={{ color: cfg.color, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
               {cfg.label}
             </div>
-            <div className="text-[12px]" style={{ color: '#aaa' }}>{cfg.description}</div>
+            <div className="text-[12px]" style={{ color: 'var(--auth-muted-strong)' }}>{cfg.description}</div>
           </div>
         ))}
       </div>
 
       {/* Invite form */}
       {showInvite && (
-        <div className="rounded-[14px] border p-6 mb-8" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.08)' }}>
+        <div className="rounded-[14px] border p-6 mb-8" style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}>
           <h2 className="text-[18px] font-bold mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Add Team Member</h2>
           <form onSubmit={handleInvite} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -169,7 +176,7 @@ export default function TeamManagementClient({ members: initialMembers }) {
                 className={inputClass}
                 style={inputStyle}
               />
-              <p className="text-[11px] mt-1.5" style={{ color: '#555' }}>Share this with them directly. They can update their password after logging in.</p>
+              <p className="text-[11px] mt-1.5" style={{ color: 'var(--auth-muted)' }}>Share this with them directly. They can update their password after logging in.</p>
             </div>
 
             <div>
@@ -182,14 +189,14 @@ export default function TeamManagementClient({ members: initialMembers }) {
                     onClick={() => setInviteRole(role)}
                     className="py-3 px-4 rounded-[10px] border text-left transition-all"
                     style={{
-                      background: inviteRole === role ? cfg.bg : '#1a1a1a',
-                      borderColor: inviteRole === role ? cfg.border : 'rgba(255,255,255,0.08)',
+                      background: inviteRole === role ? cfg.bg : 'var(--auth-card-bg-alt)',
+                      borderColor: inviteRole === role ? cfg.border : 'var(--auth-card-border)',
                     }}
                   >
-                    <div className="text-[13px] font-bold" style={{ color: inviteRole === role ? cfg.color : '#f5f5f5', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                    <div className="text-[13px] font-bold" style={{ color: inviteRole === role ? cfg.color : 'var(--auth-text)', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                       {cfg.label}
                     </div>
-                    <div className="text-[11px] mt-0.5" style={{ color: '#8a8a8a' }}>{cfg.description}</div>
+                    <div className="text-[11px] mt-0.5" style={{ color: 'var(--auth-muted)' }}>{cfg.description}</div>
                   </button>
                 ))}
               </div>
@@ -202,8 +209,7 @@ export default function TeamManagementClient({ members: initialMembers }) {
             <button
               type="submit"
               disabled={inviting}
-              className="w-full py-3.5 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
-              style={{ background: '#ffffff', color: '#0a0a0a' }}
+              className="auth-theme-solid-button w-full py-3.5 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
             >
               {inviting ? 'ADDING...' : 'ADD TEAM MEMBER'}
             </button>
@@ -219,8 +225,8 @@ export default function TeamManagementClient({ members: initialMembers }) {
 
       {/* Members list */}
       {members.length === 0 ? (
-        <div className="rounded-[14px] p-12 text-center border" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}>
-          <p style={{ color: '#8a8a8a' }}>No team members yet. Click &quot;+ ADD MEMBER&quot; to get started.</p>
+        <div className="rounded-[14px] p-12 text-center border" style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}>
+          <p style={{ color: 'var(--auth-muted)' }}>No team members yet. Click &quot;+ ADD MEMBER&quot; to get started.</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -231,7 +237,7 @@ export default function TeamManagementClient({ members: initialMembers }) {
               <div
                 key={member.id}
                 className="rounded-[14px] border p-5 flex items-center gap-5"
-                style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
+                style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}
               >
                 {/* Avatar */}
                 <div
@@ -245,7 +251,7 @@ export default function TeamManagementClient({ members: initialMembers }) {
                   <div className="text-[15px] font-bold truncate" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                     {member.full_name || member.email}
                   </div>
-                  <div className="text-[12px] mt-0.5" style={{ color: '#8a8a8a' }}>{member.email}</div>
+                  <div className="text-[12px] mt-0.5" style={{ color: 'var(--auth-muted)' }}>{member.email}</div>
                 </div>
 
                 {/* Role badge */}
@@ -257,7 +263,7 @@ export default function TeamManagementClient({ members: initialMembers }) {
                 </span>
 
                 {/* Login link — one shared sign-in page for every role */}
-                <span className="text-[11px] flex-shrink-0" style={{ color: '#555' }}>
+                <span className="text-[11px] flex-shrink-0" style={{ color: 'var(--auth-muted)' }}>
                   /login
                 </span>
 
@@ -279,6 +285,6 @@ export default function TeamManagementClient({ members: initialMembers }) {
           })}
         </div>
       )}
-    </main>
+    </AuthenticatedPageSurface>
   );
 }

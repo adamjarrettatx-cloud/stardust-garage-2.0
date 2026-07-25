@@ -22,6 +22,20 @@ export default function AuthenticatedThemeProvider({ scope, children }) {
     }
   }, [scope]);
 
+  useEffect(() => {
+    document.documentElement.setAttribute('data-auth-scope', scope);
+    document.documentElement.setAttribute('data-auth-theme', theme);
+    document.body.setAttribute('data-auth-scope', scope);
+    document.body.setAttribute('data-auth-theme', theme);
+
+    return () => {
+      document.documentElement.removeAttribute('data-auth-scope');
+      document.documentElement.removeAttribute('data-auth-theme');
+      document.body.removeAttribute('data-auth-scope');
+      document.body.removeAttribute('data-auth-theme');
+    };
+  }, [scope, theme]);
+
   const toggleTheme = useCallback(() => {
     const key = AUTH_THEME_STORAGE_KEYS[scope];
     setTheme((prev) => {

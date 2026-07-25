@@ -30,7 +30,7 @@ function HourSelector({ value, onChange, label }) {
     <div>
       <label
         className="block text-[11px] font-semibold tracking-[0.14em] mb-2"
-        style={{ color: '#8a8a8a' }}
+        style={{ color: 'var(--auth-muted)' }}
       >
         {label}
       </label>
@@ -39,9 +39,9 @@ function HourSelector({ value, onChange, label }) {
         onChange={(e) => onChange(parseInt(e.target.value, 10))}
         className="w-full px-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30"
         style={{
-          background: '#141414',
-          borderColor: 'rgba(255,255,255,0.1)',
-          color: '#f5f5f5',
+          background: 'var(--auth-input-bg)',
+          borderColor: 'var(--auth-input-border)',
+          color: 'var(--auth-input-text)',
         }}
       >
         {hours.map((h) => (
@@ -129,14 +129,14 @@ export default function StudioSettingsForm({ settings }) {
       <div>
         <label
           className="block text-[11px] font-semibold tracking-[0.14em] mb-2"
-          style={{ color: '#8a8a8a' }}
+          style={{ color: 'var(--auth-muted)' }}
         >
           HOURLY RATE (USD)
         </label>
         <div className="relative">
           <span
             className="absolute left-5 top-1/2 -translate-y-1/2 text-[14px]"
-            style={{ color: '#a0a0a0' }}
+            style={{ color: 'var(--auth-muted)' }}
           >
             $
           </span>
@@ -148,9 +148,9 @@ export default function StudioSettingsForm({ settings }) {
             onChange={(e) => setRate(parseFloat(e.target.value) || 0)}
             className="w-full pl-10 pr-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30"
             style={{
-              background: '#141414',
-              borderColor: 'rgba(255,255,255,0.1)',
-              color: '#f5f5f5',
+              background: 'var(--auth-input-bg)',
+              borderColor: 'var(--auth-input-border)',
+              color: 'var(--auth-input-text)',
             }}
           />
         </div>
@@ -164,7 +164,7 @@ export default function StudioSettingsForm({ settings }) {
       <div>
         <label
           className="block text-[11px] font-semibold tracking-[0.14em] mb-3"
-          style={{ color: '#8a8a8a' }}
+          style={{ color: 'var(--auth-muted)' }}
         >
           OPEN DAYS
         </label>
@@ -178,9 +178,9 @@ export default function StudioSettingsForm({ settings }) {
                 onClick={() => toggleDay(d.num)}
                 className="px-4 py-2 rounded-full text-[12px] font-semibold tracking-[0.1em] border transition-all"
                 style={{
-                  background: isOn ? '#ffffff' : 'transparent',
-                  color: isOn ? '#0a0a0a' : '#f5f5f5',
-                  borderColor: isOn ? '#ffffff' : 'rgba(255,255,255,0.15)',
+                  background: isOn ? 'var(--auth-text-strong)' : 'var(--auth-card-bg)',
+                  color: isOn ? 'var(--auth-strong-surface-text)' : 'var(--auth-text)',
+                  borderColor: isOn ? 'var(--auth-text-strong)' : 'var(--auth-card-border)',
                 }}
               >
                 {d.label}
@@ -194,7 +194,7 @@ export default function StudioSettingsForm({ settings }) {
         <div>
           <label
             className="block text-[11px] font-semibold tracking-[0.14em] mb-2"
-            style={{ color: '#8a8a8a' }}
+            style={{ color: 'var(--auth-muted)' }}
           >
             MIN ADVANCE (HOURS)
           </label>
@@ -205,16 +205,16 @@ export default function StudioSettingsForm({ settings }) {
             onChange={(e) => setMinAdvance(parseInt(e.target.value, 10) || 0)}
             className="w-full px-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30"
             style={{
-              background: '#141414',
-              borderColor: 'rgba(255,255,255,0.1)',
-              color: '#f5f5f5',
+              background: 'var(--auth-input-bg)',
+              borderColor: 'var(--auth-input-border)',
+              color: 'var(--auth-input-text)',
             }}
           />
         </div>
         <div>
           <label
             className="block text-[11px] font-semibold tracking-[0.14em] mb-2"
-            style={{ color: '#8a8a8a' }}
+            style={{ color: 'var(--auth-muted)' }}
           >
             MIN BOOKING (HOURS)
           </label>
@@ -225,9 +225,9 @@ export default function StudioSettingsForm({ settings }) {
             onChange={(e) => setMinBooking(parseInt(e.target.value, 10) || 1)}
             className="w-full px-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30"
             style={{
-              background: '#141414',
-              borderColor: 'rgba(255,255,255,0.1)',
-              color: '#f5f5f5',
+              background: 'var(--auth-input-bg)',
+              borderColor: 'var(--auth-input-border)',
+              color: 'var(--auth-input-text)',
             }}
           />
         </div>
@@ -238,7 +238,7 @@ export default function StudioSettingsForm({ settings }) {
       )}
 
       {savedAt && !error && (
-        <div className="text-[13px]" style={{ color: '#80c878' }}>
+        <div className="text-[13px]" style={{ color: 'var(--auth-success-strong)' }}>
           Saved.
         </div>
       )}
@@ -247,8 +247,7 @@ export default function StudioSettingsForm({ settings }) {
         type="button"
         onClick={handleSave}
         disabled={saving}
-        className="w-full py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
-        style={{ background: '#ffffff', color: '#0a0a0a' }}
+        className="auth-theme-solid-button w-full py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
       >
         {saving ? 'SAVING…' : 'SAVE SETTINGS'}
       </button>

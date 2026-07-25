@@ -4,6 +4,10 @@ import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
 import MicroPartyActions from './MicroPartyActions';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
+import {
+  AuthenticatedInlineThemeToggle,
+  AuthenticatedPageSurface,
+} from '@/app/components/AuthenticatedPageTheme';
 
 export const revalidate = 0;
 
@@ -64,7 +68,12 @@ export default async function MicroPartyDetail({ params }) {
   if (error || !i) notFound();
 
   return (
-    <main className="max-w-[800px] mx-auto px-6 py-16">
+    <AuthenticatedPageSurface
+      scope="admin"
+      width="max-w-[800px]"
+      className="transition-colors duration-150"
+      testId="route-bananas-micro-parties-id"
+    >
       <Link
         href="/bananas/micro-parties"
         className="auth-theme-page-link inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-colors"
@@ -85,7 +94,10 @@ export default async function MicroPartyDetail({ params }) {
           </div>
         </div>
 
-        <SubmissionStatusBadge status={i.status || 'new'} />
+        <div className="flex items-center gap-3">
+          <SubmissionStatusBadge status={i.status || 'new'} />
+          <AuthenticatedInlineThemeToggle />
+        </div>
       </div>
 
       <MicroPartyActions inquiryId={i.id} currentStatus={i.status || 'new'} />
@@ -145,6 +157,6 @@ export default async function MicroPartyDetail({ params }) {
           {i.acknowledged_terms ? '✓ Yes' : 'No'}
         </Field>
       </section>
-    </main>
+    </AuthenticatedPageSurface>
   );
 }

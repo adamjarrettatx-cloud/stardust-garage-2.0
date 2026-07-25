@@ -9,14 +9,14 @@ function usd(cents) {
   return (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 }
 
-const CARD = { background: '#141414', borderColor: 'rgba(255,255,255,0.06)' };
+const CARD = { background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' };
 const LABEL = 'text-[10px] font-semibold tracking-[0.14em] uppercase mb-1.5';
 
 function Row({ label, value, accent }) {
   return (
-    <div className="flex items-center justify-between py-1.5 text-[13px]" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-      <span style={{ color: '#8a8a8a' }}>{label}</span>
-      <span style={{ color: accent || '#e8e8e8' }}>{value}</span>
+    <div className="flex items-center justify-between py-1.5 text-[13px]" style={{ borderTop: '1px solid var(--auth-row-border)' }}>
+      <span style={{ color: 'var(--auth-muted)' }}>{label}</span>
+      <span style={{ color: accent || 'var(--auth-text)' }}>{value}</span>
     </div>
   );
 }
@@ -186,7 +186,7 @@ export default function EventFinancialsClient({ eventId, initial, contracts }) {
       {/* Breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="rounded-[14px] border p-5" style={CARD}>
-          <div className={LABEL} style={{ color: '#8a8a8a' }}>TicketTailor (ticket sales)</div>
+          <div className={LABEL} style={{ color: 'var(--auth-muted)' }}>TicketTailor (ticket sales)</div>
           <Row label="Tickets sold" value={summary.tickets.sold} />
           <Row label="Gross" value={usd(summary.tickets.grossCents)} />
           <Row label="Processor fees" value={`- ${usd(summary.tickets.processorFeesCents)}`} />
@@ -194,7 +194,7 @@ export default function EventFinancialsClient({ eventId, initial, contracts }) {
           <Row label="TT net" value={usd(summary.tickets.netCents)} accent="#4ade80" />
         </div>
         <div className="rounded-[14px] border p-5" style={CARD}>
-          <div className={LABEL} style={{ color: '#8a8a8a' }}>POS (imported CSV)</div>
+          <div className={LABEL} style={{ color: 'var(--auth-muted)' }}>POS (imported CSV)</div>
           <Row label="Batches" value={summary.pos.batches} />
           <Row label="Gross" value={usd(summary.pos.grossCents)} />
           <Row label="Sales tax" value={`- ${usd(summary.pos.taxCents)}`} />
@@ -205,14 +205,14 @@ export default function EventFinancialsClient({ eventId, initial, contracts }) {
 
       {/* Split detail */}
       <div className="rounded-[14px] border p-5" style={CARD}>
-        <div className={LABEL} style={{ color: '#8a8a8a' }}>Contract split (applied to TT net ticket profit)</div>
+        <div className={LABEL} style={{ color: 'var(--auth-muted)' }}>Contract split (applied to TT net ticket profit)</div>
         {data.contract ? (
           <>
             <Row label="Stardust split %" value={`${summary.split.stardustPercent}%`} />
             <Row label="Flat fee to counterparty" value={usd(summary.split.flatFeeCents)} />
             <Row label="Stardust ticket share" value={usd(summary.split.ticketStardustShareCents)} accent="#4ade80" />
             <Row label="Counterparty ticket share" value={usd(summary.split.ticketCounterpartyShareCents)} accent="#f472b6" />
-            <p className="mt-3 text-[11px]" style={{ color: '#6a6a6a' }}>
+            <p className="mt-3 text-[11px]" style={{ color: 'var(--auth-muted)' }}>
               Terms source: {data.contract.financial_terms_source}. Edit on the{' '}
               <a href={`/bananas/documents/${data.contract.document_id}`} className="underline" style={{ color: '#ffb84d' }}>contract page</a>.
             </p>
@@ -227,8 +227,8 @@ export default function EventFinancialsClient({ eventId, initial, contracts }) {
                 >
                   {snapshotting ? 'Saving…' : data.snapshot ? 'Re-save terms snapshot' : 'Save terms snapshot'}
                 </button>
-                {snapshotMsg && <span className="text-[11px]" style={{ color: '#8a8a8a' }}>{snapshotMsg}</span>}
-                <span className="text-[11px]" style={{ color: '#6a6a6a' }}>
+                {snapshotMsg && <span className="text-[11px]" style={{ color: 'var(--auth-muted)' }}>{snapshotMsg}</span>}
+                <span className="text-[11px]" style={{ color: 'var(--auth-muted)' }}>
                   Preserves these terms so deleting the contract won’t change this event’s books.
                 </span>
               </div>
@@ -240,13 +240,13 @@ export default function EventFinancialsClient({ eventId, initial, contracts }) {
             <Row label="Flat fee to counterparty" value={usd(summary.split.flatFeeCents)} />
             <Row label="Stardust ticket share" value={usd(summary.split.ticketStardustShareCents)} accent="#4ade80" />
             <Row label="Counterparty ticket share" value={usd(summary.split.ticketCounterpartyShareCents)} accent="#f472b6" />
-            <p className="mt-3 text-[11px]" style={{ color: '#6a6a6a' }}>
+            <p className="mt-3 text-[11px]" style={{ color: 'var(--auth-muted)' }}>
               Using a saved snapshot of reviewed contract terms (no live contract linked). Re-link a
               contract below to resume live terms.
             </p>
           </>
         ) : (
-          <p className="text-[13px]" style={{ color: '#8a8a8a' }}>
+          <p className="text-[13px]" style={{ color: 'var(--auth-muted)' }}>
             No contract linked to this event. With no split terms, Stardust keeps 100% of ticket net.
             Link a contract below or attach one on a document’s contract page.
           </p>
@@ -255,28 +255,28 @@ export default function EventFinancialsClient({ eventId, initial, contracts }) {
 
       {/* Config form */}
       <form onSubmit={saveConfig} className="rounded-[14px] border p-5 space-y-4" style={CARD}>
-        <div className={LABEL} style={{ color: '#8a8a8a' }}>Fee configuration</div>
+        <div className={LABEL} style={{ color: 'var(--auth-muted)' }}>Fee configuration</div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <label className="block text-[12px]" style={{ color: '#c8c8c8' }}>
+          <label className="block text-[12px]" style={{ color: 'var(--auth-muted-strong)' }}>
             CPT fee (cents/ticket)
             <input type="number" min="0" value={cpt} onChange={(e) => setCpt(e.target.value)}
-              className="mt-1 w-full rounded-[8px] px-3 py-2 text-[14px]" style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }} />
+              className="mt-1 w-full rounded-[8px] px-3 py-2 text-[14px]" style={{ background: 'var(--auth-input-bg)', border: '1px solid var(--auth-input-border)', color: 'var(--auth-input-text)' }} />
           </label>
-          <label className="block text-[12px]" style={{ color: '#c8c8c8' }}>
+          <label className="block text-[12px]" style={{ color: 'var(--auth-muted-strong)' }}>
             Sales tax (basis pts)
             <input type="number" min="0" max="10000" value={taxBps} onChange={(e) => setTaxBps(e.target.value)}
-              className="mt-1 w-full rounded-[8px] px-3 py-2 text-[14px]" style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }} />
+              className="mt-1 w-full rounded-[8px] px-3 py-2 text-[14px]" style={{ background: 'var(--auth-input-bg)', border: '1px solid var(--auth-input-border)', color: 'var(--auth-input-text)' }} />
           </label>
-          <label className="block text-[12px]" style={{ color: '#c8c8c8' }}>
+          <label className="block text-[12px]" style={{ color: 'var(--auth-muted-strong)' }}>
             Card fee (basis pts)
             <input type="number" min="0" max="10000" value={ccBps} onChange={(e) => setCcBps(e.target.value)}
-              className="mt-1 w-full rounded-[8px] px-3 py-2 text-[14px]" style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }} />
+              className="mt-1 w-full rounded-[8px] px-3 py-2 text-[14px]" style={{ background: 'var(--auth-input-bg)', border: '1px solid var(--auth-input-border)', color: 'var(--auth-input-text)' }} />
           </label>
         </div>
-        <label className="block text-[12px]" style={{ color: '#c8c8c8' }}>
+        <label className="block text-[12px]" style={{ color: 'var(--auth-muted-strong)' }}>
           Split contract
           <select value={contractId} onChange={(e) => setContractId(e.target.value)}
-            className="mt-1 w-full rounded-[8px] px-3 py-2 text-[14px]" style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }}>
+            className="mt-1 w-full rounded-[8px] px-3 py-2 text-[14px]" style={{ background: 'var(--auth-input-bg)', border: '1px solid var(--auth-input-border)', color: 'var(--auth-input-text)' }}>
             <option value="">Auto (most recent signed)</option>
             {contracts.map((c) => (
               <option key={c.id} value={c.id}>
@@ -290,28 +290,28 @@ export default function EventFinancialsClient({ eventId, initial, contracts }) {
             className="text-[12px] font-semibold tracking-[0.10em] uppercase rounded-[10px] px-4 py-2 disabled:opacity-50" style={{ background: '#ffb84d', color: '#141414' }}>
             {savingCfg ? 'Saving…' : 'Save config'}
           </button>
-          {cfgMsg && <span className="text-[12px]" style={{ color: '#8a8a8a' }}>{cfgMsg}</span>}
+          {cfgMsg && <span className="text-[12px]" style={{ color: 'var(--auth-muted)' }}>{cfgMsg}</span>}
         </div>
-        <p className="text-[11px]" style={{ color: '#6a6a6a' }}>
+        <p className="text-[11px]" style={{ color: 'var(--auth-muted)' }}>
           Tip: 8.25% sales tax = 825 basis points. The default CPT fee is 52¢ ($0.52) per TicketTailor ticket sold.
         </p>
       </form>
 
       {/* POS import */}
       <form onSubmit={importPos} className="rounded-[14px] border p-5 space-y-4" style={CARD}>
-        <div className={LABEL} style={{ color: '#8a8a8a' }}>Import POS CSV</div>
+        <div className={LABEL} style={{ color: 'var(--auth-muted)' }}>Import POS CSV</div>
         <input type="file" accept=".csv,text/csv" onChange={onFile}
-          className="block text-[13px]" style={{ color: '#c8c8c8' }} />
+          className="auth-theme-file-input block text-[13px]" />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <label className="block text-[12px]" style={{ color: '#c8c8c8' }}>
-            Window start <span style={{ color: '#6a6a6a' }}>(venue time, CT — inclusive)</span>
+          <label className="block text-[12px]" style={{ color: 'var(--auth-muted-strong)' }}>
+            Window start <span style={{ color: 'var(--auth-muted)' }}>(venue time, CT — inclusive)</span>
             <input type="datetime-local" value={winStart} onChange={(e) => setWinStart(e.target.value)}
-              className="mt-1 w-full rounded-[8px] px-3 py-2 text-[14px]" style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }} />
+              className="mt-1 w-full rounded-[8px] px-3 py-2 text-[14px]" style={{ background: 'var(--auth-input-bg)', border: '1px solid var(--auth-input-border)', color: 'var(--auth-input-text)' }} />
           </label>
-          <label className="block text-[12px]" style={{ color: '#c8c8c8' }}>
-            Window end <span style={{ color: '#6a6a6a' }}>(venue time, CT — exclusive)</span>
+          <label className="block text-[12px]" style={{ color: 'var(--auth-muted-strong)' }}>
+            Window end <span style={{ color: 'var(--auth-muted)' }}>(venue time, CT — exclusive)</span>
             <input type="datetime-local" value={winEnd} onChange={(e) => setWinEnd(e.target.value)}
-              className="mt-1 w-full rounded-[8px] px-3 py-2 text-[14px]" style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }} />
+              className="mt-1 w-full rounded-[8px] px-3 py-2 text-[14px]" style={{ background: 'var(--auth-input-bg)', border: '1px solid var(--auth-input-border)', color: 'var(--auth-input-text)' }} />
           </label>
         </div>
         <div className="flex items-center gap-3">
@@ -319,9 +319,9 @@ export default function EventFinancialsClient({ eventId, initial, contracts }) {
             className="text-[12px] font-semibold tracking-[0.10em] uppercase rounded-[10px] px-4 py-2 disabled:opacity-50" style={{ background: '#4ade80', color: '#0d0d0d' }}>
             {importing ? 'Importing…' : 'Import CSV'}
           </button>
-          {importMsg && <span className="text-[12px]" style={{ color: '#8a8a8a' }}>{importMsg}</span>}
+          {importMsg && <span className="text-[12px]" style={{ color: 'var(--auth-muted)' }}>{importMsg}</span>}
         </div>
-        <p className="text-[11px]" style={{ color: '#6a6a6a' }}>
+        <p className="text-[11px]" style={{ color: 'var(--auth-muted)' }}>
           Recognized columns (case-insensitive): timestamp/date, gross/total, tax, fees, net, description.
           Window times are interpreted as venue-local (Central). The window is half-open — a row exactly on the
           end time is excluded — so back-to-back events never double-count a boundary transaction. Leave the window
@@ -332,12 +332,12 @@ export default function EventFinancialsClient({ eventId, initial, contracts }) {
       {/* Existing batches */}
       {data.posBatches.length > 0 && (
         <div className="rounded-[14px] border overflow-hidden" style={CARD}>
-          <div className="px-5 py-3 text-[10px] font-semibold tracking-[0.14em] uppercase" style={{ color: '#8a8a8a', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="px-5 py-3 text-[10px] font-semibold tracking-[0.14em] uppercase" style={{ color: 'var(--auth-muted)', borderBottom: '1px solid var(--auth-card-border)' }}>
             POS import batches
           </div>
           {data.posBatches.map((b) => (
-            <div key={b.id} className="px-5 py-3 flex items-center justify-between text-[13px]" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-              <span className="truncate" style={{ color: '#c8c8c8' }}>
+            <div key={b.id} className="px-5 py-3 flex items-center justify-between text-[13px]" style={{ borderTop: '1px solid var(--auth-row-border)' }}>
+              <span className="truncate" style={{ color: 'var(--auth-muted-strong)' }}>
                 {b.source_filename || 'import'} · {b.in_window_count} rows · {usd(b.net_cents)} net
               </span>
               <button type="button" onClick={() => deleteBatch(b.id)} className="text-[11px] uppercase tracking-[0.1em]" style={{ color: '#f472b6' }}>

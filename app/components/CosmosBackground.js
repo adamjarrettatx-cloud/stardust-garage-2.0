@@ -6,7 +6,7 @@ export default function CosmosBackground() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none fixed inset-0 z-0"
+      className="auth-cosmos-background pointer-events-none fixed inset-0 z-0"
       style={{
         background:
           'radial-gradient(ellipse at top, #0f0f1a 0%, #0a0a0a 60%, #070710 100%)',

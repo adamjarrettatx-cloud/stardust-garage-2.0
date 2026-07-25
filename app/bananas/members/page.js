@@ -1,9 +1,12 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
 import { PLAN_DISPLAY } from '@/lib/stripe-prices';
 import AdminMemberActions from './AdminMemberActions';
+import {
+  AuthenticatedPageHeader,
+  AuthenticatedPageSurface,
+} from '@/app/components/AuthenticatedPageTheme';
 
 export const revalidate = 0;
 
@@ -34,18 +37,19 @@ function Avatar({ member }) {
         src={member.photo_url}
         alt={member.full_name || member.email}
         className="w-11 h-11 flex-shrink-0 object-cover"
-        style={{ borderRadius: '50%', border: '1px solid #2a2a2a' }}
+        style={{ borderRadius: '50%', border: '1px solid var(--auth-card-border-strong)' }}
       />
     );
   }
+
   return (
     <div
       className="w-11 h-11 flex-shrink-0 flex items-center justify-center text-[14px] font-bold"
       style={{
         borderRadius: '50%',
-        background: '#1a1a1a',
-        border: '1px solid #2a2a2a',
-        color: '#8a8a8a',
+        background: 'var(--auth-card-bg-alt)',
+        border: '1px solid var(--auth-card-border-strong)',
+        color: 'var(--auth-muted)',
         fontFamily: "'Plus Jakarta Sans', sans-serif",
       }}
     >
@@ -69,43 +73,43 @@ export default async function AdminMembersPage() {
   const inactive = (members || []).filter((m) => !m.is_active);
 
   return (
-    <main className="max-w-[1100px] mx-auto px-6 py-16">
-      <Link
-        href="/bananas"
-        className="text-[12px] tracking-[0.14em] mb-4 inline-block hover:text-white transition-colors"
-        style={{ color: '#8a8a8a' }}
-      >
-        ← BACK TO ADMIN
-      </Link>
-      <h1
-        className="text-[32px] font-extrabold -tracking-[0.02em] leading-[1.1] mb-10"
-        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-      >
-        Members
-      </h1>
+    <AuthenticatedPageSurface
+      scope="admin"
+      width="max-w-[1100px]"
+      className="transition-colors duration-150"
+      testId="route-bananas-members"
+    >
+      <AuthenticatedPageHeader
+        scope="admin"
+        backHref="/bananas"
+        title="Members"
+      />
 
       <div className="mb-12">
-        <div className="text-[11px] font-semibold tracking-[0.18em] mb-4" style={{ color: '#8a8a8a' }}>
+        <div className="text-[11px] font-semibold tracking-[0.18em] mb-4" style={{ color: 'var(--auth-muted)' }}>
           ACTIVE ({active.length})
         </div>
         {active.length === 0 ? (
-          <div className="rounded-[14px] border p-8 text-center" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.06)' }}>
-            <p style={{ color: '#8a8a8a' }}>No active members yet.</p>
+          <div
+            className="rounded-[14px] border p-8 text-center"
+            style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}
+          >
+            <p style={{ color: 'var(--auth-muted)' }}>No active members yet.</p>
           </div>
         ) : (
-          active.map((m) => <MemberRow key={m.id} member={m} />)
+          active.map((member) => <MemberRow key={member.id} member={member} />)
         )}
       </div>
 
       {inactive.length > 0 && (
         <div>
-          <div className="text-[11px] font-semibold tracking-[0.18em] mb-4" style={{ color: '#8a8a8a' }}>
+          <div className="text-[11px] font-semibold tracking-[0.18em] mb-4" style={{ color: 'var(--auth-muted)' }}>
             INACTIVE / PENDING ({inactive.length})
           </div>
-          {inactive.map((m) => <MemberRow key={m.id} member={m} />)}
+          {inactive.map((member) => <MemberRow key={member.id} member={member} />)}
         </div>
       )}
-    </main>
+    </AuthenticatedPageSurface>
   );
 }
 
@@ -129,17 +133,20 @@ function MemberRow({ member }) {
   return (
     <div
       className="rounded-[14px] border p-5 mb-3 flex items-center gap-5"
-      style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.06)' }}
+      style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}
     >
       <Avatar member={member} />
       <div className="flex-1 min-w-0">
-        <div className="text-[15px] font-bold mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        <div
+          className="text-[15px] font-bold mb-1"
+          style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: 'var(--auth-text-strong)' }}
+        >
           {member.full_name || member.email}
         </div>
-        <div className="text-[12px]" style={{ color: '#a0a0a0' }}>
+        <div className="text-[12px]" style={{ color: 'var(--auth-muted-strong)' }}>
           {member.email}
         </div>
-        <div className="text-[11px] mt-1.5" style={{ color: '#555' }}>
+        <div className="text-[11px] mt-1.5" style={{ color: 'var(--auth-faint)' }}>
           {member.subscription_plan ? PLAN_DISPLAY[member.subscription_plan] || member.subscription_plan : 'No plan'}
           {member.subscription_period ? ` · ${member.subscription_period}` : ''}
           {member.current_period_end ? ` · Next renewal: ${formatDate(member.current_period_end)}` : ''}

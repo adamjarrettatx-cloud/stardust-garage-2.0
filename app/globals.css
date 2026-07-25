@@ -21,6 +21,10 @@ html {
   overflow-x: hidden;
 }
 
+html[data-auth-scope][data-auth-theme='light'] {
+  background: #f2efe8;
+}
+
 body {
   background: transparent;
   color: var(--text-light);
@@ -32,6 +36,11 @@ body {
   max-width: 100vw;
 }
 
+body[data-auth-scope][data-auth-theme='light'] {
+  background: #f2efe8;
+  color: var(--auth-text);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -39,6 +48,11 @@ body {
 .auth-theme-root {
   color: var(--auth-text);
   background: var(--auth-root-bg);
+}
+
+html[data-auth-scope][data-auth-theme='light'] .auth-cosmos-background {
+  opacity: 0;
+  transition: opacity 150ms ease;
 }
 
 .auth-theme-root[data-auth-theme='light'] {

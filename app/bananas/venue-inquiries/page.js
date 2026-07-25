@@ -3,6 +3,10 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
 import VenueInquiriesList from './VenueInquiriesList';
+import {
+  AuthenticatedPageHeader,
+  AuthenticatedPageSurface,
+} from '@/app/components/AuthenticatedPageTheme';
 
 export const revalidate = 0;
 
@@ -17,26 +21,20 @@ export default async function VenueInquiriesPage() {
     .order('created_at', { ascending: false });
 
   return (
-    <main className="max-w-[1200px] mx-auto px-6 py-16">
-      <Link
-        href="/bananas"
-        className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70"
-        style={{ color: '#8a8a8a' }}
-      >
-        ← BACK TO ADMIN
-      </Link>
-
-      <h1
-        className="text-[40px] font-extrabold -tracking-[0.02em] leading-[1.1] mb-2"
-        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-      >
-        Venue Inquiries
-      </h1>
-      <p className="text-[14px] mb-10" style={{ color: '#8a8a8a' }}>
-        Inquiries submitted through the Venue Rental page.
-      </p>
-
+    <AuthenticatedPageSurface
+      scope="admin"
+      width="max-w-[1200px]"
+      className="transition-colors duration-150"
+      testId="route-bananas-venue-inquiries"
+    >
+      <AuthenticatedPageHeader
+        scope="admin"
+        backHref="/bananas"
+        title="Venue Inquiries"
+        subtitle="Inquiries submitted through the Venue Rental page."
+        titleClassName="text-[40px]"
+      />
       <VenueInquiriesList inquiries={inquiries || []} />
-    </main>
+    </AuthenticatedPageSurface>
   );
 }

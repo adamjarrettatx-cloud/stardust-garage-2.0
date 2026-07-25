@@ -5,6 +5,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import TtLinkPanel from './TtLinkPanel';
+import {
+  AuthenticatedPageHeader,
+  AuthenticatedPageSurface,
+} from '@/app/components/AuthenticatedPageTheme';
 
 const CATEGORY_OPTIONS = [
   { value: 'workshop', label: 'Workshop' },
@@ -31,7 +35,13 @@ function slugify(text) {
     .replace(/^-+|-+$/g, '');
 }
 
-export default function EventForm({ event, metrics = null }) {
+export default function EventForm({
+  event,
+  metrics = null,
+  headerActions = null,
+  topContent = null,
+  backHref = '/bananas',
+}) {
   const router = useRouter();
   const isEditing = !!event;
 
@@ -244,31 +254,41 @@ export default function EventForm({ event, metrics = null }) {
     isEditing && QUALIFYING_CATEGORIES.includes(category) && !!ttEventSeriesId.trim();
 
   const inputStyle = {
-    background: '#141414',
-    borderColor: 'rgba(255,255,255,0.1)',
-    color: '#f5f5f5',
+    background: 'var(--auth-input-bg)',
+    borderColor: 'var(--auth-input-border)',
+    color: 'var(--auth-input-text)',
   };
 
   const labelClass = 'block text-[12px] font-semibold tracking-[0.14em] mb-2';
-  const labelStyle = { color: '#8a8a8a' };
+  const labelStyle = { color: 'var(--auth-muted)' };
   const inputClass = 'w-full px-5 py-3.5 rounded-[10px] text-[14px] outline-none border transition-colors focus:border-white/30';
+  const neutralToggleStyle = (active) => ({
+    background: active ? 'var(--auth-text-strong)' : 'var(--auth-card-bg)',
+    borderColor: active ? 'var(--auth-text-strong)' : 'var(--auth-card-border)',
+    color: active ? 'var(--auth-strong-surface-text)' : 'var(--auth-text)',
+  });
+  const neutralToggleSubtext = (active) => ({
+    color: active
+      ? 'color-mix(in srgb, var(--auth-strong-surface-text) 72%, transparent)'
+      : 'var(--auth-muted)',
+  });
 
   return (
-    <main className="max-w-[700px] mx-auto px-6 py-16">
-      <Link
-        href="/bananas"
-        className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70"
-        style={{ color: '#8a8a8a' }}
-      >
-        ← BACK TO ADMIN
-      </Link>
+    <AuthenticatedPageSurface
+      scope="admin"
+      width="max-w-[700px]"
+      className="transition-colors duration-150"
+      testId={isEditing ? 'route-bananas-events-id' : 'route-bananas-events-new-manual'}
+    >
+      <AuthenticatedPageHeader
+        scope="admin"
+        backHref={backHref}
+        title={isEditing ? 'Edit Event' : 'New Event'}
+        titleClassName="text-[36px]"
+        right={headerActions}
+      />
 
-      <h1
-        className="text-[36px] font-extrabold -tracking-[0.02em] leading-[1.1] mb-10"
-        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-      >
-        {isEditing ? 'Edit Event' : 'New Event'}
-      </h1>
+      {topContent}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
@@ -294,7 +314,7 @@ export default function EventForm({ event, metrics = null }) {
             className={inputClass}
             style={inputStyle}
           />
-          <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+          <p className="text-[11px] mt-2" style={{ color: 'var(--auth-muted)' }}>
             This becomes the URL: /events/{slug || 'your-slug'}
           </p>
         </div>
@@ -345,12 +365,16 @@ export default function EventForm({ event, metrics = null }) {
             style={inputStyle}
           >
             {CATEGORY_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value} style={{ background: '#141414' }}>
+              <option
+                key={opt.value}
+                value={opt.value}
+                style={{ background: 'var(--auth-card-bg)', color: 'var(--auth-text)' }}
+              >
                 {opt.label}
               </option>
             ))}
           </select>
-          <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+          <p className="text-[11px] mt-2" style={{ color: 'var(--auth-muted)' }}>
             Workshop, Yoga, and Party events generate member discount codes automatically.
           </p>
         </div>
@@ -370,9 +394,9 @@ export default function EventForm({ event, metrics = null }) {
                 className={inputClass + ' max-w-[140px]'}
                 style={inputStyle}
               />
-              <span className="text-[14px]" style={{ color: '#8a8a8a' }}>%</span>
+              <span className="text-[14px]" style={{ color: 'var(--auth-muted)' }}>%</span>
             </div>
-            <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+            <p className="text-[11px] mt-2" style={{ color: 'var(--auth-muted)' }}>
               Default: Workshop 60%, Yoga 40%, Party 60%
             </p>
           </div>
@@ -393,11 +417,15 @@ export default function EventForm({ event, metrics = null }) {
                 className={inputClass}
                 style={inputStyle}
               >
-                <option value="" style={{ background: '#141414' }}>
+                <option value="" style={{ background: 'var(--auth-card-bg)', color: 'var(--auth-text)' }}>
                   — None —
                 </option>
                 {ttSeries.map((s) => (
-                  <option key={s.id} value={s.id} style={{ background: '#141414' }}>
+                  <option
+                    key={s.id}
+                    value={s.id}
+                    style={{ background: 'var(--auth-card-bg)', color: 'var(--auth-text)' }}
+                  >
                     {s.name} ({s.id})
                   </option>
                 ))}
@@ -412,7 +440,7 @@ export default function EventForm({ event, metrics = null }) {
                 style={inputStyle}
               />
             )}
-            <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+            <p className="text-[11px] mt-2" style={{ color: 'var(--auth-muted)' }}>
               {ttSeriesError
                 ? `Could not load series list (${ttSeriesError}). Enter the series ID manually.`
                 : 'Link the TicketTailor event series so member discount codes apply to its tickets. You can verify the link after creating the event.'}
@@ -428,16 +456,12 @@ export default function EventForm({ event, metrics = null }) {
               type="button"
               onClick={() => setIsInternal(false)}
               className="py-4 px-5 rounded-[10px] border text-left transition-all"
-              style={{
-                background: !isInternal ? '#ffffff' : '#141414',
-                borderColor: !isInternal ? '#ffffff' : 'rgba(255,255,255,0.1)',
-                color: !isInternal ? '#0a0a0a' : '#f5f5f5',
-              }}
+              style={neutralToggleStyle(!isInternal)}
             >
               <div className="text-[14px] font-bold mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 Public
               </div>
-              <div className="text-[12px]" style={{ color: !isInternal ? '#555' : '#8a8a8a' }}>
+              <div className="text-[12px]" style={neutralToggleSubtext(!isInternal)}>
                 Shown on the public events page
               </div>
             </button>
@@ -446,15 +470,18 @@ export default function EventForm({ event, metrics = null }) {
               onClick={() => setIsInternal(true)}
               className="py-4 px-5 rounded-[10px] border text-left transition-all"
               style={{
-                background: isInternal ? '#f59e0b' : '#141414',
-                borderColor: isInternal ? '#f59e0b' : 'rgba(255,255,255,0.1)',
-                color: isInternal ? '#0a0a0a' : '#f5f5f5',
+                background: isInternal ? '#f59e0b' : 'var(--auth-card-bg)',
+                borderColor: isInternal ? '#f59e0b' : 'var(--auth-card-border)',
+                color: isInternal ? '#0a0a0a' : 'var(--auth-text)',
               }}
             >
               <div className="text-[14px] font-bold mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 Micro Party (Internal)
               </div>
-              <div className="text-[12px]" style={{ color: isInternal ? '#5a3d00' : '#8a8a8a' }}>
+              <div
+                className="text-[12px]"
+                style={{ color: isInternal ? 'rgba(10,10,10,0.72)' : 'var(--auth-muted)' }}
+              >
                 Hidden from public · team calendar only
               </div>
             </button>
@@ -475,16 +502,12 @@ export default function EventForm({ event, metrics = null }) {
               type="button"
               onClick={() => setEventType('public')}
               className="py-4 px-5 rounded-[10px] border text-left transition-all"
-              style={{
-                background: eventType === 'public' ? '#ffffff' : '#141414',
-                borderColor: eventType === 'public' ? '#ffffff' : 'rgba(255,255,255,0.1)',
-                color: eventType === 'public' ? '#0a0a0a' : '#f5f5f5',
-              }}
+              style={neutralToggleStyle(eventType === 'public')}
             >
               <div className="text-[14px] font-bold mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 Public Event
               </div>
-              <div className="text-[12px]" style={{ color: eventType === 'public' ? '#555' : '#8a8a8a' }}>
+              <div className="text-[12px]" style={neutralToggleSubtext(eventType === 'public')}>
                 Sell tickets via link
               </div>
             </button>
@@ -492,16 +515,12 @@ export default function EventForm({ event, metrics = null }) {
               type="button"
               onClick={() => setEventType('private')}
               className="py-4 px-5 rounded-[10px] border text-left transition-all"
-              style={{
-                background: eventType === 'private' ? '#ffffff' : '#141414',
-                borderColor: eventType === 'private' ? '#ffffff' : 'rgba(255,255,255,0.1)',
-                color: eventType === 'private' ? '#0a0a0a' : '#f5f5f5',
-              }}
+              style={neutralToggleStyle(eventType === 'private')}
             >
               <div className="text-[14px] font-bold mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 Private Event
               </div>
-              <div className="text-[12px]" style={{ color: eventType === 'private' ? '#555' : '#8a8a8a' }}>
+              <div className="text-[12px]" style={neutralToggleSubtext(eventType === 'private')}>
                 Venue rental, no tickets
               </div>
             </button>
@@ -520,7 +539,7 @@ export default function EventForm({ event, metrics = null }) {
               className={inputClass}
               style={inputStyle}
             />
-            <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+            <p className="text-[11px] mt-2" style={{ color: 'var(--auth-muted)' }}>
               Link to Eventbrite, Shopify, Dice, etc. Leave blank if tickets are not yet available.
             </p>
           </div>
@@ -529,7 +548,7 @@ export default function EventForm({ event, metrics = null }) {
         <div>
           <label className={labelClass} style={labelStyle}>IMAGE</label>
           {imageUrl && (
-            <div className="mb-3 rounded-[10px] overflow-hidden border" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+            <div className="mb-3 rounded-[10px] overflow-hidden border" style={{ borderColor: 'var(--auth-card-border)' }}>
               <img src={imageUrl} alt="Event preview" className="w-full h-auto max-h-[300px] object-cover" />
             </div>
           )}
@@ -540,9 +559,9 @@ export default function EventForm({ event, metrics = null }) {
               onChange={handleImageUpload}
               disabled={uploading}
               className="text-[13px] file:mr-4 file:px-5 file:py-2.5 file:rounded-full file:border-0 file:text-[12px] file:font-semibold file:tracking-[0.12em] file:bg-white file:text-black file:cursor-pointer hover:file:bg-gray-200"
-              style={{ color: '#8a8a8a' }}
+              style={{ color: 'var(--auth-muted)' }}
             />
-            {uploading && <p className="text-[13px]" style={{ color: '#8a8a8a' }}>Uploading...</p>}
+            {uploading && <p className="text-[13px]" style={{ color: 'var(--auth-muted)' }}>Uploading...</p>}
             <input
               type="text"
               value={imageUrl}
@@ -552,6 +571,9 @@ export default function EventForm({ event, metrics = null }) {
               style={inputStyle}
             />
           </div>
+          <p className="text-[11px] mt-2" style={{ color: 'var(--auth-muted)' }}>
+            Use a public image URL or upload a file to store it for the website event page.
+          </p>
         </div>
 
         {error && (
@@ -564,15 +586,13 @@ export default function EventForm({ event, metrics = null }) {
           <button
             type="submit"
             disabled={saving || uploading}
-            className="flex-1 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
-            style={{ background: '#ffffff', color: '#0a0a0a' }}
+            className="auth-theme-solid-button flex-1 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
           >
             {saving ? 'SAVING...' : isEditing ? 'SAVE CHANGES' : 'CREATE EVENT'}
           </button>
           <Link
-            href="/bananas"
-            className="px-8 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5 flex items-center"
-            style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
+            href={backHref}
+            className="auth-theme-border-button px-8 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5 flex items-center"
           >
             CANCEL
           </Link>
@@ -586,8 +606,8 @@ export default function EventForm({ event, metrics = null }) {
               disabled={generating}
               className="self-start px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
               style={{
-                border: '1px solid #ffb84d',
-                color: '#ffb84d',
+                border: '1px solid var(--auth-accent)',
+                color: 'var(--auth-accent)',
                 background: 'transparent',
               }}
             >
@@ -601,6 +621,6 @@ export default function EventForm({ event, metrics = null }) {
           </div>
         )}
       </form>
-    </main>
+    </AuthenticatedPageSurface>
   );
 }

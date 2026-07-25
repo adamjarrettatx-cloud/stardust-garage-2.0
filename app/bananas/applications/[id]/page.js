@@ -4,6 +4,10 @@ import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
 import ApplicationActions from './ApplicationActions';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
+import {
+  AuthenticatedInlineThemeToggle,
+  AuthenticatedPageSurface,
+} from '@/app/components/AuthenticatedPageTheme';
 
 export const revalidate = 0;
 
@@ -62,7 +66,12 @@ export default async function ApplicationDetail({ params }) {
   if (error || !app) notFound();
 
   return (
-    <main className="max-w-[800px] mx-auto px-6 py-16">
+    <AuthenticatedPageSurface
+      scope="admin"
+      width="max-w-[800px]"
+      className="transition-colors duration-150"
+      testId="route-bananas-applications-id"
+    >
       <Link
         href="/bananas/applications"
         className="auth-theme-page-link inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-colors"
@@ -94,18 +103,21 @@ export default async function ApplicationDetail({ params }) {
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-3">
-            <div
-              className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full"
-              style={{
-                background: app.plan === 'cowork-party' ? 'var(--auth-text-strong)' : 'var(--auth-card-bg-alt)',
-                color: app.plan === 'cowork-party' ? 'var(--auth-strong-surface-text)' : 'var(--auth-text)',
-                border: '1px solid var(--auth-card-border-strong)',
-              }}
-            >
-              {app.plan === 'cowork-party' ? 'COWORK + PARTY' : 'COWORK'}
+          <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
+            <div className="flex items-center gap-3 flex-wrap">
+              <div
+                className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full"
+                style={{
+                  background: app.plan === 'cowork-party' ? 'var(--auth-text-strong)' : 'var(--auth-card-bg-alt)',
+                  color: app.plan === 'cowork-party' ? 'var(--auth-strong-surface-text)' : 'var(--auth-text)',
+                  border: '1px solid var(--auth-card-border-strong)',
+                }}
+              >
+                {app.plan === 'cowork-party' ? 'COWORK + PARTY' : 'COWORK'}
+              </div>
+              <SubmissionStatusBadge status={app.status || 'new'} />
             </div>
-            <SubmissionStatusBadge status={app.status || 'new'} />
+            <AuthenticatedInlineThemeToggle />
           </div>
           <h1
             className="text-[36px] font-extrabold -tracking-[0.02em] leading-[1.1]"
@@ -205,6 +217,6 @@ export default async function ApplicationDetail({ params }) {
           </div>
         </div>
       </section>
-    </main>
+    </AuthenticatedPageSurface>
   );
 }

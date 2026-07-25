@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { redirect, notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
@@ -6,6 +5,7 @@ import { DOCUMENT_CATEGORIES } from '@/lib/document-helpers';
 import { isSignNowConfigured } from '@/lib/signnow';
 import { isContractTemplatesEnabled } from '@/lib/feature-flags';
 import DocumentDetailClient from './DocumentDetailClient';
+import { AuthenticatedPageSurface } from '@/app/components/AuthenticatedPageTheme';
 
 export const revalidate = 0;
 export const dynamic = 'force-dynamic';
@@ -62,14 +62,12 @@ export default async function DocumentDetailPage({ params }) {
   }
 
   return (
-    <main className="max-w-[900px] mx-auto px-6 py-16">
-      <Link
-        href="/bananas/documents"
-        className="text-[12px] tracking-[0.14em] mb-4 inline-block hover:text-white transition-colors"
-        style={{ color: '#8a8a8a' }}
-      >
-        ← BACK TO DOCUMENTS
-      </Link>
+    <AuthenticatedPageSurface
+      scope="admin"
+      width="max-w-[900px]"
+      className="transition-colors duration-150"
+      testId="route-bananas-documents-id"
+    >
       <DocumentDetailClient
         document={doc}
         versions={versions || []}
@@ -80,6 +78,6 @@ export default async function DocumentDetailPage({ params }) {
         signNowConfigured={isSignNowConfigured()}
         contractTemplatesEnabled={isContractTemplatesEnabled()}
       />
-    </main>
+    </AuthenticatedPageSurface>
   );
 }
