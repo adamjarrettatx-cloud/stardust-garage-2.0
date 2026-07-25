@@ -3,6 +3,23 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isMailchimpConfigured, upsertOrder } from '@/lib/mailchimp';
 
+// TEMP DIAGNOSTIC: writes every request outcome (including skips/errors) to
+// webhook_debug_log so we can see exactly what Ticket Tailor is sending,
+// since Vercel's own runtime logs aren't reachable from this environment.
+// Safe to delete once the pipeline is confirmed working end to end.
+async function logDebug(admin, fields) {
+  try {
+    await admin.from('webhook_debug_log').insert({
+      source: 'tickettailor',
+      error_message: fields.error_message || null,
+      error_stack: fields.error_stack || null,
+      raw_body: fields.raw_body || null,
+    });
+  } catch (e) {
+    console.warn('[webhooks.tickettailor] debug log insert failed', e);
+  }
+}
+
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -78,16 +95,23 @@ export async function POST(request) {
     return NextResponse.json({ error: 'invalid_signature' }, { status: 401 });
   }
 
+  const debugAdmin = createAdminClient();
+
   let envelope;
   try {
     envelope = JSON.parse(rawBody);
   } catch {
+    await logDebug(debugAdmin, { error_message: 'bad_json', raw_body: rawBody.slice(0, 8000) });
     return NextResponse.json({ received: true, skipped: 'bad_json' });
   }
 
   const eventType = envelope?.event;
   const order = envelope?.payload;
   if (!order || !['order.created', 'order.updated'].includes(eventType)) {
+    await logDebug(debugAdmin, {
+      error_message: `ignored_event_type: ${eventType || 'undefined'}`,
+      raw_body: rawBody.slice(0, 8000),
+    });
     return NextResponse.json({ received: true, skipped: 'ignored_event_type', event: eventType || null });
   }
 
@@ -101,11 +125,13 @@ export async function POST(request) {
   const eventName = order.event_summary?.name || 'Event Ticket';
 
   if (!orderId) {
+    await logDebug(debugAdmin, { error_message: 'missing_order_id', raw_body: rawBody.slice(0, 8000) });
     return NextResponse.json({ received: true, skipped: 'missing_order_id' });
   }
 
-  const admin = createAdminClient();
+  const admin = debugAdmin;
 
+  try {
   // Look up a matching local event (for a nicer product title + local_event_id
   // FK) by the TT event series id — this is how events.tt_event_series_id
   // links a Ticket Tailor series to a row in our own events table.
@@ -193,10 +219,30 @@ export async function POST(request) {
 
   if (upsertError) {
     console.error('[webhooks.tickettailor] failed to record order', upsertError);
+    await logDebug(debugAdmin, {
+      error_message: `upsert_failed: ${upsertError.message || JSON.stringify(upsertError)}`,
+      raw_body: rawBody.slice(0, 8000),
+    });
     // Still ack 200 — TT will retry on non-2xx, and a DB write failure here
     // should not cause TT to keep hammering the endpoint. It's logged above
     // for follow-up; a failed Mailchimp sync can be manually re-driven later.
+  } else {
+    // TEMP DIAGNOSTIC: confirm a successful write with the raw payload, so we
+    // can sanity-check field shapes even on the happy path.
+    await logDebug(debugAdmin, {
+      error_message: `ok order_id=${orderId} status=${status} mailchimp_synced=${mailchimpSynced}`,
+      raw_body: rawBody.slice(0, 8000),
+    });
   }
 
   return NextResponse.json({ received: true, order_id: orderId, mailchimp_synced: mailchimpSynced });
+  } catch (err) {
+    console.error('[webhooks.tickettailor] unhandled error', err);
+    await logDebug(debugAdmin, {
+      error_message: String(err?.message || err).slice(0, 2000),
+      error_stack: String(err?.stack || '').slice(0, 4000),
+      raw_body: rawBody.slice(0, 8000),
+    });
+    return NextResponse.json({ received: true, skipped: 'internal_error' });
+  }
 }
