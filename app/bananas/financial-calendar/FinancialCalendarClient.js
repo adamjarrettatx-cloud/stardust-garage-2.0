@@ -8,7 +8,7 @@ import { ENTRY_STATE, entriesInMonth, summarizeIncome } from '@/lib/financial-ca
 import { MANUAL_CATEGORIES } from '@/lib/manual-income';
 import { adminFetch } from '@/lib/admin-fetch';
 import RefreshMetricsButton from '@/app/bananas/analytics/RefreshMetricsButton';
-import ThemeToggle from '@/app/components/ThemeToggle';
+import AuthenticatedThemeToggleControl from '@/app/components/AuthenticatedThemeToggleControl';
 import { FINANCIAL_THEMES as THEMES, stateColor } from '@/lib/admin-theme';
 import ManualIncomeDialog from './ManualIncomeDialog';
 import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
@@ -186,7 +186,7 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
           <div className="text-[11px] tracking-[0.18em]" style={{ color: t.muted }}>
             OWNER ONLY
           </div>
-          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+          <AuthenticatedThemeToggleControl theme={theme} onToggle={toggleTheme} />
         </div>
       </div>
       <p className="mb-6 text-[14px]" style={{ color: t.muted }}>

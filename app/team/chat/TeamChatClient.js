@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import ThemeToggle from '@/app/components/ThemeToggle';
+import AuthenticatedThemeToggleControl from '@/app/components/AuthenticatedThemeToggleControl';
 import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
 import {
   channelDisplayName,
@@ -309,7 +309,7 @@ export default function TeamChatClient({ currentUserId, currentUserName }) {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+          <AuthenticatedThemeToggleControl theme={theme} onToggle={toggleTheme} />
           <Link
             href="/team/progress"
             className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"

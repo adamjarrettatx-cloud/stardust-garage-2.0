@@ -14,7 +14,7 @@ import {
 import TaskDrawer from '@/app/bananas/progress/TaskDrawer';
 import TaskFormModal from '@/app/bananas/progress/TaskFormModal';
 import ImportModal from '@/app/bananas/progress/ImportModal';
-import ThemeToggle from '@/app/components/ThemeToggle';
+import AuthenticatedThemeToggleControl from '@/app/components/AuthenticatedThemeToggleControl';
 import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
 
 // Unified Progress route (/team/progress). Admins and the owner get the full
@@ -221,7 +221,7 @@ function AdminProgressView({ initialTasks, assignees, isOwner, currentTeamMember
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+          <AuthenticatedThemeToggleControl theme={theme} onToggle={toggleTheme} />
           <button onClick={() => setShowImport(true)}
             className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.12em] hover:bg-white/5"
             style={{ minHeight: '44px', border: `1px solid ${t.ghostBorder}`, color: t.ghostText, cursor: 'pointer' }}>
@@ -452,7 +452,7 @@ function TeamProgressView({ initialTasks, assignees, currentUserName, todayIso }
             {currentUserName} · tap a task to post an update
           </p>
         </div>
-        <ThemeToggle theme={theme} onToggle={toggleTheme} />
+        <AuthenticatedThemeToggleControl theme={theme} onToggle={toggleTheme} />
       </div>
 
       {initialTasks.length === 0 ? (

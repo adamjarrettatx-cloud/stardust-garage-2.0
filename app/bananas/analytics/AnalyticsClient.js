@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { centsToUsd } from '@/lib/event-analytics';
-import ThemeToggle from '@/app/components/ThemeToggle';
+import AuthenticatedThemeToggleControl from '@/app/components/AuthenticatedThemeToggleControl';
 import { ANALYTICS_THEMES as THEMES } from '@/lib/admin-theme';
 import RefreshMetricsButton from './RefreshMetricsButton';
 import RowRefreshButton from './RowRefreshButton';
@@ -53,7 +53,7 @@ export default function AnalyticsClient({ rows, totals, lastFetched, hasAnyMetri
           <div className="text-[11px] tracking-[0.18em]" style={{ color: t.muted }}>
             OWNER ONLY
           </div>
-          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+          <AuthenticatedThemeToggleControl theme={theme} onToggle={toggleTheme} />
         </div>
       </div>
       <p className="mb-6 text-[14px]" style={{ color: t.muted }}>
