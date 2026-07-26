@@ -5,6 +5,7 @@ import path from 'node:path';
 import {
   FINANCIAL_THEMES,
   ANALYTICS_THEMES,
+  DOCUMENTS_THEMES,
   STATE_TONE,
   stateColor,
 } from '../lib/admin-theme.js';
@@ -34,6 +35,23 @@ test('Financial Calendar palette: dark and light expose identical tokens', () =>
 
 test('Event Analytics palette: dark and light expose identical tokens', () => {
   assertSameKeys(ANALYTICS_THEMES.dark, ANALYTICS_THEMES.light, 'analytics');
+});
+
+test('Documents & Templates palette: dark and light expose identical tokens', () => {
+  assertSameKeys(DOCUMENTS_THEMES.dark, DOCUMENTS_THEMES.light, 'documents');
+});
+
+// Every contract-state badge and category chip has to change hue between
+// themes, or it lands as pale-pastel-on-cream and becomes unreadable — the
+// exact regression this palette exists to fix.
+test('Documents status tones all deepen for contrast on the pale panel', () => {
+  for (const tone of ['danger', 'success', 'warn', 'accent', 'info', 'violet', 'pink', 'expired', 'voided']) {
+    assert.notEqual(
+      DOCUMENTS_THEMES.light[tone],
+      DOCUMENTS_THEMES.dark[tone],
+      `${tone} must not reuse its dark-mode value on the light panel`,
+    );
+  }
 });
 
 test('authenticated theme storage keys are shared by scope', () => {

@@ -7,6 +7,8 @@ import ContractPanel from './ContractPanel';
 import ContractFieldsPanel from './ContractFieldsPanel';
 import ContractFinancialsPanel from './ContractFinancialsPanel';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
+import { DOCUMENTS_THEMES as THEMES } from '@/lib/admin-theme';
+import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
 
 function formatBytes(n) {
   if (!n) return '—';
@@ -31,6 +33,10 @@ const ACTION_LABEL = {
 
 export default function DocumentDetailClient({ document: doc, versions, audit, events, categories, contract, signNowConfigured, contractTemplatesEnabled = false }) {
   const router = useRouter();
+  const { theme } = useAuthenticatedTheme();
+  const t = THEMES[theme];
+  const inputStyle = { background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText };
+  const ghostButtonStyle = { border: `1px solid ${t.ghostBorder}`, color: t.ghostText };
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -43,7 +49,7 @@ export default function DocumentDetailClient({ document: doc, versions, audit, e
     counterparty: doc.counterparty || '',
     event_id: doc.event_id || '',
     status: doc.status,
-    tags: (doc.document_tags || []).map((t) => t.tag).join(', '),
+    tags: (doc.document_tags || []).map((row) => row.tag).join(', '),
   });
 
   async function save() {
@@ -56,7 +62,7 @@ export default function DocumentDetailClient({ document: doc, versions, audit, e
         counterparty: edit.counterparty,
         event_id: edit.event_id || null,
         status: edit.status,
-        tags: edit.tags.split(',').map((t) => t.trim()).filter(Boolean),
+        tags: edit.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
       };
       await adminFetch(`/api/admin/documents/${doc.id}`, {
         method: 'PATCH',
@@ -89,7 +95,7 @@ export default function DocumentDetailClient({ document: doc, versions, audit, e
     }
   }
 
-  const tags = (doc.document_tags || []).map((t) => t.tag);
+  const tags = (doc.document_tags || []).map((row) => row.tag);
 
   return (
     <>
@@ -104,7 +110,7 @@ export default function DocumentDetailClient({ document: doc, versions, audit, e
           <button
             onClick={() => setEditing(true)}
             className="text-[12px] px-3 py-1.5 rounded-[8px]"
-            style={{ border: '1px solid var(--auth-ghost-border)', color: 'var(--auth-ghost-text)' }}
+            style={ghostButtonStyle}
           >
             Edit
           </button>
@@ -112,30 +118,30 @@ export default function DocumentDetailClient({ document: doc, versions, audit, e
       </AuthenticatedPageHeader>
 
       {error && (
-        <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
+        <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: t.dangerBg, border: `1px solid ${t.dangerBorder}`, color: t.dangerText }}>
           {error}
         </div>
       )}
 
       {/* Metadata card */}
-      <div className="rounded-[14px] border p-5 mb-6" style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}>
+      <div className="rounded-[14px] border p-5 mb-6" style={{ background: t.cardBg, borderColor: t.cardBorder }}>
         {editing ? (
           <div className="space-y-3">
             <input
               value={edit.title}
               onChange={(e) => setEdit({ ...edit, title: e.target.value })}
               className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none"
-              style={{ background: 'var(--auth-input-bg)', border: '1px solid var(--auth-input-border)', color: 'var(--auth-input-text)' }}
+              style={inputStyle}
             />
             <div className="grid grid-cols-2 gap-3">
               <select value={edit.category} onChange={(e) => setEdit({ ...edit, category: e.target.value })}
                 className="px-3 py-2.5 text-[14px] rounded-[10px] outline-none cursor-pointer"
-                style={{ background: 'var(--auth-input-bg)', border: '1px solid var(--auth-input-border)', color: 'var(--auth-input-text)' }}>
+                style={inputStyle}>
                 {categories.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
               <select value={edit.status} onChange={(e) => setEdit({ ...edit, status: e.target.value })}
                 className="px-3 py-2.5 text-[14px] rounded-[10px] outline-none cursor-pointer"
-                style={{ background: 'var(--auth-input-bg)', border: '1px solid var(--auth-input-border)', color: 'var(--auth-input-text)' }}>
+                style={inputStyle}>
                 <option value="active">Active</option>
                 <option value="draft">Draft</option>
                 <option value="archived">Archived</option>
@@ -144,52 +150,52 @@ export default function DocumentDetailClient({ document: doc, versions, audit, e
             <input placeholder="Counterparty" value={edit.counterparty}
               onChange={(e) => setEdit({ ...edit, counterparty: e.target.value })}
               className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none"
-              style={{ background: 'var(--auth-input-bg)', border: '1px solid var(--auth-input-border)', color: 'var(--auth-input-text)' }}
+              style={inputStyle}
             />
             <select value={edit.event_id} onChange={(e) => setEdit({ ...edit, event_id: e.target.value })}
               className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none cursor-pointer"
-              style={{ background: 'var(--auth-input-bg)', border: '1px solid var(--auth-input-border)', color: 'var(--auth-input-text)' }}>
+              style={inputStyle}>
               <option value="">No event link</option>
               {events.map((ev) => <option key={ev.id} value={ev.id}>{ev.title}{ev.event_date ? ` · ${ev.event_date}` : ''}</option>)}
             </select>
             <input placeholder="Tags (comma-separated)" value={edit.tags}
               onChange={(e) => setEdit({ ...edit, tags: e.target.value })}
               className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none"
-              style={{ background: 'var(--auth-input-bg)', border: '1px solid var(--auth-input-border)', color: 'var(--auth-input-text)' }}
+              style={inputStyle}
             />
             <textarea placeholder="Description" value={edit.description} rows={3}
               onChange={(e) => setEdit({ ...edit, description: e.target.value })}
               className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none resize-none"
-              style={{ background: 'var(--auth-input-bg)', border: '1px solid var(--auth-input-border)', color: 'var(--auth-input-text)' }}
+              style={inputStyle}
             />
             <div className="flex justify-end gap-2">
               <button onClick={() => setEditing(false)} disabled={saving}
                 className="px-4 py-2 text-[13px] rounded-[10px]"
-                style={{ border: '1px solid var(--auth-ghost-border)', color: 'var(--auth-ghost-text)' }}>Cancel</button>
+                style={ghostButtonStyle}>Cancel</button>
               <button onClick={save} disabled={saving}
                 className="px-5 py-2 text-[13px] font-semibold rounded-[10px] tracking-[0.06em] uppercase"
-                style={{ background: 'var(--auth-text-strong)', color: 'var(--auth-strong-surface-text)', opacity: saving ? 0.6 : 1 }}>
+                style={{ background: t.solidBg, color: t.solidText, opacity: saving ? 0.6 : 1 }}>
                 {saving ? 'Saving…' : 'Save'}
               </button>
             </div>
           </div>
         ) : (
           <dl className="grid grid-cols-[120px_1fr] gap-y-2 text-[13px]">
-            <dt style={{ color: 'var(--auth-muted)' }}>Category</dt><dd>{doc.category}</dd>
-            <dt style={{ color: 'var(--auth-muted)' }}>Status</dt><dd>{doc.status}</dd>
-            {doc.counterparty && (<><dt style={{ color: 'var(--auth-muted)' }}>Counterparty</dt><dd>{doc.counterparty}</dd></>)}
-            {doc.events && (<><dt style={{ color: 'var(--auth-muted)' }}>Event</dt><dd>{doc.events.title}{doc.events.event_date ? ` · ${doc.events.event_date}` : ''}</dd></>)}
-            {doc.description && (<><dt style={{ color: 'var(--auth-muted)' }}>Notes</dt><dd className="whitespace-pre-wrap">{doc.description}</dd></>)}
+            <dt style={{ color: t.muted }}>Category</dt><dd>{doc.category}</dd>
+            <dt style={{ color: t.muted }}>Status</dt><dd>{doc.status}</dd>
+            {doc.counterparty && (<><dt style={{ color: t.muted }}>Counterparty</dt><dd>{doc.counterparty}</dd></>)}
+            {doc.events && (<><dt style={{ color: t.muted }}>Event</dt><dd>{doc.events.title}{doc.events.event_date ? ` · ${doc.events.event_date}` : ''}</dd></>)}
+            {doc.description && (<><dt style={{ color: t.muted }}>Notes</dt><dd className="whitespace-pre-wrap">{doc.description}</dd></>)}
             {tags.length > 0 && (
               <>
-                <dt style={{ color: 'var(--auth-muted)' }}>Tags</dt>
+                <dt style={{ color: t.muted }}>Tags</dt>
                 <dd className="flex flex-wrap gap-1">
-                  {tags.map((t) => <span key={t} className="text-[11px] px-1.5 py-0.5 rounded-[4px]" style={{ background: 'var(--auth-card-bg-alt)', color: 'var(--auth-muted-strong)' }}>#{t}</span>)}
+                  {tags.map((tag) => <span key={tag} className="text-[11px] px-1.5 py-0.5 rounded-[4px]" style={{ background: t.chipBg, color: t.mutedStrong }}>#{tag}</span>)}
                 </dd>
               </>
             )}
-            <dt style={{ color: 'var(--auth-muted)' }}>Created</dt><dd>{formatDateTime(doc.created_at)}</dd>
-            <dt style={{ color: 'var(--auth-muted)' }}>Updated</dt><dd>{formatDateTime(doc.updated_at)}</dd>
+            <dt style={{ color: t.muted }}>Created</dt><dd>{formatDateTime(doc.created_at)}</dd>
+            <dt style={{ color: t.muted }}>Updated</dt><dd>{formatDateTime(doc.updated_at)}</dd>
           </dl>
         )}
       </div>
@@ -219,10 +225,10 @@ export default function DocumentDetailClient({ document: doc, versions, audit, e
       {/* Versions */}
       <div className="mb-6">
         <div className="flex items-baseline justify-between mb-3">
-          <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase" style={{ color: '#8a8a8a' }}>
+          <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase" style={{ color: t.muted }}>
             Versions ({versions.length})
           </h2>
-          <label className="text-[12px] cursor-pointer hover:underline" style={{ color: 'white' }}>
+          <label className="text-[12px] cursor-pointer hover:underline" style={{ color: t.ghostText }}>
             {uploadingVersion ? 'Uploading…' : '+ Upload new version'}
             <input type="file" className="hidden" disabled={uploadingVersion} onChange={uploadNewVersion} />
           </label>
@@ -231,25 +237,25 @@ export default function DocumentDetailClient({ document: doc, versions, audit, e
           {versions.map((v) => (
             <div key={v.id}
               className="rounded-[10px] border p-3 flex items-center gap-3"
-              style={{ background: '#141414', borderColor: v.id === doc.current_version_id ? 'rgba(74,222,128,0.3)' : 'rgba(255,255,255,0.06)' }}>
+              style={{ background: t.cardBg, borderColor: v.id === doc.current_version_id ? t.successBorder : t.cardBorder }}>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
                   <span className="text-[14px] font-semibold">v{v.version_number}</span>
                   {v.id === doc.current_version_id && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-[4px]" style={{ background: 'rgba(74,222,128,0.12)', color: '#4ade80' }}>CURRENT</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-[4px]" style={{ background: t.successChipBg, color: t.success }}>CURRENT</span>
                   )}
-                  <span className="text-[13px] truncate" style={{ color: '#c8c8c8' }}>{v.filename}</span>
+                  <span className="text-[13px] truncate" style={{ color: t.mutedStrong }}>{v.filename}</span>
                 </div>
-                <div className="text-[11px]" style={{ color: '#8a8a8a' }}>
+                <div className="text-[11px]" style={{ color: t.muted }}>
                   {formatBytes(v.size_bytes)} · {v.mime_type || 'unknown'} · uploaded {formatDateTime(v.uploaded_at)}
                 </div>
               </div>
               <a href={`/api/admin/documents/${doc.id}/download?inline=1&version=${v.id}`} target="_blank" rel="noreferrer"
                 className="text-[12px] px-3 py-1.5 rounded-[8px] hover:bg-white/10"
-                style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}>View</a>
+                style={ghostButtonStyle}>View</a>
               <a href={`/api/admin/documents/${doc.id}/download?version=${v.id}`}
                 className="text-[12px] px-3 py-1.5 rounded-[8px] hover:bg-white/10"
-                style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}>Download</a>
+                style={ghostButtonStyle}>Download</a>
             </div>
           ))}
         </div>
@@ -257,19 +263,19 @@ export default function DocumentDetailClient({ document: doc, versions, audit, e
 
       {/* Audit */}
       <div>
-        <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase mb-3" style={{ color: '#8a8a8a' }}>
+        <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase mb-3" style={{ color: t.muted }}>
           Activity ({audit.length})
         </h2>
         {audit.length === 0 ? (
-          <p className="text-[13px]" style={{ color: '#8a8a8a' }}>No activity recorded yet.</p>
+          <p className="text-[13px]" style={{ color: t.muted }}>No activity recorded yet.</p>
         ) : (
-          <div className="rounded-[12px] border overflow-hidden" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.06)' }}>
+          <div className="rounded-[12px] border overflow-hidden" style={{ background: t.cardBg, borderColor: t.cardBorder }}>
             {audit.map((row, i) => (
               <div key={row.id} className="px-4 py-2.5 flex items-center gap-3 text-[12px]"
-                style={{ borderTop: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.04)' }}>
+                style={{ borderTop: i === 0 ? 'none' : `1px solid ${t.rowBorder}` }}>
                 <span className="font-semibold w-24 flex-shrink-0">{ACTION_LABEL[row.action] || row.action}</span>
-                <span className="flex-1 truncate" style={{ color: '#c8c8c8' }}>{row.actor_email || '—'}</span>
-                <span className="flex-shrink-0" style={{ color: '#8a8a8a' }}>{formatDateTime(row.created_at)}</span>
+                <span className="flex-1 truncate" style={{ color: t.mutedStrong }}>{row.actor_email || '—'}</span>
+                <span className="flex-shrink-0" style={{ color: t.muted }}>{formatDateTime(row.created_at)}</span>
               </div>
             ))}
           </div>

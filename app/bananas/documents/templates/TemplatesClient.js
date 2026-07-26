@@ -3,14 +3,14 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { adminFetch } from '@/lib/admin-fetch';
-
-const inputStyle = {
-  background: 'var(--auth-input-bg)',
-  border: '1px solid var(--auth-input-border)',
-  color: 'var(--auth-input-text)',
-};
+import { DOCUMENTS_THEMES as THEMES } from '@/lib/admin-theme';
+import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
 
 export default function TemplatesClient({ categories }) {
+  const { theme } = useAuthenticatedTheme();
+  const t = THEMES[theme];
+  const inputStyle = { background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText };
+  const ghostButtonStyle = { border: `1px solid ${t.ghostBorder}`, color: t.ghostText };
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -91,15 +91,15 @@ export default function TemplatesClient({ categories }) {
   return (
     <div>
       {error && (
-        <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>{error}</div>
+        <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: t.dangerBg, border: `1px solid ${t.dangerBorder}`, color: t.dangerText }}>{error}</div>
       )}
       {notice && (
-        <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.3)', color: '#86efac' }}>{notice}</div>
+        <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: t.successBg, border: `1px solid ${t.successBorder}`, color: t.successText }}>{notice}</div>
       )}
 
       {/* Upload */}
-      <form onSubmit={upload} className="rounded-[14px] border p-5 mb-8" style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}>
-        <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase mb-4" style={{ color: 'var(--auth-muted)' }}>New template</h2>
+      <form onSubmit={upload} className="rounded-[14px] border p-5 mb-8" style={{ background: t.cardBg, borderColor: t.cardBorder }}>
+        <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase mb-4" style={{ color: t.muted }}>New template</h2>
         <div className="grid grid-cols-2 gap-3 mb-3">
           <input placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
             className="px-3 py-2.5 text-[14px] rounded-[10px] outline-none" style={inputStyle} />
@@ -112,55 +112,55 @@ export default function TemplatesClient({ categories }) {
           className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none mb-3" style={inputStyle} />
         <div className="flex items-center justify-between gap-3">
           <input type="file" accept="application/pdf" onChange={(e) => setFile(e.target.files?.[0] || null)}
-            className="text-[13px]" style={{ color: 'var(--auth-muted-strong)' }} />
+            className="text-[13px]" style={{ color: t.mutedStrong }} />
           <button type="submit" disabled={uploading || !form.title}
             className="px-5 py-2 text-[13px] font-semibold rounded-[10px] tracking-[0.06em] uppercase"
-            style={{ background: 'var(--auth-text-strong)', color: 'var(--auth-strong-surface-text)', opacity: uploading || !form.title ? 0.6 : 1 }}>
+            style={{ background: t.solidBg, color: t.solidText, opacity: uploading || !form.title ? 0.6 : 1 }}>
             {uploading ? 'Uploading…' : 'Upload template'}
           </button>
         </div>
-        <p className="text-[11px] mt-2" style={{ color: 'var(--auth-faint)' }}>PDF only. Field coordinates are placed against the rendered PDF.</p>
+        <p className="text-[11px] mt-2" style={{ color: t.faint }}>PDF only. Field coordinates are placed against the rendered PDF.</p>
       </form>
 
       {/* List */}
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase" style={{ color: 'var(--auth-muted)' }}>
+        <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase" style={{ color: t.muted }}>
           Templates ({templates.length})
         </h2>
-        <label className="text-[12px] flex items-center gap-2" style={{ color: 'var(--auth-muted)' }}>
+        <label className="text-[12px] flex items-center gap-2" style={{ color: t.muted }}>
           <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
           Show inactive
         </label>
       </div>
 
       {loading ? (
-        <p className="text-[13px]" style={{ color: 'var(--auth-muted)' }}>Loading…</p>
+        <p className="text-[13px]" style={{ color: t.muted }}>Loading…</p>
       ) : templates.length === 0 ? (
-        <p className="text-[13px]" style={{ color: 'var(--auth-muted)' }}>No templates yet. Upload one above.</p>
+        <p className="text-[13px]" style={{ color: t.muted }}>No templates yet. Upload one above.</p>
       ) : (
         <div className="space-y-2">
-          {templates.map((t) => (
-            <div key={t.id} className="rounded-[10px] border p-3 flex items-center gap-3"
-              style={{ background: 'var(--auth-card-bg)', borderColor: t.is_active ? 'var(--auth-card-border)' : 'var(--auth-card-border)', opacity: t.is_active ? 1 : 0.6 }}>
+          {templates.map((tpl) => (
+            <div key={tpl.id} className="rounded-[10px] border p-3 flex items-center gap-3"
+              style={{ background: t.cardBg, borderColor: t.cardBorder, opacity: tpl.is_active ? 1 : 0.6 }}>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-[14px] font-semibold truncate">{t.title}</span>
-                  {!t.is_active && <span className="text-[10px] px-1.5 py-0.5 rounded-[4px]" style={{ background: 'var(--auth-card-bg-alt)', color: 'var(--auth-muted)' }}>INACTIVE</span>}
+                  <span className="text-[14px] font-semibold truncate">{tpl.title}</span>
+                  {!tpl.is_active && <span className="text-[10px] px-1.5 py-0.5 rounded-[4px]" style={{ background: t.chipBg, color: t.muted }}>INACTIVE</span>}
                 </div>
-                <div className="text-[11px]" style={{ color: 'var(--auth-muted)' }}>
-                  {t.category} · {t.page_count || '?'} page{t.page_count === 1 ? '' : 's'} · {t.field_count} field{t.field_count === 1 ? '' : 's'} · {t.filename}
+                <div className="text-[11px]" style={{ color: t.muted }}>
+                  {tpl.category} · {tpl.page_count || '?'} page{tpl.page_count === 1 ? '' : 's'} · {tpl.field_count} field{tpl.field_count === 1 ? '' : 's'} · {tpl.filename}
                 </div>
               </div>
-              <Link href={`/bananas/documents/templates/${t.id}`}
-                className="text-[12px] px-3 py-1.5 rounded-[8px]" style={{ border: '1px solid var(--auth-ghost-border)', color: 'var(--auth-ghost-text)' }}>
+              <Link href={`/bananas/documents/templates/${tpl.id}`}
+                className="text-[12px] px-3 py-1.5 rounded-[8px]" style={ghostButtonStyle}>
                 Edit fields
               </Link>
-              <button onClick={() => toggleActive(t)}
-                className="text-[12px] px-3 py-1.5 rounded-[8px]" style={{ border: '1px solid var(--auth-ghost-border)', color: 'var(--auth-ghost-text)' }}>
-                {t.is_active ? 'Deactivate' : 'Activate'}
+              <button onClick={() => toggleActive(tpl)}
+                className="text-[12px] px-3 py-1.5 rounded-[8px]" style={ghostButtonStyle}>
+                {tpl.is_active ? 'Deactivate' : 'Activate'}
               </button>
-              <button onClick={() => remove(t)}
-                className="text-[12px] px-3 py-1.5 rounded-[8px]" style={{ border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
+              <button onClick={() => remove(tpl)}
+                className="text-[12px] px-3 py-1.5 rounded-[8px]" style={{ border: `1px solid ${t.dangerBorder}`, color: t.dangerText }}>
                 Delete
               </button>
             </div>
