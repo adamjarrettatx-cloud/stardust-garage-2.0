@@ -6,6 +6,7 @@ import AuthenticatedThemeToggleControl from '@/app/components/AuthenticatedTheme
 import { ANALYTICS_THEMES as THEMES } from '@/lib/admin-theme';
 import RefreshMetricsButton from './RefreshMetricsButton';
 import RowRefreshButton from './RowRefreshButton';
+import TicketTailorSalesChart from './TicketTailorSalesChart';
 import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
 
 const CATEGORY_COLOR = {
@@ -22,7 +23,7 @@ function fmtFetched(iso) {
   return new Date(iso).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
-export default function AnalyticsClient({ rows, totals, lastFetched, hasAnyMetrics }) {
+export default function AnalyticsClient({ rows, totals, salesSeries, lastFetched, hasAnyMetrics }) {
   const { theme, toggleTheme } = useAuthenticatedTheme();
   const t = THEMES[theme];
 
@@ -60,6 +61,8 @@ export default function AnalyticsClient({ rows, totals, lastFetched, hasAnyMetri
         Member-code engagement from local data plus cached TicketTailor sales metrics. Revenue figures come
         from the read-only metrics cache, refreshed on a daily cron or on demand below.
       </p>
+
+      <TicketTailorSalesChart series={salesSeries} t={t} />
 
       <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
         <RefreshMetricsButton />
