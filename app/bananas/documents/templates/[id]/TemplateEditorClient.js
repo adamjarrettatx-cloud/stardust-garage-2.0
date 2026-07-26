@@ -4,14 +4,13 @@ import { useEffect, useState } from 'react';
 import { adminFetch } from '@/lib/admin-fetch';
 import FieldEditor from '../../FieldEditor';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
-
-const inputStyle = {
-  background: 'var(--auth-input-bg)',
-  border: '1px solid var(--auth-input-border)',
-  color: 'var(--auth-input-text)',
-};
+import { DOCUMENTS_THEMES as THEMES } from '@/lib/admin-theme';
+import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
 
 export default function TemplateEditorClient({ templateId, categories }) {
+  const { theme } = useAuthenticatedTheme();
+  const t = THEMES[theme];
+  const inputStyle = { background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText };
   const [template, setTemplate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -73,8 +72,8 @@ export default function TemplateEditorClient({ templateId, categories }) {
     }
   }
 
-  if (loading) return <p className="text-[13px]" style={{ color: 'var(--auth-muted)' }}>Loading template…</p>;
-  if (error && !template) return <p className="text-[13px]" style={{ color: '#fca5a5' }}>{error}</p>;
+  if (loading) return <p className="text-[13px]" style={{ color: t.muted }}>Loading template…</p>;
+  if (error && !template) return <p className="text-[13px]" style={{ color: t.dangerText }}>{error}</p>;
   if (!template) return null;
 
   return (
@@ -88,14 +87,14 @@ export default function TemplateEditorClient({ templateId, categories }) {
       />
 
       {error && (
-        <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>{error}</div>
+        <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: t.dangerBg, border: `1px solid ${t.dangerBorder}`, color: t.dangerText }}>{error}</div>
       )}
       {notice && (
-        <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.3)', color: '#86efac' }}>{notice}</div>
+        <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: t.successBg, border: `1px solid ${t.successBorder}`, color: t.successText }}>{notice}</div>
       )}
 
       {/* Template metadata */}
-      <div className="rounded-[14px] border p-5 mb-6" style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}>
+      <div className="rounded-[14px] border p-5 mb-6" style={{ background: t.cardBg, borderColor: t.cardBorder }}>
         <div className="grid grid-cols-2 gap-3 mb-3">
           <input value={meta.title} onChange={(e) => setMeta({ ...meta, title: e.target.value })}
             className="px-3 py-2.5 text-[14px] rounded-[10px] outline-none" style={inputStyle} />
@@ -108,7 +107,7 @@ export default function TemplateEditorClient({ templateId, categories }) {
           className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none mb-3" style={inputStyle} />
         <div className="flex justify-end">
           <button onClick={saveMeta} disabled={savingMeta}
-            className="px-4 py-2 text-[13px] rounded-[10px]" style={{ border: '1px solid var(--auth-ghost-border)', color: 'var(--auth-ghost-text)', opacity: savingMeta ? 0.6 : 1 }}>
+            className="px-4 py-2 text-[13px] rounded-[10px]" style={{ border: `1px solid ${t.ghostBorder}`, color: t.ghostText, opacity: savingMeta ? 0.6 : 1 }}>
             {savingMeta ? 'Saving…' : 'Save details'}
           </button>
         </div>

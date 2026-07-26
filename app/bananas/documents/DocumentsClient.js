@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { adminFetch } from '@/lib/admin-fetch';
+import { DOCUMENTS_THEMES as THEMES } from '@/lib/admin-theme';
+import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
 
 function formatBytes(n) {
   if (!n) return '—';
@@ -18,25 +20,29 @@ function formatDate(s) {
   return new Date(s).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-const CONTRACT_STATUS_COLOR = {
-  draft: '#8a8a8a', pending_review: '#fbbf24', sent: '#60a5fa',
-  partially_signed: '#a78bfa', signed: '#4ade80', declined: '#f87171',
-  void: '#6b7280', expired: '#f59e0b',
-};
+const contractStatusColor = (status, t) => ({
+  draft: t.muted, pending_review: t.warn, sent: t.info,
+  partially_signed: t.violet, signed: t.success, declined: t.danger,
+  void: t.voided, expired: t.expired,
+}[status]);
 
-const CATEGORY_COLORS = {
-  contracts: { color: '#ffb84d', bg: 'rgba(255,184,77,0.12)', border: 'rgba(255,184,77,0.3)' },
-  finance:   { color: '#4ade80', bg: 'rgba(74,222,128,0.10)', border: 'rgba(74,222,128,0.3)' },
-  sops:      { color: '#a78bfa', bg: 'rgba(167,139,250,0.10)', border: 'rgba(167,139,250,0.3)' },
-  vendor:    { color: '#60a5fa', bg: 'rgba(96,165,250,0.10)', border: 'rgba(96,165,250,0.3)' },
-  marketing: { color: '#f472b6', bg: 'rgba(244,114,182,0.10)', border: 'rgba(244,114,182,0.3)' },
-  team:      { color: '#fbbf24', bg: 'rgba(251,191,36,0.10)', border: 'rgba(251,191,36,0.3)' },
-  other:     { color: '#8a8a8a', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.10)' },
-};
+const categoryColors = (category, t) => ({
+  contracts: { color: t.accent, bg: t.accentBg, border: t.accentBorder },
+  finance:   { color: t.success, bg: t.successBg, border: t.successBorder },
+  sops:      { color: t.violet, bg: t.violetBg, border: t.violetBorder },
+  vendor:    { color: t.info, bg: t.infoBg, border: t.infoBorder },
+  marketing: { color: t.pink, bg: t.pinkBg, border: t.pinkBorder },
+  team:      { color: t.warn, bg: t.warnBg, border: t.warnBorder },
+}[category] || { color: t.muted, bg: t.neutralBg, border: t.neutralBorder });
 
 export default function DocumentsClient({ initialDocuments, initialError, events, categories, filters, contractTemplatesEnabled = false }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { theme } = useAuthenticatedTheme();
+  const t = THEMES[theme];
+  const inputStyle = { background: t.cardBg, border: `1px solid ${t.tabBorder}`, color: t.inputText };
+  const modalInputStyle = { background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText };
+  const ghostButtonStyle = { border: `1px solid ${t.ghostBorder}`, color: t.ghostText };
   const [documents, setDocuments] = useState(initialDocuments);
   const [error, setError] = useState(initialError);
   const [showUpload, setShowUpload] = useState(false);
@@ -185,13 +191,13 @@ export default function DocumentsClient({ initialDocuments, initialError, events
           defaultValue={filters.q}
           onKeyDown={(e) => { if (e.key === 'Enter') setFilter('q', e.currentTarget.value); }}
           className="flex-1 min-w-[240px] px-4 py-2.5 text-[14px] rounded-[10px] outline-none focus:border-white/30"
-          style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+          style={inputStyle}
         />
         <select
           value={filters.status || 'active'}
           onChange={(e) => setFilter('status', e.target.value)}
           className="px-3 py-2.5 text-[14px] rounded-[10px] outline-none cursor-pointer"
-          style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+          style={inputStyle}
         >
           <option value="active">Active</option>
           <option value="draft">Draft</option>
@@ -203,14 +209,14 @@ export default function DocumentsClient({ initialDocuments, initialError, events
             <Link
               href="/bananas/documents/templates"
               className="px-4 py-2.5 text-[13px] font-semibold rounded-[10px] tracking-[0.06em] uppercase"
-              style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}
+              style={ghostButtonStyle}
             >
               Templates
             </Link>
             <button
               onClick={openTemplatePicker}
               className="px-4 py-2.5 text-[13px] font-semibold rounded-[10px] tracking-[0.06em] uppercase"
-              style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}
+              style={ghostButtonStyle}
             >
               + From template
             </button>
@@ -219,7 +225,7 @@ export default function DocumentsClient({ initialDocuments, initialError, events
         <button
           onClick={() => setShowUpload(true)}
           className="px-5 py-2.5 text-[13px] font-semibold rounded-[10px] tracking-[0.06em] uppercase"
-          style={{ background: 'white', color: 'black' }}
+          style={{ background: t.solidBg, color: t.solidText }}
         >
           + Upload
         </button>
@@ -228,7 +234,7 @@ export default function DocumentsClient({ initialDocuments, initialError, events
       {/* Category tabs */}
       <div
         className="flex flex-wrap gap-x-1 gap-y-0 mb-6 overflow-x-auto"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+        style={{ borderBottom: `1px solid ${t.tabBorder}` }}
         role="tablist"
         aria-label="Document categories"
       >
@@ -242,8 +248,8 @@ export default function DocumentsClient({ initialDocuments, initialError, events
               onClick={() => setFilter('category', c.value)}
               className="px-4 py-3 text-[13px] font-semibold tracking-[0.06em] uppercase whitespace-nowrap transition-colors"
               style={{
-                color: isActive ? 'white' : '#8a8a8a',
-                borderBottom: isActive ? '2px solid white' : '2px solid transparent',
+                color: isActive ? t.textStrong : t.muted,
+                borderBottom: isActive ? `2px solid ${t.textStrong}` : '2px solid transparent',
                 marginBottom: '-1px',
               }}
             >
@@ -254,22 +260,22 @@ export default function DocumentsClient({ initialDocuments, initialError, events
       </div>
 
       {error && (
-        <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
+        <div className="mb-4 p-3 rounded-[10px] text-[13px]" style={{ background: t.dangerBg, border: `1px solid ${t.dangerBorder}`, color: t.dangerText }}>
           {error}
         </div>
       )}
 
       {/* List */}
       {documents.length === 0 ? (
-        <div className="rounded-[14px] border p-12 text-center" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.06)' }}>
-          <p style={{ color: '#8a8a8a' }}>No documents yet. Click Upload to add the first one.</p>
+        <div className="rounded-[14px] border p-12 text-center" style={{ background: t.cardBg, borderColor: t.cardBorder }}>
+          <p style={{ color: t.muted }}>No documents yet. Click Upload to add the first one.</p>
         </div>
       ) : (
         <div className="space-y-2">
           {documents.map((d) => {
-            const cat = CATEGORY_COLORS[d.category] || CATEGORY_COLORS.other;
+            const cat = categoryColors(d.category, t);
             const ver = d.document_versions;
-            const tags = (d.document_tags || []).map((t) => t.tag);
+            const tags = (d.document_tags || []).map((row) => row.tag);
             const contractStatus = Array.isArray(d.document_contracts)
               ? d.document_contracts[0]?.status
               : d.document_contracts?.status;
@@ -277,7 +283,7 @@ export default function DocumentsClient({ initialDocuments, initialError, events
               <div
                 key={d.id}
                 className="rounded-[12px] border p-4 flex items-start gap-4 hover:border-white/20 transition-colors"
-                style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.06)' }}
+                style={{ background: t.cardBg, borderColor: t.cardBorder }}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1.5 flex-wrap">
@@ -291,7 +297,7 @@ export default function DocumentsClient({ initialDocuments, initialError, events
                       {d.category}
                     </span>
                     {d.status !== 'active' && (
-                      <span className="text-[10px] tracking-[0.10em] uppercase px-2 py-0.5 rounded-[6px]" style={{ background: 'rgba(255,255,255,0.05)', color: '#8a8a8a' }}>
+                      <span className="text-[10px] tracking-[0.10em] uppercase px-2 py-0.5 rounded-[6px]" style={{ background: t.chipBg, color: t.muted }}>
                         {d.status}
                       </span>
                     )}
@@ -299,15 +305,15 @@ export default function DocumentsClient({ initialDocuments, initialError, events
                       <span
                         className="text-[10px] tracking-[0.10em] uppercase px-2 py-0.5 rounded-[6px] font-semibold"
                         style={{
-                          background: `${CONTRACT_STATUS_COLOR[contractStatus] || '#8a8a8a'}22`,
-                          color: CONTRACT_STATUS_COLOR[contractStatus] || '#8a8a8a',
+                          background: `${contractStatusColor(contractStatus, t) || t.muted}22`,
+                          color: contractStatusColor(contractStatus, t) || t.muted,
                         }}
                       >
                         {contractStatus.replace('_', ' ')}
                       </span>
                     )}
                   </div>
-                  <div className="text-[12px] flex flex-wrap gap-x-3 gap-y-1" style={{ color: '#8a8a8a' }}>
+                  <div className="text-[12px] flex flex-wrap gap-x-3 gap-y-1" style={{ color: t.muted }}>
                     {d.counterparty && <span>{d.counterparty}</span>}
                     {d.events && <span>· Event: {d.events.title}</span>}
                     {ver && <span>· v{ver.version_number} · {ver.filename} · {formatBytes(ver.size_bytes)}</span>}
@@ -315,9 +321,9 @@ export default function DocumentsClient({ initialDocuments, initialError, events
                   </div>
                   {tags.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
-                      {tags.map((t) => (
-                        <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-[4px]" style={{ background: 'rgba(255,255,255,0.05)', color: '#a8a8a8' }}>
-                          #{t}
+                      {tags.map((tag) => (
+                        <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-[4px]" style={{ background: t.chipBg, color: t.subtle }}>
+                          #{tag}
                         </span>
                       ))}
                     </div>
@@ -329,21 +335,21 @@ export default function DocumentsClient({ initialDocuments, initialError, events
                     target="_blank"
                     rel="noreferrer"
                     className="text-[12px] px-3 py-1.5 rounded-[8px] hover:bg-white/10"
-                    style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}
+                    style={ghostButtonStyle}
                   >
                     View
                   </a>
                   <a
                     href={`/api/admin/documents/${d.id}/download`}
                     className="text-[12px] px-3 py-1.5 rounded-[8px] hover:bg-white/10"
-                    style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}
+                    style={ghostButtonStyle}
                   >
                     Download
                   </a>
                   <button
                     onClick={() => handleDelete(d.id, d.title)}
                     className="text-[12px] px-3 py-1.5 rounded-[8px] hover:bg-red-500/10"
-                    style={{ border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5' }}
+                    style={{ border: `1px solid ${t.dangerBorderSoft}`, color: t.dangerText }}
                   >
                     Delete
                   </button>
@@ -358,23 +364,23 @@ export default function DocumentsClient({ initialDocuments, initialError, events
       {contractTemplatesEnabled && showTemplatePicker && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-6"
-          style={{ background: 'rgba(0,0,0,0.7)' }}
+          style={{ background: t.overlay }}
           onClick={() => !creatingFromTpl && setShowTemplatePicker(false)}
         >
           <form
             onSubmit={handleCreateFromTemplate}
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-[520px] rounded-[14px] border p-6 space-y-3"
-            style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.10)' }}
+            style={{ background: t.cardBg, borderColor: t.cardBorderStrong }}
           >
             <h2 className="text-[20px] font-bold mb-1">New contract from template</h2>
-            <p className="text-[12px] mb-4" style={{ color: '#8a8a8a' }}>
+            <p className="text-[12px] mb-4" style={{ color: t.muted }}>
               Clones the template PDF and its field layout into a new contract you can then customize, fill, and send.
             </p>
             {tplLoading ? (
-              <p className="text-[13px]" style={{ color: '#8a8a8a' }}>Loading templates…</p>
+              <p className="text-[13px]" style={{ color: t.muted }}>Loading templates…</p>
             ) : templates.length === 0 ? (
-              <p className="text-[13px]" style={{ color: '#8a8a8a' }}>
+              <p className="text-[13px]" style={{ color: t.muted }}>
                 No active templates.{' '}
                 <Link href="/bananas/documents/templates" className="underline">Create one first.</Link>
               </p>
@@ -385,11 +391,11 @@ export default function DocumentsClient({ initialDocuments, initialError, events
                   value={tplForm.template_id}
                   onChange={(e) => setTplForm({ ...tplForm, template_id: e.target.value })}
                   className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none cursor-pointer"
-                  style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+                  style={modalInputStyle}
                 >
                   <option value="">Choose a template…</option>
-                  {templates.map((t) => (
-                    <option key={t.id} value={t.id}>{t.title} ({t.field_count} field{t.field_count === 1 ? '' : 's'})</option>
+                  {templates.map((tpl) => (
+                    <option key={tpl.id} value={tpl.id}>{tpl.title} ({tpl.field_count} field{tpl.field_count === 1 ? '' : 's'})</option>
                   ))}
                 </select>
                 <input
@@ -397,25 +403,25 @@ export default function DocumentsClient({ initialDocuments, initialError, events
                   value={tplForm.title}
                   onChange={(e) => setTplForm({ ...tplForm, title: e.target.value })}
                   className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none"
-                  style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+                  style={modalInputStyle}
                 />
                 <input
                   placeholder="Counterparty (optional)"
                   value={tplForm.counterparty}
                   onChange={(e) => setTplForm({ ...tplForm, counterparty: e.target.value })}
                   className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none"
-                  style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+                  style={modalInputStyle}
                 />
               </>
             )}
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setShowTemplatePicker(false)} disabled={creatingFromTpl}
-                className="px-4 py-2 text-[13px] rounded-[10px]" style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}>
+                className="px-4 py-2 text-[13px] rounded-[10px]" style={ghostButtonStyle}>
                 Cancel
               </button>
               <button type="submit" disabled={creatingFromTpl || !tplForm.template_id}
                 className="px-5 py-2 text-[13px] font-semibold rounded-[10px] tracking-[0.06em] uppercase"
-                style={{ background: 'white', color: 'black', opacity: creatingFromTpl || !tplForm.template_id ? 0.6 : 1 }}>
+                style={{ background: t.solidBg, color: t.solidText, opacity: creatingFromTpl || !tplForm.template_id ? 0.6 : 1 }}>
                 {creatingFromTpl ? 'Creating…' : 'Create contract'}
               </button>
             </div>
@@ -427,17 +433,17 @@ export default function DocumentsClient({ initialDocuments, initialError, events
       {showUpload && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-6"
-          style={{ background: 'rgba(0,0,0,0.7)' }}
+          style={{ background: t.overlay }}
           onClick={() => !uploading && setShowUpload(false)}
         >
           <form
             onSubmit={handleUpload}
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-[520px] rounded-[14px] border p-6 space-y-3"
-            style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.10)' }}
+            style={{ background: t.cardBg, borderColor: t.cardBorderStrong }}
           >
             <h2 className="text-[20px] font-bold mb-1">Upload document</h2>
-            <p className="text-[12px] mb-4" style={{ color: '#8a8a8a' }}>
+            <p className="text-[12px] mb-4" style={{ color: t.muted }}>
               File is stored in a private bucket. Only admins can access it. All actions are logged.
             </p>
             <input
@@ -446,14 +452,14 @@ export default function DocumentsClient({ initialDocuments, initialError, events
               value={f.title}
               onChange={(e) => setF({ ...f, title: e.target.value })}
               className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none"
-              style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+              style={modalInputStyle}
             />
             <div className="grid grid-cols-2 gap-3">
               <select
                 value={f.category}
                 onChange={(e) => setF({ ...f, category: e.target.value })}
                 className="px-3 py-2.5 text-[14px] rounded-[10px] outline-none cursor-pointer"
-                style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+                style={modalInputStyle}
               >
                 {categories.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
@@ -462,14 +468,14 @@ export default function DocumentsClient({ initialDocuments, initialError, events
                 value={f.counterparty}
                 onChange={(e) => setF({ ...f, counterparty: e.target.value })}
                 className="px-3 py-2.5 text-[14px] rounded-[10px] outline-none"
-                style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+                style={modalInputStyle}
               />
             </div>
             <select
               value={f.event_id}
               onChange={(e) => setF({ ...f, event_id: e.target.value })}
               className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none cursor-pointer"
-              style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+              style={modalInputStyle}
             >
               <option value="">No event link</option>
               {events.map((ev) => (
@@ -483,7 +489,7 @@ export default function DocumentsClient({ initialDocuments, initialError, events
               value={f.tags}
               onChange={(e) => setF({ ...f, tags: e.target.value })}
               className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none"
-              style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+              style={modalInputStyle}
             />
             <textarea
               placeholder="Notes / description (optional)"
@@ -491,16 +497,16 @@ export default function DocumentsClient({ initialDocuments, initialError, events
               onChange={(e) => setF({ ...f, description: e.target.value })}
               rows={2}
               className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none resize-none"
-              style={{ background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' }}
+              style={modalInputStyle}
             />
             <input
               required
               type="file"
               onChange={(e) => setF({ ...f, file: e.target.files?.[0] || null })}
               className="w-full text-[13px]"
-              style={{ color: '#a8a8a8' }}
+              style={{ color: t.subtle }}
             />
-            <p className="text-[11px]" style={{ color: '#666' }}>
+            <p className="text-[11px]" style={{ color: t.hint }}>
               Max 100 MB. PDF, Office docs, images, CSV, ZIP.
             </p>
             <div className="flex justify-end gap-2 pt-2">
@@ -509,7 +515,7 @@ export default function DocumentsClient({ initialDocuments, initialError, events
                 onClick={() => setShowUpload(false)}
                 disabled={uploading}
                 className="px-4 py-2 text-[13px] rounded-[10px]"
-                style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}
+                style={ghostButtonStyle}
               >
                 Cancel
               </button>
@@ -517,7 +523,7 @@ export default function DocumentsClient({ initialDocuments, initialError, events
                 type="submit"
                 disabled={uploading}
                 className="px-5 py-2 text-[13px] font-semibold rounded-[10px] tracking-[0.06em] uppercase"
-                style={{ background: 'white', color: 'black', opacity: uploading ? 0.6 : 1 }}
+                style={{ background: t.solidBg, color: t.solidText, opacity: uploading ? 0.6 : 1 }}
               >
                 {uploading ? 'Uploading…' : 'Upload'}
               </button>
