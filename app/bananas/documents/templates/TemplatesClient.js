@@ -4,7 +4,11 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { adminFetch } from '@/lib/admin-fetch';
 
-const inputStyle = { background: '#0d0d0d', border: '1px solid rgba(255,255,255,0.08)', color: 'white' };
+const inputStyle = {
+  background: 'var(--auth-input-bg)',
+  border: '1px solid var(--auth-input-border)',
+  color: 'var(--auth-input-text)',
+};
 
 export default function TemplatesClient({ categories }) {
   const [templates, setTemplates] = useState([]);
@@ -94,8 +98,8 @@ export default function TemplatesClient({ categories }) {
       )}
 
       {/* Upload */}
-      <form onSubmit={upload} className="rounded-[14px] border p-5 mb-8" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.06)' }}>
-        <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase mb-4" style={{ color: '#8a8a8a' }}>New template</h2>
+      <form onSubmit={upload} className="rounded-[14px] border p-5 mb-8" style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}>
+        <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase mb-4" style={{ color: 'var(--auth-muted)' }}>New template</h2>
         <div className="grid grid-cols-2 gap-3 mb-3">
           <input placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
             className="px-3 py-2.5 text-[14px] rounded-[10px] outline-none" style={inputStyle} />
@@ -108,51 +112,51 @@ export default function TemplatesClient({ categories }) {
           className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none mb-3" style={inputStyle} />
         <div className="flex items-center justify-between gap-3">
           <input type="file" accept="application/pdf" onChange={(e) => setFile(e.target.files?.[0] || null)}
-            className="text-[13px]" style={{ color: '#c8c8c8' }} />
+            className="text-[13px]" style={{ color: 'var(--auth-muted-strong)' }} />
           <button type="submit" disabled={uploading || !form.title}
             className="px-5 py-2 text-[13px] font-semibold rounded-[10px] tracking-[0.06em] uppercase"
-            style={{ background: 'white', color: 'black', opacity: uploading || !form.title ? 0.6 : 1 }}>
+            style={{ background: 'var(--auth-text-strong)', color: 'var(--auth-strong-surface-text)', opacity: uploading || !form.title ? 0.6 : 1 }}>
             {uploading ? 'Uploading…' : 'Upload template'}
           </button>
         </div>
-        <p className="text-[11px] mt-2" style={{ color: '#6a6a6a' }}>PDF only. Field coordinates are placed against the rendered PDF.</p>
+        <p className="text-[11px] mt-2" style={{ color: 'var(--auth-faint)' }}>PDF only. Field coordinates are placed against the rendered PDF.</p>
       </form>
 
       {/* List */}
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase" style={{ color: '#8a8a8a' }}>
+        <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase" style={{ color: 'var(--auth-muted)' }}>
           Templates ({templates.length})
         </h2>
-        <label className="text-[12px] flex items-center gap-2" style={{ color: '#8a8a8a' }}>
+        <label className="text-[12px] flex items-center gap-2" style={{ color: 'var(--auth-muted)' }}>
           <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
           Show inactive
         </label>
       </div>
 
       {loading ? (
-        <p className="text-[13px]" style={{ color: '#8a8a8a' }}>Loading…</p>
+        <p className="text-[13px]" style={{ color: 'var(--auth-muted)' }}>Loading…</p>
       ) : templates.length === 0 ? (
-        <p className="text-[13px]" style={{ color: '#8a8a8a' }}>No templates yet. Upload one above.</p>
+        <p className="text-[13px]" style={{ color: 'var(--auth-muted)' }}>No templates yet. Upload one above.</p>
       ) : (
         <div className="space-y-2">
           {templates.map((t) => (
             <div key={t.id} className="rounded-[10px] border p-3 flex items-center gap-3"
-              style={{ background: '#141414', borderColor: t.is_active ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)', opacity: t.is_active ? 1 : 0.6 }}>
+              style={{ background: 'var(--auth-card-bg)', borderColor: t.is_active ? 'var(--auth-card-border)' : 'var(--auth-card-border)', opacity: t.is_active ? 1 : 0.6 }}>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
                   <span className="text-[14px] font-semibold truncate">{t.title}</span>
-                  {!t.is_active && <span className="text-[10px] px-1.5 py-0.5 rounded-[4px]" style={{ background: 'rgba(255,255,255,0.06)', color: '#8a8a8a' }}>INACTIVE</span>}
+                  {!t.is_active && <span className="text-[10px] px-1.5 py-0.5 rounded-[4px]" style={{ background: 'var(--auth-card-bg-alt)', color: 'var(--auth-muted)' }}>INACTIVE</span>}
                 </div>
-                <div className="text-[11px]" style={{ color: '#8a8a8a' }}>
+                <div className="text-[11px]" style={{ color: 'var(--auth-muted)' }}>
                   {t.category} · {t.page_count || '?'} page{t.page_count === 1 ? '' : 's'} · {t.field_count} field{t.field_count === 1 ? '' : 's'} · {t.filename}
                 </div>
               </div>
               <Link href={`/bananas/documents/templates/${t.id}`}
-                className="text-[12px] px-3 py-1.5 rounded-[8px]" style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}>
+                className="text-[12px] px-3 py-1.5 rounded-[8px]" style={{ border: '1px solid var(--auth-ghost-border)', color: 'var(--auth-ghost-text)' }}>
                 Edit fields
               </Link>
               <button onClick={() => toggleActive(t)}
-                className="text-[12px] px-3 py-1.5 rounded-[8px]" style={{ border: '1px solid rgba(255,255,255,0.10)', color: 'white' }}>
+                className="text-[12px] px-3 py-1.5 rounded-[8px]" style={{ border: '1px solid var(--auth-ghost-border)', color: 'var(--auth-ghost-text)' }}>
                 {t.is_active ? 'Deactivate' : 'Activate'}
               </button>
               <button onClick={() => remove(t)}

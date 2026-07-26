@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
@@ -9,6 +8,7 @@ import {
   getTodayInAustin,
 } from '@/lib/studio-helpers';
 import AdminBookingActions from './AdminBookingActions';
+import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 
 export const revalidate = 0;
 
@@ -47,25 +47,19 @@ export default async function AdminStudioBookingsPage() {
 
   return (
     <main className="max-w-[1100px] mx-auto px-6 py-16">
-      <Link
-        href="/bananas"
-        className="text-[12px] tracking-[0.14em] mb-4 inline-block hover:text-white transition-colors"
-        style={{ color: '#8a8a8a' }}
-      >
-        ← BACK TO ADMIN
-      </Link>
-      <h1
-        className="text-[32px] font-extrabold -tracking-[0.02em] leading-[1.1] mb-10"
-        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-      >
-        Studio Bookings
-      </h1>
+      <AuthenticatedPageHeader
+        backHref="/bananas"
+        backLabel="← BACK TO ADMIN"
+        title="Studio Bookings"
+        titleClassName="text-[32px] font-extrabold -tracking-[0.02em] leading-[1.1]"
+        className="mb-10"
+      />
 
       {/* Upcoming */}
       <div className="mb-12">
         <div
           className="text-[11px] font-semibold tracking-[0.18em] mb-4"
-          style={{ color: '#8a8a8a' }}
+          style={{ color: 'var(--auth-muted)' }}
         >
           UPCOMING ({upcoming.length})
         </div>
@@ -73,11 +67,11 @@ export default async function AdminStudioBookingsPage() {
           <div
             className="rounded-[14px] border p-8 text-center"
             style={{
-              background: '#141414',
-              borderColor: 'rgba(255,255,255,0.06)',
+              background: 'var(--auth-card-bg)',
+              borderColor: 'var(--auth-card-border)',
             }}
           >
-            <p style={{ color: '#8a8a8a' }}>No upcoming bookings.</p>
+            <p style={{ color: 'var(--auth-muted)' }}>No upcoming bookings.</p>
           </div>
         ) : (
           upcoming.map((b) => (
@@ -95,7 +89,7 @@ export default async function AdminStudioBookingsPage() {
         <div>
           <div
             className="text-[11px] font-semibold tracking-[0.18em] mb-4"
-            style={{ color: '#8a8a8a' }}
+            style={{ color: 'var(--auth-muted)' }}
           >
             PAST & CANCELLED ({past.length})
           </div>
@@ -118,8 +112,8 @@ function BookingRow({ booking, profile }) {
     <div
       className="rounded-[14px] border p-5 mb-3 flex items-center gap-5"
       style={{
-        background: '#141414',
-        borderColor: 'rgba(255,255,255,0.06)',
+        background: 'var(--auth-card-bg)',
+        borderColor: 'var(--auth-card-border)',
         opacity: isCancelled ? 0.5 : 1,
       }}
     >
@@ -130,16 +124,16 @@ function BookingRow({ booking, profile }) {
         >
           {profile?.full_name || profile?.email || 'Unknown member'}
         </div>
-        <div className="text-[13px]" style={{ color: '#a0a0a0' }}>
+        <div className="text-[13px]" style={{ color: 'var(--auth-muted-strong)' }}>
           {formatDateDisplay(booking.booking_date)} ·{' '}
           {formatHour(booking.start_hour)} – {formatHour(booking.end_hour)}
         </div>
-        <div className="text-[12px] mt-1" style={{ color: '#555' }}>
+        <div className="text-[12px] mt-1" style={{ color: 'var(--auth-faint)' }}>
           {formatMoney(booking.total_cost_cents)}
           {profile?.email ? ` · ${profile.email}` : ''}
         </div>
         {booking.notes && (
-          <div className="text-[12px] mt-2 italic" style={{ color: '#8a8a8a' }}>
+          <div className="text-[12px] mt-2 italic" style={{ color: 'var(--auth-muted)' }}>
             &ldquo;{booking.notes}&rdquo;
           </div>
         )}
@@ -150,9 +144,9 @@ function BookingRow({ booking, profile }) {
           className="text-[10px] font-semibold tracking-[0.14em] px-2.5 py-1 rounded-full"
           style={{
             background: isCancelled
-              ? 'rgba(255,80,80,0.15)'
-              : 'rgba(80,200,120,0.15)',
-            color: isCancelled ? '#ff8080' : '#80c878',
+              ? 'var(--auth-danger-bg)'
+              : 'var(--auth-success-bg)',
+            color: isCancelled ? 'var(--auth-danger)' : 'var(--auth-success)',
           }}
         >
           {isCancelled ? 'CANCELLED' : 'CONFIRMED'}

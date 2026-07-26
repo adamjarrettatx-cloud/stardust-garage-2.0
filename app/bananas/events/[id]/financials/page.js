@@ -1,9 +1,9 @@
-import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { adminPageGate } from '@/lib/auth-helpers';
 import { loadEventFinancials } from '@/lib/event-financials-data';
 import EventFinancialsClient from './EventFinancialsClient';
+import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 
 export const revalidate = 0;
 export const dynamic = 'force-dynamic';
@@ -29,23 +29,14 @@ export default async function EventFinancialsPage({ params }) {
 
   return (
     <main className="max-w-[900px] mx-auto px-6 py-16">
-      <Link
-        href={`/bananas/events/${id}`}
-        className="text-[12px] tracking-[0.14em] mb-4 inline-block hover:text-white transition-colors"
-        style={{ color: '#8a8a8a' }}
-      >
-        ← BACK TO EVENT
-      </Link>
-      <div className="flex items-baseline justify-between gap-4 mb-2">
-        <h1 className="text-[32px] font-extrabold -tracking-[0.02em] leading-[1.1]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-          Event Financials
-        </h1>
-        <div className="text-[11px] tracking-[0.18em]" style={{ color: '#8a8a8a' }}>ADMIN ONLY</div>
-      </div>
-      <p className="mb-8 text-[14px]" style={{ color: '#8a8a8a' }}>
-        {data.event.title}. Combines TicketTailor ticket sales, imported POS CSV totals, and contract
-        split terms into a per-event profit view. Ticket revenue is sourced from TicketTailor only.
-      </p>
+      <AuthenticatedPageHeader
+        backHref={`/bananas/events/${id}`}
+        backLabel="← BACK TO EVENT"
+        title="Event Financials"
+        description={`${data.event.title}. Combines TicketTailor ticket sales, imported POS CSV totals, and contract split terms into a per-event profit view. Ticket revenue is sourced from TicketTailor only.`}
+        eyebrow="ADMIN ONLY"
+        titleClassName="text-[32px] font-extrabold -tracking-[0.02em] leading-[1.1]"
+      />
 
       <EventFinancialsClient eventId={id} initial={data} contracts={contracts || []} />
     </main>

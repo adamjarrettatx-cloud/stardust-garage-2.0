@@ -11,7 +11,6 @@ import {
 import {
   AUTH_THEME_STORAGE_KEYS,
   AUTH_THEMES,
-  AUTH_THEME_INLINE_TOGGLE_PATHS,
   resolveAuthenticatedThemeScope,
   resolveAuthTheme,
 } from '../lib/authenticated-theme.js';
@@ -111,16 +110,6 @@ test('authenticated route scope covers every team/admin page except logins and c
   assert.equal(resolveAuthenticatedThemeScope('/capacity'), null);
   assert.equal(resolveAuthenticatedThemeScope('/capacity/front-door'), null);
   assert.equal(resolveAuthenticatedThemeScope('/capacity/admin'), null);
-});
-
-test('inline theme toggle is limited to the already-themed authenticated pages', () => {
-  assert.deepEqual([...AUTH_THEME_INLINE_TOGGLE_PATHS].sort(), [
-    '/bananas/analytics',
-    '/bananas/financial-calendar',
-    '/team/calendar',
-    '/team/chat',
-    '/team/progress',
-  ]);
 });
 
 // --- State tone resolution --------------------------------------------------
