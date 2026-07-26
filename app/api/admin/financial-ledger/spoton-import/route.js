@@ -15,6 +15,7 @@ import {
   validateMapping,
 } from '@/lib/spoton-import';
 import { resolveAccountId, auditLedger } from '@/lib/financial-ledger-db';
+import { writeLedgerRows } from '@/lib/financial-ledger-write';
 
 export const runtime = 'nodejs';
 
@@ -240,15 +241,14 @@ export async function PATCH(request) {
       mapping,
     });
 
-    const { error: insertError } = await supabase
-      .from('financial_transactions')
-      .upsert(ledgerRows, { onConflict: 'source,external_ref' });
-    if (insertError) {
+    try {
+      await writeLedgerRows(supabase, ledgerRows);
+    } catch (writeError) {
       await supabase
         .from('spoton_import_batches')
-        .update({ status: 'failed', column_mapping: mapping, error_detail: insertError.message.slice(0, 500) })
+        .update({ status: 'failed', column_mapping: mapping, error_detail: writeError.message.slice(0, 500) })
         .eq('id', batch.id);
-      throw new Error(`Could not write the ledger: ${insertError.message}`);
+      throw new Error(`Could not write the ledger: ${writeError.message}`);
     }
 
     const { error: confirmError } = await supabase

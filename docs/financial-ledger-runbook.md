@@ -56,7 +56,10 @@ Two partial unique indexes carry the correctness guarantees:
 
 - `financial_transactions (source, external_ref) where external_ref is not null`
   makes both writers **idempotent** — re-syncing TicketTailor or re-confirming a
-  batch upserts in place instead of duplicating money.
+  batch updates in place instead of duplicating money. Because the index is
+  partial, no `ON CONFLICT` / PostgREST `.upsert()` can target it; both writers go
+  through `writeLedgerRows` in `lib/financial-ledger-write.js`, which matches
+  existing rows on `(source, external_ref)` and then updates or inserts.
 - `spoton_import_batches (file_hash) where status = 'confirmed'` detects a
   byte-identical re-upload. It **warns** rather than blocks; the admin must tick
   an acknowledgement (which sends `force: true`) to import it again.

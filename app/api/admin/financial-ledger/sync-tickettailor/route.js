@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { isSameOrigin } from '@/lib/manual-income';
 import { ACCOUNT_NAMES, buildTicketTailorLedgerRows } from '@/lib/financial-ledger';
 import { resolveAccountId, auditLedger } from '@/lib/financial-ledger-db';
+import { writeLedgerRows } from '@/lib/financial-ledger-write';
 
 export const runtime = 'nodejs';
 
@@ -12,9 +13,9 @@ export const runtime = 'nodejs';
 //
 // This route makes NO external API calls. It reads the existing read-only
 // public.event_ticket_metrics cache (populated by /api/admin/refresh-event-metrics
-// on a cron or on demand) and upserts one financial_transactions row per event
-// that has real revenue. Re-running is idempotent: (source, external_ref) is
-// unique, so a second run updates the existing row instead of duplicating it.
+// on a cron or on demand) and writes one financial_transactions row per event
+// that has real revenue. Re-running is idempotent: writeLedgerRows matches on
+// (source, external_ref), so a second run updates rather than duplicating.
 //
 // Security posture matches /api/admin/manual-income: owner gate, same-origin
 // check as CSRF defense-in-depth, service-role writes only after the gate, and
@@ -50,11 +51,13 @@ export async function POST(request) {
       createdBy: user.id,
     });
 
+    let written = { inserted: 0, updated: 0 };
     if (rows.length) {
-      const { error: upsertError } = await supabase
-        .from('financial_transactions')
-        .upsert(rows, { onConflict: 'source,external_ref' });
-      if (upsertError) throw new Error(`Could not write the ledger: ${upsertError.message}`);
+      try {
+        written = await writeLedgerRows(supabase, rows);
+      } catch (writeError) {
+        throw new Error(`Could not write the ledger: ${writeError.message}`);
+      }
     }
 
     await auditLedger({
@@ -62,7 +65,7 @@ export async function POST(request) {
       action: 'ledger_tickettailor_sync',
       user,
       request,
-      details: { synced: rows.length, skipped },
+      details: { synced: rows.length, inserted: written.inserted, updated: written.updated, skipped },
     });
 
     return NextResponse.json({ success: true, synced: rows.length, skipped });
