@@ -10,8 +10,11 @@ import {
   monthsAgoStart,
   normalizeTransaction,
   summarizeByAccount,
+  summarizeByCategory,
   summarizeLedger,
   toDateOnly,
+  UNCATEGORIZED,
+  yearToDateRange,
 } from '../lib/financial-ledger.js';
 
 const ACCOUNT = '11111111-1111-4111-8111-111111111111';
@@ -119,6 +122,54 @@ test('summarizeByAccount names each bucket and sorts by inflow', () => {
   assert.equal(rows[0].inflowCents, 9000);
   assert.equal(rows[0].outflowCents, 500);
   assert.equal(rows[0].netCents, 8500);
+});
+
+test('summarizeByCategory groups by category and sorts by total activity', () => {
+  const rows = summarizeByCategory(
+    [
+      txn({ id: 'a', amount: '10.00', category: 'Ticket Revenue' }),
+      txn({ id: 'b', amount: '90.00', category: 'Rent' }),
+      txn({ id: 'c', amount: '5.00', direction: 'out', category: 'Rent' }),
+      // Transfers are excluded from every total, exactly as in summarizeByAccount.
+      txn({ id: 'd', amount: '500.00', txn_type: 'transfer', category: 'Rent' }),
+    ],
+    [{ id: ACCOUNT, name: 'TicketTailor', account_type: 'ticketing' }],
+  );
+  assert.deepEqual(rows.map((r) => r.category), ['Rent', 'Ticket Revenue']);
+  assert.equal(rows[0].inflowCents, 9000);
+  assert.equal(rows[0].outflowCents, 500);
+  assert.equal(rows[0].netCents, 8500);
+  assert.equal(rows[0].activityCents, 9500);
+  assert.equal(rows[0].count, 2);
+});
+
+test('summarizeByCategory carries each bucket rows with a resolved account name', () => {
+  const [bucket] = summarizeByCategory(
+    [txn({ id: 'a', amount: '10.00', category: 'Owner Contribution' })],
+    [{ id: ACCOUNT, name: 'TicketTailor', account_type: 'ticketing' }],
+  );
+  assert.deepEqual(bucket.transactions.map((r) => r.id), ['a']);
+  assert.equal(bucket.transactions[0].accountName, 'TicketTailor');
+});
+
+test('summarizeByCategory buckets null categories under Uncategorized', () => {
+  const rows = summarizeByCategory([txn({ id: 'a', category: null })], []);
+  assert.equal(rows[0].category, UNCATEGORIZED);
+  assert.equal(rows[0].transactions[0].accountName, 'Unknown account');
+});
+
+test('yearToDateRange runs from Jan 1 through today', () => {
+  assert.deepEqual(yearToDateRange(new Date(2026, 6, 26)), { start: '2026-01-01', end: '2026-07-26' });
+  assert.deepEqual(yearToDateRange(new Date(2026, 0, 1)), { start: '2026-01-01', end: '2026-01-01' });
+});
+
+// The default window must never reach past what the page actually fetched, or the
+// dashboard would silently under-report its own default range.
+test('yearToDateRange stays inside the 12 months the page loads', () => {
+  for (const month of [0, 5, 11]) {
+    const today = new Date(2026, month, 15);
+    assert.ok(yearToDateRange(today).start >= monthsAgoStart(12, today));
+  }
 });
 
 test('monthlyTrend always returns a full run of buckets, zeros included', () => {
