@@ -91,30 +91,62 @@ inflow per event:
 
 ## SpotOn CSV import
 
-There is **no confirmed SpotOn export sample yet**, so the flow assumes no
-layout. `suggestMapping()` proposes a mapping from the detected headers and
-leaves an unrecognized file entirely unmapped rather than guessing wrong; every
-field can be re-pointed or left unmapped by hand.
+The flow assumes **no** layout. `suggestMapping()` proposes a mapping from the
+detected headers and leaves an unrecognized file entirely unmapped rather than
+guessing wrong; every field can be re-pointed or left unmapped by hand.
 
 1. **Upload (`POST`)** — `.csv` extension required, MIME checked against an
-   allow-list, 5MB cap re-checked against the *actual* bytes read (`file.size`
+   allow-list, 10MB cap re-checked against the *actual* bytes read (`file.size`
    is client metadata), UTF-8 BOM stripped. Duplicate/blank headers are made
    distinct (`Amount (2)`, `Column 4`) so a column cannot silently overwrite
    another. The parsed rows are stored as a `pending` batch. **Nothing reaches
    the ledger.**
-2. **Map** — date is required, plus at least one of net deposit or gross sales
-   (tips alone cannot say how much money moved). `validateMapping()` runs
-   client-side purely for fast feedback; the server re-runs it against the
-   headers of the **stored** rows.
+2. **Map** — date is required, plus at least one of net deposit, net sales, or
+   gross sales (tips/refunds/fees alone cannot say how much money moved).
+   `validateMapping()` runs client-side purely for fast feedback; the server
+   re-runs it against the headers of the **stored** rows.
 3. **Confirm (`PATCH`)** — amounts are re-derived server-side from the staged
-   rows; the only thing accepted from the client is the column mapping.
-   `net_deposit` wins when mapped, else `gross + tips − |refunds| − |fees|`
-   (refunds/fees are treated as magnitudes so an export that writes them
-   negative cannot flip a subtraction into an addition). A net-negative day is a
-   real **outflow** categorized `POS Refunds`, not clamped to zero. Zero-amount
-   rows are dropped and undated rows reported. `external_ref` is
-   `{batchId}:{rowIndex}` and the untouched CSV row is kept in `metadata`, so a
-   later tips/refunds/fees breakdown needs no re-import.
+   rows; the only things accepted from the client are the column mapping and the
+   aggregation mode. `net_deposit` wins when mapped, then `net_sales`, else
+   `gross + tips − |refunds| − |fees|` (refunds/fees are treated as magnitudes so
+   an export that writes them negative cannot flip a subtraction into an
+   addition). A net-negative date is a real **outflow** categorized
+   `POS Refunds`, not clamped to zero. Zero amounts are dropped and undated rows
+   reported.
+
+### Aggregation modes
+
+SpotOn's **"order item list view"** export is one row per *sold item*, not a
+daily settlement file — the validation export was 9,260 rows over 50 days, with
+no fees, tips, or net-deposit column anywhere. So the confirm step has two modes,
+both always selectable:
+
+| Mode | `external_ref` | When |
+| --- | --- | --- |
+| `daily` | `{batchId}:{YYYY-MM-DD}` | Item-level export: line items summed into one ledger row per calendar date. |
+| `row` | `{batchId}:{rowIndex}` | An export that is already daily or batch level. |
+
+`detectItemizedExport()` picks the default (a row-level amount column plus ≥3 of
+the item-level markers — `Item Name`, `Menu Item Price`, `Order ID`, `Is Void`,
+`Is Refund`, `Voided Sales Amount`, …), the dialog pre-selects it and says why,
+and the server re-resolves it from the *stored* headers so an unknown value can
+never take effect. The chosen mode is persisted on the batch.
+
+Voids and refunds are **counted, not filtered**: the export already zeroes a
+voided line (parking its amount in `Voided Sales Amount`) and already writes a
+refund negative, so summing the mapped amount nets both out with no
+special-casing. Filtering them again would double-exclude.
+
+**Taxes are never part of the ledger amount.** Each aggregated row instead
+carries a `metadata` breakdown — `line_item_count`, `void_row_count`,
+`refund_row_count`, per-day `taxes_cents` / `gross_sales_cents` /
+`discounts_cents` / `voided_amount_cents`, and per-category subtotals
+(`Tickets`, `Beverages`, `Lockers`, `Uncategorized`, …, capped at 60 with the
+remainder rolled into `(other)`) — so a later sales-tax or per-category pass
+needs no re-import. `category` stays `POS Revenue`; the ledger is deliberately
+not fragmented per item category this phase. Aggregated rows omit `raw_row`
+(the staged batch's `raw_rows` keeps full per-line traceability); per-row imports
+still keep the untouched CSV row.
 
 Closing the dialog before confirming best-effort DELETEs the pending batch;
 a leftover `pending` batch is simply ignored by the dashboard.
@@ -158,5 +190,9 @@ and SpotOn is a manual upload.
 - `tests/spoton-import.test.mjs` — CSV parsing and header deduping, date
   parsing, mapping suggestion/validation/sanitization, amount derivation
   precedence and negative-magnitude handling, inflow/outflow classification, and
-  ledger-row traceability.
+  ledger-row traceability. Plus a synthetic item-level fixture (multiple rows per
+  day, a zeroed void line, a negative refund line, several categories) covering
+  shape detection, day grouping, taxes-excluded-from-amount, void/refund counts,
+  per-category subtotals, and date-keyed `external_ref`. No real business data is
+  committed.
 - Run: `npm test`.

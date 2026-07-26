@@ -78,6 +78,13 @@ create table if not exists public.spoton_import_batches (
 
   row_count integer not null default 0 check (row_count >= 0),
 
+  -- How the CSV rows became ledger rows. SpotOn's "order item list view" export
+  -- is one row per sold item, so it is summed into one row per calendar date
+  -- ('daily'); an export that is already daily/batch level maps straight through
+  -- ('row').
+  aggregation text not null default 'daily'
+    check (aggregation in ('daily', 'row')),
+
   status text not null default 'pending'
     check (status in ('pending', 'confirmed', 'failed')),
 

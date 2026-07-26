@@ -9,6 +9,7 @@ import {
   buildPreview,
   buildSpotOnLedgerRows,
   mapSpotOnRows,
+  resolveAggregation,
   sanitizeMapping,
   summarizeImport,
   validateMapping,
@@ -19,9 +20,9 @@ export const runtime = 'nodejs';
 
 // OWNER-ONLY manual SpotOn POS CSV import, in two steps.
 //
-//   POST  (multipart: file)          -> parse + preview, store a 'pending' batch
-//   PATCH ({ batchId, mapping })     -> re-derive from the STORED rows, write the ledger
-//   DELETE ({ batchId })             -> discard a pending batch
+//   POST  (multipart: file)                       -> parse + preview, store a 'pending' batch
+//   PATCH ({ batchId, mapping, aggregation })     -> re-derive from the STORED rows, write the ledger
+//   DELETE ({ batchId })                          -> discard a pending batch
 //
 // Why two steps with server-side storage in between: the confirm step must not
 // trust anything the browser computed. It reloads the raw rows this server
@@ -148,6 +149,8 @@ export async function POST(request) {
       previewRows: preview.previewRows,
       rowCount: preview.rowCount,
       suggestedMapping: preview.suggestedMapping,
+      suggestedAggregation: preview.suggestedAggregation,
+      itemized: preview.itemized,
       duplicateOf: existing ? { id: existing.id, filename: existing.filename, createdAt: existing.created_at } : null,
     });
   } catch (err) {
@@ -210,15 +213,21 @@ export async function PATCH(request) {
       }
     }
 
-    const { mapped, errors, skippedZero } = mapSpotOnRows(rawRows, mapping);
+    // Aggregation is a client choice, but only ever one of the two known modes;
+    // anything else falls back to what the stored headers imply.
+    const aggregation = resolveAggregation(body.aggregation, headers);
+
+    const { mapped, errors, skippedZero } = mapSpotOnRows(rawRows, mapping, { aggregation });
     if (mapped.length === 0) {
       await supabase
         .from('spoton_import_batches')
-        .update({ status: 'failed', column_mapping: mapping, error_detail: 'No importable rows.' })
+        .update({ status: 'failed', column_mapping: mapping, aggregation, error_detail: 'No importable rows.' })
         .eq('id', batch.id);
       return NextResponse.json({
         error: 'No rows could be imported with that mapping.',
-        hint: errors[0]?.message || 'Every row was empty or had a zero amount.',
+        hint: errors[0]?.message || (aggregation === 'daily'
+          ? 'Every date in the file summed to a zero amount.'
+          : 'Every row was empty or had a zero amount.'),
       }, { status: 422 });
     }
 
@@ -247,6 +256,7 @@ export async function PATCH(request) {
       .update({
         status: 'confirmed',
         column_mapping: mapping,
+        aggregation,
         row_count: rawRows.length,
         confirmed_at: new Date().toISOString(),
         error_detail: null,
@@ -265,7 +275,9 @@ export async function PATCH(request) {
         batch_id: batch.id,
         filename: batch.filename,
         column_mapping: mapping,
+        aggregation,
         imported: summary.rows,
+        line_items: summary.lineItems,
         skipped_zero: skippedZero,
         unparseable: errors.length,
         inflow_cents: summary.inflowCents,
@@ -277,7 +289,9 @@ export async function PATCH(request) {
     return NextResponse.json({
       success: true,
       batchId: batch.id,
+      aggregation,
       imported: summary.rows,
+      lineItems: summary.lineItems,
       skippedZero,
       unparseable: errors.length,
       rowErrors: errors.slice(0, 10),

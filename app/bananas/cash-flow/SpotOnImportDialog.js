@@ -4,22 +4,32 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { adminFetch } from '@/lib/admin-fetch';
 import { centsToUsd } from '@/lib/event-analytics';
-import { SPOTON_FIELDS, validateMapping } from '@/lib/spoton-import';
+import { AGGREGATION, SPOTON_FIELDS, validateMapping } from '@/lib/spoton-import';
 
 // Owner-only SpotOn POS CSV importer: upload -> map columns -> confirm.
 //
 // The upload step only stages the file (the server parses it and keeps the rows
-// as a 'pending' batch); nothing reaches the ledger until confirm. Because we
-// have no confirmed SpotOn export sample yet, the mapping step never assumes a
-// layout: the server suggests a mapping from the detected headers and every
-// field can be re-pointed or left unmapped. The same validateMapping() the
-// server enforces runs here so the admin sees the problem before submitting.
+// as a 'pending' batch); nothing reaches the ledger until confirm. The mapping
+// step never assumes a layout: the server suggests a mapping from the detected
+// headers and every field can be re-pointed or left unmapped. The same
+// validateMapping() the server enforces runs here so the admin sees the problem
+// before submitting.
+//
+// SpotOn's item-level export is one row per sold item, so the server also
+// suggests how rows become ledger rows: summed per calendar date, or straight
+// through for an export that is already daily. Both stay selectable.
+const FIELD_GROUPS = [
+  { title: 'Amount', kinds: ['date', 'amount'] },
+  { title: 'Breakdown — captured in metadata, never added to the amount', kinds: ['breakdown', 'dimension', 'flag'] },
+];
+
 export default function SpotOnImportDialog({ open, t, onClose }) {
   const router = useRouter();
 
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [mapping, setMapping] = useState({});
+  const [aggregation, setAggregation] = useState(AGGREGATION.row);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [duplicateAck, setDuplicateAck] = useState(false);
@@ -30,6 +40,7 @@ export default function SpotOnImportDialog({ open, t, onClose }) {
     setFile(null);
     setPreview(null);
     setMapping({});
+    setAggregation(AGGREGATION.row);
     setError(null);
     setDuplicateAck(false);
     setResult(null);
@@ -74,6 +85,7 @@ export default function SpotOnImportDialog({ open, t, onClose }) {
       const res = await adminFetch('/api/admin/financial-ledger/spoton-import', { method: 'POST', body });
       setPreview(res);
       setMapping(res.suggestedMapping || {});
+      setAggregation(res.suggestedAggregation || AGGREGATION.row);
     } catch (err) {
       setError(err?.message || 'Could not read that file.');
     } finally {
@@ -88,7 +100,7 @@ export default function SpotOnImportDialog({ open, t, onClose }) {
       const res = await adminFetch('/api/admin/financial-ledger/spoton-import', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ batchId: preview.batchId, mapping, force: duplicateAck }),
+        body: JSON.stringify({ batchId: preview.batchId, mapping, aggregation, force: duplicateAck }),
       });
       setResult(res);
       router.refresh();
@@ -152,12 +164,16 @@ export default function SpotOnImportDialog({ open, t, onClose }) {
               style={{ background: t.revCardBg, borderColor: t.revCardBorder }}
             >
               <div className="text-[13px] font-semibold mb-1" style={{ color: t.rev }}>
-                Imported {result.imported} {result.imported === 1 ? 'row' : 'rows'}
+                {result.aggregation === AGGREGATION.daily
+                  ? `Imported ${result.imported} daily ${result.imported === 1 ? 'row' : 'rows'} from ${result.lineItems.toLocaleString('en-US')} line items`
+                  : `Imported ${result.imported} ${result.imported === 1 ? 'row' : 'rows'}`}
               </div>
               <div className="text-[12px]" style={{ color: t.mutedStrong }}>
                 {centsToUsd(result.inflowCents)} in
                 {result.outflowCents > 0 && ` · ${centsToUsd(result.outflowCents)} out`}
-                {result.skippedZero > 0 && ` · ${result.skippedZero} zero-amount rows skipped`}
+                {result.skippedZero > 0 && (result.aggregation === AGGREGATION.daily
+                  ? ` · ${result.skippedZero} dates summed to zero and were skipped`
+                  : ` · ${result.skippedZero} zero-amount rows skipped`)}
                 {result.unparseable > 0 && ` · ${result.unparseable} rows had no readable date`}
               </div>
             </div>
@@ -174,7 +190,7 @@ export default function SpotOnImportDialog({ open, t, onClose }) {
           /* Step 1 — upload */
           <form onSubmit={upload}>
             <p className="text-[13px] mb-4" style={{ color: t.muted }}>
-              Upload a SpotOn export (.csv, up to 5MB). The file is parsed and previewed here — nothing is
+              Upload a SpotOn export (.csv, up to 10MB). The file is parsed and previewed here — nothing is
               written to the ledger until you confirm the column mapping on the next step.
             </p>
             <input
@@ -202,9 +218,48 @@ export default function SpotOnImportDialog({ open, t, onClose }) {
               {preview.rowCount === 1 ? 'row' : 'rows'} · {preview.headers.length} columns
             </p>
             <p className="text-[12px] mb-4" style={{ color: t.muted }}>
-              Map each ledger field to a column. Date is required, plus net deposit or gross sales. Amounts are
-              recomputed on the server from the uploaded rows.
+              Map each ledger field to a column. Date is required, plus one of net deposit, net sales, or gross
+              sales. Amounts are recomputed on the server from the uploaded rows.
             </p>
+
+            {/* How rows become ledger rows. Pre-selected from the detected shape. */}
+            <fieldset className="rounded-[10px] border p-3 mb-4" style={{ borderColor: t.tableBorder }}>
+              <legend className="text-[11px] font-semibold tracking-[0.08em] uppercase px-1" style={{ color: t.muted }}>
+                Ledger rows
+              </legend>
+              {preview.itemized && (
+                <p className="text-[11px] mb-2" style={{ color: t.rev }}>
+                  Detected an item-level export (one row per sold item), so these rows are summed per day.
+                </p>
+              )}
+              {[
+                {
+                  value: AGGREGATION.daily,
+                  label: 'One row per calendar date',
+                  hint: 'Sums the mapped amount across every line item of a day. Taxes, discounts, gross, per-category subtotals, and void/refund counts are kept in metadata.',
+                },
+                {
+                  value: AGGREGATION.row,
+                  label: 'One row per CSV row',
+                  hint: 'For an export that is already daily or batch level.',
+                },
+              ].map((option) => (
+                <label key={option.value} className="flex items-start gap-2 text-[12px] mb-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="cf-spoton-aggregation"
+                    value={option.value}
+                    checked={aggregation === option.value}
+                    onChange={() => setAggregation(option.value)}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span style={{ color: t.textStrong }}>{option.label}</span>
+                    <span className="block text-[10px]" style={{ color: t.faint }}>{option.hint}</span>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
 
             {preview.duplicateOf && (
               <label
@@ -225,32 +280,42 @@ export default function SpotOnImportDialog({ open, t, onClose }) {
               </label>
             )}
 
-            <div className="grid sm:grid-cols-2 gap-3 mb-5">
-              {SPOTON_FIELDS.map((field) => (
-                <div key={field.key}>
-                  <label
-                    className="block text-[11px] font-semibold tracking-[0.08em] uppercase mb-1"
-                    style={{ color: t.muted }}
-                    htmlFor={`map-${field.key}`}
-                  >
-                    {field.label}{field.required && ' *'}
-                  </label>
-                  <select
-                    id={`map-${field.key}`}
-                    value={mapping[field.key] || ''}
-                    onChange={(e) => setMapping({ ...mapping, [field.key]: e.target.value })}
-                    className="w-full rounded-[8px] px-3 py-2 text-[13px] outline-none"
-                    style={inputStyle}
-                  >
-                    <option value="">— not in this file —</option>
-                    {preview.headers.map((h) => (
-                      <option key={h} value={h}>{h}</option>
-                    ))}
-                  </select>
-                  <p className="text-[10px] mt-1" style={{ color: t.faint }}>{field.hint}</p>
+            {FIELD_GROUPS.map((group) => (
+              <div key={group.title} className="mb-5">
+                <h3
+                  className="text-[11px] font-semibold tracking-[0.10em] uppercase mb-2"
+                  style={{ color: t.muted }}
+                >
+                  {group.title}
+                </h3>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {SPOTON_FIELDS.filter((f) => group.kinds.includes(f.kind)).map((field) => (
+                    <div key={field.key}>
+                      <label
+                        className="block text-[11px] font-semibold tracking-[0.08em] uppercase mb-1"
+                        style={{ color: t.muted }}
+                        htmlFor={`map-${field.key}`}
+                      >
+                        {field.label}{field.required && ' *'}
+                      </label>
+                      <select
+                        id={`map-${field.key}`}
+                        value={mapping[field.key] || ''}
+                        onChange={(e) => setMapping({ ...mapping, [field.key]: e.target.value })}
+                        className="w-full rounded-[8px] px-3 py-2 text-[13px] outline-none"
+                        style={inputStyle}
+                      >
+                        <option value="">— not in this file —</option>
+                        {preview.headers.map((h) => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
+                      <p className="text-[10px] mt-1" style={{ color: t.faint }}>{field.hint}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
 
             {Object.values(check.errors).length > 0 && (
               <ul className="text-[12px] mb-4 list-disc pl-5" style={{ color: t.err }}>
@@ -306,7 +371,11 @@ export default function SpotOnImportDialog({ open, t, onClose }) {
                 className="text-[12px] font-semibold tracking-[0.10em] uppercase rounded-[10px] px-4 py-2 disabled:opacity-50"
                 style={{ background: t.btnBg, color: t.btnText }}
               >
-                {busy ? 'Importing…' : `Import ${preview.rowCount} rows`}
+                {busy
+                  ? 'Importing…'
+                  : aggregation === AGGREGATION.daily
+                    ? `Import ${preview.rowCount.toLocaleString('en-US')} line items`
+                    : `Import ${preview.rowCount.toLocaleString('en-US')} rows`}
               </button>
               <button
                 type="button"

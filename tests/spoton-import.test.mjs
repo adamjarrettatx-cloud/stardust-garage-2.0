@@ -1,13 +1,18 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  AGGREGATION,
   buildPreview,
   buildSpotOnLedgerRows,
+  detectItemizedExport,
   deriveRowAmountCents,
+  isYes,
   mapSpotOnRows,
   parseSpotOnCsv,
   parseSpotOnDate,
+  resolveAggregation,
   sanitizeMapping,
+  suggestAggregation,
   suggestMapping,
   summarizeImport,
   validateMapping,
@@ -21,6 +26,40 @@ const CSV = [
   '07/01/2026,"$1,200.00",$150.00,$0.00,$36.00,"$1,314.00"',
   '07/02/2026,$800.00,$90.00,$50.00,$24.00,$816.00',
 ].join('\n');
+
+// Synthetic fixture mirroring the column set and row-level behaviors of a real
+// SpotOn "order item list view" export: one row per sold item, NO
+// fees/tips/net-deposit column anywhere, a voided line already zeroed with its
+// amount parked in Voided Sales Amount, and a refund line already negative.
+const ITEM_HEADERS = [
+  'Item Name', 'Item ID', 'Menu Item ID', 'Category', 'Employee Name', 'Added Date', 'Added Time',
+  'Is Void', 'Void Reason', 'Quantity', 'Menu Item Price', 'Taxes', 'Gross Sales', 'Discounts',
+  'Net Sales', 'Voided Sales Amount', 'Order ID', 'Order Number', 'Is Refund',
+].join(',');
+
+function itemRow({ date, category, taxes, gross, discounts, net, voided = '0.0', isVoid = 'No', isRefund = 'No' }) {
+  return [
+    'Item', '1-0', '1469428', category, 'Employees General', date, '5:50 AM',
+    isVoid, '', '1.0', gross, taxes, gross, discounts,
+    net, voided, '28205530', 'A000081', isRefund,
+  ].join(',');
+}
+
+const ITEM_CSV = [
+  ITEM_HEADERS,
+  itemRow({ date: '2026-07-01', category: 'Tickets', taxes: '0.0', gross: '50.0', discounts: '0.0', net: '50.0' }),
+  itemRow({ date: '2026-07-01', category: 'Beverages', taxes: '0.41', gross: '5.0', discounts: '0.0', net: '5.0' }),
+  itemRow({ date: '2026-07-01', category: 'Beverages', taxes: '0.25', gross: '4.0', discounts: '1.0', net: '3.0' }),
+  // Voided line: already zeroed, the would-be amount sits in Voided Sales Amount.
+  itemRow({ date: '2026-07-01', category: 'Lockers', taxes: '0.0', gross: '0.0', discounts: '0.0', net: '0.0', voided: '10.0', isVoid: 'Yes' }),
+  itemRow({ date: '2026-07-02', category: 'Tickets', taxes: '0.0', gross: '100.0', discounts: '0.0', net: '100.0' }),
+  // Refund line: already negative.
+  itemRow({ date: '2026-07-02', category: 'Tickets', taxes: '0.0', gross: '-50.0', discounts: '0.0', net: '-50.0', isRefund: 'Yes' }),
+].join('\n');
+
+const ITEM_HEADER_LIST = parseSpotOnCsv(ITEM_CSV).headers;
+const ITEM_ROWS = parseSpotOnCsv(ITEM_CSV).rows;
+const ITEM_MAPPING = suggestMapping(ITEM_HEADER_LIST);
 
 // --- Parsing ----------------------------------------------------------------
 
@@ -176,7 +215,7 @@ test('buildSpotOnLedgerRows makes each row traceable to its batch and CSV line',
 });
 
 test('buildSpotOnLedgerRows labels an outflow row honestly', () => {
-  const mapped = [{ rowIndex: 0, date: '2026-07-03', amountCents: 5000, direction: 'out', basis: 'gross_derived', breakdown: {}, raw: {} }];
+  const mapped = [{ refKey: '0', date: '2026-07-03', amountCents: 5000, direction: 'out', basis: 'gross_derived', metadata: {} }];
   const ledger = buildSpotOnLedgerRows({ mapped, accountId: ACCOUNT, batchId: BATCH });
   assert.equal(ledger[0].category, 'POS Refunds');
   assert.equal(ledger[0].direction, 'out');
@@ -204,5 +243,145 @@ test('summarizeImport separates inflow from outflow', () => {
     { direction: 'in', amountCents: 10000 },
     { direction: 'out', amountCents: 2500 },
   ]);
-  assert.deepEqual(summary, { rows: 2, inflowCents: 10000, outflowCents: 2500, netCents: 7500 });
+  assert.deepEqual(summary, { rows: 2, lineItems: 2, inflowCents: 10000, outflowCents: 2500, netCents: 7500 });
+});
+
+// --- Itemized exports -------------------------------------------------------
+
+test('detectItemizedExport recognizes an item-level export, not a daily batch', () => {
+  assert.equal(detectItemizedExport(ITEM_HEADER_LIST), true);
+  assert.equal(suggestAggregation(ITEM_HEADER_LIST), AGGREGATION.daily);
+
+  const { headers } = parseSpotOnCsv(CSV);
+  assert.equal(detectItemizedExport(headers), false);
+  assert.equal(suggestAggregation(headers), AGGREGATION.row);
+});
+
+test('isYes reads the export\'s Yes/No flags without treating text as truthy', () => {
+  assert.equal(isYes('Yes'), true);
+  assert.equal(isYes('No'), false);
+  assert.equal(isYes(''), false);
+  assert.equal(isYes(undefined), false);
+});
+
+// The real export has no fees/tips/net-deposit column anywhere, so the amount
+// has to come from Net Sales — and the Yes/No flag columns must not be mistaken
+// for amounts.
+test('suggestMapping maps an item-level export to net sales and its breakdown columns', () => {
+  assert.equal(ITEM_MAPPING.date, 'Added Date');
+  assert.equal(ITEM_MAPPING.net_sales, 'Net Sales');
+  assert.equal(ITEM_MAPPING.gross_sales, 'Gross Sales');
+  assert.equal(ITEM_MAPPING.taxes, 'Taxes');
+  assert.equal(ITEM_MAPPING.discounts, 'Discounts');
+  assert.equal(ITEM_MAPPING.item_category, 'Category');
+  assert.equal(ITEM_MAPPING.is_void, 'Is Void');
+  assert.equal(ITEM_MAPPING.is_refund, 'Is Refund');
+  assert.equal(ITEM_MAPPING.voided_amount, 'Voided Sales Amount');
+  assert.equal(ITEM_MAPPING.net_deposit, undefined);
+  assert.equal(ITEM_MAPPING.refunds, undefined);
+  assert.equal(ITEM_MAPPING.fees, undefined);
+  assert.equal(ITEM_MAPPING.tips, undefined);
+  assert.equal(validateMapping(ITEM_MAPPING, ITEM_HEADER_LIST).valid, true);
+});
+
+// --- Daily aggregation ------------------------------------------------------
+
+test('mapSpotOnRows sums line items into one row per calendar date', () => {
+  const { mapped, skippedZero, errors } = mapSpotOnRows(ITEM_ROWS, ITEM_MAPPING, { aggregation: AGGREGATION.daily });
+  assert.equal(errors.length, 0);
+  assert.equal(skippedZero, 0);
+  assert.deepEqual(mapped.map((r) => r.date), ['2026-07-01', '2026-07-02']);
+  // 50 + 5 + 3, and the voided line contributes nothing because it is already zeroed.
+  assert.equal(mapped[0].amountCents, 5800);
+  assert.equal(mapped[0].direction, 'in');
+  assert.equal(mapped[0].rowCount, 4);
+  // 100 - 50: the refund line is already negative, so it nets out.
+  assert.equal(mapped[1].amountCents, 5000);
+  assert.equal(mapped[1].rowCount, 2);
+  assert.equal(mapped[0].basis, 'net_sales');
+});
+
+test('daily aggregation keeps taxes out of the amount and in metadata', () => {
+  const { mapped } = mapSpotOnRows(ITEM_ROWS, ITEM_MAPPING, { aggregation: AGGREGATION.daily });
+  const meta = mapped[0].metadata;
+  assert.equal(meta.taxes_cents, 66);
+  assert.equal(mapped[0].amountCents, 5800);
+  assert.equal(meta.discounts_cents, 100);
+  assert.equal(meta.gross_sales_cents, 5900);
+  assert.equal(meta.voided_amount_cents, 1000);
+  assert.equal(meta.line_item_count, 4);
+  assert.equal(meta.aggregation, AGGREGATION.daily);
+});
+
+test('daily aggregation counts void and refund lines instead of re-excluding them', () => {
+  const { mapped } = mapSpotOnRows(ITEM_ROWS, ITEM_MAPPING, { aggregation: AGGREGATION.daily });
+  assert.equal(mapped[0].metadata.void_row_count, 1);
+  assert.equal(mapped[0].metadata.refund_row_count, 0);
+  assert.equal(mapped[1].metadata.void_row_count, 0);
+  assert.equal(mapped[1].metadata.refund_row_count, 1);
+});
+
+test('daily aggregation subtotals each item category', () => {
+  const { mapped } = mapSpotOnRows(ITEM_ROWS, ITEM_MAPPING, { aggregation: AGGREGATION.daily });
+  assert.deepEqual(mapped[0].metadata.categories, { Tickets: 5000, Beverages: 800, Lockers: 0 });
+  assert.deepEqual(mapped[1].metadata.categories, { Tickets: 5000 });
+});
+
+test('a date whose line items cancel out is skipped, not written as a zero row', () => {
+  const rows = [
+    { D: '2026-07-05', N: '40.00' },
+    { D: '2026-07-05', N: '-40.00' },
+    { D: '2026-07-06', N: '10.00' },
+  ];
+  const { mapped, skippedZero } = mapSpotOnRows(rows, { date: 'D', net_sales: 'N' }, { aggregation: AGGREGATION.daily });
+  assert.deepEqual(mapped.map((r) => r.date), ['2026-07-06']);
+  assert.equal(skippedZero, 1);
+});
+
+test('a date that nets negative is recorded as an outflow', () => {
+  const rows = [
+    { D: '2026-07-05', N: '10.00' },
+    { D: '2026-07-05', N: '-60.00' },
+  ];
+  const { mapped } = mapSpotOnRows(rows, { date: 'D', net_sales: 'N' }, { aggregation: AGGREGATION.daily });
+  assert.equal(mapped[0].direction, 'out');
+  assert.equal(mapped[0].amountCents, 5000);
+});
+
+test('aggregated ledger rows are keyed by date so a re-import updates in place', () => {
+  const { mapped } = mapSpotOnRows(ITEM_ROWS, ITEM_MAPPING, { aggregation: AGGREGATION.daily });
+  const ledger = buildSpotOnLedgerRows({ mapped, accountId: ACCOUNT, batchId: BATCH, mapping: ITEM_MAPPING });
+  assert.equal(ledger.length, 2);
+  assert.equal(ledger[0].external_ref, `${BATCH}:2026-07-01`);
+  assert.equal(ledger[0].amount, '58.00');
+  assert.equal(ledger[0].category, 'POS Revenue');
+  assert.equal(ledger[0].metadata.column_mapping.net_sales, 'Net Sales');
+});
+
+test('summarizeImport reports the line-item count behind aggregated rows', () => {
+  const { mapped } = mapSpotOnRows(ITEM_ROWS, ITEM_MAPPING, { aggregation: AGGREGATION.daily });
+  const summary = summarizeImport(mapped);
+  assert.equal(summary.rows, 2);
+  assert.equal(summary.lineItems, 6);
+  assert.equal(summary.inflowCents, 10800);
+});
+
+// The per-row path has to stay available for a genuinely daily/batch export.
+test('the per-row mode still maps an itemized file straight through', () => {
+  const { mapped } = mapSpotOnRows(ITEM_ROWS, ITEM_MAPPING, { aggregation: AGGREGATION.row });
+  assert.equal(mapped.length, 5); // the zeroed void line drops out
+  assert.equal(mapped[0].metadata.aggregation, AGGREGATION.row);
+});
+
+test('resolveAggregation falls back to the shape implied by the headers', () => {
+  assert.equal(resolveAggregation('row', ITEM_HEADER_LIST), AGGREGATION.row);
+  assert.equal(resolveAggregation('nonsense', ITEM_HEADER_LIST), AGGREGATION.daily);
+  assert.equal(resolveAggregation(undefined, parseSpotOnCsv(CSV).headers), AGGREGATION.row);
+});
+
+test('buildPreview suggests daily aggregation for an item-level export', () => {
+  const preview = buildPreview(ITEM_CSV);
+  assert.equal(preview.itemized, true);
+  assert.equal(preview.suggestedAggregation, AGGREGATION.daily);
+  assert.equal(buildPreview(CSV).suggestedAggregation, AGGREGATION.row);
 });
