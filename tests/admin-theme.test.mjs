@@ -5,6 +5,7 @@ import path from 'node:path';
 import {
   FINANCIAL_THEMES,
   ANALYTICS_THEMES,
+  CASHFLOW_THEMES,
   DOCUMENTS_THEMES,
   STATE_TONE,
   stateColor,
@@ -35,6 +36,10 @@ test('Financial Calendar palette: dark and light expose identical tokens', () =>
 
 test('Event Analytics palette: dark and light expose identical tokens', () => {
   assertSameKeys(ANALYTICS_THEMES.dark, ANALYTICS_THEMES.light, 'analytics');
+});
+
+test('Cash Flow palette: dark and light expose identical tokens', () => {
+  assertSameKeys(CASHFLOW_THEMES.dark, CASHFLOW_THEMES.light, 'cashflow');
 });
 
 test('Documents & Templates palette: dark and light expose identical tokens', () => {
@@ -75,7 +80,7 @@ test('authenticated themes expose identical dark/light token keys and safe fallb
 // panel is a solid cream card while dark sits directly on the cosmic backdrop.
 
 test('light revenue accent deepens for contrast on the pale panel', () => {
-  for (const themes of [FINANCIAL_THEMES, ANALYTICS_THEMES]) {
+  for (const themes of [FINANCIAL_THEMES, ANALYTICS_THEMES, CASHFLOW_THEMES]) {
     assert.equal(themes.dark.rev, '#4ade80');
     assert.notEqual(themes.light.rev, themes.dark.rev);
     assert.equal(themes.light.rev, '#047857');
