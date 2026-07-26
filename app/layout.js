@@ -45,13 +45,14 @@ export default function RootLayout({ children }) {
           <MailchimpAttribution />
         </Suspense>
         <CosmosBackground />
-        <AuthenticatedRouteShell>
-          <div className="relative z-10">
+        <AuthenticatedRouteShell
+          navbar={(
             <NavbarVisibility>
               <Navbar />
             </NavbarVisibility>
-            {children}
-          </div>
+          )}
+        >
+          {children}
         </AuthenticatedRouteShell>
       </body>
     </html>

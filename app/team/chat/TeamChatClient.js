@@ -39,7 +39,7 @@ const THEMES = {
     muted: '#5c5c63',
     faint: '#9a948a',
     accent: '#8a5109',
-    pageBg: '#f2efe8',
+    pageBg: 'transparent',
     panelBg: '#ffffff',
     inputBg: '#f5f2ec',
     border: 'rgba(0,0,0,0.12)',

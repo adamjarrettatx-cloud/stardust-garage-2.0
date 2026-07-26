@@ -162,8 +162,8 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
 
   return (
     <main
-      className="max-w-[1400px] mx-auto px-6 py-12 my-6 md:my-10 rounded-[28px] transition-colors duration-150"
-      style={{ background: t.panelBg || 'transparent', boxShadow: t.panelShadow, color: t.text }}
+      className="px-6 py-12 transition-colors duration-150"
+      style={{ color: t.text }}
       data-testid="financial-calendar"
     >
       {/* Header */}

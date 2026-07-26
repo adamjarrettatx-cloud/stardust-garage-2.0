@@ -6,7 +6,6 @@ import Wordmark from './Wordmark';
 
 export default function NavBrand({ logoUrl }) {
   const pathname = usePathname();
-  const isAuthRoute = pathname?.startsWith('/bananas') || pathname?.startsWith('/team');
 
   // Show logo image only on the homepage (/home), Wordmark text elsewhere.
   const showLogo = pathname === '/home' && logoUrl;
@@ -24,7 +23,7 @@ export default function NavBrand({ logoUrl }) {
           className="h-10 w-auto object-contain"
         />
       ) : (
-        <Wordmark size="sm" color={isAuthRoute ? 'var(--auth-text-strong)' : '#ffffff'} />
+        <Wordmark size="sm" color="#ffffff" />
       )}
     </Link>
   );

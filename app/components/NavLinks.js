@@ -27,19 +27,19 @@ export default function NavLinks() {
   const dropdownRef = useRef(null);
   const palette = isAuthRoute
     ? {
-        active: 'var(--auth-text-strong)',
-        inactive: 'var(--auth-muted)',
-        dropdownBg: 'color-mix(in srgb, var(--auth-card-bg) 96%, transparent)',
-        dropdownBorder: 'var(--auth-card-border-strong)',
-        dropdownText: 'var(--auth-muted-strong)',
+        active: '#f5f5f5',
+        inactive: '#8a8a8a',
+        dropdownBg: 'rgba(8,8,12,0.94)',
+        dropdownBorder: 'rgba(255,255,255,0.1)',
+        dropdownText: '#c0c0c0',
         dropdownHover: 'var(--auth-hover-bg)',
-        menuBg: 'color-mix(in srgb, var(--auth-panel-bg) 92%, var(--auth-root-bg))',
-        menuBorder: 'var(--auth-card-border)',
-        menuMuted: 'var(--auth-muted)',
-        menuText: 'var(--auth-text-strong)',
-        menuTextInactive: 'var(--auth-muted-strong)',
-        icon: 'var(--auth-text-strong)',
-        iconMuted: 'var(--auth-muted)',
+        menuBg: 'rgba(3,3,6,0.96)',
+        menuBorder: 'rgba(255,255,255,0.08)',
+        menuMuted: '#8a8a8a',
+        menuText: '#f5f5f5',
+        menuTextInactive: '#c0c0c0',
+        icon: '#f5f5f5',
+        iconMuted: '#8a8a8a',
       }
     : {
         active: '#f5f5f5',
@@ -136,7 +136,7 @@ export default function NavLinks() {
                         key={item.href}
                         href={item.href}
                         onClick={() => setOpenDropdown(null)}
-                        className="block px-5 py-3 text-[13px] font-medium tracking-[0.08em] transition-colors hover:bg-white/5"
+                        className="auth-nav-dropdown-item block px-5 py-3 text-[13px] font-medium tracking-[0.08em] transition-colors"
                         style={{
                           color: isActive(item.href) ? palette.active : palette.dropdownText,
                           background: 'transparent',
