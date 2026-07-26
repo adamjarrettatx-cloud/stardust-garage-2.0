@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {
   GRANULARITIES,
   DEFAULT_BUCKET_COUNT,
+  SALES_DATA_START_DATE,
+  floorBucketKey,
   venueDateString,
   startOfIsoWeek,
   bucketKey,
@@ -173,9 +175,10 @@ test('buildSalesSeries groups by calendar month', () => {
     now: NOW,
   });
 
-  assert.equal(series.length, DEFAULT_BUCKET_COUNT.month);
+  // Clamped at SALES_DATA_START_DATE: Feb–Jul 2026 is 6 buckets, not a full 12.
+  assert.equal(series.length, 6);
   assert.equal(series.at(-1).key, '2026-07');
-  assert.equal(series[0].key, '2025-08');
+  assert.equal(series[0].key, '2026-02');
   assert.equal(series.find((b) => b.key === '2026-06').grossCents, 1000);
   const jul = series.find((b) => b.key === '2026-07');
   assert.equal(jul.grossCents, 5000);
@@ -208,20 +211,134 @@ test('buildAllSalesSeries precomputes every granularity from one order set', () 
   const all = buildAllSalesSeries({ orders: [order('2026-07-15T14:00:00Z', 1500)], now: NOW });
   assert.deepEqual(Object.keys(all).sort(), [...GRANULARITIES].sort());
   for (const g of GRANULARITIES) {
-    assert.equal(all[g].length, DEFAULT_BUCKET_COUNT[g]);
+    // Day/week windows sit entirely after Feb 2026; the month window is clamped.
+    assert.equal(all[g].length, g === 'month' ? 6 : DEFAULT_BUCKET_COUNT[g]);
     assert.equal(summarizeSeries(all[g]).grossCents, 1500);
   }
 });
 
 test('earliestWindowStartIso covers the widest default window', () => {
   const iso = earliestWindowStartIso(NOW);
-  // 12 months back from Jul 2026 is Aug 2025; the helper pads a day earlier.
-  assert.equal(iso, '2025-07-31T00:00:00.000Z');
+  // 12 months back from Jul 2026 would be Aug 2025, but the query bound is
+  // clamped to SALES_DATA_START_DATE (padded a day earlier for the UTC compare)
+  // so we never ask the database for pre-history rows.
+  assert.equal(iso, '2026-01-31T00:00:00.000Z');
   // Every default window must start at or after this bound.
   for (const g of GRANULARITIES) {
     const first = buildSalesSeries({ granularity: g, now: NOW })[0].startDate;
     assert.ok(Date.parse(`${first}T00:00:00Z`) >= Date.parse(iso), `${g} window starts before the query bound`);
   }
+});
+
+// ---------------------------------------------------------------------------
+// Hard lower bound: nothing before SALES_DATA_START_DATE (2026-02-01, Austin).
+// ---------------------------------------------------------------------------
+
+test('SALES_DATA_START_DATE is the documented start of tracked history', () => {
+  assert.equal(SALES_DATA_START_DATE, '2026-02-01');
+});
+
+test('floorBucketKey resolves the oldest allowed bucket per granularity', () => {
+  assert.equal(floorBucketKey('day'), '2026-02-01');
+  assert.equal(floorBucketKey('month'), '2026-02');
+  // Feb 1 2026 is a SUNDAY, so its ISO week starts the preceding Monday.
+  assert.equal(floorBucketKey('week'), '2026-01-26');
+});
+
+test('month view clamps a 12-month lookback to February 2026', () => {
+  const series = buildSalesSeries({ granularity: 'month', now: NOW });
+  assert.equal(series.length, 6); // Feb, Mar, Apr, May, Jun, Jul
+  assert.deepEqual(series.map((b) => b.key), ['2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07']);
+});
+
+test('week view clamps to the ISO week containing Feb 1 2026', () => {
+  // 12 weeks back from the week of Mar 9 2026 would reach mid-December 2025.
+  const series = buildSalesSeries({ granularity: 'week', now: new Date('2026-03-11T12:00:00Z') });
+  assert.equal(series[0].key, '2026-01-26');
+  assert.ok(series.length < DEFAULT_BUCKET_COUNT.week, 'expected the week window to be clamped');
+  assert.ok(series.every((b) => b.key >= '2026-01-26'));
+});
+
+test('day view clamps a lookback that would cross Feb 1 2026', () => {
+  // The default 30-day window does not reach the bound from July, so widen it
+  // via `count` to prove the clamp is real and not just unreachable.
+  const series = buildSalesSeries({ granularity: 'day', count: 60, now: new Date('2026-02-20T12:00:00Z') });
+  assert.equal(series[0].key, '2026-02-01');
+  assert.equal(series.at(-1).key, '2026-02-20');
+  assert.equal(series.length, 20);
+});
+
+test('the default 30-day window is untouched when it sits after the bound', () => {
+  const series = buildSalesSeries({ granularity: 'day', now: NOW });
+  assert.equal(series.length, DEFAULT_BUCKET_COUNT.day);
+  assert.equal(series[0].key, '2026-06-16');
+});
+
+test('every granularity is empty when today predates tracked history', () => {
+  const before = new Date('2026-01-10T12:00:00Z');
+  for (const g of GRANULARITIES) {
+    assert.deepEqual(buildSalesSeries({ granularity: g, now: before }), [], `${g} should be empty`);
+  }
+  const all = buildAllSalesSeries({ orders: [order('2026-01-09T14:00:00Z', 5000)], now: before });
+  for (const g of GRANULARITIES) assert.deepEqual(all[g], []);
+});
+
+test('day/month views are empty the day before the bound, non-empty on it', () => {
+  const jan31 = new Date('2026-01-31T18:00:00Z'); // noon in Austin, Jan 31
+  assert.deepEqual(buildSalesSeries({ granularity: 'day', now: jan31 }), []);
+  assert.deepEqual(buildSalesSeries({ granularity: 'month', now: jan31 }), []);
+
+  const feb1 = new Date('2026-02-01T18:00:00Z');
+  const day = buildSalesSeries({ granularity: 'day', now: feb1 });
+  assert.equal(day.length, 1);
+  assert.equal(day[0].key, '2026-02-01');
+  const month = buildSalesSeries({ granularity: 'month', now: feb1 });
+  assert.deepEqual(month.map((b) => b.key), ['2026-02']);
+});
+
+test('the week straddling the bound renders once today reaches that week', () => {
+  // Mon Jan 26 2026 is inside the week that contains Feb 1, so the bucket is
+  // allowed even though "today" is still January.
+  const inWeek = buildSalesSeries({ granularity: 'week', now: new Date('2026-01-28T18:00:00Z') });
+  assert.deepEqual(inWeek.map((b) => b.key), ['2026-01-26']);
+  // The prior week is entirely before tracked history.
+  assert.deepEqual(buildSalesSeries({ granularity: 'week', now: new Date('2026-01-21T18:00:00Z') }), []);
+});
+
+test('pre-bound orders never count, even inside the straddling first week', () => {
+  const series = buildSalesSeries({
+    granularity: 'week',
+    now: new Date('2026-02-04T12:00:00Z'),
+    orders: [
+      order('2026-01-27T18:00:00Z', 9999), // Tue Jan 27 — same ISO week, out of history
+      order('2026-01-31T18:00:00Z', 8888), // Sat Jan 31 — still out
+      order('2026-02-01T18:00:00Z', 1200), // Sun Feb 1 — the one in-range day
+    ],
+  });
+
+  const first = series.find((b) => b.key === '2026-01-26');
+  assert.equal(first.grossCents, 1200, 'only the Feb 1 order may count');
+  assert.equal(first.ordersCount, 1);
+  assert.equal(summarizeSeries(series).grossCents, 1200);
+});
+
+test('pre-bound orders are excluded from day and month views too', () => {
+  const orders = [
+    order('2026-01-31T18:00:00Z', 7777),
+    order('2026-02-02T18:00:00Z', 300),
+  ];
+  for (const g of ['day', 'month']) {
+    const series = buildSalesSeries({ granularity: g, now: new Date('2026-02-10T12:00:00Z'), orders });
+    assert.equal(summarizeSeries(series).grossCents, 300, `${g} must drop the January order`);
+    assert.equal(summarizeSeries(series).ordersCount, 1);
+  }
+});
+
+test('earliestWindowStartIso never asks for rows before the bound', () => {
+  // Even from a date whose 12-month lookback is deep in 2025.
+  assert.equal(earliestWindowStartIso(new Date('2026-03-01T12:00:00Z')), '2026-01-31T00:00:00.000Z');
+  // And from before the bound entirely.
+  assert.equal(earliestWindowStartIso(new Date('2026-01-05T12:00:00Z')), '2026-01-31T00:00:00.000Z');
 });
 
 test('summarizeSeries totals gross and order counts', () => {

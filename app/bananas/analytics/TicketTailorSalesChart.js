@@ -12,7 +12,7 @@
 
 import { useMemo, useState } from 'react';
 import { centsToUsd } from '@/lib/event-analytics';
-import { summarizeSeries } from '@/lib/ticket-sales-timeseries';
+import { DEFAULT_BUCKET_COUNT, SALES_DATA_START_DATE, summarizeSeries } from '@/lib/ticket-sales-timeseries';
 
 const TABS = [
   { id: 'day', label: 'By day', window: 'Last 30 days' },
@@ -34,6 +34,17 @@ function niceCeiling(maxCents) {
   return step * 10;
 }
 
+// Label for a clamped window. Deliberately reports SALES_DATA_START_DATE rather
+// than the first bucket's start: the week view's oldest bucket begins Mon Jan 26
+// 2026 (the week straddling the cutoff), and calling that "the start of tracked
+// history" would misstate the policy date by six days.
+function formatHistoryStart(granularity) {
+  const d = new Date(`${SALES_DATA_START_DATE}T00:00:00Z`);
+  return d.toLocaleDateString('en-US', granularity === 'month'
+    ? { timeZone: 'UTC', month: 'long', year: 'numeric' }
+    : { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 function axisMoney(cents) {
   const dollars = cents / 100;
   if (dollars >= 1000) return `$${(dollars / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 })}k`;
@@ -50,6 +61,14 @@ export default function TicketTailorSalesChart({ series, t }) {
   const activeTab = TABS.find((tab) => tab.id === granularity);
   const axisMax = niceCeiling(Math.max(...buckets.map((b) => b.grossCents), 0));
   const hasSales = totals.grossCents > 0;
+
+  // The window is clamped at the start of tracked history, so a view can render
+  // fewer bars than its nominal lookback. Say so rather than claiming "last 12
+  // months" above six bars.
+  const clamped = buckets.length > 0 && buckets.length < DEFAULT_BUCKET_COUNT[granularity];
+  const windowLabel = clamped
+    ? `Since ${formatHistoryStart(granularity)} · start of tracked history`
+    : activeTab.window;
 
   // Thin x-axis labels on dense views so they stay legible instead of colliding.
   const labelEvery = Math.ceil(buckets.length / MAX_AXIS_LABELS) || 1;
@@ -69,7 +88,7 @@ export default function TicketTailorSalesChart({ series, t }) {
             Ticket sales revenue
           </h2>
           <p className="text-[12px] mt-0.5" style={{ color: t.muted }}>
-            {activeTab.window} · by order date · Austin time
+            {windowLabel} · by order date · Austin time
           </p>
         </div>
 
@@ -185,7 +204,11 @@ export default function TicketTailorSalesChart({ series, t }) {
         </div>
       </div>
 
-      {!hasSales && (
+      {buckets.length === 0 ? (
+        <p className="text-[12px] mt-4" style={{ color: t.muted }}>
+          Tracked TicketTailor sales history starts in February 2026 — there is nothing to chart yet.
+        </p>
+      ) : !hasSales && (
         <p className="text-[12px] mt-4" style={{ color: t.muted }}>
           No completed TicketTailor orders recorded in this window yet. Bars appear as the
           order webhook records sales into <code style={{ color: t.mutedStrong }}>ticket_order_attribution</code>.
