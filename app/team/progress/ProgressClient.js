@@ -90,7 +90,7 @@ const ADMIN_THEMES = {
     text: '#1a1a1d',
     muted: '#5c5c63',
     mutedStrong: '#4a4a52',
-    pageBg: '#f2efe8',
+    pageBg: 'transparent',
     cardBg: '#ffffff',
     cardBorder: 'rgba(0,0,0,0.08)',
     tableBorder: 'rgba(0,0,0,0.1)',
@@ -409,7 +409,7 @@ const TEAM_THEMES = {
   light: {
     text: '#1a1a1d',
     muted: '#5c5c63',
-    pageBg: '#f2efe8',
+    pageBg: 'transparent',
     cardBg: '#ffffff',
     emptyBorder: 'rgba(0,0,0,0.08)',
     cardBorder: 'rgba(0,0,0,0.08)',

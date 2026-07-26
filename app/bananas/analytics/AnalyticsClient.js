@@ -30,8 +30,8 @@ export default function AnalyticsClient({ rows, totals, lastFetched, hasAnyMetri
 
   return (
     <main
-      className="max-w-[1100px] mx-auto px-6 py-16 my-6 md:my-10 rounded-[28px] transition-colors duration-150"
-      style={{ background: t.panelBg || 'transparent', boxShadow: t.panelShadow, color: t.text }}
+      className="max-w-[1100px] mx-auto px-6 py-16 transition-colors duration-150"
+      style={{ color: t.text }}
       data-testid="event-analytics"
     >
       <Link

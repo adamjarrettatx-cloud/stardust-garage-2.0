@@ -105,6 +105,14 @@ test('shared inline page header owns the toggle contract for authenticated route
   assert.match(toggleContent, /AuthenticatedThemeToggleControl/);
 });
 
+test('authenticated route shell wraps themed routes in one shared content frame and leaves public routes unframed', () => {
+  const shellContent = fs.readFileSync(path.join(REPO_ROOT, 'app/components/AuthenticatedRouteShell.js'), 'utf8');
+
+  assert.match(shellContent, /data-testid="auth-theme-content-frame"/);
+  assert.match(shellContent, /data-auth-theme-frame="true"/);
+  assert.match(shellContent, /if \(!scope\)/);
+});
+
 test('representative authenticated routes render inline headers and avoid navbar-shell toggle markup', () => {
   const representativeFiles = [
     'app/bananas/page.js',
@@ -139,13 +147,37 @@ test('existing reference pages still render a single inline toggle in their page
   }
 });
 
-test('authenticated theme token swap changes page-surface variables between dark and light', () => {
+test('existing reference pages rely on the shared frame instead of rendering their own outer cream panel', () => {
+  const inlineReferenceFiles = [
+    'app/bananas/analytics/AnalyticsClient.js',
+    'app/bananas/financial-calendar/FinancialCalendarClient.js',
+    'app/team/calendar/CalendarClient.js',
+  ];
+
+  for (const relativePath of inlineReferenceFiles) {
+    const content = fs.readFileSync(path.join(REPO_ROOT, relativePath), 'utf8');
+    assert.doesNotMatch(content, /rounded-\[28px\]/, `${relativePath} should not add a second outer panel radius`);
+    assert.doesNotMatch(content, /background:\s*t\.panelBg/, `${relativePath} should not paint its own outer panel background`);
+    assert.doesNotMatch(content, /boxShadow:\s*t\.panelShadow/, `${relativePath} should not paint its own outer panel shadow`);
+  }
+});
+
+test('authenticated theme token swap keeps the outer shell transparent while changing the inner panel surface', () => {
   const dark = authThemeVars('dark');
   const light = authThemeVars('light');
 
-  assert.notEqual(dark['--auth-root-bg'], light['--auth-root-bg']);
+  assert.equal(dark['--auth-root-bg'], 'transparent');
+  assert.equal(light['--auth-root-bg'], 'transparent');
   assert.notEqual(dark['--auth-panel-bg'], light['--auth-panel-bg']);
+  assert.notEqual(dark['--auth-panel-border'], light['--auth-panel-border']);
   assert.notEqual(dark['--auth-card-bg'], light['--auth-card-bg']);
   assert.notEqual(dark['--auth-input-bg'], light['--auth-input-bg']);
   assert.notEqual(dark['--auth-text'], light['--auth-text']);
+});
+
+test('light theme no longer adds a fixed full-page authenticated backdrop layer', () => {
+  const globalsContent = fs.readFileSync(path.join(REPO_ROOT, 'app/globals.css'), 'utf8');
+
+  assert.doesNotMatch(globalsContent, /\.auth-theme-root::before/);
+  assert.match(globalsContent, /\.auth-theme-frame\s*\{/);
 });
