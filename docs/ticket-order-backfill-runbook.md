@@ -52,7 +52,32 @@ writes are server-side by design.
 > secrets live there, run the script with `node --env-file=.env.local ...`
 > (see the exact command below) or export the three variables into the shell.
 
-## Procedure
+## Two ways to run it
+
+**Option A — the admin button (easiest, no secrets to handle).** The deployed
+app already has `TICKETTAILOR_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` in its
+server runtime, so the owner never has to put them in a shell:
+
+1. Sign in as the owner and open `/bananas/analytics`.
+2. Click **Backfill historical TT orders (one-time)**. The first click is always
+   a dry run — it writes nothing.
+3. Read the inline summary and apply the same sanity checks as step 2 below.
+   The date range must start in early February.
+4. Click **Confirm — write to database**. The control then shows a
+   "Backfill completed" line with inserted / already-present counts.
+
+The route behind it is `POST /api/admin/backfill-tt-orders`, gated by
+`requireOwner()` plus a same-origin check, taking `{ dryRun: boolean }` that
+defaults to `true` so a bare POST cannot write.
+
+**Option B — the CLI**, below, for anyone who prefers a shell. Both paths run
+the same logic (`lib/tt-order-backfill.js` via
+`lib/tt-order-backfill-runner.js`), so they behave identically.
+
+The prerequisites table above applies to Option B only; Option A needs nothing
+beyond the env vars the app already has in production.
+
+## Procedure (CLI)
 
 ### 1. Dry run first — always
 
@@ -185,7 +210,10 @@ printed date range is the check: it must begin in early February.
 
 | File | Role |
 | --- | --- |
-| `scripts/backfill-ticket-order-attribution.mjs` | The script (I/O, CLI, batching) |
+| `app/api/admin/backfill-tt-orders/route.js` | Owner-gated route behind the admin button |
+| `app/bananas/analytics/BackfillTTOrdersButton.js` | The dry-run-then-confirm UI control |
+| `scripts/backfill-ticket-order-attribution.mjs` | The CLI alternative (I/O, flags, batching) |
+| `lib/tt-order-backfill-runner.js` | Shared fetch → map → insert orchestration |
 | `lib/tt-order-backfill.js` | Pure mapping/filtering/pagination logic |
 | `tests/tt-order-backfill.test.mjs` | Unit tests over mocked API responses |
 | `lib/ticket-sales-timeseries.js` | The chart's bucketing; owns `SALES_DATA_START_DATE` |

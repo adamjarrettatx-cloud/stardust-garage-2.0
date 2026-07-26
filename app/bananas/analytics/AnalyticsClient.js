@@ -6,6 +6,7 @@ import AuthenticatedThemeToggleControl from '@/app/components/AuthenticatedTheme
 import { ANALYTICS_THEMES as THEMES } from '@/lib/admin-theme';
 import RefreshMetricsButton from './RefreshMetricsButton';
 import RowRefreshButton from './RowRefreshButton';
+import BackfillTTOrdersButton from './BackfillTTOrdersButton';
 import TicketTailorSalesChart from './TicketTailorSalesChart';
 import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
 
@@ -64,11 +65,15 @@ export default function AnalyticsClient({ rows, totals, salesSeries, lastFetched
 
       <TicketTailorSalesChart series={salesSeries} t={t} />
 
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <RefreshMetricsButton />
         <span className="text-[12px]" style={{ color: t.muted }}>
           Metrics last fetched: <span style={{ color: t.mutedStrong }}>{fmtFetched(lastFetched)}</span>
         </span>
+      </div>
+
+      <div className="mb-8">
+        <BackfillTTOrdersButton t={t} />
       </div>
 
       {/* Summary cards */}
