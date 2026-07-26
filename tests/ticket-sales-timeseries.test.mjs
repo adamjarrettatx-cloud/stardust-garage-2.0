@@ -12,6 +12,8 @@ import {
   buildSalesSeries,
   buildAllSalesSeries,
   earliestWindowStartIso,
+  fetchAllOrderPages,
+  ORDER_PAGE_SIZE,
   summarizeSeries,
 } from '../lib/ticket-sales-timeseries.js';
 
@@ -80,6 +82,67 @@ test('orderSaleInstantMs falls back to created_at and rejects junk', () => {
   assert.equal(orderSaleInstantMs({ created_at: 'not-a-date' }), null);
   assert.equal(orderSaleInstantMs({}), null);
   assert.equal(orderSaleInstantMs(null), null);
+});
+
+// ---------------------------------------------------------------------------
+// The exact row shape the analytics page reads. `raw_payload->>created_at` is a
+// PostgREST text extraction, so TicketTailor's unix-SECONDS timestamp arrives as
+// a NUMERIC STRING ('1785013826'), never an ISO date — `new Date()` on that
+// string is Invalid Date, so it has to go through Number() * 1000.
+// ---------------------------------------------------------------------------
+
+// A row as `select(...tt_created_at:raw_payload->>created_at)` returns it: the
+// TT instant as an epoch-seconds string, and our own insert time as ISO.
+const dbRow = (ttCreatedAtSeconds, cents, rowCreatedAtIso, status = 'completed') => ({
+  total_paid_cents: cents,
+  status,
+  created_at: rowCreatedAtIso,
+  tt_created_at: String(ttCreatedAtSeconds),
+});
+
+test('an epoch-seconds string tt_created_at resolves to the right instant', () => {
+  // Sat 25 Jul 2026 21:10:26Z = 16:10 in Austin. Not an ISO string.
+  assert.ok(Number.isNaN(new Date('1785013826').getTime()), 'literal must not parse as a date');
+  assert.equal(orderSaleInstantMs({ tt_created_at: '1785013826' }), 1785013826000);
+  assert.equal(venueDateString(1785013826000), '2026-07-25');
+});
+
+test('epoch-seconds string orders bucket into the right day, week and month', () => {
+  const now = new Date('2026-07-26T12:00:00Z');
+  // A backfilled February order alongside a recent one, both epoch-seconds
+  // strings. `created_at` is deliberately a *different* month so a regression
+  // that fell back to the row insert time would bucket these wrongly.
+  const orders = [
+    dbRow(1771034400, 74000, '2026-07-26T09:00:00Z'), // 2026-02-14T02:00Z -> Feb 13 in Austin
+    dbRow(1785013826, 2500, '2026-07-26T09:00:00Z'), // 2026-07-25T21:10Z -> Jul 25 in Austin
+  ];
+
+  const all = buildAllSalesSeries({ orders, now });
+
+  const feb = all.month.find((b) => b.key === '2026-02');
+  assert.equal(feb.grossCents, 74000, 'February history must appear in the month view');
+  assert.equal(feb.ordersCount, 1);
+  assert.equal(all.month.find((b) => b.key === '2026-07').grossCents, 2500);
+  assert.equal(summarizeSeries(all.month).grossCents, 76500);
+
+  // Feb 13 is 5+ months back, so it is outside the 30-day and 12-week windows —
+  // only the July order lands there.
+  assert.equal(all.day.find((b) => b.key === '2026-07-25').grossCents, 2500);
+  assert.equal(summarizeSeries(all.day).grossCents, 2500);
+  // Jul 25 2026 is a Saturday: ISO week of Mon Jul 20.
+  assert.equal(all.week.find((b) => b.key === '2026-07-20').grossCents, 2500);
+  assert.equal(summarizeSeries(all.week).grossCents, 2500);
+});
+
+test('an epoch-seconds string is not mistaken for a millisecond timestamp', () => {
+  // 1774031400 read as MILLISECONDS would be Jan 1970 and get dropped by the
+  // SALES_DATA_START_DATE clamp, emptying the whole month view.
+  const series = buildSalesSeries({
+    granularity: 'month',
+    now: new Date('2026-03-25T12:00:00Z'),
+    orders: [dbRow(1774031400, 5000, '2026-07-26T09:00:00Z')], // 2026-03-20T18:30Z
+  });
+  assert.equal(series.find((b) => b.key === '2026-03').grossCents, 5000);
 });
 
 test('buildSalesSeries returns a full trailing window ending at today', () => {
@@ -339,6 +402,77 @@ test('earliestWindowStartIso never asks for rows before the bound', () => {
   assert.equal(earliestWindowStartIso(new Date('2026-03-01T12:00:00Z')), '2026-01-31T00:00:00.000Z');
   // And from before the bound entirely.
   assert.equal(earliestWindowStartIso(new Date('2026-01-05T12:00:00Z')), '2026-01-31T00:00:00.000Z');
+});
+
+// ---------------------------------------------------------------------------
+// Paged order read. PostgREST caps a response at the project's max-rows setting
+// and ignores a larger .limit(), so a single request silently truncates once the
+// table outgrows the cap — which is what hid the backfilled Feb–Jun history.
+// ---------------------------------------------------------------------------
+
+// A fake table of `total` rows served through .range()-style windows, recording
+// the windows it was asked for. `serverCap` mirrors PostgREST's max-rows: a
+// requested range wider than the cap still yields at most that many rows.
+function pagedSource(total, serverCap = ORDER_PAGE_SIZE) {
+  const rows = Array.from({ length: total }, (_, i) => ({ n: i }));
+  const calls = [];
+  return {
+    calls,
+    fetchPage: async ({ from, to }) => {
+      calls.push([from, to]);
+      return rows.slice(from, Math.min(to + 1, from + serverCap));
+    },
+  };
+}
+
+test('fetchAllOrderPages reads past a single max-rows page', async () => {
+  const source = pagedSource(1434);
+  const orders = await fetchAllOrderPages(source);
+
+  // The bug: one request would have returned 1000 of these and silently dropped
+  // the rest.
+  assert.equal(orders.length, 1434, 'all rows must be read, not just the first page');
+  assert.deepEqual(orders.map((r) => r.n), Array.from({ length: 1434 }, (_, i) => i));
+  assert.deepEqual(source.calls, [[0, 999], [1000, 1999], [1434, 2433]]);
+});
+
+test('fetchAllOrderPages reads everything when the server cap is below the page size', async () => {
+  // A project configured with max-rows=300 hands back short pages from the very
+  // first request, so "short page means last page" would truncate at 300.
+  const source = pagedSource(700, 300);
+  const orders = await fetchAllOrderPages(source);
+
+  assert.equal(orders.length, 700);
+  assert.deepEqual(orders.map((r) => r.n), Array.from({ length: 700 }, (_, i) => i));
+  // Offsets advance by rows actually received, not by the requested page size.
+  assert.deepEqual(source.calls, [[0, 999], [300, 1299], [600, 1599], [700, 1699]]);
+});
+
+test('fetchAllOrderPages ends on an empty page', async () => {
+  const source = pagedSource(2000);
+  assert.equal((await fetchAllOrderPages(source)).length, 2000);
+  assert.deepEqual(source.calls, [[0, 999], [1000, 1999], [2000, 2999]]);
+
+  const small = pagedSource(400);
+  assert.equal((await fetchAllOrderPages(small)).length, 400);
+  assert.deepEqual(small.calls, [[0, 999], [400, 1399]]);
+});
+
+test('fetchAllOrderPages degrades to an empty chart when the read fails', async () => {
+  // The page returns [] on a Supabase error (missing table, bad grant).
+  assert.deepEqual(await fetchAllOrderPages({ fetchPage: async () => [] }), []);
+  assert.deepEqual(await fetchAllOrderPages({ fetchPage: async () => null }), []);
+});
+
+test('a paged read feeds the same series a single read would have', async () => {
+  const source = {
+    fetchPage: async ({ from }) => (from === 0
+      ? [dbRow(1771034400, 74000, '2026-07-26T09:00:00Z')]
+      : []),
+  };
+  const orders = await fetchAllOrderPages(source);
+  const series = buildSalesSeries({ orders, granularity: 'month', now: new Date('2026-07-26T12:00:00Z') });
+  assert.equal(series.find((b) => b.key === '2026-02').grossCents, 74000);
 });
 
 test('summarizeSeries totals gross and order counts', () => {
