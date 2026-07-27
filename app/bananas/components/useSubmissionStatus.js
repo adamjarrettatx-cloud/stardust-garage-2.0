@@ -5,12 +5,10 @@ import { useRouter } from 'next/navigation';
 import { adminFetch } from '@/lib/admin-fetch';
 import { normalizeSubmissionStatus, submissionStatusPresentation } from '@/lib/submission-workflow';
 
-function buildNotice(previousStatus, nextStatus, changed) {
+function buildNotice(nextStatus, changed) {
   if (!changed) {
     return `Already ${submissionStatusPresentation(nextStatus).label.toLowerCase()}.`;
   }
-  if (nextStatus === 'reviewed' && previousStatus === 'new') return 'Marked as seen.';
-  if (nextStatus === 'new') return 'Marked as new.';
   return `Updated to ${submissionStatusPresentation(nextStatus).label.toLowerCase()}.`;
 }
 
@@ -32,7 +30,7 @@ export default function useSubmissionStatus(type, id, initialStatus) {
         body: JSON.stringify({ status: nextStatus }),
       });
       setStatus(normalizeSubmissionStatus(body.status));
-      setNotice(buildNotice(body.previousStatus, body.status, body.changed));
+      setNotice(buildNotice(body.status, body.changed));
       router.refresh();
       return body;
     } catch (err) {

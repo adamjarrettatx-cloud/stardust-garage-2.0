@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import DeleteSignupButton from './DeleteSignupButton';
 import SignupStatusButton from '@/app/bananas/components/SignupStatusButton';
 import SubmissionTabs from '@/app/bananas/components/SubmissionTabs';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
@@ -26,7 +25,7 @@ export default function SignupsClient({ signups, csvHref }) {
   const phoneCount = signups.filter((s) => s.contact_type === 'phone').length;
   const newCount = signups.filter((s) => normalizeSubmissionStatus(s.status) === 'new').length;
   const visible = filterSubmissionRowsByStatus(signups, activeTab);
-  const activeLabel = activeTab === 'reviewed' ? 'seen' : activeTab.toLowerCase();
+  const activeLabel = activeTab.toLowerCase();
 
   return (
     <>
@@ -101,10 +100,7 @@ export default function SignupsClient({ signups, csvHref }) {
                     </td>
                     <td className="px-6 py-4 text-[13px]" style={{ color: 'var(--auth-muted)' }}>{formatDate(signup.created_at)}</td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <SignupStatusButton signupId={signup.id} currentStatus={signup.status || 'new'} />
-                        <DeleteSignupButton signupId={signup.id} />
-                      </div>
+                      <SignupStatusButton signupId={signup.id} currentStatus={signup.status || 'new'} />
                     </td>
                   </tr>
                 ))}

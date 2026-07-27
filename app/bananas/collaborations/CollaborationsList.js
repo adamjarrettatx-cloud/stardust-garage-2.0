@@ -24,7 +24,7 @@ const ROLE_LABELS = {
 export default function CollaborationsList({ collabs }) {
   const [activeTab, setActiveTab] = useState('new');
   const visible = filterSubmissionRowsByStatus(collabs, activeTab);
-  const activeLabel = activeTab === 'reviewed' ? 'seen' : activeTab.toLowerCase();
+  const activeLabel = activeTab.toLowerCase();
 
   return (
     <>

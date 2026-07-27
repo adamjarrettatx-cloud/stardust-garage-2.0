@@ -25,7 +25,7 @@ const TYPE_LABELS = {
 export default function VenueInquiriesList({ inquiries }) {
   const [activeTab, setActiveTab] = useState('new');
   const visible = filterSubmissionRowsByStatus(inquiries, activeTab);
-  const activeLabel = activeTab === 'reviewed' ? 'seen' : activeTab.toLowerCase();
+  const activeLabel = activeTab.toLowerCase();
 
   return (
     <>
