@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createClient as createServerClient } from '@/lib/supabase/server';
+import { getRequestUser } from '@/lib/auth-helpers';
 import { STRIPE_PRICES } from '@/lib/stripe-prices';
 
 // POST /api/stripe/checkout
@@ -10,9 +10,9 @@ import { STRIPE_PRICES } from '@/lib/stripe-prices';
 // the checkout URL for the client to redirect to.
 export async function POST(request) {
   try {
-    // Verify the caller is logged in
-    const serverClient = await createServerClient();
-    const { data: { user } } = await serverClient.auth.getUser();
+    // Verify the caller is logged in — session cookie (website) or
+    // `Authorization: Bearer <access token>` (mobile app).
+    const user = await getRequestUser(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
