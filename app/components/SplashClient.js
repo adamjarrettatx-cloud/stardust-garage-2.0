@@ -26,8 +26,11 @@ export default function SplashClient({ logoUrl }) {
 
       <div className="flex flex-col items-center -mt-12 md:-mt-20">
         <div className="flex flex-col items-center mb-8 md:mb-10">
-          <h1 className="text-[64px] md:text-[110px] leading-[0.9] tracking-[0.02em] text-white text-center" style={{ fontFamily: "'Moshra Aesthetic', 'Cormorant Unicase', serif", fontWeight: 400 }}>STARDUST</h1>
-          <div className="text-[28px] md:text-[44px] tracking-[0.32em] text-white mt-1 md:mt-2" style={{ fontFamily: "'Inter', sans-serif", fontWeight: 400 }}>GARAGE</div>
+          <img
+            src="/logos/wordmark-white.svg"
+            alt="Stardust Garage"
+            style={{ width: 'clamp(250px, 65.78947368421053vw, 440px)', height: 'auto', display: 'block' }}
+          />
         </div>
 
         <Link

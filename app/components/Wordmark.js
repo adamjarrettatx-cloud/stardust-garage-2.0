@@ -31,6 +31,17 @@ const SIZES = {
   },
 };
 
+// The "xl" size (homepage hero / splash) renders the official wordmark artwork
+// instead of live text, per the brand refresh. Other sizes keep the live
+// text rendering below.
+const WORDMARK_IMAGE_SRC = '/logos/wordmark-white.svg';
+// Widths chosen so the rendered height roughly matches the previous live-text
+// hero sizing (mobile ~94px tall, desktop ~164px tall) at the artwork's
+// native 1006:376 aspect ratio.
+const WORDMARK_IMAGE_SIZES = {
+  xl: { mobile: 250, desktop: 440 },
+};
+
 export default function Wordmark({
   size = 'sm',
   align = 'start',
@@ -39,6 +50,22 @@ export default function Wordmark({
 }) {
   const s = SIZES[size] || SIZES.sm;
   const alignClass = align === 'center' ? 'items-center' : 'items-start';
+
+  const imageSize = WORDMARK_IMAGE_SIZES[size];
+  if (imageSize) {
+    const width = `clamp(${imageSize.mobile}px, ${
+      (imageSize.mobile / 380) * 100
+    }vw, ${imageSize.desktop}px)`;
+    return (
+      <span className={`flex flex-col leading-none ${alignClass} ${className}`}>
+        <img
+          src={WORDMARK_IMAGE_SRC}
+          alt="Stardust Garage"
+          style={{ width, height: 'auto', display: 'block' }}
+        />
+      </span>
+    );
+  }
 
   // Use clamp() for fluid responsive sizing between mobile and desktop values
   const stardustSize = `clamp(${s.stardust.mobile}px, ${
