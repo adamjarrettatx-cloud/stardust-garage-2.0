@@ -4,13 +4,14 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { centsToUsd } from '@/lib/event-analytics';
 import {
-  CATEGORY,
   currentMonthRange,
   filterTransactions,
+  monthlyOperatingPnl,
   monthlyTrend,
   summarizeByAccount,
   summarizeByCategory,
-  summarizeLedger,
+  summarizeFinancing,
+  summarizeOperating,
   yearToDateRange,
 } from '@/lib/financial-ledger';
 import AuthenticatedThemeToggleControl from '@/app/components/AuthenticatedThemeToggleControl';
@@ -23,6 +24,15 @@ import SyncTicketTailorButton from './SyncTicketTailorButton';
 const SOURCE_LABEL = {
   tickettailor: 'TicketTailor',
   spoton_csv: 'SpotOn CSV',
+};
+
+// Badges on the category rollup, so P&L lines are distinguishable from financing
+// at a glance. Financing is deliberately neutral-grey: it is not a win or a loss,
+// it is capital moving in or out.
+const KIND = {
+  revenue: { label: 'Revenue', color: (t) => t.rev },
+  expense: { label: 'Expense', color: (t) => t.warn },
+  financing: { label: 'Financing', color: (t) => t.mutedStrong },
 };
 
 function fmtDate(iso) {
@@ -56,13 +66,11 @@ export default function CashFlowClient({
     () => filterTransactions(transactions, { start, end }),
     [transactions, start, end],
   );
-  const totals = useMemo(() => summarizeLedger(inRange), [inRange]);
+  const operating = useMemo(() => summarizeOperating(inRange), [inRange]);
+  const financing = useMemo(() => summarizeFinancing(inRange), [inRange]);
+  const pnlMonths = useMemo(() => monthlyOperatingPnl(inRange, { start, end }), [inRange, start, end]);
   const byAccount = useMemo(() => summarizeByAccount(inRange, accounts), [inRange, accounts]);
   const byCategory = useMemo(() => summarizeByCategory(inRange, accounts), [inRange, accounts]);
-  const ownerContributionCents = useMemo(
-    () => byCategory.find((c) => c.category === CATEGORY.ownerContribution)?.inflowCents || 0,
-    [byCategory],
-  );
   const trend = useMemo(
     () => monthlyTrend(transactions, { months: trendMonths, today }),
     [transactions, trendMonths, today],
@@ -92,6 +100,7 @@ export default function CashFlowClient({
   const presetStyle = { borderColor: t.ghostBorder, color: t.ghostText };
   const gridCols = 'grid-cols-[92px_1fr_120px_100px_110px]';
   const drillCols = 'grid-cols-[92px_150px_1fr_64px_110px]';
+  const pnlCols = 'grid-cols-[1fr_110px_110px_110px_120px]';
 
   return (
     <main
@@ -120,9 +129,10 @@ export default function CashFlowClient({
         </div>
       </div>
       <p className="mb-6 text-[14px]" style={{ color: t.muted }}>
-        Macro-level money in vs money out across every account. Phase 1 covers TicketTailor (from the cached
-        sales metrics) and SpotOn POS (from CSV uploads). This is not itemized bookkeeping — sales tax,
-        processing fees, and contract splits are not deducted.
+        Operating profit and loss first — revenue the business earned less what it spent to operate. Owner
+        capital is reported separately under Financing, because money you put in is not money the business
+        made. This is not itemized bookkeeping — sales tax, processing fees, and contract splits are not
+        deducted, and internal transfers between accounts are excluded throughout.
       </p>
 
       {!migrationApplied && (
@@ -201,16 +211,100 @@ export default function CashFlowClient({
         </div>
       </div>
 
-      {/* Totals */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+      {/* Operating P&L. Financing is deliberately NOT in this group. */}
+      <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase mb-3" style={{ color: t.muted }}>
+        Profit &amp; loss <span style={{ color: t.faint }}>· operating only</span>
+      </h2>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" data-testid="cf-pnl-cards">
         {[
-          { label: 'Money in', value: centsToUsd(totals.inflowCents), color: t.rev },
-          { label: 'Money out', value: centsToUsd(totals.outflowCents), color: t.warn },
-          { label: 'Net', value: centsToUsd(totals.netCents), color: totals.netCents < 0 ? t.err : t.rev },
-          // A subset of "Money in", not an addition to it — owner equity is broken
-          // out because how much of the cash is the owner's is asked constantly.
-          { label: 'Owner contributions', value: centsToUsd(ownerContributionCents), color: t.rev, testId: 'cf-owner-contributions' },
-          { label: 'Transactions', value: totals.counted, color: t.muted },
+          { label: 'Revenue', value: centsToUsd(operating.revenueCents), color: t.rev, testId: 'cf-revenue' },
+          { label: 'Operating expenses', value: centsToUsd(operating.expenseCents), color: t.warn, testId: 'cf-expenses' },
+          {
+            label: 'Net operating income',
+            value: centsToUsd(operating.netCents),
+            color: operating.netCents < 0 ? t.err : t.rev,
+            testId: 'cf-net-operating-income',
+          },
+          { label: 'P&L transactions', value: operating.counted, color: t.muted },
+        ].map((card) => (
+          <div
+            key={card.label}
+            data-testid={card.testId}
+            className="rounded-[14px] border p-5"
+            style={{ background: t.cardBg, borderColor: t.cardBorder }}
+          >
+            <div className="text-[10px] font-semibold tracking-[0.14em] uppercase mb-1.5" style={{ color: card.color }}>
+              {card.label}
+            </div>
+            <div className="text-[22px] font-extrabold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.textStrong }}>
+              {card.value}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Running P&L: is the business profitable, and is that improving? */}
+      <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase mb-1" style={{ color: t.muted }}>
+        Running P&amp;L
+      </h2>
+      <p className="mb-3 text-[12px]" style={{ color: t.faint }}>
+        Operating revenue less operating expenses per month, and the cumulative net across the selected range.
+      </p>
+      {pnlMonths.length === 0 ? (
+        <p className="text-[13px] mb-8" style={{ color: t.muted }}>
+          No operating activity in this date range.
+        </p>
+      ) : (
+        <div
+          className="rounded-[12px] border overflow-hidden mb-8"
+          style={{ background: t.cardBg, borderColor: t.cardBorder }}
+          data-testid="cf-running-pnl"
+        >
+          <div
+            className={`grid ${pnlCols} gap-2 px-4 py-2.5 text-[11px] font-semibold tracking-[0.08em] uppercase`}
+            style={{ color: t.muted, borderBottom: `1px solid ${t.tableBorder}` }}
+          >
+            <span>Month</span>
+            <span className="text-right">Revenue</span>
+            <span className="text-right">Expenses</span>
+            <span className="text-right">Net</span>
+            <span className="text-right">Cumulative</span>
+          </div>
+          {pnlMonths.map((month) => (
+            <div
+              key={month.key}
+              className={`grid ${pnlCols} gap-2 px-4 py-3 text-[13px] items-baseline`}
+              style={{ borderTop: `1px solid ${t.rowBorder}` }}
+            >
+              <span style={{ color: t.mutedStrong }}>{month.label}</span>
+              <span className="text-right" style={{ color: t.rev }}>{centsToUsd(month.revenueCents)}</span>
+              <span className="text-right" style={{ color: t.warn }}>{centsToUsd(month.expenseCents)}</span>
+              <span className="text-right font-semibold" style={{ color: month.netCents < 0 ? t.err : t.rev }}>
+                {centsToUsd(month.netCents)}
+              </span>
+              <span
+                className="text-right font-extrabold"
+                style={{ color: month.cumulativeNetCents < 0 ? t.err : t.rev }}
+              >
+                {centsToUsd(month.cumulativeNetCents)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Financing — real cash, but never part of the P&L above. */}
+      <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase mb-1" style={{ color: t.muted }}>
+        Financing <span style={{ color: t.faint }}>· excluded from P&amp;L</span>
+      </h2>
+      <p className="mb-3 text-[12px]" style={{ color: t.faint }}>
+        Capital moving between you and the business. Not revenue, not expense.
+      </p>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8" data-testid="cf-financing-cards">
+        {[
+          { label: 'Owner contributions', value: centsToUsd(financing.contributionsCents), color: t.mutedStrong, testId: 'cf-owner-contributions' },
+          { label: 'Owner draws', value: centsToUsd(financing.distributionsCents), color: t.mutedStrong },
+          { label: 'Net financing', value: centsToUsd(financing.netCents), color: t.mutedStrong },
         ].map((card) => (
           <div
             key={card.label}
@@ -296,6 +390,12 @@ export default function CashFlowClient({
                         {open ? '▾' : '▸'}
                       </span>
                       {category.category}
+                      <span
+                        className="ml-2 align-middle text-[9px] font-semibold tracking-[0.10em] uppercase rounded-[4px] px-1.5 py-0.5 border"
+                        style={{ color: KIND[category.kind].color(t), borderColor: KIND[category.kind].color(t) }}
+                      >
+                        {KIND[category.kind].label}
+                      </span>
                     </span>
                     <span className="text-[12px]" style={{ color: t.muted }}>
                       <span style={{ color: t.rev }}>{centsToUsd(category.inflowCents)}</span> in ·{' '}
