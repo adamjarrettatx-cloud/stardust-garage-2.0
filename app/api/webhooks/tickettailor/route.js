@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isMailchimpConfigured, upsertOrder } from '@/lib/mailchimp';
 import { syncMemberTicketsForOrder } from '@/lib/member-tickets';
+import { sendPush, ticketConfirmedPush } from '@/lib/push';
 
 // TEMP DIAGNOSTIC: writes every request outcome (including skips/errors) to
 // webhook_debug_log so we can see exactly what Ticket Tailor is sending,
@@ -143,13 +144,17 @@ export async function POST(request) {
   // FK) by the TT event series id — this is how events.tt_event_series_id
   // links a Ticket Tailor series to a row in our own events table.
   let localEventId = null;
+  let localEventTitle = null;
   if (ttEventSeriesId) {
     const { data: localEvent } = await admin
       .from('events')
       .select('id, title')
       .eq('tt_event_series_id', ttEventSeriesId)
       .maybeSingle();
-    if (localEvent) localEventId = localEvent.id;
+    if (localEvent) {
+      localEventId = localEvent.id;
+      localEventTitle = localEvent.title || null;
+    }
   }
 
   // Only completed orders count as revenue. Still upsert a row for
@@ -157,6 +162,19 @@ export async function POST(request) {
   // completing) are visible, but skip the Mailchimp sync until it's paid.
   const isCompleted = status === 'completed';
   const isCanceled = status === 'canceled' || status === 'cancelled';
+
+  // Read the stored status before the upsert overwrites it, so we can tell a
+  // first-time completion from TT re-sending ORDER.UPDATED for an order that was
+  // already paid — otherwise every redelivery would push "Tickets confirmed!"
+  // at the buyer again.
+  const { data: existingAttribution } = await admin
+    .from('ticket_order_attribution')
+    .select('status')
+    .eq('tt_order_id', orderId)
+    .maybeSingle();
+  const previousStatus =
+    typeof existingAttribution?.status === 'string' ? existingAttribution.status.toLowerCase() : null;
+  const justCompleted = isCompleted && previousStatus !== 'completed';
 
   let matchedClickId = null;
   let matchedMcCid = null;
@@ -247,6 +265,17 @@ export async function POST(request) {
         error_message: `member_tickets_sync_failed order_id=${orderId}: ${String(err?.message || err).slice(0, 2000)}`,
         error_stack: String(err?.stack || '').slice(0, 4000),
       });
+    }
+
+    // One push per order, on the delivery that first sees it paid. Most buyers
+    // have no app account, so `sent: 0` is the normal outcome (see lib/push.js).
+    if (justCompleted) {
+      const payload = ticketConfirmedPush({
+        orderId,
+        eventTitle: localEventTitle || order.event_summary?.name,
+        email: buyerEmail?.trim().toLowerCase(),
+      });
+      if (payload) await sendPush(payload);
     }
 
     // TEMP DIAGNOSTIC: confirm a successful write with the raw payload, so we

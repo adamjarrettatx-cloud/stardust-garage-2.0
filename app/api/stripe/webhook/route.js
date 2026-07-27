@@ -7,6 +7,7 @@ import {
   createCodeForMember,
   getDiscountPercent,
 } from '@/lib/discountCodeUtils';
+import { membershipPaymentFailedPush, membershipPushForTransition, sendPush } from '@/lib/push';
 
 // POST /api/stripe/webhook
 //
@@ -224,12 +225,23 @@ export async function POST(request) {
         .update(updates)
         .eq('id', profile.id);
 
-      return { profileId: profile.id, isActive };
+      // The profile row as it was before this event vs. as it is now — the push
+      // rules key off the transition, since Stripe re-sends
+      // customer.subscription.updated on every renewal and unrelated change.
+      const push = membershipPushForTransition({
+        email: profile.email,
+        previous: profile,
+        next: { ...profile, ...updates },
+      });
+
+      return { profileId: profile.id, isActive, push };
     }
 
     // If a member becomes active during this event, we capture their profile id
     // here and kick off discount-code generation after responding to Stripe.
     let activatedMemberId = null;
+    // Membership pushes are queued here and sent after we respond to Stripe.
+    const pushes = [];
 
     // Handle the events we care about
     switch (event.type) {
@@ -250,6 +262,7 @@ export async function POST(request) {
             const subscription = await subRes.json();
             const result = await syncSubscription(subscription);
             if (result?.isActive) activatedMemberId = result.profileId;
+            if (result?.push) pushes.push(result.push);
           }
         }
         break;
@@ -261,6 +274,7 @@ export async function POST(request) {
         const subscription = event.data.object;
         const result = await syncSubscription(subscription);
         if (result?.isActive) activatedMemberId = result.profileId;
+        if (result?.push) pushes.push(result.push);
         break;
       }
 
@@ -277,6 +291,8 @@ export async function POST(request) {
                 is_active: false,
               })
               .eq('id', profile.id);
+            const push = membershipPaymentFailedPush({ email: profile.email });
+            if (push) pushes.push(push);
           }
         }
         break;
@@ -290,6 +306,9 @@ export async function POST(request) {
     // Respond to Stripe immediately; generate codes fire-and-forget so a slow
     // or failing TT call can never make the webhook time out or error.
     const response = NextResponse.json({ received: true });
+    for (const push of pushes) {
+      sendPush(push);
+    }
     if (activatedMemberId) {
       generateCodesForNewMember(activatedMemberId, supabaseAdmin).catch((err) =>
         console.error('Auto discount code error:', err)
