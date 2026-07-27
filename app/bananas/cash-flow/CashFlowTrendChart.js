@@ -44,10 +44,10 @@ export default function CashFlowTrendChart({ buckets, t, months }) {
         className="text-[16px] font-extrabold"
         style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.textStrong }}
       >
-        Monthly trend
+        Monthly cash trend
       </h2>
       <p className="text-[12px] mt-0.5 mb-4" style={{ color: t.muted }}>
-        Last {months} months · inflow vs outflow · transfers excluded
+        Last {months} months · all cash in vs out, financing included · transfers excluded
       </p>
 
       <div className="flex gap-2">
