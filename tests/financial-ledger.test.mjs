@@ -121,6 +121,11 @@ test('summarizeOperating and summarizeFinancing both ignore transfers', () => {
   assert.equal(summarizeFinancing(rows).netCents, 0);
 });
 
+// Amounts throughout this file are synthetic and chosen to make the arithmetic
+// easy to read. The one exception is the owner-contribution figure below, which
+// is the real 2026 YTD total because that is the number the P&L separation was
+// built to stop counting as revenue. Nothing here samples the production ledger,
+// so no total in this file should be read as a real revenue or expense figure.
 test('summarizeFinancing separates contributions from draws', () => {
   const result = summarizeFinancing([
     txn({ id: 'a', amount: '184543.04', direction: 'in', txn_type: 'financing', category: 'Owner Contribution' }),
