@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isMailchimpConfigured, upsertOrder } from '@/lib/mailchimp';
+import { syncMemberTicketsForOrder } from '@/lib/member-tickets';
 
 // TEMP DIAGNOSTIC: writes every request outcome (including skips/errors) to
 // webhook_debug_log so we can see exactly what Ticket Tailor is sending,
@@ -34,6 +35,8 @@ export const dynamic = 'force-dynamic';
 //      show real ticket revenue, attributed to that campaign when matched.
 //   5. Record the outcome in ticket_order_attribution, keyed by TT order id
 //      so repeat deliveries (created -> updated) upsert instead of duplicate.
+//   6. Flatten the order's issued_tickets into member_tickets, the wallet the
+//      mobile app reads under RLS (see lib/member-tickets.js).
 //
 // Mirrors app/api/webhooks/signnow/route.js conventions: read the raw body
 // before parsing (required for signature verification), never 500 on an
@@ -231,6 +234,21 @@ export async function POST(request) {
     // should not cause TT to keep hammering the endpoint. It's logged above
     // for follow-up; a failed Mailchimp sync can be manually re-driven later.
   } else {
+    // Only once the parent row exists — member_tickets.tt_order_id is an FK
+    // onto ticket_order_attribution. Treated as non-fatal like every other DB
+    // write here: the wallet is derivable from raw_payload at any time via
+    // scripts/backfill-member-tickets.mjs, so a failure is worth logging but
+    // never worth making TT retry the delivery.
+    try {
+      await syncMemberTicketsForOrder(admin, order, { localEventId, orderStatus: status });
+    } catch (err) {
+      console.error('[webhooks.tickettailor] member_tickets sync failed', err);
+      await logDebug(debugAdmin, {
+        error_message: `member_tickets_sync_failed order_id=${orderId}: ${String(err?.message || err).slice(0, 2000)}`,
+        error_stack: String(err?.stack || '').slice(0, 4000),
+      });
+    }
+
     // TEMP DIAGNOSTIC: confirm a successful write with the raw payload, so we
     // can sanity-check field shapes even on the happy path.
     await logDebug(debugAdmin, {

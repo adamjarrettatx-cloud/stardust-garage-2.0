@@ -8,7 +8,8 @@
     "start": "next start -H 0.0.0.0 -p 3000",
     "lint": "eslint",
     "test": "TZ=UTC node --test tests/",
-    "backfill:tt-orders": "node scripts/backfill-ticket-order-attribution.mjs"
+    "backfill:tt-orders": "node scripts/backfill-ticket-order-attribution.mjs",
+    "backfill:member-tickets": "node scripts/backfill-member-tickets.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
