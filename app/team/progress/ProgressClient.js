@@ -110,11 +110,6 @@ const ADMIN_THEMES = {
 
 const KPI_DEFS = [
   { key: 'overdue', label: 'Overdue', color: '#ef4444' },
-  { key: 'blocked', label: 'Blocked', color: '#ef4444' },
-  { key: 'stale', label: 'Stale update', color: '#f59e0b' },
-  { key: 'dueSoon', label: 'Due soon', color: '#f59e0b' },
-  { key: 'completedRecently', label: 'Completed 7d', color: '#10b981' },
-  { key: 'total', label: 'Active total', color: '#8a8a8a' },
 ];
 
 function DepartmentTabs({ value, onChange }) {
@@ -236,9 +231,9 @@ function AdminProgressView({ initialTasks, assignees, isOwner, currentTeamMember
       </div>
 
       {/* KPI summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
+      <div className="flex flex-wrap gap-3 mb-8">
         {KPI_DEFS.map((k) => (
-          <div key={k.key} className="rounded-[14px] p-4" style={{ background: t.cardBg, border: `1px solid ${t.cardBorder}` }}>
+          <div key={k.key} className="rounded-[14px] p-4 w-[140px]" style={{ background: t.cardBg, border: `1px solid ${t.cardBorder}` }}>
             <div className="text-[28px] font-extrabold leading-none" style={{ color: k.color, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
               {kpis[k.key]}
             </div>
