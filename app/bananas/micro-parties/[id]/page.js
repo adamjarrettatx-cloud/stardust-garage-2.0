@@ -5,6 +5,7 @@ import { adminPageGate } from '@/lib/auth-helpers';
 import MicroPartyActions from './MicroPartyActions';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
+import { EmailButton, WhatsAppButton } from '@/app/bananas/components/ContactButtons';
 
 export const revalidate = 0;
 
@@ -101,11 +102,21 @@ export default async function MicroPartyDetail({ params }) {
 
         <Field label="FULL NAME">{i.full_name}</Field>
         <Field label="EMAIL">
-          <a href={`mailto:${i.email}`} style={{ color: 'var(--auth-text)', textDecoration: 'underline' }}>
-            {i.email}
-          </a>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <a href={`mailto:${i.email}`} style={{ color: 'var(--auth-text)', textDecoration: 'underline' }}>
+              {i.email}
+            </a>
+            <EmailButton email={i.email} />
+          </div>
         </Field>
-        <Field label="PHONE">{i.phone}</Field>
+        <Field label="PHONE">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <a href={`tel:${i.phone}`} style={{ color: 'var(--auth-text)', textDecoration: 'underline' }}>
+              {i.phone}
+            </a>
+            <WhatsAppButton phone={i.phone} />
+          </div>
+        </Field>
         <Field label="MEMBER?">
           {i.is_member === true ? 'Yes' : i.is_member === false ? 'No' : null}
         </Field>

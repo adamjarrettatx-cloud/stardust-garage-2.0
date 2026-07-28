@@ -5,6 +5,7 @@ import { adminPageGate } from '@/lib/auth-helpers';
 import CollaborationActions from './CollaborationActions';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
+import { EmailButton, WhatsAppButton } from '@/app/bananas/components/ContactButtons';
 
 export const revalidate = 0;
 
@@ -107,10 +108,16 @@ export default async function CollaborationDetail({ params }) {
           CONTACT INFO
         </h2>
         <Field label="EMAIL">
-          <a href={`mailto:${c.email}`} className="hover:underline">{c.email}</a>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <a href={`mailto:${c.email}`} className="hover:underline">{c.email}</a>
+            <EmailButton email={c.email} />
+          </div>
         </Field>
         <Field label="PHONE">
-          <a href={`tel:${c.phone}`} className="hover:underline">{c.phone}</a>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <a href={`tel:${c.phone}`} className="hover:underline">{c.phone}</a>
+            <WhatsAppButton phone={c.phone} />
+          </div>
         </Field>
         <Field label="COMPANY / ORGANIZATION">{c.company}</Field>
         <Field label="INSTAGRAM HANDLE">{c.instagram_handle}</Field>

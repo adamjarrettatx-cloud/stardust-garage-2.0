@@ -5,6 +5,7 @@ import { adminPageGate } from '@/lib/auth-helpers';
 import ApplicationActions from './ApplicationActions';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
+import { EmailButton, WhatsAppButton } from '@/app/bananas/components/ContactButtons';
 
 export const revalidate = 0;
 
@@ -149,10 +150,16 @@ export default async function ApplicationDetail({ params }) {
           CONTACT
         </h2>
         <Field label="EMAIL">
-          <a href={`mailto:${app.email}`} className="hover:underline">{app.email}</a>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <a href={`mailto:${app.email}`} className="hover:underline">{app.email}</a>
+            <EmailButton email={app.email} />
+          </div>
         </Field>
         <Field label="PHONE">
-          <a href={`tel:${app.phone}`} className="hover:underline">{app.phone}</a>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <a href={`tel:${app.phone}`} className="hover:underline">{app.phone}</a>
+            <WhatsAppButton phone={app.phone} />
+          </div>
         </Field>
         <Field label="INSTAGRAM / SOCIAL">{app.social_handle}</Field>
         <Field label="WEBSITE">
