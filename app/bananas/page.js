@@ -34,6 +34,7 @@ export default async function AdminDashboard() {
     upcomingBookingsCount,
     activeMembersCount,
     pastDueMembersCount,
+    potentialMembersCount,
   ] = await Promise.all([
     supabase.from('membership_applications').select('*', { count: 'exact', head: true }).or('status.eq.new,status.is.null'),
     supabase.from('venue_inquiries').select('*', { count: 'exact', head: true }).or('status.eq.new,status.is.null'),
@@ -43,6 +44,7 @@ export default async function AdminDashboard() {
     supabase.from('studio_bookings').select('*', { count: 'exact', head: true }).eq('status', 'confirmed').gte('booking_date', today),
     supabase.from('member_profiles').select('*', { count: 'exact', head: true }).eq('is_active', true),
     supabase.from('member_profiles').select('*', { count: 'exact', head: true }).eq('subscription_status', 'past_due'),
+    supabase.from('potential_members').select('*', { count: 'exact', head: true }).eq('status', 'potential'),
   ]);
 
   const isOwner = user?.email === OWNER_EMAIL;
@@ -56,6 +58,7 @@ export default async function AdminDashboard() {
     upcomingBookings: upcomingBookingsCount?.count || 0,
     activeMembers: activeMembersCount?.count || 0,
     pastDueMembers: pastDueMembersCount?.count || 0,
+    potentialMembers: potentialMembersCount?.count || 0,
   };
 
   return (
