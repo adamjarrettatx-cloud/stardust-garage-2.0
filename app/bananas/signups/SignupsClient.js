@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import SignupStatusButton from '@/app/bananas/components/SignupStatusButton';
 import SubmissionTabs from '@/app/bananas/components/SubmissionTabs';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
 import { filterSubmissionRowsByStatus, normalizeSubmissionStatus } from '@/lib/submission-workflow';
@@ -46,7 +45,7 @@ export default function SignupsClient({ signups, csvHref }) {
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-[12px]" style={{ color: 'var(--auth-muted)' }}>
         <span>
-          New signups awaiting explicit acknowledgement:{' '}
+          Unseen signups:{' '}
           <strong style={{ color: 'var(--auth-accent)' }}>{newCount}</strong>
         </span>
         {csvHref && (
@@ -87,7 +86,6 @@ export default function SignupsClient({ signups, csvHref }) {
                   <th className="text-left px-6 py-4 text-[11px] font-semibold tracking-[0.14em]" style={{ color: 'var(--auth-muted)' }}>TYPE</th>
                   <th className="text-left px-6 py-4 text-[11px] font-semibold tracking-[0.14em]" style={{ color: 'var(--auth-muted)' }}>STATUS</th>
                   <th className="text-left px-6 py-4 text-[11px] font-semibold tracking-[0.14em]" style={{ color: 'var(--auth-muted)' }}>WHEN</th>
-                  <th className="text-right px-6 py-4 text-[11px] font-semibold tracking-[0.14em]" style={{ color: 'var(--auth-muted)' }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -99,9 +97,6 @@ export default function SignupsClient({ signups, csvHref }) {
                       <SubmissionStatusBadge status={signup.status || 'new'} />
                     </td>
                     <td className="px-6 py-4 text-[13px]" style={{ color: 'var(--auth-muted)' }}>{formatDate(signup.created_at)}</td>
-                    <td className="px-6 py-4 text-right">
-                      <SignupStatusButton signupId={signup.id} currentStatus={signup.status || 'new'} />
-                    </td>
                   </tr>
                 ))}
               </tbody>
