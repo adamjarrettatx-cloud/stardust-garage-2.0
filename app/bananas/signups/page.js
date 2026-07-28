@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
+import { markNewSignupsSeen } from '@/lib/signups-seen';
 import SignupsClient from './SignupsClient';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 
@@ -16,7 +17,11 @@ export default async function SignupsPage() {
     .select('*')
     .order('created_at', { ascending: false });
 
-  const total = signups?.length || 0;
+  // Signups only: this load acknowledges the list. The rows fetched above still
+  // render as New for this request, and show up under Seen from the next load
+  // onward. Signups have no manual action, so unlike the other submission
+  // types, viewing them is the transition.
+  await markNewSignupsSeen();
 
   const downloadCsv = () => {
     if (!signups || signups.length === 0) return '';

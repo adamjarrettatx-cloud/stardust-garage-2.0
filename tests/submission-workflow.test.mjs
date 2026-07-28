@@ -11,6 +11,7 @@ import {
   filterSubmissionRowsByStatus,
   normalizeSubmissionStatus,
   submissionActionsForStatus,
+  submissionTabsForType,
 } from '../lib/submission-workflow.js';
 import { updateSubmissionStatusRecord } from '../lib/submission-status.js';
 
@@ -76,6 +77,7 @@ test('countSubmissionStatuses and filtering keep legacy null rows in New', () =>
   assert.deepEqual(countSubmissionStatuses(rows), {
     new: 2,
     contacted: 1,
+    seen: 0,
     pending: 0,
     approved: 0,
     rejected: 0,
@@ -83,7 +85,7 @@ test('countSubmissionStatuses and filtering keep legacy null rows in New', () =>
   assert.deepEqual(filterSubmissionRowsByStatus(rows, 'new').map((row) => row.id), ['1', '2']);
 });
 
-test('there is no seen status or tab left in the workflow', () => {
+test('the legacy reviewed status is gone from the workflow', () => {
   assert.equal('reviewed' in SUBMISSION_STATUS_META, false);
   for (const config of Object.values(SUBMISSION_TYPE_CONFIGS)) {
     assert.equal(config.tabs.includes('reviewed'), false);
@@ -91,10 +93,45 @@ test('there is no seen status or tab left in the workflow', () => {
   assert.deepEqual(SUBMISSION_LIST_TABS.map((tab) => tab.id), [
     'new',
     'contacted',
+    'seen',
     'pending',
     'approved',
     'rejected',
   ]);
+});
+
+test('seen is a signups-only status with its own tab metadata', () => {
+  assert.equal(SUBMISSION_STATUS_META.seen.label, 'Seen');
+  assert.equal(SUBMISSION_STATUS_META.seen.tabLabel, 'Seen');
+  assert.equal(SUBMISSION_STATUS_META.seen.color, SUBMISSION_STATUS_META.contacted.color);
+  assert.equal(normalizeSubmissionStatus('seen'), 'seen');
+
+  assert.deepEqual(SUBMISSION_TYPE_CONFIGS.signups.tabs, ['new', 'seen']);
+  assert.deepEqual(submissionTabsForType('signups').map((tab) => tab.label), ['New', 'Seen']);
+});
+
+test('the other four submission types keep the five-state workflow tabs', () => {
+  for (const type of ['applications', 'collaborations', 'micro-parties', 'venue-inquiries']) {
+    assert.deepEqual(SUBMISSION_TYPE_CONFIGS[type].tabs, [
+      'new',
+      'contacted',
+      'pending',
+      'approved',
+      'rejected',
+    ], `${type} tabs should be unchanged`);
+    assert.equal(SUBMISSION_TYPE_CONFIGS[type].tabs.includes('seen'), false);
+  }
+});
+
+test('the shared explicit workflow never transitions into or out of seen', () => {
+  for (const status of ['new', 'contacted', 'pending', 'approved', 'rejected']) {
+    assert.equal(canExplicitlyTransitionSubmission(status, 'seen'), false);
+    assert.equal(submissionActionsForStatus(status).some((action) => action.status === 'seen'), false);
+  }
+  assert.deepEqual(submissionActionsForStatus('seen'), []);
+  for (const next of ['new', 'contacted', 'pending', 'approved', 'rejected']) {
+    assert.equal(canExplicitlyTransitionSubmission('seen', next), false);
+  }
 });
 
 test('new submissions only move to contacted or pending', () => {
@@ -214,8 +251,10 @@ test('illegal transitions are rejected by the API helper', async () => {
   assert.equal(db.calls.some((call) => call.step === 'update'), false);
 });
 
-test('all submission types use the shared explicit workflow tables', async () => {
+test('the manual workflow types use the shared explicit workflow tables', async () => {
   for (const [type, config] of Object.entries(SUBMISSION_TYPE_CONFIGS)) {
+    // Signups have no manual action; they transition via lib/signups-seen.js.
+    if (type === 'signups') continue;
     const db = makeSupabase({ row: { id: `${type}-1`, status: 'new' } });
     const result = await updateSubmissionStatusRecord({
       type,
@@ -240,7 +279,6 @@ test('admin submission views never mutate on view and never delete', () => {
     'app/bananas/venue-inquiries/[id]/InquiryActions.js',
     'app/bananas/micro-parties/[id]/MicroPartyActions.js',
     'app/bananas/components/SubmissionActions.js',
-    'app/bananas/signups/SignupsClient.js',
   ];
 
   for (const relativePath of sources) {
