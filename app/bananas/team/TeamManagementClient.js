@@ -4,24 +4,44 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { adminFetch } from '@/lib/admin-fetch';
+import { DEPARTMENTS, departmentLabel } from '@/lib/progress';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 
 const ROLE_CONFIG = {
   admin: {
     label: 'Admin',
-    description: 'Full access to everything',
+    description: 'Full panel access · manages everything',
     color: '#ffb84d',
     bg: 'rgba(255,184,77,0.12)',
     border: 'rgba(255,184,77,0.3)',
   },
   team: {
     label: 'Team',
-    description: 'Calendar only · own events',
+    description: 'Team portal only',
     color: '#3b82f6',
     bg: 'rgba(59,130,246,0.1)',
     border: 'rgba(59,130,246,0.3)',
   },
 };
+
+// Department tag chip. Static when no onClick is given, otherwise a toggle in
+// the tag editor. Mirrors DeptChip in app/bananas/progress/ui.js but themed
+// with this page's CSS variables.
+function DeptTagChip({ slug, active = true, onClick }) {
+  const style = active
+    ? { background: 'rgba(59,130,246,0.14)', color: '#7dafff', border: '1px solid rgba(59,130,246,0.35)' }
+    : { background: 'var(--auth-card-bg-alt)', color: 'var(--auth-muted)', border: '1px solid var(--auth-card-border)' };
+  const className = 'inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold tracking-[0.06em]';
+
+  if (!onClick) {
+    return <span className={className} style={style}>{departmentLabel(slug)}</span>;
+  }
+  return (
+    <button type="button" onClick={onClick} className={`${className} transition-colors`} style={style}>
+      {departmentLabel(slug)}
+    </button>
+  );
+}
 
 export default function TeamManagementClient({ members: initialMembers }) {
   const router = useRouter();
@@ -35,6 +55,7 @@ export default function TeamManagementClient({ members: initialMembers }) {
   const [inviteName, setInviteName] = useState('');
   const [inviteRole, setInviteRole] = useState('team');
   const [invitePassword, setInvitePassword] = useState('');
+  const [inviteDepartments, setInviteDepartments] = useState([]);
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState('');
   const [inviteSuccess, setInviteSuccess] = useState('');
@@ -42,6 +63,44 @@ export default function TeamManagementClient({ members: initialMembers }) {
   // Delete
   const [deletingId, setDeletingId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+
+  // Department tag editor
+  const [editingTagsId, setEditingTagsId] = useState(null);
+  const [draftDepartments, setDraftDepartments] = useState([]);
+  const [savingTags, setSavingTags] = useState(false);
+  const [tagsError, setTagsError] = useState('');
+
+  const toggleDept = (list, slug) => (
+    list.includes(slug) ? list.filter(s => s !== slug) : [...list, slug]
+  );
+
+  const openTagEditor = (member) => {
+    setTagsError('');
+    if (editingTagsId === member.id) {
+      setEditingTagsId(null);
+      return;
+    }
+    setEditingTagsId(member.id);
+    setDraftDepartments(member.departments || []);
+  };
+
+  const handleSaveTags = async (id) => {
+    setTagsError('');
+    setSavingTags(true);
+
+    try {
+      const result = await adminFetch(`/api/admin/team-members/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ departments: draftDepartments }),
+      });
+      setMembers(prev => prev.map(m => (m.id === id ? result.member : m)));
+      setEditingTagsId(null);
+    } catch (err) {
+      setTagsError(err.message);
+    }
+    setSavingTags(false);
+  };
 
   const handleInvite = async (e) => {
     e.preventDefault();
@@ -59,6 +118,7 @@ export default function TeamManagementClient({ members: initialMembers }) {
           full_name: inviteName.trim(),
           role: inviteRole,
           password: invitePassword.trim(),
+          departments: inviteDepartments,
         }),
       });
     } catch (fetchErr) {
@@ -73,6 +133,7 @@ export default function TeamManagementClient({ members: initialMembers }) {
     setInviteName('');
     setInvitePassword('');
     setInviteRole('team');
+    setInviteDepartments([]);
     setShowInvite(false);
     setInviting(false);
     router.refresh();
@@ -194,6 +255,21 @@ export default function TeamManagementClient({ members: initialMembers }) {
               </div>
             </div>
 
+            <div>
+              <label className={labelClass} style={labelStyle}>TAGS</label>
+              <div className="flex flex-wrap gap-1.5">
+                {DEPARTMENTS.map(d => (
+                  <DeptTagChip
+                    key={d.slug}
+                    slug={d.slug}
+                    active={inviteDepartments.includes(d.slug)}
+                    onClick={() => setInviteDepartments(prev => toggleDept(prev, d.slug))}
+                  />
+                ))}
+              </div>
+              <p className="text-[11px] mt-1.5" style={{ color: 'var(--auth-faint)' }}>Optional. You can change these any time from the member list.</p>
+            </div>
+
             {inviteError && (
               <div className="text-[13px] text-red-400 p-3 rounded-[10px] border border-red-500/30 bg-red-500/10">{inviteError}</div>
             )}
@@ -216,6 +292,11 @@ export default function TeamManagementClient({ members: initialMembers }) {
         </div>
       )}
 
+      <p className="text-[12px] mb-4" style={{ color: 'var(--auth-muted)' }}>
+        Tags control which tasks each person sees on their Tasks page — everyone except the owner is
+        scoped to their tagged departments plus tasks assigned to or created by them.
+      </p>
+
       {/* Members list */}
       {members.length === 0 ? (
         <div className="rounded-[14px] p-12 text-center border" style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}>
@@ -226,53 +307,102 @@ export default function TeamManagementClient({ members: initialMembers }) {
           {members.map(member => {
             const cfg = ROLE_CONFIG[member.role] || ROLE_CONFIG.team;
             const isConfirming = confirmDeleteId === member.id;
+            const isEditingTags = editingTagsId === member.id;
+            const memberDepartments = member.departments || [];
             return (
               <div
                 key={member.id}
-                className="rounded-[14px] border p-5 flex items-center gap-5"
+                className="rounded-[14px] border p-5"
                 style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}
               >
-                {/* Avatar */}
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-[14px] font-bold flex-shrink-0"
-                  style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}
-                >
-                  {(member.full_name || member.email).charAt(0).toUpperCase()}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="text-[15px] font-bold truncate" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                    {member.full_name || member.email}
+                <div className="flex items-center gap-5">
+                  {/* Avatar */}
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-[14px] font-bold flex-shrink-0"
+                    style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}
+                  >
+                    {(member.full_name || member.email).charAt(0).toUpperCase()}
                   </div>
-                  <div className="text-[12px] mt-0.5" style={{ color: 'var(--auth-muted)' }}>{member.email}</div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[15px] font-bold truncate" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                      {member.full_name || member.email}
+                    </div>
+                    <div className="text-[12px] mt-0.5" style={{ color: 'var(--auth-muted)' }}>{member.email}</div>
+                  </div>
+
+                  {/* Role badge */}
+                  <span
+                    className="px-3 py-1 rounded-full text-[11px] font-semibold tracking-[0.1em] flex-shrink-0"
+                    style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}
+                  >
+                    {cfg.label.toUpperCase()}
+                  </span>
+
+                  {/* Login link — one shared sign-in page for every role */}
+                  <span className="text-[11px] flex-shrink-0" style={{ color: 'var(--auth-faint)' }}>
+                    /login
+                  </span>
+
+                  {/* Remove */}
+                  <button
+                    onClick={() => handleDelete(member.id)}
+                    disabled={deletingId === member.id}
+                    className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-all disabled:opacity-50 flex-shrink-0"
+                    style={{
+                      borderColor: isConfirming ? '#ef4444' : 'rgba(239,68,68,0.3)',
+                      color: isConfirming ? '#fff' : '#ef4444',
+                      background: isConfirming ? '#ef4444' : 'transparent',
+                    }}
+                  >
+                    {deletingId === member.id ? '...' : isConfirming ? 'CONFIRM' : 'REMOVE'}
+                  </button>
                 </div>
 
-                {/* Role badge */}
-                <span
-                  className="px-3 py-1 rounded-full text-[11px] font-semibold tracking-[0.1em] flex-shrink-0"
-                  style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}
-                >
-                  {cfg.label.toUpperCase()}
-                </span>
+                {/* Department tags */}
+                <div className="mt-3 pt-3 flex items-center flex-wrap gap-1.5" style={{ borderTop: '1px solid var(--auth-card-border)' }}>
+                  <span className="text-[10px] font-semibold tracking-[0.14em] mr-1" style={{ color: 'var(--auth-faint)' }}>TAGS</span>
+                  {memberDepartments.length === 0 ? (
+                    <span className="text-[11px]" style={{ color: 'var(--auth-faint)' }}>None — sees only tasks assigned to or created by them</span>
+                  ) : (
+                    memberDepartments.map(slug => <DeptTagChip key={slug} slug={slug} />)
+                  )}
+                  <button
+                    onClick={() => openTagEditor(member)}
+                    className="ml-auto px-3 py-1 rounded-full text-[10px] font-semibold tracking-[0.12em] border transition-all"
+                    style={{ borderColor: 'var(--auth-card-border)', color: 'var(--auth-muted-strong)' }}
+                  >
+                    {isEditingTags ? 'CLOSE' : 'EDIT TAGS'}
+                  </button>
+                </div>
 
-                {/* Login link — one shared sign-in page for every role */}
-                <span className="text-[11px] flex-shrink-0" style={{ color: 'var(--auth-faint)' }}>
-                  /login
-                </span>
+                {isEditingTags && (
+                  <div className="mt-3 rounded-[10px] border p-3" style={{ background: 'var(--auth-card-bg-alt)', borderColor: 'var(--auth-card-border)' }}>
+                    <div className="flex flex-wrap gap-1.5">
+                      {DEPARTMENTS.map(d => (
+                        <DeptTagChip
+                          key={d.slug}
+                          slug={d.slug}
+                          active={draftDepartments.includes(d.slug)}
+                          onClick={() => setDraftDepartments(prev => toggleDept(prev, d.slug))}
+                        />
+                      ))}
+                    </div>
 
-                {/* Remove */}
-                <button
-                  onClick={() => handleDelete(member.id)}
-                  disabled={deletingId === member.id}
-                  className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-all disabled:opacity-50 flex-shrink-0"
-                  style={{
-                    borderColor: isConfirming ? '#ef4444' : 'rgba(239,68,68,0.3)',
-                    color: isConfirming ? '#fff' : '#ef4444',
-                    background: isConfirming ? '#ef4444' : 'transparent',
-                  }}
-                >
-                  {deletingId === member.id ? '...' : isConfirming ? 'CONFIRM' : 'REMOVE'}
-                </button>
+                    {tagsError && (
+                      <div className="mt-3 text-[12px] text-red-400 p-2 rounded-[8px] border border-red-500/30 bg-red-500/10">{tagsError}</div>
+                    )}
+
+                    <button
+                      onClick={() => handleSaveTags(member.id)}
+                      disabled={savingTags}
+                      className="mt-3 px-5 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] transition-all disabled:opacity-50"
+                      style={{ background: 'var(--auth-text-strong)', color: 'var(--auth-strong-surface-text)' }}
+                    >
+                      {savingTags ? 'SAVING...' : 'SAVE TAGS'}
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}

@@ -1,6 +1,7 @@
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { requireAdminMfa } from '@/lib/auth-helpers';
+import { normalizeDepartmentTags } from '@/lib/progress';
 
 export const runtime = 'nodejs';
 
@@ -20,6 +21,12 @@ export async function POST(request) {
     }
     if (!['admin', 'team'].includes(role)) {
       return NextResponse.json({ error: 'Invalid role.' }, { status: 400 });
+    }
+
+    // Optional starting department tags, which scope what tasks they will see.
+    const { departments, invalid } = normalizeDepartmentTags(body.departments || []);
+    if (invalid.length > 0) {
+      return NextResponse.json({ error: `Invalid department: ${invalid.join(', ')}` }, { status: 400 });
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -92,6 +99,7 @@ export async function POST(request) {
         email: email.trim().toLowerCase(),
         full_name: full_name?.trim() || null,
         role,
+        departments,
         invited_by: user.id,
       })
       .select()
