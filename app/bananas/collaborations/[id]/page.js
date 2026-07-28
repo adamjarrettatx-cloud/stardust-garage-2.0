@@ -6,6 +6,7 @@ import CollaborationActions from './CollaborationActions';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import { EmailButton, WhatsAppButton } from '@/app/bananas/components/ContactButtons';
+import ReplyPanel from '@/app/bananas/components/ReplyPanel';
 
 export const revalidate = 0;
 
@@ -121,6 +122,13 @@ export default async function CollaborationDetail({ params }) {
         </Field>
         <Field label="COMPANY / ORGANIZATION">{c.company}</Field>
         <Field label="INSTAGRAM HANDLE">{c.instagram_handle}</Field>
+        <ReplyPanel
+          submissionType="collaborations"
+          submissionId={c.id}
+          toEmail={c.email}
+          defaultSubject="Re: Your collaboration request — Stardust Garage"
+          defaultBody={`Hi ${(c.full_name || '').split(' ')[0] || 'there'},\n\nThanks so much for reaching out about collaborating with Stardust Garage.\n\n\n\nLooking forward to hearing from you.`}
+        />
       </section>
 
       <section

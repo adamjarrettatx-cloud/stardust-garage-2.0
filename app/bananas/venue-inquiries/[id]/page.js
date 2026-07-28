@@ -6,6 +6,7 @@ import InquiryActions from './InquiryActions';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import { EmailButton, WhatsAppButton } from '@/app/bananas/components/ContactButtons';
+import ReplyPanel from '@/app/bananas/components/ReplyPanel';
 
 export const revalidate = 0;
 
@@ -124,6 +125,13 @@ export default async function InquiryDetail({ params }) {
             </a>
           ) : null}
         </Field>
+        <ReplyPanel
+          submissionType="venue-inquiries"
+          submissionId={i.id}
+          toEmail={i.email}
+          defaultSubject={`Re: ${i.event_name || 'Your venue inquiry'} — Stardust Garage`}
+          defaultBody={`Hi ${(i.full_name || '').split(' ')[0] || 'there'},\n\nThanks for reaching out about ${i.event_name || 'your event'} at Stardust Garage.\n\n\n\nLooking forward to hearing from you.`}
+        />
       </section>
 
       <section

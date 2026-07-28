@@ -6,6 +6,7 @@ import MicroPartyActions from './MicroPartyActions';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import { EmailButton, WhatsAppButton } from '@/app/bananas/components/ContactButtons';
+import ReplyPanel from '@/app/bananas/components/ReplyPanel';
 
 export const revalidate = 0;
 
@@ -121,6 +122,13 @@ export default async function MicroPartyDetail({ params }) {
           {i.is_member === true ? 'Yes' : i.is_member === false ? 'No' : null}
         </Field>
         <Field label="WEBSITE / SOCIAL">{i.website_or_social}</Field>
+        <ReplyPanel
+          submissionType="micro-parties"
+          submissionId={i.id}
+          toEmail={i.email}
+          defaultSubject={`Re: ${i.event_name || 'Your micro party inquiry'} — Stardust Garage`}
+          defaultBody={`Hi ${(i.full_name || '').split(' ')[0] || 'there'},\n\nThanks for reaching out about ${i.event_name || 'your micro party'} at Stardust Garage.\n\n\n\nLooking forward to hearing from you.`}
+        />
       </section>
 
       <section

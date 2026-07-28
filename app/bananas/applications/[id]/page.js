@@ -6,6 +6,7 @@ import ApplicationActions from './ApplicationActions';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import { EmailButton, WhatsAppButton } from '@/app/bananas/components/ContactButtons';
+import ReplyPanel from '@/app/bananas/components/ReplyPanel';
 
 export const revalidate = 0;
 
@@ -170,6 +171,13 @@ export default async function ApplicationDetail({ params }) {
           ) : null}
         </Field>
         <Field label="BIRTHDAY">{formatBirthday(app.birthday)}</Field>
+        <ReplyPanel
+          submissionType="applications"
+          submissionId={app.id}
+          toEmail={app.email}
+          defaultSubject="Re: Your membership application — Stardust Garage"
+          defaultBody={`Hi ${(app.full_name || '').split(' ')[0] || 'there'},\n\nThanks so much for applying for membership at Stardust Garage.\n\n\n\nLooking forward to hearing from you.`}
+        />
       </section>
 
       <section
