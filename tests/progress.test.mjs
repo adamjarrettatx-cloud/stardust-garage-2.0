@@ -17,6 +17,9 @@ import {
   priorityFromDueDate,
   parseQuickAddTask,
   detectStatusFromText,
+  startOfWeekMonday,
+  endOfWeekSunday,
+  completedThisWeek,
 } from '../lib/progress.js';
 
 const TODAY = '2026-07-23';
@@ -285,4 +288,39 @@ test('detectStatusFromText avoids false positives on negated completion', () => 
 test('detectStatusFromText returns null when nothing recognizable is said', () => {
   assert.equal(detectStatusFromText('talked to the vendor about pricing'), null);
   assert.equal(detectStatusFromText(''), null);
+});
+
+// ---------------------------------------------------------------------------
+// "Done this week" business-week window (Monday through Sunday).
+// TODAY ('2026-07-23') is a Thursday -> week runs Jul 20 (Mon) - Jul 26 (Sun).
+// ---------------------------------------------------------------------------
+test('startOfWeekMonday/endOfWeekSunday bound the current business week', () => {
+  assert.equal(startOfWeekMonday(TODAY), '2026-07-20');
+  assert.equal(endOfWeekSunday(TODAY), '2026-07-26');
+  // Monday itself is the start of its own week.
+  assert.equal(startOfWeekMonday('2026-07-27'), '2026-07-27');
+  assert.equal(endOfWeekSunday('2026-07-27'), '2026-08-02');
+  // Sunday is the end of the week that started the prior Monday.
+  assert.equal(startOfWeekMonday('2026-07-26'), '2026-07-20');
+  assert.equal(endOfWeekSunday('2026-07-26'), '2026-07-26');
+});
+
+test('completedThisWeek resets every Monday and only counts done tasks in the Mon-Sun window', () => {
+  assert.equal(completedThisWeek(task({ status: 'done', completed_at: '2026-07-20' }), TODAY), true); // Monday
+  assert.equal(completedThisWeek(task({ status: 'done', completed_at: '2026-07-26' }), TODAY), true); // Sunday
+  assert.equal(completedThisWeek(task({ status: 'done', completed_at: '2026-07-19' }), TODAY), false); // prior Sunday
+  assert.equal(completedThisWeek(task({ status: 'done', completed_at: '2026-07-27' }), TODAY), false); // next Monday
+  assert.equal(completedThisWeek(task({ status: 'in_progress', completed_at: '2026-07-22' }), TODAY), false);
+  assert.equal(completedThisWeek(task({ status: 'done', completed_at: null }), TODAY), false);
+});
+
+test('computeKpis reports doneThisWeek using the business-week window', () => {
+  const tasks = [
+    task({ id: '1', status: 'done', completed_at: '2026-07-20' }), // this week (Monday)
+    task({ id: '2', status: 'done', completed_at: '2026-07-19' }), // last week
+    task({ id: '3', status: 'not_started' }),
+  ];
+  const kpis = computeKpis(tasks, TODAY);
+  assert.equal(kpis.total, 3);
+  assert.equal(kpis.doneThisWeek, 1);
 });
