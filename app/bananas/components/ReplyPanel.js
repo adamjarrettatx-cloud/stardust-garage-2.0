@@ -66,7 +66,7 @@ export default function ReplyPanel({ submissionType, submissionId, toEmail, defa
 
   return (
     <div
-      className="rounded-[14px] p-6 border mt-4"
+      className="rounded-[14px] p-6 border mt-4 w-full basis-full"
       style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}
     >
       <div className="flex items-center justify-between mb-4">

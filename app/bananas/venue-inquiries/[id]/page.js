@@ -5,7 +5,7 @@ import { adminPageGate } from '@/lib/auth-helpers';
 import InquiryActions from './InquiryActions';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
-import { EmailButton, WhatsAppButton } from '@/app/bananas/components/ContactButtons';
+import { WhatsAppButton } from '@/app/bananas/components/ContactButtons';
 import ReplyPanel from '@/app/bananas/components/ReplyPanel';
 
 export const revalidate = 0;
@@ -106,9 +106,15 @@ export default async function InquiryDetail({ params }) {
         </h2>
         <Field label="FULL NAME">{i.full_name}</Field>
         <Field label="EMAIL">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <a href={`mailto:${i.email}`} className="hover:underline">{i.email}</a>
-            <EmailButton email={i.email} />
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <a href={`mailto:${i.email}`} className="hover:underline pt-1">{i.email}</a>
+            <ReplyPanel
+              submissionType="venue-inquiries"
+              submissionId={i.id}
+              toEmail={i.email}
+              defaultSubject={`Re: ${i.event_name || 'Your venue inquiry'} — Stardust Garage`}
+              defaultBody={`Hi ${(i.full_name || '').split(' ')[0] || 'there'},\n\nThanks for reaching out about ${i.event_name || 'your event'} at Stardust Garage.\n\n\n\nLooking forward to hearing from you.`}
+            />
           </div>
         </Field>
         <Field label="PHONE">
@@ -125,13 +131,6 @@ export default async function InquiryDetail({ params }) {
             </a>
           ) : null}
         </Field>
-        <ReplyPanel
-          submissionType="venue-inquiries"
-          submissionId={i.id}
-          toEmail={i.email}
-          defaultSubject={`Re: ${i.event_name || 'Your venue inquiry'} — Stardust Garage`}
-          defaultBody={`Hi ${(i.full_name || '').split(' ')[0] || 'there'},\n\nThanks for reaching out about ${i.event_name || 'your event'} at Stardust Garage.\n\n\n\nLooking forward to hearing from you.`}
-        />
       </section>
 
       <section

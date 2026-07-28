@@ -5,7 +5,7 @@ import { adminPageGate } from '@/lib/auth-helpers';
 import MicroPartyActions from './MicroPartyActions';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
-import { EmailButton, WhatsAppButton } from '@/app/bananas/components/ContactButtons';
+import { WhatsAppButton } from '@/app/bananas/components/ContactButtons';
 import ReplyPanel from '@/app/bananas/components/ReplyPanel';
 
 export const revalidate = 0;
@@ -103,11 +103,17 @@ export default async function MicroPartyDetail({ params }) {
 
         <Field label="FULL NAME">{i.full_name}</Field>
         <Field label="EMAIL">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <a href={`mailto:${i.email}`} style={{ color: 'var(--auth-text)', textDecoration: 'underline' }}>
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <a href={`mailto:${i.email}`} className="pt-1" style={{ color: 'var(--auth-text)', textDecoration: 'underline' }}>
               {i.email}
             </a>
-            <EmailButton email={i.email} />
+            <ReplyPanel
+              submissionType="micro-parties"
+              submissionId={i.id}
+              toEmail={i.email}
+              defaultSubject={`Re: ${i.event_name || 'Your micro party inquiry'} — Stardust Garage`}
+              defaultBody={`Hi ${(i.full_name || '').split(' ')[0] || 'there'},\n\nThanks for reaching out about ${i.event_name || 'your micro party'} at Stardust Garage.\n\n\n\nLooking forward to hearing from you.`}
+            />
           </div>
         </Field>
         <Field label="PHONE">
@@ -122,13 +128,6 @@ export default async function MicroPartyDetail({ params }) {
           {i.is_member === true ? 'Yes' : i.is_member === false ? 'No' : null}
         </Field>
         <Field label="WEBSITE / SOCIAL">{i.website_or_social}</Field>
-        <ReplyPanel
-          submissionType="micro-parties"
-          submissionId={i.id}
-          toEmail={i.email}
-          defaultSubject={`Re: ${i.event_name || 'Your micro party inquiry'} — Stardust Garage`}
-          defaultBody={`Hi ${(i.full_name || '').split(' ')[0] || 'there'},\n\nThanks for reaching out about ${i.event_name || 'your micro party'} at Stardust Garage.\n\n\n\nLooking forward to hearing from you.`}
-        />
       </section>
 
       <section

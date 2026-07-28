@@ -5,7 +5,7 @@ import { adminPageGate } from '@/lib/auth-helpers';
 import CollaborationActions from './CollaborationActions';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
-import { EmailButton, WhatsAppButton } from '@/app/bananas/components/ContactButtons';
+import { WhatsAppButton } from '@/app/bananas/components/ContactButtons';
 import ReplyPanel from '@/app/bananas/components/ReplyPanel';
 
 export const revalidate = 0;
@@ -109,9 +109,15 @@ export default async function CollaborationDetail({ params }) {
           CONTACT INFO
         </h2>
         <Field label="EMAIL">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <a href={`mailto:${c.email}`} className="hover:underline">{c.email}</a>
-            <EmailButton email={c.email} />
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <a href={`mailto:${c.email}`} className="hover:underline pt-1">{c.email}</a>
+            <ReplyPanel
+              submissionType="collaborations"
+              submissionId={c.id}
+              toEmail={c.email}
+              defaultSubject="Re: Your collaboration request — Stardust Garage"
+              defaultBody={`Hi ${(c.full_name || '').split(' ')[0] || 'there'},\n\nThanks so much for reaching out about collaborating with Stardust Garage.\n\n\n\nLooking forward to hearing from you.`}
+            />
           </div>
         </Field>
         <Field label="PHONE">
@@ -122,13 +128,6 @@ export default async function CollaborationDetail({ params }) {
         </Field>
         <Field label="COMPANY / ORGANIZATION">{c.company}</Field>
         <Field label="INSTAGRAM HANDLE">{c.instagram_handle}</Field>
-        <ReplyPanel
-          submissionType="collaborations"
-          submissionId={c.id}
-          toEmail={c.email}
-          defaultSubject="Re: Your collaboration request — Stardust Garage"
-          defaultBody={`Hi ${(c.full_name || '').split(' ')[0] || 'there'},\n\nThanks so much for reaching out about collaborating with Stardust Garage.\n\n\n\nLooking forward to hearing from you.`}
-        />
       </section>
 
       <section
