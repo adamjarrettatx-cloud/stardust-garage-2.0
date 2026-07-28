@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { CONTACT_REQUIRED_MESSAGE } from '@/lib/contact-helpers';
 import {
   createEventSeries,
   createEventOccurrence,
@@ -74,6 +75,18 @@ export async function POST(request) {
     }
     const v = parsed.value;
 
+    // Contact requirement: an event either names the outside partner it belongs
+    // to or is explicitly flagged SDG-only. Checked here, BEFORE any local
+    // insert or TicketTailor call, so a request that the DB CHECK constraint
+    // (events_contact_required_unless_sdg_only) would reject never gets as far
+    // as creating a live box office. is_sdg_only is only true when the caller
+    // says so — a missing flag is treated as "has an outside partner".
+    const isSdgOnly = body.is_sdg_only === true;
+    const contactId = typeof body.contact_id === 'string' && body.contact_id ? body.contact_id : null;
+    if (!isSdgOnly && !contactId) {
+      return NextResponse.json({ error: CONTACT_REQUIRED_MESSAGE }, { status: 400 });
+    }
+
     const supabase = createAdminClient();
     const ttConfigured = Boolean(process.env.TICKETTAILOR_API_KEY);
 
@@ -114,6 +127,8 @@ export async function POST(request) {
         category: v.category,
         member_discount_percent: v.memberDiscountPercent,
         status: 'draft',
+        is_sdg_only: isSdgOnly,
+        contact_id: isSdgOnly ? null : contactId,
       })
       .select()
       .single();

@@ -5,7 +5,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import TtLinkPanel from './TtLinkPanel';
+import EventContactFields from './EventContactFields';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
+import { CONTACT_REQUIRED_MESSAGE } from '@/lib/contact-helpers';
 
 const CATEGORY_OPTIONS = [
   { value: 'workshop', label: 'Workshop' },
@@ -55,6 +57,12 @@ export default function EventForm({ event, metrics = null, headerActions = null,
   const [memberDiscountPercent, setMemberDiscountPercent] = useState(
     event?.member_discount_percent != null ? String(event.member_discount_percent) : ''
   );
+  // A NEW event starts as "has an outside partner" so the team has to actively
+  // opt into SDG-only rather than defaulting into the path that skips the
+  // contact requirement. An EXISTING event keeps whatever it has — pre-migration
+  // rows were backfilled to is_sdg_only = true.
+  const [isSdgOnly, setIsSdgOnly] = useState(isEditing ? event.is_sdg_only !== false : false);
+  const [contactId, setContactId] = useState(event?.contact_id || null);
   const [ttEventSeriesId, setTtEventSeriesId] = useState(event?.tt_event_series_id || '');
   const [ttSeries, setTtSeries] = useState([]);
   const [ttSeriesError, setTtSeriesError] = useState('');
@@ -137,6 +145,14 @@ export default function EventForm({ event, metrics = null, headerActions = null,
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    // Every event either names the outside partner it belongs to or is flagged
+    // SDG-only. Blocked here, revalidated by the DB CHECK constraint.
+    if (!isSdgOnly && !contactId) {
+      setError(CONTACT_REQUIRED_MESSAGE);
+      return;
+    }
+
     setSaving(true);
 
     const supabase = createClient();
@@ -159,6 +175,8 @@ export default function EventForm({ event, metrics = null, headerActions = null,
       // access gate the public queries filter on.
       visibility: isInternal ? 'internal' : 'public',
       event_type: isInternal ? 'micro_party' : 'standard',
+      is_sdg_only: isSdgOnly,
+      contact_id: isSdgOnly ? null : contactId,
     };
 
     // For an existing event the TT link is owned by <TtLinkPanel> (server route).
@@ -417,6 +435,14 @@ export default function EventForm({ event, metrics = null, headerActions = null,
             </p>
           </div>
         )}
+
+        {/* CONTACT / SDG-ONLY — required unless the event is fully internal */}
+        <EventContactFields
+          isSdgOnly={isSdgOnly}
+          onSdgOnlyChange={setIsSdgOnly}
+          contactId={contactId}
+          onContactIdChange={setContactId}
+        />
 
         {/* VISIBILITY TOGGLE — public vs internal micro party */}
         <div>

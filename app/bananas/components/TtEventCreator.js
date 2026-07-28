@@ -5,7 +5,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { adminFetch } from '@/lib/admin-fetch';
+import EventContactFields from './EventContactFields';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
+import { CONTACT_REQUIRED_MESSAGE } from '@/lib/contact-helpers';
 
 const CATEGORY_OPTIONS = [
   { value: 'workshop', label: 'Workshop' },
@@ -56,6 +58,10 @@ export default function TtEventCreator() {
     String(CATEGORY_DISCOUNT_DEFAULTS.party),
   );
   const [ticketTypes, setTicketTypes] = useState([emptyTicketType()]);
+  // Defaults to "has an outside partner" so the team opts into SDG-only rather
+  // than defaulting into the path that skips the contact requirement.
+  const [isSdgOnly, setIsSdgOnly] = useState(false);
+  const [contactId, setContactId] = useState(null);
 
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -109,6 +115,12 @@ export default function TtEventCreator() {
     e.preventDefault();
     setError('');
     setNote('');
+
+    if (!isSdgOnly && !contactId) {
+      setError(CONTACT_REQUIRED_MESSAGE);
+      return;
+    }
+
     setSaving(true);
 
     const payload = {
@@ -124,6 +136,8 @@ export default function TtEventCreator() {
         QUALIFYING_CATEGORIES.includes(category) && memberDiscountPercent.trim() !== ''
           ? Number(memberDiscountPercent)
           : null,
+      is_sdg_only: isSdgOnly,
+      contact_id: isSdgOnly ? null : contactId,
       ticket_types: ticketTypes.map((t) => ({
         name: t.name.trim(),
         price: t.price,
@@ -252,6 +266,14 @@ export default function TtEventCreator() {
             </div>
           </div>
         )}
+
+        {/* CONTACT / SDG-ONLY — required unless the event is fully internal */}
+        <EventContactFields
+          isSdgOnly={isSdgOnly}
+          onSdgOnlyChange={setIsSdgOnly}
+          contactId={contactId}
+          onContactIdChange={setContactId}
+        />
 
         {/* TICKET TYPES */}
         <div>

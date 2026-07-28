@@ -162,6 +162,11 @@ export default function AdminDashboardClient({ isOwner, counts }) {
             title="Signups"
             count={counts.newSignups}
           />
+          <Tile
+            href="/bananas/contacts"
+            eyebrow="DIRECTORY"
+            title="Contacts"
+          />
         </div>
       )}
 
