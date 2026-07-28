@@ -209,7 +209,7 @@ function AdminProgressView({ initialTasks, assignees, isOwner, currentTeamMember
         <div>
           <Link href="/bananas" className="text-[12px] tracking-[0.1em] hover:underline" style={{ color: t.muted }}>← ADMIN</Link>
           <h1 className="text-[40px] font-extrabold -tracking-[0.02em] leading-[1.1] mt-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.text }}>
-            Progress
+            Tasks
           </h1>
           <p className="text-[13px] mt-1" style={{ color: t.muted }}>
             Department deliverables, updates and accountability.
@@ -441,7 +441,7 @@ function TeamProgressView({ initialTasks, assignees, currentUserName, todayIso }
         <div>
           <Link href="/team/calendar" className="text-[12px] tracking-[0.1em] hover:underline" style={{ color: t.muted }}>← TEAM</Link>
           <h1 className="text-[36px] font-extrabold -tracking-[0.02em] leading-[1.1] mt-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.text }}>
-            My Progress
+            My Tasks
           </h1>
           <p className="text-[13px] mt-1" style={{ color: t.muted }}>
             {currentUserName} · tap a task to post an update

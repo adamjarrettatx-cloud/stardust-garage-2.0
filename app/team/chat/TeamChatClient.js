@@ -315,7 +315,7 @@ export default function TeamChatClient({ currentUserId, currentUserName }) {
             className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"
             style={{ borderColor: t.borderStrong, color: t.accent }}
           >
-            PROGRESS
+            TASKS
           </Link>
           <button
             onClick={handleSignOut}

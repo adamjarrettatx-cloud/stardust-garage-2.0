@@ -259,7 +259,7 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
                 className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors"
                 style={{ borderColor: 'var(--auth-ghost-border)', color: 'var(--auth-accent)' }}
               >
-                PROGRESS
+                TASKS
               </Link>
             </>
           )}
