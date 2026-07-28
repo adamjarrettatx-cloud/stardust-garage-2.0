@@ -121,7 +121,9 @@ const ADMIN_THEMES = {
 };
 
 const KPI_DEFS = [
+  { key: 'total', label: 'Total tasks', color: '#3b82f6' },
   { key: 'overdue', label: 'Overdue', color: '#ef4444' },
+  { key: 'completedRecently', label: 'Done this week', color: '#10b981' },
 ];
 
 function DepartmentTabs({ value, onChange }) {
