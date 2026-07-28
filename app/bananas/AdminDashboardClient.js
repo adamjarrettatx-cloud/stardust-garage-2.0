@@ -60,7 +60,7 @@ function TabBar({ tabs, active, onChange }) {
             role="tab"
             aria-selected={isActive}
             onClick={() => onChange(tab.id)}
-            className="px-4 py-2 rounded-full text-[12px] font-semibold tracking-[0.1em] transition-colors"
+            className="px-4 py-2 rounded-[14px] text-[12px] font-semibold tracking-[0.1em] transition-colors"
             style={{
               background: isActive ? 'var(--auth-accent)' : 'var(--auth-ghost-bg)',
               color: isActive ? 'var(--auth-accent-text)' : 'var(--auth-ghost-text)',
