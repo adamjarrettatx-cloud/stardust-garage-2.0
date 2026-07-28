@@ -9,6 +9,7 @@ import {
   mapImportStatus,
   dayDiff,
   departmentLabel,
+  normalizeDepartmentTags,
   persistDepartmentFilter,
   progressDepartmentStorageKey,
   readPersistedDepartment,
@@ -323,4 +324,22 @@ test('computeKpis reports doneThisWeek using the business-week window', () => {
   const kpis = computeKpis(tasks, TODAY);
   assert.equal(kpis.total, 3);
   assert.equal(kpis.doneThisWeek, 1);
+});
+
+test('normalizeDepartmentTags keeps valid slugs, dedupes, and reports invalid values', () => {
+  assert.deepEqual(
+    normalizeDepartmentTags(['marketing', 'legal']),
+    { departments: ['marketing', 'legal'], invalid: [] }
+  );
+  assert.deepEqual(
+    normalizeDepartmentTags(['marketing', 'marketing', 'app']),
+    { departments: ['marketing', 'app'], invalid: [] }
+  );
+  assert.deepEqual(
+    normalizeDepartmentTags(['marketing', 'Marketing', 'not_a_dept', 7, null]),
+    { departments: ['marketing'], invalid: ['Marketing', 'not_a_dept', 7, null] }
+  );
+  assert.deepEqual(normalizeDepartmentTags([]), { departments: [], invalid: [] });
+  assert.deepEqual(normalizeDepartmentTags(undefined), { departments: [], invalid: [] });
+  assert.deepEqual(normalizeDepartmentTags('marketing'), { departments: [], invalid: [] });
 });

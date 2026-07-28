@@ -554,7 +554,7 @@ function TeamProgressView({ initialTasks, assignees, currentUserName, todayIso }
 
       {initialTasks.length === 0 ? (
         <div className="rounded-[14px] p-12 text-center" style={{ background: t.cardBg, border: `1px solid ${t.emptyBorder}` }}>
-          <p className="text-[15px]" style={{ color: t.muted }}>Nothing assigned to you right now.</p>
+          <p className="text-[15px]" style={{ color: t.muted }}>Nothing in your tasks right now.</p>
         </div>
       ) : (
         <div className="space-y-8">
