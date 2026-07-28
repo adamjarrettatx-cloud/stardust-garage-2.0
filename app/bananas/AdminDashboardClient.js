@@ -93,16 +93,27 @@ function TabBar({ tabs, active, onChange }) {
 // ---------------------------------------------------------------------------
 export default function AdminDashboardClient({ isOwner, counts }) {
   // Build tabs based on role
-  const submissionsBadge =
+  //
+  // "Submissions" used to lump every inbound-people form together. It's now
+  // split in two:
+  //   - Community: people relating to membership (applications, potential
+  //     members admins add themselves, collaborations, signups).
+  //   - Rentals: people relating to renting the space (venue inquiries,
+  //     micro parties).
+  const communityBadge =
     counts.applications +
-    counts.venueInquiries +
-    counts.microParties +
+    counts.potentialMembers +
     counts.collaborations +
     counts.newSignups;
 
+  const rentalsBadge =
+    counts.venueInquiries +
+    counts.microParties;
+
   const allTabs = [
     { id: 'team', label: 'Team', ownerOnly: false, badge: 0 },
-    { id: 'submissions', label: 'Submissions', ownerOnly: false, badge: submissionsBadge },
+    { id: 'community', label: 'Community', ownerOnly: false, badge: communityBadge },
+    { id: 'rentals', label: 'Rentals', ownerOnly: false, badge: rentalsBadge },
     { id: 'studio', label: 'Studio', ownerOnly: false, badge: counts.upcomingBookings },
     { id: 'documents', label: 'Documents', ownerOnly: false, badge: 0 },
     { id: 'analytics', label: 'Analytics', ownerOnly: true, badge: 0 },
@@ -111,21 +122,16 @@ export default function AdminDashboardClient({ isOwner, counts }) {
 
   const visibleTabs = allTabs.filter((t) => !t.ownerOnly || isOwner);
 
-  const [activeTab, setActiveTab] = useState('submissions');
+  const [activeTab, setActiveTab] = useState('community');
 
   return (
     <div>
       <TabBar tabs={visibleTabs} active={activeTab} onChange={setActiveTab} />
 
-      {/* SUBMISSIONS */}
-      {activeTab === 'submissions' && (
+      {/* COMMUNITY — everything related to membership: people applying,
+          people admins want to bring on, and people reaching out to us. */}
+      {activeTab === 'community' && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          <Tile
-            href="/bananas/applications"
-            eyebrow="REVIEW"
-            title="Applications"
-            count={counts.applications}
-          />
           <Tile
             href="/bananas/members"
             eyebrow="MANAGE"
@@ -133,16 +139,16 @@ export default function AdminDashboardClient({ isOwner, counts }) {
             count={counts.pastDueMembers}
           />
           <Tile
-            href="/bananas/venue-inquiries"
+            href="/bananas/applications"
             eyebrow="REVIEW"
-            title="Venue Inquiries"
-            count={counts.venueInquiries}
+            title="Applications"
+            count={counts.applications}
           />
           <Tile
-            href="/bananas/micro-parties"
-            eyebrow="REVIEW"
-            title="Micro Parties"
-            count={counts.microParties}
+            href="/bananas/potential-members"
+            eyebrow="CREATE"
+            title="Potential Members"
+            count={counts.potentialMembers}
           />
           <Tile
             href="/bananas/collaborations"
@@ -155,6 +161,24 @@ export default function AdminDashboardClient({ isOwner, counts }) {
             eyebrow="VIEW"
             title="Signups"
             count={counts.newSignups}
+          />
+        </div>
+      )}
+
+      {/* RENTALS — Micro Parties and Venue Inquiries only. */}
+      {activeTab === 'rentals' && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <Tile
+            href="/bananas/venue-inquiries"
+            eyebrow="REVIEW"
+            title="Venue Inquiries"
+            count={counts.venueInquiries}
+          />
+          <Tile
+            href="/bananas/micro-parties"
+            eyebrow="REVIEW"
+            title="Micro Parties"
+            count={counts.microParties}
           />
         </div>
       )}
