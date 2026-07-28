@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
@@ -7,6 +6,14 @@ import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadg
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import { WhatsAppButton } from '@/app/bananas/components/ContactButtons';
 import ReplyPanel from '@/app/bananas/components/ReplyPanel';
+import {
+  ProfileHeader,
+  ContactChip,
+  Pill,
+  DetailSection,
+  DetailGrid,
+  DetailItem,
+} from '@/app/bananas/components/SubmissionDetail';
 
 export const revalidate = 0;
 
@@ -27,29 +34,6 @@ function formatBirthday(dateString) {
   return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
-function initials(name) {
-  if (!name) return '?';
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() || '')
-    .join('') || '?';
-}
-
-function Field({ label, children }) {
-  return (
-    <div className="py-5 border-t" style={{ borderColor: 'var(--auth-row-border)' }}>
-      <div className="text-[11px] font-semibold tracking-[0.14em] mb-2" style={{ color: 'var(--auth-muted)' }}>
-        {label}
-      </div>
-      <div className="text-[15px] leading-[1.6]" style={{ whiteSpace: 'pre-wrap' }}>
-        {children || <span style={{ color: 'var(--auth-muted)' }}>—</span>}
-      </div>
-    </div>
-  );
-}
-
 export default async function ApplicationDetail({ params }) {
   const { redirect: gate } = await adminPageGate();
   if (gate) redirect(gate);
@@ -65,71 +49,52 @@ export default async function ApplicationDetail({ params }) {
   if (error || !app) notFound();
 
   return (
-    <main className="max-w-[800px] mx-auto px-6 py-16">
+    <main className="max-w-[860px] mx-auto px-6 py-16">
       <AuthenticatedPageHeader
         backHref="/bananas/applications"
         backLabel="← BACK TO APPLICATIONS"
         title="Membership Application"
-        className="mb-8"
+        className="mb-6"
       />
 
-      <div className="flex items-start gap-5 mb-8">
-        {app.photo_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={app.photo_url}
-            alt={app.full_name}
-            className="w-[120px] h-[120px] flex-shrink-0 object-cover"
-            style={{ borderRadius: '16px', border: '1px solid var(--auth-card-border-strong)' }}
-          />
-        ) : (
-          <div
-            className="w-[120px] h-[120px] flex-shrink-0 flex items-center justify-center text-[32px] font-bold"
-            style={{
-              borderRadius: '16px',
-              background: 'var(--auth-card-bg-alt)',
-              border: '1px solid var(--auth-card-border-strong)',
-              color: 'var(--auth-muted)',
-              fontFamily: "'Plus Jakarta Sans', sans-serif",
-            }}
-          >
-            {initials(app.full_name)}
-          </div>
-        )}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-3">
-            <div
-              className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full"
-              style={{
-                background: app.plan === 'cowork-party' ? 'var(--auth-text-strong)' : 'var(--auth-card-bg-alt)',
-                color: app.plan === 'cowork-party' ? 'var(--auth-strong-surface-text)' : 'var(--auth-text)',
-                border: '1px solid var(--auth-card-border-strong)',
-              }}
-            >
-              {app.plan === 'cowork-party' ? 'COWORK + PARTY' : 'COWORK'}
-            </div>
-            <SubmissionStatusBadge status={app.status || 'new'} />
-          </div>
-          <h1
-            className="text-[36px] font-extrabold -tracking-[0.02em] leading-[1.1]"
-            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-          >
-            {app.full_name}
-          </h1>
-          {app.preferred_name && (
-            <p className="text-[15px] mt-1" style={{ color: 'var(--auth-muted)' }}>
-              goes by {app.preferred_name}
-            </p>
-          )}
-          <p className="text-[12px] mt-3" style={{ color: 'var(--auth-faint)' }}>
-            Submitted {formatDate(app.created_at)}
-          </p>
-        </div>
-      </div>
+      <ProfileHeader
+        name={app.full_name}
+        photoUrl={app.photo_url}
+        subtitle={app.preferred_name ? `goes by ${app.preferred_name}` : null}
+        submittedLabel={`Submitted ${formatDate(app.created_at)}`}
+        badges={[
+          <Pill key="plan">{app.plan === 'cowork-party' ? 'COWORK + PARTY' : 'COWORK'}</Pill>,
+          <SubmissionStatusBadge key="status" status={app.status || 'new'} />,
+        ]}
+        contactRow={
+          <>
+            <ContactChip label="EMAIL">
+              <a href={`mailto:${app.email}`} className="text-[13px] hover:underline" style={{ color: 'var(--auth-text)' }}>
+                {app.email}
+              </a>
+              <ReplyPanel
+                submissionType="applications"
+                submissionId={app.id}
+                toEmail={app.email}
+                defaultSubject="Re: Your membership application — Stardust Garage"
+                defaultBody={`Hi ${(app.full_name || '').split(' ')[0] || 'there'},\n\nThanks so much for applying for membership at Stardust Garage.\n\n\n\nLooking forward to hearing from you.`}
+              />
+            </ContactChip>
+            {app.phone && (
+              <ContactChip label="PHONE">
+                <a href={`tel:${app.phone}`} className="text-[13px] hover:underline" style={{ color: 'var(--auth-text)' }}>
+                  {app.phone}
+                </a>
+                <WhatsAppButton phone={app.phone} />
+              </ContactChip>
+            )}
+          </>
+        }
+      />
 
       {!app.photo_url && (
         <div
-          className="rounded-[12px] px-5 py-4 mb-6 text-[13px] leading-[1.5]"
+          className="rounded-[12px] px-5 py-4 mb-4 text-[13px] leading-[1.5]"
           style={{ background: 'var(--auth-warn-bg)', border: '1px solid var(--auth-warn-border)', color: 'var(--auth-warn-strong)' }}
         >
           ⚠ No profile photo — approval will be blocked until a photo is on file.
@@ -143,83 +108,58 @@ export default async function ApplicationDetail({ params }) {
         hasPhoto={Boolean(app.photo_url)}
       />
 
-      <section
-        className="rounded-[14px] p-8 border mt-8 mb-6"
-        style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}
-      >
-        <h2 className="text-[13px] font-bold tracking-[0.14em] pb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-          CONTACT
-        </h2>
-        <Field label="EMAIL">
-          <div className="flex items-start justify-between gap-3 flex-wrap">
-            <a href={`mailto:${app.email}`} className="hover:underline pt-1">{app.email}</a>
-            <ReplyPanel
-              submissionType="applications"
-              submissionId={app.id}
-              toEmail={app.email}
-              defaultSubject="Re: Your membership application — Stardust Garage"
-              defaultBody={`Hi ${(app.full_name || '').split(' ')[0] || 'there'},\n\nThanks so much for applying for membership at Stardust Garage.\n\n\n\nLooking forward to hearing from you.`}
-            />
-          </div>
-        </Field>
-        <Field label="PHONE">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <a href={`tel:${app.phone}`} className="hover:underline">{app.phone}</a>
-            <WhatsAppButton phone={app.phone} />
-          </div>
-        </Field>
-        <Field label="INSTAGRAM / SOCIAL">{app.social_handle}</Field>
-        <Field label="WEBSITE">
-          {app.website ? (
-            <a href={app.website.startsWith('http') ? app.website : `https://${app.website}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
-              {app.website}
-            </a>
-          ) : null}
-        </Field>
-        <Field label="BIRTHDAY">{formatBirthday(app.birthday)}</Field>
-      </section>
+      <div className="mt-4">
+        <DetailSection title="PROFILE">
+          <DetailGrid>
+            <DetailItem label="INSTAGRAM / SOCIAL">{app.social_handle}</DetailItem>
+            <DetailItem label="WEBSITE">
+              {app.website ? (
+                <a
+                  href={app.website.startsWith('http') ? app.website : `https://${app.website}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:underline break-all"
+                >
+                  {app.website}
+                </a>
+              ) : null}
+            </DetailItem>
+            <DetailItem label="BIRTHDAY">{formatBirthday(app.birthday)}</DetailItem>
+          </DetailGrid>
+        </DetailSection>
 
-      <section
-        className="rounded-[14px] p-8 border mb-6"
-        style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}
-      >
-        <h2 className="text-[13px] font-bold tracking-[0.14em] pb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-          RESPONSES
-        </h2>
-        <Field label="WHAT BRINGS YOU TO STARDUST?">{app.why_stardust}</Field>
-        <Field label="HOW DID YOU HEAR ABOUT OUR MEMBERSHIPS / WHO REFERRED YOU?">{app.how_did_you_hear}</Field>
-        <Field label="HOW DO YOU WISH TO CONTRIBUTE TO THE COLLECTIVE?">{app.how_contribute}</Field>
-        <Field label="WHAT KIND OF EXPERIENCES DO YOU MOST WANT TO SEE HERE?">{app.what_experiences}</Field>
-      </section>
+        <DetailSection title="RESPONSES">
+          <DetailGrid>
+            <DetailItem label="WHAT BRINGS YOU TO STARDUST?" full>{app.why_stardust}</DetailItem>
+            <DetailItem label="HOW DID YOU HEAR ABOUT OUR MEMBERSHIPS / WHO REFERRED YOU?" full>{app.how_did_you_hear}</DetailItem>
+            <DetailItem label="HOW DO YOU WISH TO CONTRIBUTE TO THE COLLECTIVE?" full>{app.how_contribute}</DetailItem>
+            <DetailItem label="WHAT KIND OF EXPERIENCES DO YOU MOST WANT TO SEE HERE?" full>{app.what_experiences}</DetailItem>
+          </DetailGrid>
+        </DetailSection>
 
-      <section
-        className="rounded-[14px] p-8 border"
-        style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}
-      >
-        <h2 className="text-[13px] font-bold tracking-[0.14em] mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-          AGREEMENTS
-        </h2>
-        <div className="space-y-2.5 text-[14px]">
-          <div className="flex items-start gap-3">
-            <span>{app.agreed_ethos ? '✓' : '✗'}</span>
-            <span style={{ color: app.agreed_ethos ? 'var(--auth-text)' : 'var(--auth-muted)' }}>
-              Uphold the Stardust ethos of respect, awareness, and co-creation
-            </span>
+        <DetailSection title="AGREEMENTS" className="mb-0">
+          <div className="space-y-2.5 text-[14px]">
+            <div className="flex items-start gap-3">
+              <span>{app.agreed_ethos ? '✓' : '✗'}</span>
+              <span style={{ color: app.agreed_ethos ? 'var(--auth-text)' : 'var(--auth-muted)' }}>
+                Uphold the Stardust ethos of respect, awareness, and co-creation
+              </span>
+            </div>
+            <div className="flex items-start gap-3">
+              <span>{app.agreed_renewal ? '✓' : '✗'}</span>
+              <span style={{ color: app.agreed_renewal ? 'var(--auth-text)' : 'var(--auth-muted)' }}>
+                Understands membership renews monthly unless canceled
+              </span>
+            </div>
+            <div className="flex items-start gap-3">
+              <span>{app.agreed_house_rules ? '✓' : '✗'}</span>
+              <span style={{ color: app.agreed_house_rules ? 'var(--auth-text)' : 'var(--auth-muted)' }}>
+                Agrees to follow all house rules, safety guidelines, and consent to culture practices
+              </span>
+            </div>
           </div>
-          <div className="flex items-start gap-3">
-            <span>{app.agreed_renewal ? '✓' : '✗'}</span>
-            <span style={{ color: app.agreed_renewal ? 'var(--auth-text)' : 'var(--auth-muted)' }}>
-              Understands membership renews monthly unless canceled
-            </span>
-          </div>
-          <div className="flex items-start gap-3">
-            <span>{app.agreed_house_rules ? '✓' : '✗'}</span>
-            <span style={{ color: app.agreed_house_rules ? 'var(--auth-text)' : 'var(--auth-muted)' }}>
-              Agrees to follow all house rules, safety guidelines, and consent to culture practices
-            </span>
-          </div>
-        </div>
-      </section>
+        </DetailSection>
+      </div>
     </main>
   );
 }
