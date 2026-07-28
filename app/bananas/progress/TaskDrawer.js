@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { STATUSES } from '@/lib/progress';
+import { STATUSES, detectStatusFromText } from '@/lib/progress';
 import { getProgressDrawerTheme } from '@/lib/progress-drawer-theme';
 import {
   StatusBadge, PriorityBadge, DeptChip, formatDate, formatDateTime,
@@ -50,6 +50,18 @@ export default function TaskDrawer({
   const [percentChange, setPercentChange] = useState('');
   const [posting, setPosting] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [statusManuallySet, setStatusManuallySet] = useState(false);
+  const [autoDetectedStatus, setAutoDetectedStatus] = useState('');
+
+  // Auto-detect a status change from what's being typed, e.g. "in progress"
+  // or "this is done now" — but never override a status the person picked
+  // themselves from the dropdown.
+  useEffect(() => {
+    if (statusManuallySet) return;
+    const detected = detectStatusFromText(body);
+    setAutoDetectedStatus(detected || '');
+    setStatusChange(detected || '');
+  }, [body, statusManuallySet]);
 
   const assigneeName = useCallback(
     (id) => assignees.find((a) => a.id === id)?.label || (id ? 'Unknown' : 'Unassigned'),
@@ -92,6 +104,8 @@ export default function TaskDrawer({
       setBody('');
       setStatusChange('');
       setPercentChange('');
+      setStatusManuallySet(false);
+      setAutoDetectedStatus('');
       await load();
       onChanged?.();
     } catch (e2) {
@@ -259,13 +273,18 @@ export default function TaskDrawer({
                 Status
                 <select
                   value={statusChange}
-                  onChange={(e) => setStatusChange(e.target.value)}
+                  onChange={(e) => { setStatusChange(e.target.value); setStatusManuallySet(true); }}
                   className="progress-drawer-input ml-2 rounded-md px-2 py-1.5 text-[12px]"
                   style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.inputText }}
                 >
                   <option value="">No change</option>
                   {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                 </select>
+                {!statusManuallySet && autoDetectedStatus && (
+                  <span className="ml-2 text-[11px]" style={{ color: t.accentLabel }}>
+                    auto-detected: {STATUSES.find((s) => s.value === autoDetectedStatus)?.label}
+                  </span>
+                )}
               </label>
               <label className="text-[12px]" style={{ color: t.muted }}>
                 %

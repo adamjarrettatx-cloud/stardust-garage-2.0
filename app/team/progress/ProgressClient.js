@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   DEPARTMENTS, STATUSES, PRIORITIES,
   classifyTask, computeKpis, filterTasks, persistDepartmentFilter,
-  readPersistedDepartment, sortTasks, toDateString,
+  readPersistedDepartment, sortTasks, toDateString, parseQuickAddTask,
 } from '@/lib/progress';
 import {
   StatusBadge, PriorityBadge, DeptChip, AttentionFlags, formatDate,
@@ -16,6 +16,18 @@ import TaskFormModal from '@/app/bananas/progress/TaskFormModal';
 import ImportModal from '@/app/bananas/progress/ImportModal';
 import AuthenticatedThemeToggleControl from '@/app/components/AuthenticatedThemeToggleControl';
 import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
+
+async function apiJson(url, options) {
+  const res = await fetch(url, options);
+  let json = null;
+  try { json = await res.json(); } catch { /* ignore */ }
+  if (res.status === 401 && json?.reason === 'mfa_required' && typeof window !== 'undefined') {
+    window.location.href = '/bananas/security?mfa=required';
+    throw new Error('MFA required');
+  }
+  if (!res.ok) throw new Error(json?.error || 'Request failed');
+  return json;
+}
 
 // Unified Progress route (/team/progress). Admins and the owner get the full
 // management table (filters, sort, KPIs, CSV import, hard-delete for the
@@ -175,6 +187,9 @@ function AdminProgressView({ initialTasks, assignees, isOwner, currentTeamMember
   const [drawerTask, setDrawerTask] = useState(null);
   const [formTask, setFormTask] = useState(undefined); // undefined = closed, null = create, object = edit
   const [showImport, setShowImport] = useState(false);
+  const [quickAddText, setQuickAddText] = useState('');
+  const [quickAdding, setQuickAdding] = useState(false);
+  const [quickAddMsg, setQuickAddMsg] = useState(null); // { text, isError }
 
   const activeTasks = useMemo(
     () => initialTasks.filter((t) => !t.archived),
@@ -189,6 +204,48 @@ function AdminProgressView({ initialTasks, assignees, isOwner, currentTeamMember
 
   const refresh = () => router.refresh();
   const setFilter = (k, v) => setFilters((f) => ({ ...f, [k]: v }));
+
+  // Live preview of what the quick-add box will save, so the admin sees the
+  // due date/priority it picked up before hitting enter.
+  const quickAddPreview = useMemo(
+    () => (quickAddText.trim() ? parseQuickAddTask(quickAddText, todayStr, assignees) : null),
+    [quickAddText, todayStr, assignees],
+  );
+
+  async function submitQuickAdd(e) {
+    e.preventDefault();
+    const raw = quickAddText.trim();
+    if (!raw) return;
+    setQuickAdding(true);
+    setQuickAddMsg(null);
+    try {
+      const parsed = parseQuickAddTask(raw, todayStr, assignees);
+      const payload = {
+        title: parsed.title || raw,
+        department: filters.department || DEPARTMENTS[0].slug,
+        assignee_id: parsed.assignee_id || null,
+        status: 'not_started',
+        priority: parsed.priority || 'medium',
+        due_date: parsed.due_date || null,
+        percent_complete: 0,
+      };
+      await apiJson('/api/progress/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const bits = [`Added "${payload.title}"`];
+      if (payload.due_date) bits.push(`due ${formatDate(payload.due_date)}`);
+      bits.push(`${PRIORITIES.find((p) => p.value === payload.priority)?.label || payload.priority} priority`);
+      setQuickAddMsg({ text: bits.join(' · '), isError: false });
+      setQuickAddText('');
+      refresh();
+    } catch (err) {
+      setQuickAddMsg({ text: err.message || 'Could not add that task.', isError: true });
+    } finally {
+      setQuickAdding(false);
+    }
+  }
 
   useEffect(() => {
     const saved = readPersistedDepartment(typeof window !== 'undefined' ? window.localStorage : null, currentTeamMemberId);
@@ -229,6 +286,49 @@ function AdminProgressView({ initialTasks, assignees, isOwner, currentTeamMember
           </button>
         </div>
       </div>
+
+      {/* Quick add — type it naturally, no form needed */}
+      <form onSubmit={submitQuickAdd} className="rounded-[14px] p-4 mb-8" style={{ background: t.cardBg, border: `1px solid ${t.cardBorder}` }}>
+        <div className="text-[11px] font-semibold tracking-[0.12em] mb-2" style={{ color: t.muted }}>QUICK ADD · JUST TYPE IT</div>
+        <div className="flex flex-wrap gap-3">
+          <input
+            value={quickAddText}
+            onChange={(e) => { setQuickAddText(e.target.value); setQuickAddMsg(null); }}
+            placeholder='e.g. “We need 3 members by Friday” or “@Jake fix the printer by Monday”'
+            className="flex-1 min-w-[240px] rounded-full px-4 text-[13px]"
+            style={selectStyle}
+          />
+          <button type="submit" disabled={quickAdding || !quickAddText.trim()}
+            className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.12em] disabled:opacity-40 hover:-translate-y-0.5 transition-transform"
+            style={{ minHeight: '44px', background: '#ffb84d', color: '#0a0a0a', border: 'none', cursor: quickAdding || !quickAddText.trim() ? 'not-allowed' : 'pointer' }}>
+            {quickAdding ? 'ADDING…' : 'ADD'}
+          </button>
+        </div>
+        {quickAddPreview && (
+          <div className="text-[12px] mt-2" style={{ color: t.muted }}>
+            Will save as: <span style={{ color: t.mutedStrong }}>“{quickAddPreview.title || quickAddText.trim()}”</span>
+            {quickAddPreview.due_date && (
+              <>
+                {' · due '}{formatDate(quickAddPreview.due_date)}
+                {' · '}
+                <span style={{ color: PRIORITIES.find((p) => p.value === quickAddPreview.priority)?.color }}>
+                  {PRIORITIES.find((p) => p.value === quickAddPreview.priority)?.label}
+                </span>
+                {' priority'}
+              </>
+            )}
+            {quickAddPreview.assignee_id && (
+              <>{' · assigned to '}{assignees.find((a) => a.id === quickAddPreview.assignee_id)?.label}</>
+            )}
+            {' · '}{DEPARTMENTS.find((d) => d.slug === (filters.department || DEPARTMENTS[0].slug))?.label}
+          </div>
+        )}
+        {quickAddMsg && (
+          <div className="text-[12px] mt-2" style={{ color: quickAddMsg.isError ? '#ef4444' : '#10b981' }}>
+            {quickAddMsg.text}
+          </div>
+        )}
+      </form>
 
       {/* KPI summary */}
       <div className="flex flex-wrap gap-3 mb-8">

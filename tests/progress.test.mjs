@@ -13,6 +13,10 @@ import {
   progressDepartmentStorageKey,
   readPersistedDepartment,
   statusLabel,
+  parseNaturalDueDate,
+  priorityFromDueDate,
+  parseQuickAddTask,
+  detectStatusFromText,
 } from '../lib/progress.js';
 
 const TODAY = '2026-07-23';
@@ -194,4 +198,91 @@ test('department filter persistence is team-member scoped with stale-value fallb
 
   assert.equal(persistDepartmentFilter(api, 'member-1', ''), '');
   assert.equal(readPersistedDepartment(api, 'member-1'), '');
+});
+
+// ---------------------------------------------------------------------------
+// Quick-add NLP: due-date parsing + priority scale.
+// TODAY ('2026-07-23') is a Thursday.
+// ---------------------------------------------------------------------------
+test('parseNaturalDueDate resolves weekday names to the next occurrence', () => {
+  assert.equal(parseNaturalDueDate('by Friday', TODAY).dueDate, '2026-07-24');
+  assert.equal(parseNaturalDueDate('due next friday', TODAY).dueDate, '2026-07-31');
+  assert.equal(parseNaturalDueDate('on Thursday', TODAY).dueDate, TODAY); // today matches -> today
+});
+
+test('parseNaturalDueDate resolves relative phrases', () => {
+  assert.equal(parseNaturalDueDate('in 3 days', TODAY).dueDate, '2026-07-26');
+  assert.equal(parseNaturalDueDate('in 2 weeks', TODAY).dueDate, '2026-08-06');
+  assert.equal(parseNaturalDueDate('tomorrow', TODAY).dueDate, '2026-07-24');
+  assert.equal(parseNaturalDueDate('by end of week', TODAY).dueDate, '2026-07-24');
+  assert.equal(parseNaturalDueDate('by next week', TODAY).dueDate, '2026-07-30');
+});
+
+test('parseNaturalDueDate resolves explicit dates', () => {
+  assert.equal(parseNaturalDueDate('due 8/1', TODAY).dueDate, '2026-08-01');
+  assert.equal(parseNaturalDueDate('by August 15', TODAY).dueDate, '2026-08-15');
+  assert.equal(parseNaturalDueDate('by 8/15/2027', TODAY).dueDate, '2027-08-15');
+});
+
+test('parseNaturalDueDate returns no match when there is no date phrase', () => {
+  const r = parseNaturalDueDate('We need more staff on the floor', TODAY);
+  assert.equal(r.dueDate, null);
+  assert.equal(r.matchIndex, -1);
+});
+
+test('priorityFromDueDate applies the day-based urgency scale', () => {
+  assert.equal(priorityFromDueDate('2026-07-25', TODAY), 'urgent'); // 2 days
+  assert.equal(priorityFromDueDate('2026-07-30', TODAY), 'urgent'); // 7 days (boundary)
+  assert.equal(priorityFromDueDate('2026-08-02', TODAY), 'high'); // 10 days
+  assert.equal(priorityFromDueDate('2026-08-06', TODAY), 'high'); // 14 days (boundary)
+  assert.equal(priorityFromDueDate('2026-08-07', TODAY), 'medium'); // 15 days
+  assert.equal(priorityFromDueDate('2026-08-13', TODAY), 'medium'); // 21 days (boundary)
+  assert.equal(priorityFromDueDate('2026-08-14', TODAY), 'low'); // 22 days
+  assert.equal(priorityFromDueDate('2026-07-10', TODAY), 'urgent'); // already overdue
+  assert.equal(priorityFromDueDate(null, TODAY), null);
+});
+
+test('parseQuickAddTask strips the due-date phrase and computes priority', () => {
+  const r = parseQuickAddTask('We need 3 members by Friday', TODAY);
+  assert.equal(r.title, 'We need 3 members');
+  assert.equal(r.due_date, '2026-07-24');
+  assert.equal(r.priority, 'urgent');
+});
+
+test('parseQuickAddTask leaves title untouched and priority null with no date', () => {
+  const r = parseQuickAddTask('Restock the bar with tonic water', TODAY);
+  assert.equal(r.title, 'Restock the bar with tonic water');
+  assert.equal(r.due_date, null);
+  assert.equal(r.priority, null);
+});
+
+test('parseQuickAddTask picks up an @mention as assignee and strips it', () => {
+  const assignees = [{ id: 'abc123', label: 'Jake Rivera' }, { id: 'xyz789', label: 'Sam Lee' }];
+  const r = parseQuickAddTask('@Jake fix the POS printer by Monday', TODAY, assignees);
+  assert.equal(r.assignee_id, 'abc123');
+  assert.equal(r.due_date, '2026-07-27');
+  assert.equal(r.title, 'fix the POS printer');
+});
+
+// ---------------------------------------------------------------------------
+// Natural-language status detection.
+// ---------------------------------------------------------------------------
+test('detectStatusFromText recognizes plain status words', () => {
+  assert.equal(detectStatusFromText('in progress'), 'in_progress');
+  assert.equal(detectStatusFromText('this is being worked on'), 'in_progress');
+  assert.equal(detectStatusFromText('done'), 'done');
+  assert.equal(detectStatusFromText("we're blocked on legal"), 'blocked');
+  assert.equal(detectStatusFromText('waiting on Sarah to approve'), 'blocked');
+  assert.equal(detectStatusFromText('waiting on legal to review'), 'waiting');
+  assert.equal(detectStatusFromText('not started yet'), 'not_started');
+});
+
+test('detectStatusFromText avoids false positives on negated completion', () => {
+  assert.equal(detectStatusFromText('not done yet, still working through it'), 'in_progress');
+  assert.equal(detectStatusFromText("can't get this done today"), null);
+});
+
+test('detectStatusFromText returns null when nothing recognizable is said', () => {
+  assert.equal(detectStatusFromText('talked to the vendor about pricing'), null);
+  assert.equal(detectStatusFromText(''), null);
 });
