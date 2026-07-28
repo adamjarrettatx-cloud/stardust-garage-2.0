@@ -58,7 +58,7 @@ function Avatar({ application }) {
 export default function ApplicationsList({ applications }) {
   const [activeTab, setActiveTab] = useState('new');
   const visible = filterSubmissionRowsByStatus(applications, activeTab);
-  const activeLabel = activeTab === 'reviewed' ? 'seen' : activeTab.toLowerCase();
+  const activeLabel = activeTab.toLowerCase();
 
   return (
     <>
