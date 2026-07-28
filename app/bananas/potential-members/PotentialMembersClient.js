@@ -15,7 +15,7 @@ function StatusBadge({ status }) {
   return (
     <span
       className="px-3 py-1 rounded-full text-[11px] font-semibold tracking-[0.1em] flex-shrink-0"
-      style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.color}55` }}
+      style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}
     >
       {cfg.label.toUpperCase()}
     </span>
@@ -229,7 +229,7 @@ export default function PotentialMembersClient({ potentialMembers: initial }) {
           <span
             key={cfg.value}
             className="px-3 py-1 rounded-full text-[11px] font-semibold tracking-[0.1em]"
-            style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.color}55` }}
+            style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}
           >
             {cfg.label.toUpperCase()}
           </span>
