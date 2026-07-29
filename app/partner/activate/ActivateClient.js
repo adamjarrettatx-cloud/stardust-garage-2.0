@@ -7,12 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import Wordmark from '@/app/components/Wordmark';
 import PartnerSignIn from '../PartnerSignIn';
 import PartnerSignOutButton from '../PartnerSignOutButton';
-
-// Same limits as the membership application photo upload (ApplyForm.js), and the
-// same public bucket — one place for "a face our door staff can match against".
-const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
-const ACCEPTED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const PHOTO_BUCKET = 'member-photos';
+import { uploadPartnerPhoto, validatePhotoFile } from '@/lib/partner-photo';
 
 export default function ActivateClient() {
   const router = useRouter();
@@ -81,12 +76,9 @@ export default function ActivateClient() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!ACCEPTED_PHOTO_TYPES.includes(file.type)) {
-      setPhotoError('Please choose a JPG, PNG or WebP image.');
-      return;
-    }
-    if (file.size > MAX_PHOTO_BYTES) {
-      setPhotoError('That photo is over 5MB. Please choose a smaller file.');
+    const invalid = validatePhotoFile(file);
+    if (invalid) {
+      setPhotoError(invalid);
       return;
     }
 
@@ -113,31 +105,19 @@ export default function ActivateClient() {
     setSubmitting(true);
     const supabase = createClient();
 
-    const ext = photoFile.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const sanitized = photoFile.name
-      .replace(/\.[^.]+$/, '')
-      .replace(/[^a-zA-Z0-9-_]/g, '-')
-      .slice(0, 40) || 'photo';
-    const filename = `partner-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${sanitized}.${ext}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from(PHOTO_BUCKET)
-      .upload(filename, photoFile, { contentType: photoFile.type });
-
-    if (uploadError) {
+    const upload = await uploadPartnerPhoto(supabase, photoFile);
+    if (upload.error) {
       setSubmitting(false);
-      setError('Could not upload your photo. Please try again.');
+      setError(upload.error);
       return;
     }
-
-    const { data: publicUrlData } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(filename);
 
     const res = await fetch('/api/partner/complete-activation', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         fullName: fullName.trim(),
-        photoUrl: publicUrlData?.publicUrl || null,
+        photoUrl: upload.url,
       }),
     });
     const data = await res.json().catch(() => null);

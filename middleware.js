@@ -98,12 +98,16 @@ export async function middleware(request) {
 
   // Not logged in -> bounce to the unified login, with a next= param so the
   // login page can send them back to where they were headed after sign-in.
+  //
+  // Except under /partner/*: that login is password-based and partners never
+  // get a password, so sending them there is a dead end. They go to the
+  // Google / magic-link page instead.
   if (!user) {
     const url = request.nextUrl.clone();
     const originalPath = pathname + (request.nextUrl.search || '');
-    url.pathname = '/login';
+    url.pathname = isPartnerRoute ? '/partner/login' : '/login';
     url.search = '';
-    url.searchParams.set('next', originalPath);
+    if (!isPartnerRoute) url.searchParams.set('next', originalPath);
     return NextResponse.redirect(url);
   }
 
@@ -127,6 +131,10 @@ export async function middleware(request) {
   // select-own-row policy on partner_profiles is what makes this readable with
   // the anon key.
   let isActivePartner = false;
+  // Distinct from isActivePartner: someone who has been invited but hasn't
+  // confirmed their name and photo yet. They belong on /partner/activate, not
+  // bounced off the partner area as a stranger.
+  let isInvitedPartner = false;
   if (!isAdmin && teamRole !== 'team') {
     const { data: partner } = await supabase
       .from('partner_profiles')
@@ -134,6 +142,7 @@ export async function middleware(request) {
       .eq('user_id', user.id)
       .maybeSingle();
     isActivePartner = Boolean(partner?.is_active);
+    isInvitedPartner = Boolean(partner);
   }
 
   // Partners are not staff and not members: keep them out of every other
@@ -146,12 +155,12 @@ export async function middleware(request) {
     return NextResponse.redirect(url);
   }
 
-  // /partner/* requires an ACTIVE partner profile. Everyone else — including
-  // admins, team and members — goes to the public home page, the mirror image
-  // of the rule above.
+  // /partner/* requires an ACTIVE partner profile. An invited partner who never
+  // finished setup is sent to do that; everyone else — admins, team, members —
+  // goes to the public home page, the mirror image of the rule above.
   if (isPartnerRoute && !isActivePartner) {
     const url = request.nextUrl.clone();
-    url.pathname = '/';
+    url.pathname = isInvitedPartner ? '/partner/activate' : '/';
     url.search = '';
     return NextResponse.redirect(url);
   }
