@@ -1,0 +1,285 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import Wordmark from '@/app/components/Wordmark';
+
+// Same limits as the membership application photo upload (ApplyForm.js), and the
+// same public bucket — one place for "a face our door staff can match against".
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+const ACCEPTED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const PHOTO_BUCKET = 'member-photos';
+
+export default function ActivateClient() {
+  const router = useRouter();
+
+  // null = still resolving the magic-link session, then the partner_profiles row
+  // or false when the link isn't tied to an invite.
+  const [profile, setProfile] = useState(null);
+  const [resolved, setResolved] = useState(false);
+
+  const [fullName, setFullName] = useState('');
+  const fileInputRef = useRef(null);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState('');
+  const [photoError, setPhotoError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  // The invite link lands here with the tokens in the URL fragment. getSession()
+  // waits for the browser client to finish exchanging them (same reliance as
+  // /reset-password), so by the time this resolves we either have a session or
+  // the link was already used/expired.
+  useEffect(() => {
+    const load = async () => {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        setResolved(true);
+        return;
+      }
+
+      const { data: row } = await supabase
+        .from('partner_profiles')
+        .select('id, full_name, photo_url, is_active')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      setProfile(row || false);
+      setFullName(row?.full_name || session.user.user_metadata?.full_name || '');
+      setResolved(true);
+    };
+    load();
+  }, []);
+
+  const handlePhotoChange = (e) => {
+    setPhotoError('');
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!ACCEPTED_PHOTO_TYPES.includes(file.type)) {
+      setPhotoError('Please choose a JPG, PNG or WebP image.');
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      setPhotoError('That photo is over 5MB. Please choose a smaller file.');
+      return;
+    }
+
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!fullName.trim()) {
+      setError('Please enter your name.');
+      return;
+    }
+    // The photo is not optional here, matching the gate approve-member enforces
+    // for members: no photo, no active profile.
+    if (!photoFile) {
+      setPhotoError('A profile photo is required.');
+      return;
+    }
+
+    setSubmitting(true);
+    const supabase = createClient();
+
+    const ext = photoFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const sanitized = photoFile.name
+      .replace(/\.[^.]+$/, '')
+      .replace(/[^a-zA-Z0-9-_]/g, '-')
+      .slice(0, 40) || 'photo';
+    const filename = `partner-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${sanitized}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(PHOTO_BUCKET)
+      .upload(filename, photoFile, { contentType: photoFile.type });
+
+    if (uploadError) {
+      setSubmitting(false);
+      setError('Could not upload your photo. Please try again.');
+      return;
+    }
+
+    const { data: publicUrlData } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(filename);
+
+    const res = await fetch('/api/partner/complete-activation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fullName: fullName.trim(),
+        photoUrl: publicUrlData?.publicUrl || null,
+      }),
+    });
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      setSubmitting(false);
+      setError(data?.error || 'Could not finish setting up your profile.');
+      return;
+    }
+
+    router.push('/partner/profile');
+    router.refresh();
+  };
+
+  const shell = (children) => (
+    <main className="min-h-screen flex items-center justify-center px-6 py-12">
+      <div className="w-full max-w-[440px]">
+        <div className="flex justify-center mb-10">
+          <Wordmark size="md" align="center" />
+        </div>
+        {children}
+      </div>
+    </main>
+  );
+
+  if (!resolved) {
+    return shell(
+      <p className="text-[14px] text-center" style={{ color: '#8a8a8a' }}>
+        Loading...
+      </p>
+    );
+  }
+
+  // No session, or a session with no partner invite behind it.
+  if (!profile) {
+    return shell(
+      <div className="text-center">
+        <h1
+          className="text-[24px] font-extrabold -tracking-[0.02em] mb-4 leading-[1.1]"
+          style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+        >
+          Link expired or invalid.
+        </h1>
+        <p className="text-[14px] leading-[1.6] mb-8" style={{ color: '#a0a0a0' }}>
+          Partner invite links are single-use and expire. Ask us to send you a new one.
+        </p>
+        <Link
+          href="/"
+          className="inline-block px-6 py-2.5 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5"
+          style={{ background: '#ffffff', color: '#0a0a0a' }}
+        >
+          BACK TO THE SITE
+        </Link>
+      </div>
+    );
+  }
+
+  if (profile.is_active) {
+    return shell(
+      <div className="text-center">
+        <div className="text-[11px] font-semibold tracking-[0.28em] mb-4" style={{ color: '#a0a0a0' }}>
+          ALREADY ACTIVE
+        </div>
+        <h1
+          className="text-[26px] font-extrabold -tracking-[0.02em] mb-4 leading-[1.1]"
+          style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+        >
+          You&apos;re all set.
+        </h1>
+        <Link
+          href="/partner/profile"
+          className="inline-block px-6 py-2.5 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5"
+          style={{ background: '#ffffff', color: '#0a0a0a' }}
+        >
+          GO TO MY PROFILE
+        </Link>
+      </div>
+    );
+  }
+
+  return shell(
+    <>
+      <div className="text-[11px] font-semibold tracking-[0.28em] mb-4 text-center" style={{ color: '#a0a0a0' }}>
+        PARTNER SETUP
+      </div>
+      <h1
+        className="text-[28px] font-extrabold -tracking-[0.02em] mb-2 text-center leading-[1.1]"
+        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+      >
+        Create your profile.
+      </h1>
+      <p className="text-[13px] text-center mb-10" style={{ color: '#8a8a8a' }}>
+        Confirm your name and add a photo so our door staff know who you are.
+      </p>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div>
+          <label className="block text-[12px] font-semibold tracking-[0.14em] mb-2" style={{ color: '#8a8a8a' }}>
+            FULL NAME
+          </label>
+          <input
+            type="text"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            required
+            className="w-full px-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30"
+            style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.1)', color: '#f5f5f5' }}
+          />
+        </div>
+
+        <div>
+          <label className="block text-[12px] font-semibold tracking-[0.14em] mb-2" style={{ color: '#8a8a8a' }}>
+            PROFILE PHOTO *
+          </label>
+          <p className="text-[12px] leading-[1.5] mb-3" style={{ color: '#8a8a8a' }}>
+            Required. JPG, PNG or WebP, max 5MB.
+          </p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handlePhotoChange}
+            className="hidden"
+          />
+          <div className="flex items-center gap-4">
+            {photoPreview && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={photoPreview}
+                alt="Profile preview"
+                className="w-[72px] h-[72px] flex-shrink-0 object-cover"
+                style={{ borderRadius: '14px', border: '1px solid #2a2a2a' }}
+              />
+            )}
+            <div className="min-w-0">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-5 py-3 rounded-[10px] text-[12px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5"
+                style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
+              >
+                {photoFile ? 'CHANGE PHOTO' : 'CHOOSE PHOTO'}
+              </button>
+              {photoFile && (
+                <div className="text-[12px] mt-2 truncate" style={{ color: '#8a8a8a' }}>
+                  {photoFile.name}
+                </div>
+              )}
+            </div>
+          </div>
+          {photoError && <div className="text-[12px] text-red-400 mt-2">{photoError}</div>}
+        </div>
+
+        {error && <div className="text-[13px] text-red-400 text-center">{error}</div>}
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
+          style={{ background: '#ffffff', color: '#0a0a0a' }}
+        >
+          {submitting ? 'SAVING...' : 'CREATE MY PROFILE'}
+        </button>
+      </form>
+    </>
+  );
+}

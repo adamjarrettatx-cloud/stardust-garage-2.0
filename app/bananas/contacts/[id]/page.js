@@ -23,6 +23,18 @@ export default async function ContactDetailPage({ params }) {
 
   if (error || !contact) notFound();
 
+  // Only admins can read partner_profiles (RLS), and only admins may invite, so
+  // the partner section is skipped entirely for team-role staff.
+  const partnerProfile = isAdmin
+    ? (
+        await supabase
+          .from('partner_profiles')
+          .select('id, is_active, invited_at, activated_at')
+          .eq('contact_id', id)
+          .maybeSingle()
+      ).data
+    : null;
+
   const [events, contracts, venueInquiries, collaborations, microParties, audit] = await Promise.all([
     supabase
       .from('events')
@@ -62,6 +74,7 @@ export default async function ContactDetailPage({ params }) {
       <ContactDetailClient
         contact={contact}
         isAdmin={isAdmin}
+        partnerProfile={partnerProfile}
         events={events.data || []}
         contracts={contracts.data || []}
         venueInquiries={venueInquiries.data || []}

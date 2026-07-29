@@ -11,13 +11,26 @@ export async function middleware(request) {
   // /capacity/admin sub-route additionally requires admin (re-checked on the
   // page via requireAdmin); here we enforce at least the team gate.
   const isCapacityRoute = pathname === '/capacity' || pathname.startsWith('/capacity/');
+  // Partner pages (promoters/collectives/vendors managing their guest list) are
+  // gated on partner_profiles.is_active, not on team_members at all.
+  const isPartnerRoute = pathname === '/partner' || pathname.startsWith('/partner/');
 
-  if (!isAdminRoute && !isTeamRoute && !isMemberRoute && !isCapacityRoute) {
+  if (!isAdminRoute && !isTeamRoute && !isMemberRoute && !isCapacityRoute && !isPartnerRoute) {
     return NextResponse.next();
   }
 
   // Allow login pages without auth
   if (pathname === '/bananas/login' || pathname === '/login' || pathname === '/team/login') {
+    return NextResponse.next();
+  }
+
+  // The partner invite email lands here carrying the magic-link tokens in the
+  // URL *fragment*, which the server never sees — so there is no session yet on
+  // this request and gating it would bounce every invitee to /login. The page
+  // itself waits for the browser client to exchange the fragment, then checks
+  // for a partner_profiles row and shows "link expired or invalid" if there
+  // isn't one. Same relaxation shape as the door-device pages below.
+  if (pathname === '/partner/activate') {
     return NextResponse.next();
   }
 
@@ -93,6 +106,40 @@ export async function middleware(request) {
 
   const teamRole = tm?.role || null;
   const isAdmin = teamRole === 'admin' || Boolean(user.user_metadata?.is_admin);
+
+  // Partner status is only needed for the mutual-exclusion checks below, and
+  // staff can never be partners, so skip the extra round trip for them. The
+  // select-own-row policy on partner_profiles is what makes this readable with
+  // the anon key.
+  let isActivePartner = false;
+  if (!isAdmin && teamRole !== 'team') {
+    const { data: partner } = await supabase
+      .from('partner_profiles')
+      .select('is_active')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    isActivePartner = Boolean(partner?.is_active);
+  }
+
+  // Partners are not staff and not members: keep them out of every other
+  // authenticated area rather than letting them land on an empty /member
+  // dashboard.
+  if (isActivePartner && !isPartnerRoute) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/partner';
+    url.search = '';
+    return NextResponse.redirect(url);
+  }
+
+  // /partner/* requires an ACTIVE partner profile. Everyone else — including
+  // admins, team and members — goes to the public home page, the mirror image
+  // of the rule above.
+  if (isPartnerRoute && !isActivePartner) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/';
+    url.search = '';
+    return NextResponse.redirect(url);
+  }
 
   // /admin/* requires is_admin flag
   if (isAdminRoute && !isAdmin) {
