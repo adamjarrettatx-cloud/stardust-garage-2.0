@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { buildGrantPayload, loadEventGrants, auditGuestlist } from '@/lib/guestlist-helpers';
+import { notifyGrantPartner } from '@/lib/guestlist-notify';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -114,6 +115,16 @@ export async function POST(request, { params }) {
     },
   });
 
+  // Best-effort, after the audit row: the allocation exists whatever the mail
+  // server does. `notification` tells the panel whether the partner was told.
+  const notification = await notifyGrantPartner({
+    admin,
+    request,
+    eventId: id,
+    contactId,
+    slots: payload,
+  });
+
   const { grants } = await loadEventGrants(admin, id);
-  return NextResponse.json({ ok: true, grants: grants || null }, { status: 201 });
+  return NextResponse.json({ ok: true, grants: grants || null, notification }, { status: 201 });
 }

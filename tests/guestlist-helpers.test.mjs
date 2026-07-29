@@ -12,6 +12,11 @@ import {
   buildGrantPayload,
   grantRevokeBlockedMessage,
   decorateGrants,
+  resolveGrantNotification,
+  grantSlotsIncreased,
+  grantNotificationNotice,
+  summarizeGrants,
+  summarizeEventGuestlists,
 } from '../lib/guestlist-helpers.js';
 
 // The three lists below are duplicated as CHECK constraints in
@@ -233,4 +238,130 @@ test('decorateGrants attaches usage plus partner state and sorts by contact name
     activated_at: 'a',
   });
   assert.deepEqual(decorated[1].usage, { free: 1, discount: 0, total: 1 });
+});
+
+// ---------------------------------------------------------------------------
+// Grant notification
+// ---------------------------------------------------------------------------
+
+const ACTIVE_PARTNER = { is_active: true };
+const SLOTS = { free_slots: 2, discount_slots: 1 };
+
+test('resolveGrantNotification only mails an active partner who can spend slots', () => {
+  assert.deepEqual(
+    resolveGrantNotification({
+      contact: { email: '  Promoter@Example.com  ' },
+      partner: ACTIVE_PARTNER,
+      slots: SLOTS,
+    }),
+    { send: true, reason: null, email: 'Promoter@Example.com' }
+  );
+});
+
+test('resolveGrantNotification skips a contact who cannot use the portal yet', () => {
+  const contact = { email: 'promoter@example.com' };
+
+  assert.deepEqual(resolveGrantNotification({ contact, partner: null, slots: SLOTS }), {
+    send: false,
+    reason: 'no_partner',
+  });
+  assert.deepEqual(
+    resolveGrantNotification({ contact, partner: { is_active: false }, slots: SLOTS }),
+    { send: false, reason: 'invite_pending' }
+  );
+  assert.deepEqual(resolveGrantNotification({ contact: {}, partner: ACTIVE_PARTNER, slots: SLOTS }), {
+    send: false,
+    reason: 'no_email',
+  });
+  assert.deepEqual(
+    resolveGrantNotification({
+      contact,
+      partner: ACTIVE_PARTNER,
+      slots: { total_slots: 5, free_slots: 0, discount_slots: 0 },
+    }),
+    { send: false, reason: 'no_spendable_slots' }
+  );
+});
+
+test('grantSlotsIncreased only fires when spendable slots go up', () => {
+  const before = { free_slots: 2, discount_slots: 2 };
+  assert.equal(grantSlotsIncreased(before, { free_slots: 3, discount_slots: 2 }), true);
+  assert.equal(grantSlotsIncreased(before, { free_slots: 2, discount_slots: 3 }), true);
+  assert.equal(grantSlotsIncreased(before, { free_slots: 2, discount_slots: 2 }), false);
+  assert.equal(grantSlotsIncreased(before, { free_slots: 1, discount_slots: 2 }), false);
+});
+
+test('grantNotificationNotice explains the outcome, and stays quiet when there is none', () => {
+  assert.match(grantNotificationNotice({ sent: true }), /Emailed the partner/);
+  assert.match(grantNotificationNotice({ sent: false, reason: 'no_partner' }), /no partner login/);
+  assert.match(grantNotificationNotice({ sent: false, reason: 'send_failed' }), /could not be sent/);
+  assert.equal(grantNotificationNotice({ sent: false, reason: 'slots_not_increased' }), null);
+  assert.equal(grantNotificationNotice(null), null);
+});
+
+// ---------------------------------------------------------------------------
+// Cross-event reporting
+// ---------------------------------------------------------------------------
+
+test('summarizeGrants totals allocation, usage and door check-ins', () => {
+  assert.deepEqual(
+    summarizeGrants([
+      {
+        total_slots: 6,
+        free_slots: 4,
+        discount_slots: 2,
+        entries: [
+          { comp_type: 'free', status: 'checked_in' },
+          { comp_type: 'free', status: 'pending' },
+          // A no-show hands the slot back, but the door did see the name.
+          { comp_type: 'discount', status: 'no_show' },
+        ],
+      },
+      { total_slots: 2, free_slots: 2, discount_slots: 0, entries: [] },
+    ]),
+    {
+      partners: 2,
+      total_slots: 8,
+      free_slots: 6,
+      discount_slots: 2,
+      used_free: 2,
+      used_discount: 0,
+      used: 2,
+      checked_in: 1,
+    }
+  );
+  assert.equal(summarizeGrants().partners, 0);
+});
+
+test('summarizeEventGuestlists groups by event, newest first, and drops orphans', () => {
+  const rows = summarizeEventGuestlists([
+    {
+      event: { id: 'e1', title: 'Older', event_date: '2026-01-10' },
+      total_slots: 2,
+      free_slots: 2,
+      discount_slots: 0,
+      entries: [{ comp_type: 'free', status: 'pending' }],
+    },
+    {
+      event: { id: 'e2', title: 'Newer', event_date: '2026-02-10' },
+      total_slots: 3,
+      free_slots: 1,
+      discount_slots: 2,
+      entries: [],
+    },
+    {
+      event: { id: 'e1', title: 'Older', event_date: '2026-01-10' },
+      total_slots: 1,
+      free_slots: 1,
+      discount_slots: 0,
+      entries: [{ comp_type: 'free', status: 'checked_in' }],
+    },
+    { event: null, total_slots: 9, free_slots: 9, discount_slots: 0, entries: [] },
+  ]);
+
+  assert.deepEqual(rows.map((r) => r.event.id), ['e2', 'e1']);
+  assert.equal(rows[1].partners, 2);
+  assert.equal(rows[1].free_slots, 3);
+  assert.equal(rows[1].used, 2);
+  assert.equal(rows[1].checked_in, 1);
 });

@@ -6,6 +6,7 @@ import { adminFetch } from '@/lib/admin-fetch';
 import {
   compTypeLabel,
   entryStatusLabel,
+  grantNotificationNotice,
   validateGrantSlots,
 } from '@/lib/guestlist-helpers';
 import ContactSelect from '../../components/ContactSelect';
@@ -182,6 +183,9 @@ export default function GuestListPanel({ eventId }) {
   const [busy, setBusy] = useState(false);
   const [rowError, setRowError] = useState({});
   const [expanded, setExpanded] = useState({});
+  // Whether the last save emailed the partner. Worth stating outright: the admin
+  // otherwise has no way to know an email went out, or why one didn't.
+  const [notice, setNotice] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -240,6 +244,7 @@ export default function GuestListPanel({ eventId }) {
 
     setBusy(true);
     setFormError('');
+    setNotice(null);
     try {
       const res = await adminFetch(url, {
         method,
@@ -247,6 +252,10 @@ export default function GuestListPanel({ eventId }) {
         body: JSON.stringify(form),
       });
       await applyGrants(res);
+      setNotice({
+        text: grantNotificationNotice(res?.notification),
+        sent: Boolean(res?.notification?.sent),
+      });
       setAddForm(null);
       setEditing(null);
     } catch (err) {
@@ -283,6 +292,7 @@ export default function GuestListPanel({ eventId }) {
     if (!window.confirm(`Revoke the guest list grant for ${name}? This cannot be undone.`)) return;
 
     setRowError((prev) => ({ ...prev, [grant.id]: '' }));
+    setNotice(null);
     setBusy(true);
     try {
       const res = await adminFetch(`/api/admin/events/${eventId}/guestlist/${grant.id}`, {
@@ -351,6 +361,15 @@ export default function GuestListPanel({ eventId }) {
             submitLabel="GRANT SLOTS"
           />
         </div>
+      )}
+
+      {notice?.text && (
+        <p
+          className="text-[12px] mb-4"
+          style={{ color: notice.sent ? 'var(--auth-success)' : 'var(--auth-warn-strong)' }}
+        >
+          {notice.text}
+        </p>
       )}
 
       {loadError && (

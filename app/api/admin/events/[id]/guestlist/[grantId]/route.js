@@ -5,9 +5,11 @@ import {
   buildGrantPayload,
   countGrantUsage,
   grantRevokeBlockedMessage,
+  grantSlotsIncreased,
   loadEventGrants,
   auditGuestlist,
 } from '@/lib/guestlist-helpers';
+import { notifyGrantPartner } from '@/lib/guestlist-notify';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -95,8 +97,22 @@ export async function PATCH(request, { params }) {
     },
   });
 
+  // Only a bigger allocation is worth an email — a shrink, or an edit that only
+  // touched the notes, is not news to the partner. Best-effort, same contract as
+  // the create route.
+  const notification = grantSlotsIncreased(before, payload)
+    ? await notifyGrantPartner({
+        admin,
+        request,
+        eventId: id,
+        contactId: grant.contact_id,
+        slots: payload,
+        isUpdate: true,
+      })
+    : { sent: false, reason: 'slots_not_increased', error: null };
+
   const { grants } = await loadEventGrants(admin, id);
-  return NextResponse.json({ ok: true, grants: grants || null });
+  return NextResponse.json({ ok: true, grants: grants || null, notification });
 }
 
 // DELETE — revoke an allocation outright. Only allowed while no guest still
