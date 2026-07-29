@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getRequestUser } from '@/lib/auth-helpers';
+import { resolveSiteUrl } from '@/lib/site-url';
 import { STRIPE_PRICES } from '@/lib/stripe-prices';
 
 // POST /api/stripe/checkout
@@ -99,7 +100,7 @@ export async function POST(request) {
     }
 
     // Create Stripe Checkout session for the subscription
-    const origin = request.headers.get('origin') || 'https://sdgatx.com';
+    const origin = resolveSiteUrl(request);
 
     const sessionRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',

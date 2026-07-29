@@ -8,6 +8,7 @@ import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import ContactForm from '../ContactForm';
 import { ContactStatusBadge, ContactTypeBadges } from '../ContactBadges';
 import DeleteContactButton from './DeleteContactButton';
+import InvitePartnerButton from './InvitePartnerButton';
 
 const KIND_LABELS = {
   event: 'EVENT',
@@ -78,6 +79,8 @@ function auditLines(row) {
   const d = row.details;
   if (!d) return [];
 
+  // Actions that aren't a field diff (e.g. a partner invite) carry a plain note.
+  if (d.note) return [d.note];
   if (row.action === 'update' && d.changed) {
     return Object.entries(d.changed).map(
       ([field, change]) =>
@@ -96,6 +99,7 @@ function auditLines(row) {
 export default function ContactDetailClient({
   contact,
   isAdmin,
+  partnerProfile,
   events,
   contracts,
   venueInquiries,
@@ -180,6 +184,22 @@ export default function ContactDetailClient({
       </p>
 
       <ContactForm contact={contact} />
+
+      {/* PARTNER ACCESS — directly under the form's saved email field, because
+          the email on file is what the invite is sent to. Admin-only: this
+          creates a login. */}
+      {isAdmin && (
+        <section className="rounded-[14px] p-6 border mt-4" style={sectionStyle}>
+          <h2 className={sectionHeadingClass} style={sectionHeadingStyle}>
+            PARTNER ACCESS
+          </h2>
+          <InvitePartnerButton
+            contactId={contact.id}
+            email={contact.email}
+            partnerProfile={partnerProfile}
+          />
+        </section>
+      )}
 
       {/* LINKED ACTIVITY — auto-populated from anything carrying this contact_id.
           Doubles as the deal history: linked contracts show their flat fee. */}

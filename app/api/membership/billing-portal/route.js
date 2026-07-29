@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getRequestUser } from '@/lib/auth-helpers';
+import { resolveSiteUrl } from '@/lib/site-url';
 
 // POST /api/membership/billing-portal
 // Body: none.
@@ -41,9 +42,10 @@ export async function POST(request) {
       return NextResponse.json({ error: 'no_stripe_customer' }, { status: 400 });
     }
 
-    // Same origin convention as /api/stripe/checkout: the website sends an
-    // Origin header, the mobile app doesn't, and falls back to production.
-    const origin = request.headers.get('origin') || 'https://sdgatx.com';
+    // Same convention as /api/stripe/checkout. The deployment's own hostname
+    // comes first, which is what keeps the mobile app — which sends no Origin
+    // header at all — resolving to the right host rather than to the fallback.
+    const origin = resolveSiteUrl(request);
 
     const sessionRes = await fetch('https://api.stripe.com/v1/billing_portal/sessions', {
       method: 'POST',
