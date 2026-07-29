@@ -34,7 +34,16 @@ function slugify(text) {
     .replace(/^-+|-+$/g, '');
 }
 
-export default function EventForm({ event, metrics = null, headerActions = null, statusPanel = null }) {
+export default function EventForm({
+  event,
+  metrics = null,
+  headerActions = null,
+  statusPanel = null,
+  // Panels that belong to an existing event but are not part of the event record
+  // itself (guest list allocation), so they own their own server routes and sit
+  // outside the form element.
+  footerPanels = null,
+}) {
   const router = useRouter();
   const isEditing = !!event;
 
@@ -626,6 +635,8 @@ export default function EventForm({ event, metrics = null, headerActions = null,
           </div>
         )}
       </form>
+
+      {footerPanels}
     </main>
   );
 }

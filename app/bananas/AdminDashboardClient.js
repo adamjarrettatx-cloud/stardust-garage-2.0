@@ -167,6 +167,11 @@ export default function AdminDashboardClient({ isOwner, counts }) {
             eyebrow="DIRECTORY"
             title="Contacts"
           />
+          <Tile
+            href="/bananas/guest-list"
+            eyebrow="REPORTING"
+            title="Guest List"
+          />
         </div>
       )}
 
