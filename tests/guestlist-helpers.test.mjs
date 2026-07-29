@@ -7,6 +7,11 @@ import {
   compTypeLabel,
   entryStatusLabel,
   auditGuestlist,
+  countGrantUsage,
+  validateGrantSlots,
+  buildGrantPayload,
+  grantRevokeBlockedMessage,
+  decorateGrants,
 } from '../lib/guestlist-helpers.js';
 
 // The three lists below are duplicated as CHECK constraints in
@@ -108,4 +113,124 @@ test('auditGuestlist tolerates a missing request and swallows insert failures', 
     },
   };
   await auditGuestlist({ admin: throwingAdmin, action: 'checked_in', grantId: 'g' });
+});
+
+// ---------------------------------------------------------------------------
+// Allocation maths
+// ---------------------------------------------------------------------------
+
+test('countGrantUsage ignores no-shows and unknown comp types', () => {
+  assert.deepEqual(
+    countGrantUsage([
+      { comp_type: 'free', status: 'pending' },
+      { comp_type: 'free', status: 'checked_in' },
+      { comp_type: 'free', status: 'no_show' },
+      { comp_type: 'discount', status: 'checked_in' },
+      { comp_type: 'mystery', status: 'pending' },
+    ]),
+    { free: 2, discount: 1, total: 3 }
+  );
+  assert.deepEqual(countGrantUsage(), { free: 0, discount: 0, total: 0 });
+});
+
+test('validateGrantSlots requires whole non-negative numbers', () => {
+  for (const bad of [
+    { total_slots: '', free_slots: '0', discount_slots: '0' },
+    { total_slots: '5', free_slots: '-1', discount_slots: '0' },
+    { total_slots: '5', free_slots: '1.5', discount_slots: '0' },
+    { total_slots: '5', free_slots: 'abc', discount_slots: '0' },
+    { total_slots: 5, free_slots: 1 },
+  ]) {
+    assert.equal(validateGrantSlots(bad).valid, false);
+  }
+});
+
+test('validateGrantSlots mirrors the DB free + discount <= total constraint', () => {
+  const tooMany = validateGrantSlots({ total_slots: 5, free_slots: 4, discount_slots: 2 });
+  assert.equal(tooMany.valid, false);
+  assert.match(tooMany.error, /more than the total of 5/);
+
+  const ok = validateGrantSlots({ total_slots: '10', free_slots: '6', discount_slots: '4' });
+  assert.deepEqual(ok, { valid: true, data: { total_slots: 10, free_slots: 6, discount_slots: 4 } });
+});
+
+test('validateGrantSlots refuses to shrink an allocation below what is used', () => {
+  const usage = { free: 3, discount: 2, total: 5 };
+
+  const cutFree = validateGrantSlots({ total_slots: 10, free_slots: 2, discount_slots: 2 }, usage);
+  assert.equal(cutFree.valid, false);
+  assert.match(cutFree.error, /already has 3 free guests/);
+
+  const cutDiscount = validateGrantSlots({ total_slots: 10, free_slots: 3, discount_slots: 1 }, usage);
+  assert.equal(cutDiscount.valid, false);
+  assert.match(cutDiscount.error, /already has 2 discounted guests/);
+
+  // Shrinking down to exactly the used count is allowed.
+  assert.equal(
+    validateGrantSlots({ total_slots: 5, free_slots: 3, discount_slots: 2 }, usage).valid,
+    true
+  );
+});
+
+test('buildGrantPayload trims text and drops discount detail when there are no discount slots', () => {
+  const withDiscount = buildGrantPayload({
+    total_slots: 4,
+    free_slots: 2,
+    discount_slots: 2,
+    discount_detail: '  50% off door  ',
+    notes: '  holds the back room  ',
+  });
+  assert.deepEqual(withDiscount.data, {
+    total_slots: 4,
+    free_slots: 2,
+    discount_slots: 2,
+    discount_detail: '50% off door',
+    notes: 'holds the back room',
+  });
+
+  const noDiscount = buildGrantPayload({
+    total_slots: 4,
+    free_slots: 4,
+    discount_slots: 0,
+    discount_detail: '50% off door',
+  });
+  assert.equal(noDiscount.data.discount_detail, null);
+  assert.equal(noDiscount.data.notes, null);
+
+  assert.equal(buildGrantPayload({ total_slots: 1, free_slots: 2, discount_slots: 0 }).valid, false);
+});
+
+test('grantRevokeBlockedMessage only blocks when a slot is still occupied', () => {
+  assert.equal(grantRevokeBlockedMessage({ free: 0, discount: 0, total: 0 }), null);
+  assert.equal(grantRevokeBlockedMessage(null), null);
+  assert.match(
+    grantRevokeBlockedMessage({ free: 1, discount: 0, total: 1 }),
+    /1 guest entry .*Remove or check in guest entries first/
+  );
+});
+
+test('decorateGrants attaches usage plus partner state and sorts by contact name', () => {
+  const decorated = decorateGrants(
+    [
+      {
+        id: 'g2',
+        contact_id: 'c2',
+        contact: { display_name: 'Zebra Collective' },
+        entries: [{ comp_type: 'free', status: 'checked_in' }],
+      },
+      { id: 'g1', contact_id: 'c1', contact: { display_name: 'apex sound' } },
+    ],
+    [{ contact_id: 'c2', is_active: true, invited_at: 'i', activated_at: 'a' }]
+  );
+
+  assert.deepEqual(decorated.map((g) => g.id), ['g1', 'g2']);
+  assert.equal(decorated[0].partner, null);
+  assert.deepEqual(decorated[0].usage, { free: 0, discount: 0, total: 0 });
+  assert.deepEqual(decorated[0].entries, []);
+  assert.deepEqual(decorated[1].partner, {
+    is_active: true,
+    invited_at: 'i',
+    activated_at: 'a',
+  });
+  assert.deepEqual(decorated[1].usage, { free: 1, discount: 0, total: 1 });
 });
