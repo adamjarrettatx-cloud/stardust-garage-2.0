@@ -29,6 +29,11 @@ test('door operations only target statuses the entries CHECK constraint allows',
   }
 });
 
+test('a no-show gets its own audit action rather than reusing entry_removed', () => {
+  assert.equal(DOOR_OPERATIONS.no_show.auditAction, 'marked_no_show');
+  assert.equal(DOOR_OPERATIONS.check_in.auditAction, 'checked_in');
+});
+
 test('isDoorOperation refuses anything but the two door writes', () => {
   assert.equal(isDoorOperation('check_in'), true);
   assert.equal(isDoorOperation('no_show'), true);

@@ -135,9 +135,6 @@ export async function POST(request) {
     actorEmail: user.email,
     request,
     details: {
-      // 'no_show' is not a value of the guestlist_audit_log.action CHECK
-      // constraint, so it rides along as a reason on the entry_removed action.
-      reason: op === 'no_show' ? 'no_show' : 'checked_in',
       source: 'door_kiosk',
       entry_id: entry.id,
       grant_id: entry.grant_id,
