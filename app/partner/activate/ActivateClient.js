@@ -33,14 +33,25 @@ export default function ActivateClient() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // Two ways in land here. The invite link arrives with its tokens in the URL
-  // fragment, and getSession() waits for the browser client to finish exchanging
-  // them (same reliance as /reset-password). Google sign-in arrives already
-  // authenticated, redirected on by /partner/auth/callback. Either way, by the
-  // time this resolves there is a session or there isn't.
+  // Two ways in land here. The invite email links straight to this page with
+  // ?token_hash=, which we redeem below — see buildPartnerActivationUrl for why
+  // the link comes to us instead of going through Supabase's redirect. Google
+  // sign-in arrives already authenticated, redirected on by
+  // /partner/auth/callback. Either way, by the time this resolves there is a
+  // session or there isn't.
   useEffect(() => {
     const load = async () => {
       const supabase = createClient();
+
+      const params = new URLSearchParams(window.location.search);
+      const tokenHash = params.get('token_hash');
+      if (tokenHash) {
+        await supabase.auth.verifyOtp({ type: 'magiclink', token_hash: tokenHash });
+        // Single-use token: keep it out of the address bar so a refresh or a
+        // shared URL doesn't look like an expired link.
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
         setResolved(true);

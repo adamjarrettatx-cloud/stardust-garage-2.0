@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { findPartnerByInvitedEmail, normalizeInviteEmail } from '@/lib/partner-identity';
+import {
+  buildPartnerActivationUrl,
+  findPartnerByInvitedEmail,
+  normalizeInviteEmail,
+} from '@/lib/partner-identity';
+import { resolveSiteUrl } from '@/lib/site-url';
 import { sendPartnerInvite } from '@/lib/email';
 
 export const runtime = 'nodejs';
@@ -33,17 +38,12 @@ export async function POST(request) {
     const profile = await findPartnerByInvitedEmail(admin, email);
     if (!profile) return genericOk;
 
-    const origin = request.headers.get('origin') || 'https://sdgatx.com';
-
     const { data: link, error: linkErr } = await admin.auth.admin.generateLink({
       type: 'magiclink',
       email,
-      // /partner/activate handles both states: it sends an already-activated
-      // partner straight on to their profile.
-      options: { redirectTo: `${origin}/partner/activate` },
     });
 
-    if (linkErr || !link?.properties?.action_link) {
+    if (linkErr || !link?.properties?.hashed_token) {
       console.error('[request-signin-link] could not generate link', linkErr);
       return genericOk;
     }
@@ -52,7 +52,12 @@ export async function POST(request) {
       email,
       fullName: profile.full_name,
       contactType: null,
-      activationUrl: link.properties.action_link,
+      // /partner/activate handles both states: it sends an already-activated
+      // partner straight on to their profile.
+      activationUrl: buildPartnerActivationUrl(
+        resolveSiteUrl(request),
+        link.properties.hashed_token
+      ),
     });
 
     return genericOk;

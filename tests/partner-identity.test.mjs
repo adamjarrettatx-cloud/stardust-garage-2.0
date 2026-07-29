@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  buildPartnerActivationUrl,
   normalizeInviteEmail,
   findPartnerByInvitedEmail,
   relinkPartnerToUser,
@@ -154,4 +155,27 @@ test('a unique-violation on user_id surfaces as an error, never a silent success
   assert.equal(result.relinked, false);
   assert.equal(result.error.code, '23505');
   assert.equal(admin.calls.auditRow, null, 'a failed re-point is not an audit event');
+});
+
+test('buildPartnerActivationUrl points at the given site, not at Supabase', () => {
+  const url = buildPartnerActivationUrl(
+    'https://stardust-garage-2-0-git-branch.vercel.app',
+    'abc123'
+  );
+  assert.equal(
+    url,
+    'https://stardust-garage-2-0-git-branch.vercel.app/partner/activate?token_hash=abc123&type=magiclink'
+  );
+});
+
+test('buildPartnerActivationUrl tolerates a trailing slash and escapes the token', () => {
+  assert.equal(
+    buildPartnerActivationUrl('https://sdgatx.com/', 'a+b/c='),
+    'https://sdgatx.com/partner/activate?token_hash=a%2Bb%2Fc%3D&type=magiclink'
+  );
+});
+
+test('buildPartnerActivationUrl returns null rather than a half-built link', () => {
+  assert.equal(buildPartnerActivationUrl('https://sdgatx.com', null), null);
+  assert.equal(buildPartnerActivationUrl('', 'abc123'), null);
 });

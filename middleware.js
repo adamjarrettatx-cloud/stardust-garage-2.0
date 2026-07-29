@@ -28,11 +28,11 @@ export async function middleware(request) {
   // reason: they are how a partner GETS a session, so gating them on one would
   // bounce every arrival to /login.
   //
-  //   /partner/activate    — the invite email lands here carrying the
-  //     magic-link tokens in the URL *fragment*, which the server never sees.
-  //     The page waits for the browser client to exchange it, then resolves the
-  //     invite via /api/partner/resolve-identity and offers the sign-in buttons
-  //     if the link was already used.
+  //   /partner/activate    — the invite email lands here carrying a single-use
+  //     ?token_hash=, which the browser client redeems for a session. The page
+  //     waits for that, then resolves the invite via
+  //     /api/partner/resolve-identity and offers the sign-in buttons if the
+  //     link was already used.
   //   /partner/login       — where a returning partner signs in. Partners have
   //     no password, so the unified /login is no use to them.
   //   /partner/auth/callback — where Google returns after OAuth. The session

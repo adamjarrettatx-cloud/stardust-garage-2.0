@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { auditContact, contactTypeLabel } from '@/lib/contact-helpers';
+import { buildPartnerActivationUrl } from '@/lib/partner-identity';
+import { resolveSiteUrl } from '@/lib/site-url';
 import { sendPartnerInvite } from '@/lib/email';
 
 export const runtime = 'nodejs';
@@ -119,25 +121,24 @@ export async function POST(request) {
       );
     }
 
-    // Absolute URL convention used by /api/stripe/checkout and
-    // /api/membership/billing-portal: trust the request Origin, fall back to
-    // production. There is no NEXT_PUBLIC_SITE_URL in this project.
-    const origin = request.headers.get('origin') || 'https://sdgatx.com';
-
+    // We mail a link to OUR host and verify the token ourselves, rather than
+    // mailing Supabase's action_link — see buildPartnerActivationUrl.
     const { data: link, error: linkErr } = await admin.auth.admin.generateLink({
       type: 'magiclink',
       email,
-      options: { redirectTo: `${origin}/partner/activate` },
     });
 
-    if (linkErr || !link?.properties?.action_link) {
+    if (linkErr || !link?.properties?.hashed_token) {
       return NextResponse.json(
         { error: 'Could not generate an activation link: ' + (linkErr?.message || 'unknown') },
         { status: 500 }
       );
     }
 
-    const activationUrl = link.properties.action_link;
+    const activationUrl = buildPartnerActivationUrl(
+      resolveSiteUrl(request),
+      link.properties.hashed_token
+    );
     const contactType = (contact.contact_type || []).map(contactTypeLabel).join(', ');
 
     // A failed send must not lose the invite: the profile row already exists, so
