@@ -24,13 +24,28 @@ export async function middleware(request) {
     return NextResponse.next();
   }
 
-  // The partner invite email lands here carrying the magic-link tokens in the
-  // URL *fragment*, which the server never sees — so there is no session yet on
-  // this request and gating it would bounce every invitee to /login. The page
-  // itself waits for the browser client to exchange the fragment, then checks
-  // for a partner_profiles row and shows "link expired or invalid" if there
-  // isn't one. Same relaxation shape as the door-device pages below.
-  if (pathname === '/partner/activate') {
+  // Three partner routes are reachable logged out, for the same underlying
+  // reason: they are how a partner GETS a session, so gating them on one would
+  // bounce every arrival to /login.
+  //
+  //   /partner/activate    — the invite email lands here carrying the
+  //     magic-link tokens in the URL *fragment*, which the server never sees.
+  //     The page waits for the browser client to exchange it, then resolves the
+  //     invite via /api/partner/resolve-identity and offers the sign-in buttons
+  //     if the link was already used.
+  //   /partner/login       — where a returning partner signs in. Partners have
+  //     no password, so the unified /login is no use to them.
+  //   /partner/auth/callback — where Google returns after OAuth. The session
+  //     does not exist until this route exchanges the code, and the route does
+  //     its own gating: an account with no matching invite is signed straight
+  //     back out.
+  //
+  // Same relaxation shape as the door-device pages below.
+  if (
+    pathname === '/partner/activate' ||
+    pathname === '/partner/login' ||
+    pathname === '/partner/auth/callback'
+  ) {
     return NextResponse.next();
   }
 

@@ -30,6 +30,7 @@ test('audit actions match the guestlist_audit_log.action constraint', () => {
     'entry_added',
     'entry_removed',
     'checked_in',
+    'partner_identity_relinked',
   ]);
 });
 

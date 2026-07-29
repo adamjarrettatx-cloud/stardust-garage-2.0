@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Wordmark from '@/app/components/Wordmark';
+import PartnerSignIn from '../PartnerSignIn';
+import PartnerSignOutButton from '../PartnerSignOutButton';
 
 // Same limits as the membership application photo upload (ApplyForm.js), and the
 // same public bucket — one place for "a face our door staff can match against".
@@ -15,10 +17,13 @@ const PHOTO_BUCKET = 'member-photos';
 export default function ActivateClient() {
   const router = useRouter();
 
-  // null = still resolving the magic-link session, then the partner_profiles row
-  // or false when the link isn't tied to an invite.
+  // null = still resolving the session, then the partner_profiles row or false
+  // when the signed-in account isn't tied to an invite.
   const [profile, setProfile] = useState(null);
   const [resolved, setResolved] = useState(false);
+  // Distinguishes "no session at all" (offer the sign-in buttons) from "signed
+  // in as somebody we don't recognise" (a dead end that needs explaining).
+  const [signedIn, setSignedIn] = useState(false);
 
   const [fullName, setFullName] = useState('');
   const fileInputRef = useRef(null);
@@ -28,10 +33,11 @@ export default function ActivateClient() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // The invite link lands here with the tokens in the URL fragment. getSession()
-  // waits for the browser client to finish exchanging them (same reliance as
-  // /reset-password), so by the time this resolves we either have a session or
-  // the link was already used/expired.
+  // Two ways in land here. The invite link arrives with its tokens in the URL
+  // fragment, and getSession() waits for the browser client to finish exchanging
+  // them (same reliance as /reset-password). Google sign-in arrives already
+  // authenticated, redirected on by /partner/auth/callback. Either way, by the
+  // time this resolves there is a session or there isn't.
   useEffect(() => {
     const load = async () => {
       const supabase = createClient();
@@ -40,12 +46,17 @@ export default function ActivateClient() {
         setResolved(true);
         return;
       }
+      setSignedIn(true);
 
-      const { data: row } = await supabase
-        .from('partner_profiles')
-        .select('id, full_name, photo_url, is_active')
-        .eq('user_id', session.user.id)
-        .maybeSingle();
+      // Resolved server-side rather than by reading partner_profiles directly:
+      // the row is matched on the invited email and re-pointed at this session's
+      // identity if it belonged to the other one. A partner who signed in with
+      // Google once and clicks an emailed link later is authenticating as a
+      // different auth user, and this is what keeps that from looking like an
+      // expired link. See /api/partner/resolve-identity.
+      const res = await fetch('/api/partner/resolve-identity', { method: 'POST' });
+      const data = await res.json().catch(() => null);
+      const row = res.ok ? data?.profile : null;
 
       setProfile(row || false);
       setFullName(row?.full_name || session.user.user_metadata?.full_name || '');
@@ -149,27 +160,60 @@ export default function ActivateClient() {
     );
   }
 
-  // No session, or a session with no partner invite behind it.
-  if (!profile) {
+  // Signed in, but the account behind the session matches no invite. Almost
+  // always a partner who picked the wrong Google account, so name the way out
+  // rather than just refusing.
+  if (!profile && signedIn) {
     return shell(
       <div className="text-center">
         <h1
           className="text-[24px] font-extrabold -tracking-[0.02em] mb-4 leading-[1.1]"
           style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
         >
-          Link expired or invalid.
+          This account isn&apos;t linked to an invite.
         </h1>
         <p className="text-[14px] leading-[1.6] mb-8" style={{ color: '#a0a0a0' }}>
-          Partner invite links are single-use and expire. Ask us to send you a new one.
+          We couldn&apos;t find a Stardust Garage partner invite for the account you signed in
+          with. Sign out and try the address we invited, or contact SDG and we&apos;ll send a new
+          invite.
         </p>
-        <Link
-          href="/"
-          className="inline-block px-6 py-2.5 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5"
-          style={{ background: '#ffffff', color: '#0a0a0a' }}
-        >
-          BACK TO THE SITE
-        </Link>
+        <PartnerSignOutButton />
       </div>
+    );
+  }
+
+  // No session: the invite link has been used or has expired. Both doors are
+  // offered here so the invitee can let themselves back in instead of having to
+  // ask us for another link.
+  if (!profile) {
+    return shell(
+      <>
+        <div className="text-[11px] font-semibold tracking-[0.28em] mb-4 text-center" style={{ color: '#a0a0a0' }}>
+          PARTNER SETUP
+        </div>
+        <h1
+          className="text-[24px] font-extrabold -tracking-[0.02em] mb-2 text-center leading-[1.1]"
+          style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+        >
+          Sign in to finish setting up.
+        </h1>
+        <p className="text-[13px] leading-[1.6] text-center mb-10" style={{ color: '#8a8a8a' }}>
+          Invite links are single-use and expire. Use the Google account on the email we invited,
+          or have us send a fresh link.
+        </p>
+
+        <PartnerSignIn />
+
+        <div className="text-center mt-10">
+          <Link
+            href="/"
+            className="text-[12px] underline hover:text-white transition-colors"
+            style={{ color: '#a0a0a0' }}
+          >
+            Back to the site
+          </Link>
+        </div>
+      </>
     );
   }
 

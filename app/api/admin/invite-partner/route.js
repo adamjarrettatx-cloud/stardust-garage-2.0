@@ -86,6 +86,11 @@ export async function POST(request) {
 
     // One partner login per contact — a re-invite refreshes invited_at and the
     // link rather than opening a second profile.
+    //
+    // invited_email records the address we mailed. It is what Google sign-in
+    // matches on later (see lib/partner-identity.js), because the auth user id
+    // created just above is not necessarily the identity the partner ends up
+    // authenticating as.
     const { error: profileErr } = await admin
       .from('partner_profiles')
       .upsert(
@@ -93,6 +98,7 @@ export async function POST(request) {
           user_id: userId,
           contact_id: contact.id,
           full_name: fullName,
+          invited_email: email,
           is_active: false,
           invited_by: user.id,
           invited_at: new Date().toISOString(),
