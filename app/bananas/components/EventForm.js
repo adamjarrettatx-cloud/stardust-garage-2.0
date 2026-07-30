@@ -370,7 +370,7 @@ export default function EventForm({
             style={inputStyle}
           >
             {CATEGORY_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value} style={{ background: '#141414' }}>
+              <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
             ))}
@@ -418,11 +418,11 @@ export default function EventForm({
                 className={inputClass}
                 style={inputStyle}
               >
-                <option value="" style={{ background: '#141414' }}>
+                <option value="">
                   — None —
                 </option>
                 {ttSeries.map((s) => (
-                  <option key={s.id} value={s.id} style={{ background: '#141414' }}>
+                  <option key={s.id} value={s.id}>
                     {s.name} ({s.id})
                   </option>
                 ))}

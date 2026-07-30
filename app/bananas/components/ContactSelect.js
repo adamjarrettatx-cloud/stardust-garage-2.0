@@ -88,11 +88,11 @@ export default function ContactSelect({
         className={inputClass}
         style={inputStyle}
       >
-        <option value="" style={{ background: '#141414' }}>
+        <option value="">
           — Select a contact —
         </option>
         {visibleContacts.map((c) => (
-          <option key={c.id} value={c.id} style={{ background: '#141414' }}>
+          <option key={c.id} value={c.id}>
             {c.display_name}
             {c.company ? ` · ${c.company}` : ''}
             {c.contact_type?.length ? ` (${c.contact_type.map(contactTypeLabel).join(', ')})` : ''}
