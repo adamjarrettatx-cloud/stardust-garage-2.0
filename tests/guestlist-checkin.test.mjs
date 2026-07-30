@@ -18,6 +18,10 @@ import {
 } from '../lib/guestlist-checkin.js';
 import { GUESTLIST_AUDIT_ACTIONS, ENTRY_STATUS_OPTIONS } from '../lib/guestlist-helpers.js';
 
+// A payload shaped like what the canvas produces: the real PNG magic number
+// (which parseSignatureDataUrl checks for) padded out past the minimum size.
+const SIGNATURE = `data:image/png;base64,iVBORw0KGgo${'A'.repeat(333)}`;
+
 test('door operations only target statuses the entries CHECK constraint allows', () => {
   const allowed = ENTRY_STATUS_OPTIONS.map((o) => o.value);
   for (const config of Object.values(DOOR_OPERATIONS)) {
@@ -111,25 +115,40 @@ test('matchModeFor picks the flow the kiosk should show', () => {
   assert.equal(matchModeFor([{ id: 'a' }, { id: 'b' }], { id: 'linked' }), 'linked');
 });
 
-test('validateGuestIntake requires a real phone, a real email and consent', () => {
-  assert.equal(validateGuestIntake({ phone: '512', email: 'a@b.co', marketing_consent: true }).valid, false);
-  assert.equal(validateGuestIntake({ phone: '5125551234', email: 'nope', marketing_consent: true }).valid, false);
-  assert.equal(validateGuestIntake({ phone: '5125551234', email: 'a@b', marketing_consent: true }).valid, false);
+test('validateGuestIntake requires a real phone, a real email and a signature', () => {
+  assert.equal(validateGuestIntake({ phone: '512', email: 'a@b.co', signature: SIGNATURE }).valid, false);
+  assert.equal(validateGuestIntake({ phone: '5125551234', email: 'nope', signature: SIGNATURE }).valid, false);
+  assert.equal(validateGuestIntake({ phone: '5125551234', email: 'a@b', signature: SIGNATURE }).valid, false);
   assert.equal(validateGuestIntake({ phone: '5125551234', email: 'a@b.co' }).valid, false);
   assert.equal(validateGuestIntake(null).valid, false);
+});
+
+// The signature replaced a staff-ticked checkbox. A tablet running a stale
+// bundle that still sends the old flag and no drawing has to be refused,
+// otherwise it would quietly go on recording consent nobody can evidence.
+test('validateGuestIntake will not accept the old marketing_consent flag as consent', () => {
+  const result = validateGuestIntake({
+    phone: '5125551234',
+    email: 'a@b.co',
+    marketing_consent: true,
+  });
+  assert.equal(result.valid, false);
+  assert.match(result.error, /sign/i);
 });
 
 test('validateGuestIntake normalizes what gets written to guest_profiles', () => {
   const { valid, data } = validateGuestIntake({
     phone: ' (512) 555-1234 ',
     email: '  Jane.Doe@Example.COM ',
-    marketing_consent: true,
+    signature: SIGNATURE,
   });
   assert.equal(valid, true);
   assert.deepEqual(data, {
     phone: '(512) 555-1234',
     email: 'jane.doe@example.com',
+    // Derived from the signature, never taken from the client.
     marketing_consent: true,
+    signature: SIGNATURE,
   });
 });
 

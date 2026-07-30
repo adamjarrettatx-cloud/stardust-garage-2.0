@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { validateGuestIntake } from '@/lib/guestlist-checkin';
+import SignaturePad from './SignaturePad';
 
 // The check-in flow for one pending entry, as a bottom sheet so the roster stays
 // visible behind it and the controls sit under the thumbs holding the tablet.
@@ -10,7 +11,8 @@ import { validateGuestIntake } from '@/lib/guestlist-checkin';
 //   confirm — one known guest with this name (or an already-linked profile):
 //             "Is this them, phone ending in ****1234?"
 //   pick    — several people share the name: choose, or declare a new guest.
-//   intake  — nobody with this name yet: phone + email + consent, once, ever.
+//   intake  — nobody with this name yet: phone + email + a signed consent,
+//             collected once, ever.
 export default function CheckInSheet({ entry, onClose, onCheckedIn, onConflict }) {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState(null);
@@ -18,7 +20,7 @@ export default function CheckInSheet({ entry, onClose, onCheckedIn, onConflict }
   const [confirmProfile, setConfirmProfile] = useState(null);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [intake, setIntake] = useState({ phone: '', email: '', marketing_consent: false });
+  const [intake, setIntake] = useState({ phone: '', email: '', signature: '' });
 
   useEffect(() => {
     let cancelled = false;
@@ -74,7 +76,9 @@ export default function CheckInSheet({ entry, onClose, onCheckedIn, onConflict }
         setError(json.error || 'Check-in failed.');
         return;
       }
-      onCheckedIn(json.entry, message);
+      // The guest is in either way; a warning means the consent record did not
+      // land, which the door needs to see but must not be blocked by.
+      onCheckedIn(json.entry, json.warning ? `${message} ${json.warning}` : message);
     } catch {
       setError('Network error. Try again.');
     } finally {
@@ -251,21 +255,19 @@ export default function CheckInSheet({ entry, onClose, onCheckedIn, onConflict }
               />
             </label>
 
-            <label
-              className="flex items-start gap-3 rounded-2xl px-4 py-3 mb-4 border"
+            <div
+              className="rounded-2xl px-4 py-4 mb-4 border"
               style={{ background: '#0e0e0e', borderColor: 'rgba(255,255,255,0.12)' }}
             >
-              <input
-                type="checkbox"
-                checked={intake.marketing_consent}
-                onChange={(e) => setIntake((p) => ({ ...p, marketing_consent: e.target.checked }))}
-                className="mt-0.5 w-6 h-6 shrink-0"
-                style={{ accentColor: '#16a34a' }}
+              <p className="text-[14px] mb-3" style={{ color: '#cfcfcf' }}>
+                Your signature confirms it&apos;s OK to contact you by text and email at the
+                number and address above.
+              </p>
+              <SignaturePad
+                disabled={submitting}
+                onChange={(signature) => setIntake((p) => ({ ...p, signature }))}
               />
-              <span className="text-[14px]" style={{ color: '#cfcfcf' }}>
-                They consent to being contacted and added to the mailing/text list.
-              </span>
-            </label>
+            </div>
 
             <BigButton color="#16a34a" disabled={submitting || !intakeCheck.valid} type="submit">
               Save &amp; check in
