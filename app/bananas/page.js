@@ -5,6 +5,7 @@ import LogoutButton from './components/LogoutButton';
 import EventsSection from './components/EventsSection';
 import AdminDashboardClient from './AdminDashboardClient';
 import { getTodayInAustin } from '@/lib/studio-helpers';
+import { totalUnreadCount } from '@/lib/chat';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 
 export const revalidate = 0;
@@ -35,6 +36,7 @@ export default async function AdminDashboard() {
     activeMembersCount,
     pastDueMembersCount,
     potentialMembersCount,
+    unreadChat,
   ] = await Promise.all([
     supabase.from('membership_applications').select('*', { count: 'exact', head: true }).or('status.eq.new,status.is.null'),
     supabase.from('venue_inquiries').select('*', { count: 'exact', head: true }).or('status.eq.new,status.is.null'),
@@ -45,6 +47,9 @@ export default async function AdminDashboard() {
     supabase.from('member_profiles').select('*', { count: 'exact', head: true }).eq('is_active', true),
     supabase.from('member_profiles').select('*', { count: 'exact', head: true }).eq('subscription_status', 'past_due'),
     supabase.from('potential_members').select('*', { count: 'exact', head: true }).eq('status', 'potential'),
+    // Unread Team Chat messages for whoever is signed in. Scoped to the caller
+    // by the RPC itself — it takes no arguments.
+    supabase.rpc('chat_unread_counts'),
   ]);
 
   const isOwner = user?.email === OWNER_EMAIL;
@@ -59,6 +64,7 @@ export default async function AdminDashboard() {
     activeMembers: activeMembersCount?.count || 0,
     pastDueMembers: pastDueMembersCount?.count || 0,
     potentialMembers: potentialMembersCount?.count || 0,
+    unreadChat: totalUnreadCount(unreadChat?.data),
   };
 
   return (

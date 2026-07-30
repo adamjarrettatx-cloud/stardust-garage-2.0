@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { canCreateChatChannel } from '@/lib/chat';
 import TeamChatClient from './TeamChatClient';
 
 export const revalidate = 0;
@@ -25,6 +26,7 @@ export default async function TeamChatPage() {
     <TeamChatClient
       currentUserId={user.id}
       currentUserName={teamMember.full_name || teamMember.email}
+      canCreateChannel={canCreateChatChannel({ role: teamMember.role, email: user.email })}
     />
   );
 }

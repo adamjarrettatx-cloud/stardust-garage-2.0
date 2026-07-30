@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { totalUnreadCount } from '@/lib/chat';
 import CalendarClient from './CalendarClient';
 
 export const revalidate = 0;
@@ -41,6 +42,10 @@ export default async function TeamCalendarPage() {
     .select('*')
     .order('event_date', { ascending: true });
 
+  // Unread Team Chat messages, so the CHAT link can carry a count. Scoped to
+  // the caller by the RPC itself — it takes no arguments.
+  const { data: unreadRows } = await supabase.rpc('chat_unread_counts');
+
   return (
     <CalendarClient
       publicEvents={publicEvents || []}
@@ -48,6 +53,7 @@ export default async function TeamCalendarPage() {
       isAdmin={isAdmin}
       currentUserId={user.id}
       currentUserName={teamMember.full_name || teamMember.email}
+      chatUnreadCount={totalUnreadCount(unreadRows)}
     />
   );
 }
