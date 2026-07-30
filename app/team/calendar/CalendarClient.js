@@ -115,7 +115,7 @@ function parseLocalDate(str) {
 // events and edit their own, but everyone else's team events render dimmed
 // and non-interactive. The isAdmin flag is a UI convenience only — the actual
 // dataset each role receives is already scoped server-side (page.js) / by RLS.
-export default function CalendarClient({ publicEvents, teamEvents: initialTeamEvents, isAdmin, currentUserId, currentUserName }) {
+export default function CalendarClient({ publicEvents, teamEvents: initialTeamEvents, isAdmin, currentUserId, currentUserName, chatUnreadCount = 0 }) {
   const router = useRouter();
   const supabase = createClient();
   const today = new Date();
@@ -249,10 +249,19 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
             <>
               <Link
                 href="/team/chat"
-                className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors"
+                className="relative px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors"
                 style={{ borderColor: 'var(--auth-ghost-border)', color: 'var(--auth-accent)' }}
               >
                 CHAT
+                {chatUnreadCount > 0 && (
+                  <span
+                    className="absolute -top-1.5 -right-1.5 inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full text-[10px] font-bold leading-none"
+                    style={{ background: 'var(--auth-accent)', color: 'var(--auth-accent-text)' }}
+                    aria-label={`${chatUnreadCount} unread messages`}
+                  >
+                    {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+                  </span>
+                )}
               </Link>
               <Link
                 href="/team/progress"

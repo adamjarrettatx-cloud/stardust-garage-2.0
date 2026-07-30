@@ -111,7 +111,7 @@ export default function AdminDashboardClient({ isOwner, counts }) {
     counts.microParties;
 
   const allTabs = [
-    { id: 'team', label: 'Team', ownerOnly: false, badge: 0 },
+    { id: 'team', label: 'Team', ownerOnly: false, badge: counts.unreadChat },
     { id: 'community', label: 'Community', ownerOnly: false, badge: communityBadge },
     { id: 'rentals', label: 'Rentals', ownerOnly: false, badge: rentalsBadge },
     { id: 'studio', label: 'Studio', ownerOnly: false, badge: counts.upcomingBookings },
@@ -216,7 +216,7 @@ export default function AdminDashboardClient({ isOwner, counts }) {
           <Tile href="/team/progress" eyebrow="TRACK" title="Tasks" />
           <Tile href="/team/calendar" eyebrow="TEAM ONLY" title="Team Calendar" />
           <Tile href="/bananas/team" eyebrow="MANAGE" title="Team Members" />
-          <Tile href="/team/chat" eyebrow="NEW" title="Team Chat" />
+          <Tile href="/team/chat" eyebrow="NEW" title="Team Chat" count={counts.unreadChat} />
         </div>
       )}
 

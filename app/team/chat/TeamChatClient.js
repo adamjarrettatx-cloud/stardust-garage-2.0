@@ -8,8 +8,8 @@ import AuthenticatedThemeToggleControl from '@/app/components/AuthenticatedTheme
 import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
 import {
   channelDisplayName,
-  channelHasUnread,
-  lastMessagePerChannel,
+  unreadCountByChannel,
+  validateChannelName,
   formatMessageTime,
 } from '@/lib/chat';
 
@@ -52,7 +52,7 @@ const THEMES = {
   },
 };
 
-export default function TeamChatClient({ currentUserId, currentUserName }) {
+export default function TeamChatClient({ currentUserId, currentUserName, canCreateChannel }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const { theme, toggleTheme } = useAuthenticatedTheme();
@@ -61,15 +61,25 @@ export default function TeamChatClient({ currentUserId, currentUserName }) {
   const [channels, setChannels] = useState([]);        // chat_channels rows I belong to
   const [roster, setRoster] = useState([]);            // chat_channel_members rows (my channels)
   const [team, setTeam] = useState([]);                // team_members (excluding self)
-  const [lastMsgByChannel, setLastMsgByChannel] = useState({});
-  const [lastReadByChannel, setLastReadByChannel] = useState({});
+  const [unreadByChannel, setUnreadByChannel] = useState({});
   const [selectedId, setSelectedId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [composingChannel, setComposingChannel] = useState(false);
+  const [newChannelName, setNewChannelName] = useState('');
+  const [creatingChannel, setCreatingChannel] = useState(false);
+  const [createChannelError, setCreateChannelError] = useState(null);
 
   const bottomRef = useRef(null);
+
+  // Read by the realtime handler, which must not resubscribe every time the
+  // viewer switches conversations.
+  const selectedIdRef = useRef(null);
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
 
   const teamByUserId = useMemo(() => {
     const m = {};
@@ -104,28 +114,14 @@ export default function TeamChatClient({ currentUserId, currentUserName }) {
       channelRows = data || [];
     }
 
-    // Most-recent message per channel, for unread badges.
-    let lastMsgs = {};
-    if (myChannelIds.length > 0) {
-      const { data: msgRows } = await supabase
-        .from('chat_messages')
-        .select('channel_id, sender_id, created_at')
-        .in('channel_id', myChannelIds)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false });
-      lastMsgs = lastMessagePerChannel(msgRows || []);
-    }
-
-    const reads = {};
-    for (const r of memberRows || []) {
-      if (r.user_id === currentUserId) reads[r.channel_id] = r.last_read_at;
-    }
+    // Unread counts per channel, counted in Postgres against each membership's
+    // last_read_at (see the chat_unread_counts migration).
+    const { data: unreadRows } = await supabase.rpc('chat_unread_counts');
 
     setTeam(teamRows || []);
     setRoster(memberRows || []);
     setChannels(channelRows);
-    setLastMsgByChannel(lastMsgs);
-    setLastReadByChannel(reads);
+    setUnreadByChannel(unreadCountByChannel(unreadRows));
     setLoading(false);
 
     // Default selection: the General/default channel, else first channel.
@@ -142,16 +138,15 @@ export default function TeamChatClient({ currentUserId, currentUserName }) {
 
   // ---- mark a channel read -----------------------------------------------
   const markRead = useCallback(async (channelId) => {
-    const now = new Date().toISOString();
-    setLastReadByChannel((prev) => ({ ...prev, [channelId]: now }));
+    setUnreadByChannel((prev) => (prev[channelId] ? { ...prev, [channelId]: 0 } : prev));
     await supabase
       .from('chat_channel_members')
-      .update({ last_read_at: now })
+      .update({ last_read_at: new Date().toISOString() })
       .eq('channel_id', channelId)
       .eq('user_id', currentUserId);
   }, [supabase, currentUserId]);
 
-  // ---- load messages for the selected channel + subscribe realtime -------
+  // ---- load messages for the selected channel ----------------------------
   useEffect(() => {
     if (!selectedId) return;
     let active = true;
@@ -168,30 +163,42 @@ export default function TeamChatClient({ currentUserId, currentUserName }) {
       markRead(selectedId);
     })();
 
+    return () => {
+      active = false;
+    };
+  }, [selectedId, supabase, markRead]);
+
+  // ---- realtime: one subscription across every conversation --------------
+  // Unfiltered on purpose. RLS decides which inserts reach this client, so a
+  // conversation the viewer is NOT looking at can light up its own unread badge
+  // as messages land, instead of only updating on reload.
+  useEffect(() => {
     const channel = supabase
-      .channel(`chat:${selectedId}`)
+      .channel('chat:all')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `channel_id=eq.${selectedId}` },
+        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
         (payload) => {
           const msg = payload.new;
-          if (msg.deleted_at) return;
-          setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
-          setLastMsgByChannel((prev) => ({
+          if (msg.deleted_at || msg.sender_id === currentUserId) return;
+
+          if (msg.channel_id === selectedIdRef.current) {
+            setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
+            markRead(msg.channel_id);
+            return;
+          }
+          setUnreadByChannel((prev) => ({
             ...prev,
-            [msg.channel_id]: { created_at: msg.created_at, sender_id: msg.sender_id },
+            [msg.channel_id]: (prev[msg.channel_id] || 0) + 1,
           }));
-          // If the viewer is looking at this channel, keep it marked read.
-          if (msg.sender_id !== currentUserId) markRead(selectedId);
         }
       )
       .subscribe();
 
     return () => {
-      active = false;
       supabase.removeChannel(channel);
     };
-  }, [selectedId, supabase, currentUserId, markRead]);
+  }, [supabase, currentUserId, markRead]);
 
   // Auto-scroll to newest message.
   useEffect(() => {
@@ -207,6 +214,39 @@ export default function TeamChatClient({ currentUserId, currentUserName }) {
     await loadSidebar();
     setSelectedId(channelId);
   }, [supabase, loadSidebar]);
+
+  // ---- create a channel (owner only) --------------------------------------
+  // The button that reaches this is hidden for everyone else, but hiding it is
+  // cosmetic: the route re-checks the caller and the restrictive RLS policy
+  // blocks a direct PostgREST insert.
+  const createChannel = useCallback(async () => {
+    if (creatingChannel) return;
+    const { valid, name, error } = validateChannelName(newChannelName);
+    if (!valid) {
+      setCreateChannelError(error);
+      return;
+    }
+
+    setCreatingChannel(true);
+    setCreateChannelError(null);
+    const res = await fetch('/api/team/chat/channels', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    setCreatingChannel(false);
+
+    if (!res.ok) {
+      setCreateChannelError(payload.error || 'Could not create the channel.');
+      return;
+    }
+
+    setNewChannelName('');
+    setComposingChannel(false);
+    await loadSidebar();
+    setSelectedId(payload.channel.id);
+  }, [creatingChannel, newChannelName, loadSidebar]);
 
   const notifyPush = useCallback(async (messageId) => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -242,10 +282,6 @@ export default function TeamChatClient({ currentUserId, currentUserName }) {
     }
 
     setMessages((prev) => (prev.some((m) => m.id === inserted.id) ? prev : [...prev, inserted]));
-    setLastMsgByChannel((prev) => ({
-      ...prev,
-      [inserted.channel_id]: { created_at: inserted.created_at, sender_id: inserted.sender_id },
-    }));
     markRead(selectedId);
 
     // Fire-and-forget push notification. Never block the UI on this.
@@ -276,10 +312,8 @@ export default function TeamChatClient({ currentUserId, currentUserName }) {
     ? channelDisplayName(selectedChannel, roster, teamByUserId, currentUserId)
     : '';
 
-  const isUnread = useCallback(
-    (channelId) => channelHasUnread(lastMsgByChannel[channelId], lastReadByChannel[channelId], currentUserId),
-    [lastMsgByChannel, lastReadByChannel, currentUserId]
-  );
+  // `channelId` is undefined for a teammate with no DM thread yet — 0 unread.
+  const unreadFor = (channelId) => unreadByChannel[channelId] || 0;
 
   // team_member.user_id -> existing DM channel id (so the DM list can highlight).
   const dmChannelByUser = useMemo(() => {
@@ -331,7 +365,54 @@ export default function TeamChatClient({ currentUserId, currentUserName }) {
         {/* Sidebar */}
         <aside className="w-[260px] flex-shrink-0 rounded-[14px] border overflow-y-auto" style={{ background: t.panelBg, borderColor: t.border }}>
           <div className="p-4">
-            <div className="text-[10px] font-semibold tracking-[0.12em] mb-2" style={{ color: t.muted }}>CHANNELS</div>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="text-[10px] font-semibold tracking-[0.12em]" style={{ color: t.muted }}>CHANNELS</div>
+              {canCreateChannel && (
+                <button
+                  onClick={() => {
+                    setComposingChannel((prev) => !prev);
+                    setCreateChannelError(null);
+                  }}
+                  className="text-[10px] font-semibold tracking-[0.12em] transition-opacity hover:opacity-70"
+                  style={{ color: t.accent }}
+                  aria-expanded={composingChannel}
+                >
+                  {composingChannel ? 'CANCEL' : '+ NEW'}
+                </button>
+              )}
+            </div>
+
+            {composingChannel && (
+              <div className="mb-3">
+                <input
+                  value={newChannelName}
+                  onChange={(e) => setNewChannelName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      createChannel();
+                    }
+                  }}
+                  autoFocus
+                  placeholder="channel-name"
+                  aria-label="New channel name"
+                  className="w-full rounded-[10px] px-3 py-2 text-[13px] outline-none"
+                  style={{ background: t.inputBg, border: `1px solid ${t.borderStrong}`, color: t.text }}
+                />
+                <button
+                  onClick={createChannel}
+                  disabled={creatingChannel || !newChannelName.trim()}
+                  className="w-full mt-2 px-3 py-2 rounded-full text-[11px] font-semibold tracking-[0.14em] transition-opacity disabled:opacity-40"
+                  style={{ background: t.sendBg, color: t.sendText }}
+                >
+                  {creatingChannel ? 'CREATING…' : 'CREATE CHANNEL'}
+                </button>
+                {createChannelError && (
+                  <p className="text-[11px] mt-2" style={{ color: t.accent }}>{createChannelError}</p>
+                )}
+              </div>
+            )}
+
             <div className="space-y-1">
               {groupChannels.length === 0 && !loading && (
                 <p className="text-[12px]" style={{ color: t.faint }}>No channels yet.</p>
@@ -340,7 +421,7 @@ export default function TeamChatClient({ currentUserId, currentUserName }) {
                 <SidebarRow
                   key={c.id}
                   active={c.id === selectedId}
-                  unread={isUnread(c.id)}
+                  unreadCount={unreadFor(c.id)}
                   onClick={() => setSelectedId(c.id)}
                   label={`# ${channelDisplayName(c, roster, teamByUserId, currentUserId)}`}
                   t={t}
@@ -359,7 +440,7 @@ export default function TeamChatClient({ currentUserId, currentUserName }) {
                   <SidebarRow
                     key={member.user_id}
                     active={dmId != null && dmId === selectedId}
-                    unread={dmId != null && isUnread(dmId)}
+                    unreadCount={unreadFor(dmId)}
                     onClick={() => (dmId ? setSelectedId(dmId) : openDm(member.user_id))}
                     label={member.full_name || member.email}
                     t={t}
@@ -430,7 +511,8 @@ export default function TeamChatClient({ currentUserId, currentUserName }) {
   );
 }
 
-function SidebarRow({ active, unread, onClick, label, t }) {
+function SidebarRow({ active, unreadCount, onClick, label, t }) {
+  const unread = unreadCount > 0;
   return (
     <button
       onClick={onClick}
@@ -441,7 +523,15 @@ function SidebarRow({ active, unread, onClick, label, t }) {
       }}
     >
       <span className="truncate flex-1" style={{ fontWeight: unread ? 700 : 400, color: unread && !active ? t.text : undefined }}>{label}</span>
-      {unread && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: t.accent }} />}
+      {unread && (
+        <span
+          className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold leading-none flex-shrink-0"
+          style={{ background: t.accent, color: t.panelBg }}
+          aria-label={`${unreadCount} unread`}
+        >
+          {unreadCount > 99 ? '99+' : unreadCount}
+        </span>
+      )}
     </button>
   );
 }
