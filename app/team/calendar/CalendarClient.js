@@ -160,8 +160,9 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
   // Admins can edit any team event; team members can only edit their own.
   const canEdit = useCallback((evt) => isAdmin || evt.created_by === currentUserId, [isAdmin, currentUserId]);
 
-  // Display name for whoever created a team event. Only populated for admins
-  // (see page.js) — falls back gracefully otherwise.
+  // Display name for whoever created a team event. Populated for every role
+  // via the team_creator_names() RPC (see page.js) — falls back gracefully
+  // if a lookup is somehow missing.
   const getCreatorName = useCallback(
     (evt) => creatorNames[evt.created_by] || (evt.created_by === currentUserId ? currentUserName : 'Unknown'),
     [creatorNames, currentUserId, currentUserName]
@@ -339,41 +340,39 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
         )}
       </div>
 
-      {/* Monthly Scorecard — admin only, tracks who's actually creating events */}
-      {isAdmin && (
-        <div
-          className="rounded-[14px] border p-4 mb-6"
-          style={{ background: t.cellBg, borderColor: t.borderSoft }}
-        >
-          <div className="text-[11px] font-semibold tracking-[0.14em] mb-3" style={{ color: t.muted }}>
-            EVENTS CREATED — {MONTHS[month].toUpperCase()} {year}
-          </div>
-          {monthlyScorecard().length === 0 ? (
-            <p className="text-[13px]" style={{ color: t.muted }}>No team events created this month yet.</p>
-          ) : (
-            <div className="flex flex-wrap gap-3">
-              {monthlyScorecard().map(([name, count], idx) => (
-                <div
-                  key={name}
-                  className="flex items-center gap-2 px-4 py-2 rounded-full border"
-                  style={{
-                    borderColor: idx === 0 ? 'rgba(139,92,246,0.5)' : t.border,
-                    background: idx === 0 ? 'rgba(139,92,246,0.12)' : 'transparent',
-                  }}
-                >
-                  <span className="text-[13px] font-semibold" style={{ color: t.textStrong }}>{name}</span>
-                  <span
-                    className="text-[13px] font-extrabold min-w-[20px] text-center"
-                    style={{ color: idx === 0 ? '#8b5cf6' : t.mutedStrong }}
-                  >
-                    {count}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
+      {/* Monthly Scorecard — visible to the whole team, tracks who's creating events */}
+      <div
+        className="rounded-[14px] border p-4 mb-6"
+        style={{ background: t.cellBg, borderColor: t.borderSoft }}
+      >
+        <div className="text-[11px] font-semibold tracking-[0.14em] mb-3" style={{ color: t.muted }}>
+          EVENTS CREATED — {MONTHS[month].toUpperCase()} {year}
         </div>
-      )}
+        {monthlyScorecard().length === 0 ? (
+          <p className="text-[13px]" style={{ color: t.muted }}>No team events created this month yet.</p>
+        ) : (
+          <div className="flex flex-wrap gap-3">
+            {monthlyScorecard().map(([name, count], idx) => (
+              <div
+                key={name}
+                className="flex items-center gap-2 px-4 py-2 rounded-full border"
+                style={{
+                  borderColor: idx === 0 ? 'rgba(139,92,246,0.5)' : t.border,
+                  background: idx === 0 ? 'rgba(139,92,246,0.12)' : 'transparent',
+                }}
+              >
+                <span className="text-[13px] font-semibold" style={{ color: t.textStrong }}>{name}</span>
+                <span
+                  className="text-[13px] font-extrabold min-w-[20px] text-center"
+                  style={{ color: idx === 0 ? '#8b5cf6' : t.mutedStrong }}
+                >
+                  {count}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Month nav */}
       <div className="flex items-center gap-4 mb-4">

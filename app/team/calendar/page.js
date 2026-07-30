@@ -27,19 +27,16 @@ export default async function TeamCalendarPage() {
 
   const isAdmin = teamMember.role === 'admin';
 
-  // Creator name lookup for the "Created by" labels + monthly scorecard.
-  // RLS on team_members only lets admins select every row (team members can
-  // only read their own), so this map is only meaningfully populated for
-  // admins — which matches where these features are surfaced in the UI.
-  let creatorNames = {};
-  if (isAdmin) {
-    const { data: allTeamMembers } = await supabase
-      .from('team_members')
-      .select('user_id, full_name, email');
-    (allTeamMembers || []).forEach((tm) => {
-      if (tm.user_id) creatorNames[tm.user_id] = tm.full_name || tm.email;
-    });
-  }
+  // Creator name lookup for the leaderboard (all roles) + admin-only "Created
+  // by" labels. Direct SELECT on team_members is admin-only / own-row-only
+  // (see 20260727_rls_security_hardening.sql), so names come from the
+  // team_creator_names() RPC, which is SECURITY DEFINER and available to any
+  // team member (see 20260730_team_event_leaderboard_rpc.sql).
+  const { data: allCreatorNames } = await supabase.rpc('team_creator_names');
+  const creatorNames = {};
+  (allCreatorNames || []).forEach((row) => {
+    if (row.user_id) creatorNames[row.user_id] = row.display_name;
+  });
 
   // Website events (read-only). Includes internal micro-party events so the
   // team can see them on the calendar; they are visually distinguished and are
