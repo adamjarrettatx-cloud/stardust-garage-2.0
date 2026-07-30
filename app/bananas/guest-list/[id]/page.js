@@ -17,6 +17,39 @@ export const dynamic = 'force-dynamic';
 // allocation panel on the event page (loadEventGrants), without the editing UI —
 // the header links back to the event for that.
 
+// Which of these entries belong to a guest who signed a consent form at the
+// door, as a Map of entry id → guest profile id.
+//
+// Deliberately a separate pair of queries rather than extra columns on the
+// shared GRANT_SELECT: that select also feeds the admin allocation panel and
+// the partner portal, and neither of them should start carrying guest profile
+// ids around for a link only this page renders.
+async function loadEntrySignatures(admin, grantIds) {
+  if (grantIds.length === 0) return new Map();
+
+  const { data: entries } = await admin
+    .from('event_guestlist_entries')
+    .select('id, guest_profile_id')
+    .in('grant_id', grantIds)
+    .not('guest_profile_id', 'is', null);
+
+  const profileIds = [...new Set((entries || []).map((e) => e.guest_profile_id))];
+  if (profileIds.length === 0) return new Map();
+
+  const { data: profiles } = await admin
+    .from('guest_profiles')
+    .select('id')
+    .in('id', profileIds)
+    .not('signature_path', 'is', null);
+
+  const signed = new Set((profiles || []).map((p) => p.id));
+  return new Map(
+    (entries || [])
+      .filter((e) => signed.has(e.guest_profile_id))
+      .map((e) => [e.id, e.guest_profile_id]),
+  );
+}
+
 function formatEventDate(dateString) {
   if (!dateString) return 'Date TBC';
   return new Date(dateString + 'T12:00:00').toLocaleDateString('en-US', {
@@ -54,7 +87,7 @@ function Stat({ label, value, hint = null }) {
   );
 }
 
-function GrantCard({ grant }) {
+function GrantCard({ grant, signatures }) {
   const state = partnerState(grant);
   const entries = grant.entries || [];
   const checkedIn = entries.filter((e) => e.status === 'checked_in').length;
@@ -119,6 +152,20 @@ function GrantCard({ grant }) {
                 {' · '}
                 {entryStatusLabel(entry.status)}
               </span>
+              {signatures.has(entry.id) && (
+                <>
+                  {' · '}
+                  <a
+                    href={`/api/admin/guest-signature/${signatures.get(entry.id)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-semibold hover:underline"
+                    style={{ color: 'var(--auth-accent)' }}
+                  >
+                    SIGNATURE ON FILE
+                  </a>
+                </>
+              )}
             </li>
           ))}
         </ul>
@@ -146,6 +193,7 @@ export default async function EventGuestListPage({ params }) {
 
   const rows = grants || [];
   const totals = summarizeGrants(rows);
+  const signatures = await loadEntrySignatures(admin, rows.map((grant) => grant.id));
 
   return (
     <main className="max-w-[1000px] mx-auto px-6 py-16">
@@ -198,7 +246,7 @@ export default async function EventGuestListPage({ params }) {
           No guest list grants for this event yet.
         </div>
       ) : (
-        rows.map((grant) => <GrantCard key={grant.id} grant={grant} />)
+        rows.map((grant) => <GrantCard key={grant.id} grant={grant} signatures={signatures} />)
       )}
     </main>
   );

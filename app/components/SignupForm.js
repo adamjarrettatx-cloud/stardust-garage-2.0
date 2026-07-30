@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { HOMEPAGE_SIGNUP_SOURCE } from '@/lib/signups';
 
 function detectContactType(value) {
   const trimmed = value.trim();
@@ -28,7 +29,7 @@ export default function SignupForm() {
     const { error: insertError } = await supabase.from('signups').insert({
       contact: trimmed,
       contact_type: detectContactType(trimmed),
-      source: 'homepage',
+      source: HOMEPAGE_SIGNUP_SOURCE,
     });
 
     setSubmitting(false);
@@ -46,7 +47,7 @@ export default function SignupForm() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         formType: 'signup',
-        data: { contact: trimmed, contact_type: contactType, source: 'homepage' },
+        data: { contact: trimmed, contact_type: contactType, source: HOMEPAGE_SIGNUP_SOURCE },
         email: contactType === 'email' ? trimmed : null,
       }),
     }).catch(() => {});

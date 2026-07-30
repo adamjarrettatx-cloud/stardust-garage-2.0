@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
 import { markNewSignupsSeen } from '@/lib/signups-seen';
+import { buildSignupsCsv } from '@/lib/signups';
 import SignupsClient from './SignupsClient';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 
@@ -23,17 +24,10 @@ export default async function SignupsPage() {
   // types, viewing them is the transition.
   await markNewSignupsSeen();
 
-  const downloadCsv = () => {
-    if (!signups || signups.length === 0) return '';
-    const header = 'Contact,Type,Source,Signed Up At\n';
-    const rows = signups
-      .map((s) => `"${s.contact}","${s.contact_type || ''}","${s.source || ''}","${s.created_at}"`)
-      .join('\n');
-    return header + rows;
-  };
-
-  const csvContent = downloadCsv();
-  const csvHref = `data:text/csv;charset=utf-8,${encodeURIComponent(csvContent)}`;
+  const csvContent = buildSignupsCsv(signups);
+  const csvHref = csvContent
+    ? `data:text/csv;charset=utf-8,${encodeURIComponent(csvContent)}`
+    : '';
 
   return (
     <main className="max-w-[1100px] mx-auto px-6 py-16">
@@ -41,7 +35,7 @@ export default async function SignupsPage() {
         backHref="/bananas"
         backLabel="← BACK TO ADMIN"
         title="Signups"
-        description="People who signed up via “Stay in the loop” on the homepage."
+        description="People who signed up via “Stay in the loop” on the homepage, plus first-time guests who signed a consent form at the door."
         titleClassName="text-[40px] font-extrabold -tracking-[0.02em] leading-[1.1]"
         className="mb-10"
       />

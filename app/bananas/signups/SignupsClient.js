@@ -4,6 +4,7 @@ import { useState } from 'react';
 import SubmissionTabs from '@/app/bananas/components/SubmissionTabs';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
 import { filterSubmissionRowsByStatus, normalizeSubmissionStatus } from '@/lib/submission-workflow';
+import { signupSourceLabel } from '@/lib/signups';
 
 function formatDate(iso) {
   const d = new Date(iso);
@@ -84,6 +85,9 @@ export default function SignupsClient({ signups, csvHref }) {
                 <tr style={{ borderBottom: '1px solid var(--auth-row-border)' }}>
                   <th className="text-left px-6 py-4 text-[11px] font-semibold tracking-[0.14em]" style={{ color: 'var(--auth-muted)' }}>CONTACT</th>
                   <th className="text-left px-6 py-4 text-[11px] font-semibold tracking-[0.14em]" style={{ color: 'var(--auth-muted)' }}>TYPE</th>
+                  <th className="text-left px-6 py-4 text-[11px] font-semibold tracking-[0.14em]" style={{ color: 'var(--auth-muted)' }}>NAME</th>
+                  <th className="text-left px-6 py-4 text-[11px] font-semibold tracking-[0.14em]" style={{ color: 'var(--auth-muted)' }}>PHONE</th>
+                  <th className="text-left px-6 py-4 text-[11px] font-semibold tracking-[0.14em]" style={{ color: 'var(--auth-muted)' }}>SOURCE</th>
                   <th className="text-left px-6 py-4 text-[11px] font-semibold tracking-[0.14em]" style={{ color: 'var(--auth-muted)' }}>STATUS</th>
                   <th className="text-left px-6 py-4 text-[11px] font-semibold tracking-[0.14em]" style={{ color: 'var(--auth-muted)' }}>WHEN</th>
                 </tr>
@@ -93,6 +97,9 @@ export default function SignupsClient({ signups, csvHref }) {
                   <tr key={signup.id} style={{ borderBottom: '1px solid var(--auth-row-border)' }}>
                     <td className="px-6 py-4 text-[14px] font-medium">{signup.contact}</td>
                     <td className="px-6 py-4 text-[13px]" style={{ color: 'var(--auth-muted)' }}>{signup.contact_type || '—'}</td>
+                    <td className="px-6 py-4 text-[13px]" style={{ color: 'var(--auth-muted)' }}>{signup.full_name || '—'}</td>
+                    <td className="px-6 py-4 text-[13px] tabular-nums" style={{ color: 'var(--auth-muted)' }}>{signup.phone || '—'}</td>
+                    <td className="px-6 py-4 text-[13px]" style={{ color: 'var(--auth-muted)' }}>{signupSourceLabel(signup.source)}</td>
                     <td className="px-6 py-4 text-[13px]">
                       <SubmissionStatusBadge status={signup.status || 'new'} />
                     </td>

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { requireTeam } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -9,6 +10,13 @@ import {
   normalizeGuestName,
   validateGuestIntake,
 } from '@/lib/guestlist-checkin';
+import {
+  GUEST_SIGNATURE_BUCKET,
+  GUEST_SIGNATURE_CONTENT_TYPE,
+  guestSignatureStoragePath,
+  parseSignatureDataUrl,
+} from '@/lib/guest-signature';
+import { GUEST_LIST_SIGNUP_SOURCE } from '@/lib/signups';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -25,8 +33,10 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 //
 // check_in resolves the guest identity one of two ways:
 //   * guestProfileId — staff confirmed an existing guest_profiles match.
-//   * newGuest       — first time we've met them: phone + email + consent are
-//                      required and a new guest_profiles row is created.
+//   * newGuest       — first time we've met them: phone + email + a drawn
+//                      signature are required, a new guest_profiles row is
+//                      created, the signature is filed in private storage and
+//                      the guest is added to the Sign Ups list.
 export async function POST(request) {
   const { user, unauthorized } = await requireTeam();
   if (unauthorized) {
@@ -92,6 +102,7 @@ export async function POST(request) {
 
   const updates = { status: DOOR_OPERATIONS[op].status };
   let createdProfile = null;
+  let warning = null;
 
   if (op === 'check_in') {
     const resolved = await resolveGuestProfile({ admin, entry, grant, body });
@@ -99,6 +110,7 @@ export async function POST(request) {
       return NextResponse.json({ error: resolved.error }, { status: resolved.status });
     }
     createdProfile = resolved.created ? resolved.profile : null;
+    warning = resolved.warning || null;
     updates.guest_profile_id = resolved.profile.id;
     updates.checked_in_at = new Date().toISOString();
     updates.checked_in_by = staff?.id || null;
@@ -143,12 +155,13 @@ export async function POST(request) {
       comp_type: entry.comp_type,
       guest_profile_id: updated.guest_profile_id,
       new_guest_profile: Boolean(createdProfile),
+      consent_warning: warning,
       checked_in_by: staff?.id || null,
       checked_in_by_name: staff?.full_name || user.email || null,
     },
   });
 
-  return NextResponse.json({ ok: true, entry: updated });
+  return NextResponse.json({ ok: true, entry: updated, warning });
 }
 
 // Returns { profile } for the guest_profiles row this check-in should link to,
@@ -195,7 +208,67 @@ async function resolveGuestProfile({ admin, entry, grant, body }) {
     console.error('[door.guestlist.operation.profile]', insertError);
     return { error: 'Could not save the guest details', status: 500 };
   }
-  return { profile: created, created: true };
+
+  const { warning } = await recordGuestConsent({ admin, profile: created, intake: data });
+  return { profile: created, created: true, warning };
+}
+
+// File the signature and put the guest on the Sign Ups list.
+//
+// Runs after the profile exists because the signature is stored under the
+// profile's id. Never returns an error that aborts the check-in: the guest is
+// standing at the door and a storage hiccup is not their problem. What it
+// returns instead is a `warning` the kiosk shows the attendant, so a failure is
+// visible at the door rather than discovered months later by whoever went
+// looking for the consent record.
+async function recordGuestConsent({ admin, profile, intake }) {
+  const signature = parseSignatureDataUrl(intake.signature);
+  const storagePath = guestSignatureStoragePath(profile.id, randomUUID());
+
+  const { error: uploadError } = await admin.storage
+    .from(GUEST_SIGNATURE_BUCKET)
+    .upload(storagePath, Buffer.from(signature.base64, 'base64'), {
+      contentType: GUEST_SIGNATURE_CONTENT_TYPE,
+      upsert: false,
+    });
+
+  if (uploadError) {
+    console.error('[door.guestlist.operation.signature]', uploadError);
+    // Consent we cannot evidence is not consent. Walk marketing_consent back to
+    // false and skip the Sign Ups row, so nothing downstream texts someone on
+    // the strength of an opt-in we failed to keep.
+    await admin.from('guest_profiles').update({ marketing_consent: false }).eq('id', profile.id);
+    return { warning: 'Their signature could not be saved, so they were NOT added to the list.' };
+  }
+
+  const { error: profileError } = await admin
+    .from('guest_profiles')
+    .update({ signature_path: storagePath, signature_captured_at: new Date().toISOString() })
+    .eq('id', profile.id);
+
+  if (profileError) {
+    console.error('[door.guestlist.operation.signature-link]', profileError);
+  }
+
+  // The same table the homepage "Stay in the loop" form writes to, so door
+  // guests show up in the existing Sign Ups admin page and its CSV export
+  // rather than in a second list nobody remembers to check. Email is the
+  // contact of record because that is what Mailchimp keys on; the phone rides
+  // along in its own column.
+  const { error: signupError } = await admin.from('signups').insert({
+    contact: intake.email,
+    contact_type: 'email',
+    phone: intake.phone,
+    full_name: profile.full_name,
+    source: GUEST_LIST_SIGNUP_SOURCE,
+  });
+
+  if (signupError) {
+    console.error('[door.guestlist.operation.signup]', signupError);
+    return { warning: 'Saved, but they did not reach the Sign Ups list — tell an admin.' };
+  }
+
+  return { warning: null };
 }
 
 function alreadyResolvedMessage(entry) {
