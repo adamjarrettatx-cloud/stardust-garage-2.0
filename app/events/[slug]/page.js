@@ -42,28 +42,28 @@ export default async function EventPage({ params }) {
         <span style={{ color: '#f5f5f5' }}>{event.title.toUpperCase()}</span>
       </div>
 
-      {event.image_url && (
-        <div className="relative w-full rounded-[14px] overflow-hidden mb-10 md:mb-12 bg-[#111]">
-          {/* Blurred copy of the flier tints whatever letterbox/pillarbox gap its aspect ratio leaves. */}
-          <img
-            src={event.image_url}
-            alt=""
-            aria-hidden="true"
-            className="absolute inset-0 w-full h-full object-cover scale-125 blur-3xl opacity-40"
-          />
-          <img
-            src={event.image_url}
-            alt={event.title}
-            className="relative block mx-auto w-auto h-auto max-w-full max-h-[75vh] object-contain"
-          />
-        </div>
-      )}
-
-      <div className="grid gap-10 md:gap-16 md:grid-cols-[300px_1fr]">
+      <div className="grid gap-8 md:gap-12 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] md:items-start">
         <aside>
-          <h2 className="text-[28px] md:text-[32px] font-extrabold -tracking-[0.02em] mb-1.5 leading-[1.1]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+          {event.image_url && (
+            <div className="relative w-full rounded-[14px] overflow-hidden mb-6 md:mb-7 bg-[#111]">
+              {/* Blurred copy of the flier tints whatever letterbox/pillarbox gap its aspect ratio leaves. */}
+              <img
+                src={event.image_url}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 w-full h-full object-cover scale-125 blur-3xl opacity-40"
+              />
+              <img
+                src={event.image_url}
+                alt={event.title}
+                className="relative block mx-auto w-auto h-auto max-w-full max-h-[70vh] object-contain"
+              />
+            </div>
+          )}
+
+          <h1 className="text-[28px] md:text-[32px] font-extrabold -tracking-[0.02em] mb-1.5 leading-[1.1]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             {event.title}
-          </h2>
+          </h1>
           <div className="text-[20px] md:text-[22px] font-bold -tracking-[0.01em] mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             {formatEventDate(event.event_date)}
           </div>
@@ -126,9 +126,7 @@ export default async function EventPage({ params }) {
         </aside>
 
         <section>
-          <h1 className="text-[32px] md:text-[40px] font-extrabold -tracking-[0.02em] mb-6 md:mb-7 leading-[1.1]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            {event.title}
-          </h1>
+          <div className="text-[11px] font-semibold tracking-[0.28em] mb-4" style={{ color: 'rgba(255,255,255,0.5)' }}>ABOUT</div>
 
           {event.description ? (
             <div className="text-[15px] leading-[1.7]" style={{ whiteSpace: 'pre-wrap' }}>
