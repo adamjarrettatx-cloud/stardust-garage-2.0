@@ -7,7 +7,8 @@ import Wordmark from './Wordmark';
 export default function NavBrand({ logoUrl }) {
   const pathname = usePathname();
 
-  // Show logo image only on the homepage (/home), Wordmark text elsewhere.
+  // Show the admin-uploaded logo image only on the homepage (/home), the brand
+  // wordmark everywhere else.
   const showLogo = pathname === '/home' && logoUrl;
 
   return (
@@ -23,7 +24,7 @@ export default function NavBrand({ logoUrl }) {
           className="h-10 w-auto object-contain"
         />
       ) : (
-        <Wordmark size="sm" color="#ffffff" />
+        <Wordmark size="sm" />
       )}
     </Link>
   );

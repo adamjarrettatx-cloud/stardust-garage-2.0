@@ -2,13 +2,16 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import Wordmark from '@/app/components/Wordmark';
 import PartnerSignOutButton from '../PartnerSignOutButton';
 
 // Two destinations, and that is the whole product for a partner. Promoters and
 // collectives open this on a phone in a green room ten minutes before doors, so
 // the bar is sticky and the tap targets are large; there is no hamburger to
 // find and nothing to scroll past.
+//
+// Deliberately no brand mark here: the root layout already renders the site
+// navbar on /partner routes, so a logo in this bar would be the second one on
+// the page.
 const TABS = [
   { href: '/partner/guest-list', label: 'Guest List' },
   { href: '/partner/profile', label: 'My Profile' },
@@ -18,19 +21,12 @@ export default function PartnerNav() {
   const pathname = usePathname();
 
   return (
-    <header
-      className="sticky top-0 z-40 backdrop-blur"
+    <div
+      className="sticky top-0 z-40 backdrop-blur mt-6"
       style={{ background: 'rgba(10,10,10,0.85)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
     >
-      <div className="max-w-[720px] mx-auto px-5 sm:px-6">
-        <div className="flex items-center justify-between gap-4 pt-5 pb-3">
-          <Link href="/partner/guest-list" aria-label="Partner home">
-            <Wordmark size="sm" />
-          </Link>
-          <PartnerSignOutButton />
-        </div>
-
-        <nav className="flex gap-2 pb-3">
+      <div className="max-w-[720px] mx-auto px-5 sm:px-6 flex flex-wrap items-center justify-between gap-3 py-3">
+        <nav className="flex gap-2">
           {TABS.map((tab) => {
             // startsWith so /partner/guest-list/<grantId> keeps the tab lit.
             const active = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
@@ -51,7 +47,9 @@ export default function PartnerNav() {
             );
           })}
         </nav>
+
+        <PartnerSignOutButton />
       </div>
-    </header>
+    </div>
   );
 }
