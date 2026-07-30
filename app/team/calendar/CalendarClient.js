@@ -115,7 +115,7 @@ function parseLocalDate(str) {
 // events and edit their own, but everyone else's team events render dimmed
 // and non-interactive. The isAdmin flag is a UI convenience only — the actual
 // dataset each role receives is already scoped server-side (page.js) / by RLS.
-export default function CalendarClient({ publicEvents, teamEvents: initialTeamEvents, isAdmin, currentUserId, currentUserName, chatUnreadCount = 0 }) {
+export default function CalendarClient({ publicEvents, teamEvents: initialTeamEvents, isAdmin, currentUserId, currentUserName, creatorNames = {}, chatUnreadCount = 0 }) {
   const router = useRouter();
   const supabase = createClient();
   const today = new Date();
@@ -159,6 +159,26 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
 
   // Admins can edit any team event; team members can only edit their own.
   const canEdit = useCallback((evt) => isAdmin || evt.created_by === currentUserId, [isAdmin, currentUserId]);
+
+  // Display name for whoever created a team event. Only populated for admins
+  // (see page.js) — falls back gracefully otherwise.
+  const getCreatorName = useCallback(
+    (evt) => creatorNames[evt.created_by] || (evt.created_by === currentUserId ? currentUserName : 'Unknown'),
+    [creatorNames, currentUserId, currentUserName]
+  );
+
+  // Monthly scorecard: who's created how many team events in the currently
+  // viewed month, admin-only. Ranked descending so it reads like a leaderboard.
+  const monthlyScorecard = useCallback(() => {
+    const counts = {};
+    teamEvents.forEach((evt) => {
+      const d = parseLocalDate(evt.event_date);
+      if (d.getFullYear() !== year || d.getMonth() !== month) return;
+      const name = getCreatorName(evt);
+      counts[name] = (counts[name] || 0) + 1;
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [teamEvents, year, month, getCreatorName]);
 
   const handleDayClick = (date) => {
     setSelectedDay(date);
@@ -319,6 +339,42 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
         )}
       </div>
 
+      {/* Monthly Scorecard — admin only, tracks who's actually creating events */}
+      {isAdmin && (
+        <div
+          className="rounded-[14px] border p-4 mb-6"
+          style={{ background: t.cellBg, borderColor: t.borderSoft }}
+        >
+          <div className="text-[11px] font-semibold tracking-[0.14em] mb-3" style={{ color: t.muted }}>
+            EVENTS CREATED — {MONTHS[month].toUpperCase()} {year}
+          </div>
+          {monthlyScorecard().length === 0 ? (
+            <p className="text-[13px]" style={{ color: t.muted }}>No team events created this month yet.</p>
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              {monthlyScorecard().map(([name, count], idx) => (
+                <div
+                  key={name}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full border"
+                  style={{
+                    borderColor: idx === 0 ? 'rgba(139,92,246,0.5)' : t.border,
+                    background: idx === 0 ? 'rgba(139,92,246,0.12)' : 'transparent',
+                  }}
+                >
+                  <span className="text-[13px] font-semibold" style={{ color: t.textStrong }}>{name}</span>
+                  <span
+                    className="text-[13px] font-extrabold min-w-[20px] text-center"
+                    style={{ color: idx === 0 ? '#8b5cf6' : t.mutedStrong }}
+                  >
+                    {count}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Month nav */}
       <div className="flex items-center gap-4 mb-4">
         <button
@@ -447,7 +503,13 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
                             cursor: mine ? 'pointer' : 'default',
                             opacity: mine ? 1 : 0.7,
                           }}
-                          title={!isAdmin && mine ? `${evt.title} (click to edit)` : evt.title}
+                          title={
+                            isAdmin
+                              ? `${evt.title} \u2014 created by ${getCreatorName(evt)}`
+                              : !isAdmin && mine
+                                ? `${evt.title} (click to edit)`
+                                : evt.title
+                          }
                         >
                           <div className="truncate">{evt.title}</div>
                           {evt.start_time && (
@@ -562,6 +624,9 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
                           {!isAdmin && mine && <span className="ml-auto text-[10px] font-semibold" style={{ color: cat.color }}>EDIT</span>}
                         </div>
                         <div className="text-[12px] font-semibold" style={{ color: chipColor }}>{cat.label}</div>
+                        {isAdmin && (
+                          <div className="text-[11px] mt-0.5" style={{ color: t.muted }}>Created by {getCreatorName(evt)}</div>
+                        )}
                         {(evt.start_time || evt.end_time) && (
                           <div className="text-[12px] mt-0.5" style={{ color: t.mutedStrong }}>
                             {evt.start_time}{evt.end_time ? ` – ${evt.end_time}` : ''}

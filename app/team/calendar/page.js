@@ -27,6 +27,20 @@ export default async function TeamCalendarPage() {
 
   const isAdmin = teamMember.role === 'admin';
 
+  // Creator name lookup for the "Created by" labels + monthly scorecard.
+  // RLS on team_members only lets admins select every row (team members can
+  // only read their own), so this map is only meaningfully populated for
+  // admins — which matches where these features are surfaced in the UI.
+  let creatorNames = {};
+  if (isAdmin) {
+    const { data: allTeamMembers } = await supabase
+      .from('team_members')
+      .select('user_id, full_name, email');
+    (allTeamMembers || []).forEach((tm) => {
+      if (tm.user_id) creatorNames[tm.user_id] = tm.full_name || tm.email;
+    });
+  }
+
   // Website events (read-only). Includes internal micro-party events so the
   // team can see them on the calendar; they are visually distinguished and are
   // never shown on the public /events page.
@@ -53,6 +67,7 @@ export default async function TeamCalendarPage() {
       isAdmin={isAdmin}
       currentUserId={user.id}
       currentUserName={teamMember.full_name || teamMember.email}
+      creatorNames={creatorNames}
       chatUnreadCount={totalUnreadCount(unreadRows)}
     />
   );
