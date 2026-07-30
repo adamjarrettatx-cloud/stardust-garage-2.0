@@ -42,11 +42,22 @@ export default async function EventPage({ params }) {
         <span style={{ color: '#f5f5f5' }}>{event.title.toUpperCase()}</span>
       </div>
 
-      <div className="w-full rounded-[14px] overflow-hidden mb-10 md:mb-12 bg-[#111] aspect-[16/10] md:aspect-[16/7]">
-        {event.image_url && (
-          <img src={event.image_url} alt={event.title} className="w-full h-full object-cover" />
-        )}
-      </div>
+      {event.image_url && (
+        <div className="relative w-full rounded-[14px] overflow-hidden mb-10 md:mb-12 bg-[#111]">
+          {/* Blurred copy of the flier tints whatever letterbox/pillarbox gap its aspect ratio leaves. */}
+          <img
+            src={event.image_url}
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 w-full h-full object-cover scale-125 blur-3xl opacity-40"
+          />
+          <img
+            src={event.image_url}
+            alt={event.title}
+            className="relative block mx-auto w-auto h-auto max-w-full max-h-[75vh] object-contain"
+          />
+        </div>
+      )}
 
       <div className="grid gap-10 md:gap-16 md:grid-cols-[300px_1fr]">
         <aside>
