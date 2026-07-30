@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
+import { teamDocumentPath } from '@/lib/document-access';
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
@@ -168,8 +169,17 @@ export async function middleware(request) {
   // /admin/* requires is_admin flag
   if (isAdminRoute && !isAdmin) {
     const url = request.nextUrl.clone();
-    // Team members go to /team/calendar, others go to /member
-    url.pathname = teamRole === 'team' ? '/team/calendar' : '/member';
+    if (teamRole === 'team') {
+      // SOPs live in the admin document hub, but they are staff reading
+      // material — a team member following an SOP link used to land on the
+      // calendar with no explanation. Send them to the read-only team viewer
+      // for the same document instead. teamDocumentPath() returns null for
+      // everything else under /bananas (contracts, templates, the field
+      // editor), which keeps the original calendar fallback.
+      url.pathname = teamDocumentPath(pathname) || '/team/calendar';
+    } else {
+      url.pathname = '/member';
+    }
     return NextResponse.redirect(url);
   }
 
