@@ -44,18 +44,19 @@ export default async function EventPage({ params }) {
 
       <div className="grid gap-6 md:gap-12 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] md:items-start">
         {event.image_url && (
-          <div className="relative w-full rounded-[14px] overflow-hidden bg-[#111]">
-            {/* Blurred copy of the flier tints whatever letterbox/pillarbox gap its aspect ratio leaves. */}
+          <div className="relative w-full md:rounded-[14px] md:overflow-hidden md:bg-[#111]">
+            {/* Blurred copy of the flier tints whatever letterbox/pillarbox gap its aspect ratio
+                leaves. Desktop only — on mobile the flier sits on the page background instead. */}
             <img
               src={event.image_url}
               alt=""
               aria-hidden="true"
-              className="absolute inset-0 w-full h-full object-cover scale-125 blur-3xl opacity-40"
+              className="hidden md:block absolute inset-0 w-full h-full object-cover scale-125 blur-3xl opacity-40"
             />
             <img
               src={event.image_url}
               alt={event.title}
-              className="relative block mx-auto w-auto h-auto max-w-full max-h-[45vh] md:max-h-[70vh] object-contain"
+              className="relative block mx-auto w-auto h-auto max-w-full max-h-[45vh] md:max-h-[70vh] object-contain rounded-[14px] md:rounded-none"
             />
           </div>
         )}
