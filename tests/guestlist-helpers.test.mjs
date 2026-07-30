@@ -1,5 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import {
   COMP_TYPE_OPTIONS,
   ENTRY_STATUS_OPTIONS,
@@ -138,6 +140,32 @@ test('auditGuestlist tolerates a missing request and swallows insert failures', 
 // 20260731_partner_guestlist_portal.sql (so it is actually true). The two must
 // agree, which is what the "no_show" cases below are really pinning down.
 // ---------------------------------------------------------------------------
+
+const MIGRATIONS = path.resolve(
+  path.dirname(new URL(import.meta.url).pathname),
+  '../supabase/migrations'
+);
+
+// The trigger holding up the other half of this rule locks the grant row with
+// SELECT ... FOR UPDATE, and PostgreSQL applies the UPDATE policies to a locking
+// read. Partners hold no UPDATE policy on event_guestlist_grants on purpose, so
+// without SECURITY DEFINER that lock matches nothing and every partner add fails
+// as GL404 — which is exactly what shipped in Phase 3.
+test('the capacity trigger runs as its definer, not as the partner inserting', () => {
+  const headers = fs
+    .readdirSync(MIGRATIONS)
+    .sort()
+    .flatMap((file) =>
+      fs.readFileSync(path.join(MIGRATIONS, file), 'utf8').split(/create or replace function /i)
+    )
+    .filter((chunk) => chunk.startsWith('public.event_guestlist_entries_enforce_capacity()'))
+    .map((chunk) => chunk.split('$$')[0]);
+
+  // Migrations replay in filename order, so the last definition is the one the
+  // database is left holding.
+  assert.ok(headers.length > 0, 'no definition of the capacity trigger function found');
+  assert.match(headers.at(-1), /security definer/i);
+});
 
 const entry = (comp_type, status = 'pending') => ({ comp_type, status });
 
