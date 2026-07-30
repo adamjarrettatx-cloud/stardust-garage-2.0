@@ -207,7 +207,7 @@ export default function ContactForm({ contact = null }) {
           style={inputStyle}
         >
           {CONTACT_STATUS_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value} style={{ background: '#141414' }}>
+            <option key={opt.value} value={opt.value}>
               {opt.label}
             </option>
           ))}

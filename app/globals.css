@@ -100,6 +100,19 @@ body {
   color: var(--auth-muted) !important;
 }
 
+/* An <option> inherits the select's text colour but never its background, so
+   any option left without an explicit background falls through to the UA's,
+   which under the light theme's near-black text renders black-on-black. Pin
+   both to the theme here instead of inline: React writes inline styles through
+   CSSOM, which reserializes `#141414` to `rgb(20, 20, 20)` and silently breaks
+   the [style*='#141414'] light-theme override below. Outside .auth-theme-root
+   the vars are undefined and the dark fallbacks keep those pages unchanged. */
+select option,
+select optgroup {
+  background-color: var(--auth-input-bg, #141414);
+  color: var(--auth-input-text, #f5f5f5);
+}
+
 .auth-theme-root .auth-theme-page-link {
   color: var(--auth-muted);
 }

@@ -238,7 +238,7 @@ export default function TtEventCreator() {
           <label className={labelClass} style={labelStyle}>CATEGORY</label>
           <select value={category} onChange={handleCategoryChange} className={inputClass} style={inputStyle}>
             {CATEGORY_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value} style={{ background: '#141414' }}>
+              <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
             ))}

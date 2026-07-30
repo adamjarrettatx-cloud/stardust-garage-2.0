@@ -331,9 +331,9 @@ export default function MicroPartyInquireForm() {
                   className={inputClass}
                   style={inputStyle}
                 >
-                  <option value="" style={{ background: '#141414' }}>Choose a start time</option>
+                  <option value="">Choose a start time</option>
                   {startTimeOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value} style={{ background: '#141414' }}>
+                    <option key={opt.value} value={opt.value}>
                       {opt.label}
                     </option>
                   ))}
@@ -347,9 +347,9 @@ export default function MicroPartyInquireForm() {
                   className={inputClass}
                   style={inputStyle}
                 >
-                  <option value="" style={{ background: '#141414' }}>Choose a duration</option>
+                  <option value="">Choose a duration</option>
                   {durationOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value} style={{ background: '#141414' }}>
+                    <option key={opt.value} value={opt.value}>
                       {opt.label}
                     </option>
                   ))}

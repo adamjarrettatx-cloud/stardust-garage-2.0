@@ -3,7 +3,50 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { CONTACT_TYPE_OPTIONS, CONTACT_STATUS_OPTIONS } from '@/lib/contact-helpers';
-import { ContactStatusBadge, ContactTypeBadges } from './ContactBadges';
+
+// Mirrors initials()/Avatar in app/bananas/members/page.js, themed off the auth
+// vars so it tracks the light/dark toggle.
+function initials(name) {
+  const source = (name || '').trim();
+  if (!source) return '?';
+  return (
+    source
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase() || '')
+      .join('') || '?'
+  );
+}
+
+function ContactAvatar({ contact }) {
+  const shared = 'w-11 h-11 flex-shrink-0 rounded-full border';
+  if (contact.photo_url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={contact.photo_url}
+        alt=""
+        className={shared + ' object-cover'}
+        style={{ borderColor: 'var(--auth-card-border-strong)' }}
+      />
+    );
+  }
+  return (
+    <div
+      className={shared + ' flex items-center justify-center text-[14px] font-bold'}
+      style={{
+        background: 'var(--auth-card-bg-alt)',
+        borderColor: 'var(--auth-card-border-strong)',
+        color: 'var(--auth-muted)',
+        fontFamily: "'Plus Jakarta Sans', sans-serif",
+      }}
+    >
+      {initials(contact.display_name)}
+    </div>
+  );
+}
+
+const TYPE_TABS = [{ value: '', label: 'All' }, ...CONTACT_TYPE_OPTIONS];
 
 export default function ContactsList({ contacts }) {
   const [query, setQuery] = useState('');
@@ -13,6 +56,8 @@ export default function ContactsList({ contacts }) {
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return contacts.filter((c) => {
+      // contact_type is an array, so a collective that also rents the venue
+      // shows up under both of those tabs.
       if (typeFilter && !(c.contact_type || []).includes(typeFilter)) return false;
       if (statusFilter && c.status !== statusFilter) return false;
       if (!q) return true;
@@ -30,7 +75,7 @@ export default function ContactsList({ contacts }) {
 
   return (
     <>
-      <div className="flex flex-wrap gap-3 items-center mb-6">
+      <div className="flex flex-wrap gap-3 items-center mb-4">
         <input
           type="search"
           value={query}
@@ -40,29 +85,15 @@ export default function ContactsList({ contacts }) {
           style={inputStyle}
         />
         <select
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-          className={inputClass}
-          style={inputStyle}
-          aria-label="Filter by relationship type"
-        >
-          <option value="" style={{ background: '#141414' }}>All types</option>
-          {CONTACT_TYPE_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value} style={{ background: '#141414' }}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           className={inputClass}
           style={inputStyle}
           aria-label="Filter by status"
         >
-          <option value="" style={{ background: '#141414' }}>All statuses</option>
+          <option value="">All statuses</option>
           {CONTACT_STATUS_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value} style={{ background: '#141414' }}>
+            <option key={opt.value} value={opt.value}>
               {opt.label}
             </option>
           ))}
@@ -74,6 +105,28 @@ export default function ContactsList({ contacts }) {
         >
           + NEW CONTACT
         </Link>
+      </div>
+
+      <div className="flex flex-wrap gap-2 mb-6" role="group" aria-label="Filter by relationship type">
+        {TYPE_TABS.map((tab) => {
+          const on = typeFilter === tab.value;
+          return (
+            <button
+              key={tab.value || 'all'}
+              type="button"
+              onClick={() => setTypeFilter(tab.value)}
+              aria-pressed={on}
+              className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-all"
+              style={{
+                background: on ? 'var(--auth-text-strong)' : 'var(--auth-card-bg)',
+                borderColor: on ? 'var(--auth-text-strong)' : 'var(--auth-card-border)',
+                color: on ? 'var(--auth-strong-surface-text)' : 'var(--auth-text)',
+              }}
+            >
+              {tab.label.toUpperCase()}
+            </button>
+          );
+        })}
       </div>
 
       <p className="text-[12px] mb-4" style={{ color: 'var(--auth-faint)' }}>
@@ -103,7 +156,8 @@ export default function ContactsList({ contacts }) {
                 borderColor: c.status === 'do_not_book' ? 'rgba(239,68,68,0.4)' : 'var(--auth-card-border)',
               }}
             >
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <ContactAvatar contact={c} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-1 flex-wrap">
                     <h3
@@ -127,12 +181,6 @@ export default function ContactsList({ contacts }) {
                     {c.phone && <span>{c.phone}</span>}
                     {c.instagram_handle && <span>{c.instagram_handle}</span>}
                   </div>
-                </div>
-                <div className="flex-shrink-0 text-right">
-                  <div className="flex flex-wrap gap-1.5 justify-end mb-2">
-                    <ContactTypeBadges types={c.contact_type} />
-                  </div>
-                  <ContactStatusBadge status={c.status} />
                 </div>
               </div>
             </Link>
