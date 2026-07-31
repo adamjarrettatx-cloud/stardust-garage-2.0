@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { linkedEventHref } from '@/lib/linked-event-link';
 import TeamEventModal from '@/app/bananas/calendar/TeamEventModal';
 import AuthenticatedThemeToggleControl from '@/app/components/AuthenticatedThemeToggleControl';
 import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
@@ -505,6 +506,7 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
                       const chipColor = catTextColor(cat, theme);
                       const mine = canEdit(evt);
                       const linked = getLinkedEvent(evt);
+                      const linkedHref = linkedEventHref(linked, isAdmin);
                       const chipTitle = isAdmin
                         ? `${evt.title} — created by ${getCreatorName(evt)}`
                         : mine
@@ -524,7 +526,20 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
                           }}
                           title={linked ? `${chipTitle} \u00b7 linked to ${linked.title}` : chipTitle}
                         >
-                          <div className="truncate">{evt.linked_event_id ? '\ud83d\udd17 ' : ''}{evt.title}</div>
+                          <div className="truncate">
+                            {linkedHref ? (
+                              <Link
+                                href={linkedHref}
+                                onClick={(e) => e.stopPropagation()}
+                                className="underline-offset-2 hover:underline"
+                                title={`Open ${linked.title}`}
+                                aria-label={`Open linked event ${linked.title}`}
+                              >
+                                {'\ud83d\udd17'}
+                              </Link>
+                            ) : evt.linked_event_id ? '\ud83d\udd17' : null}
+                            {evt.linked_event_id ? ' ' : ''}{evt.title}
+                          </div>
                           {evt.start_time && (
                             <div className="text-[10px] font-normal opacity-90 truncate">
                               {evt.start_time}{evt.end_time ? ` – ${evt.end_time}` : ''}
@@ -621,6 +636,7 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
                     const chipColor = catTextColor(cat, theme);
                     const mine = canEdit(evt);
                     const linked = getLinkedEvent(evt);
+                    const linkedHref = linkedEventHref(linked, isAdmin);
                     return (
                       <div
                         key={evt.id}
@@ -652,9 +668,9 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
                           <div className="text-[12px] mt-1 line-clamp-2" style={{ color: t.muted }}>{evt.description}</div>
                         )}
                         {linked && (
-                          isAdmin ? (
+                          linkedHref ? (
                             <Link
-                              href={`/bananas/events/${evt.linked_event_id}`}
+                              href={linkedHref}
                               onClick={(e) => e.stopPropagation()}
                               className="text-[11px] mt-1 inline-block underline-offset-2 hover:underline"
                               style={{ color: t.muted }}
@@ -698,6 +714,7 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
           defaultDate={modalState.date}
           categories={CATEGORIES}
           publicEvents={publicEvents}
+          isAdmin={isAdmin}
           theme={theme}
           onSave={handleModalSave}
           onSaveBatch={handleModalSaveBatch}
