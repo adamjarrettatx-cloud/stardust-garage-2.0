@@ -168,6 +168,13 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
     [creatorNames, currentUserId, currentUserName]
   );
 
+  // Resolves a team event's optional link to a real site event. Returns null
+  // when the linked event is missing from the caller's readable set.
+  const getLinkedEvent = useCallback(
+    (evt) => publicEvents.find(e => e.id === evt.linked_event_id) || null,
+    [publicEvents]
+  );
+
   // Monthly scorecard: who's created how many team events in the currently
   // viewed month, admin-only. Ranked descending so it reads like a leaderboard.
   const monthlyScorecard = useCallback(() => {
@@ -497,6 +504,12 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
                       const cat = CATEGORIES[evt.category] || CATEGORIES.other;
                       const chipColor = catTextColor(cat, theme);
                       const mine = canEdit(evt);
+                      const linked = getLinkedEvent(evt);
+                      const chipTitle = isAdmin
+                        ? `${evt.title} — created by ${getCreatorName(evt)}`
+                        : mine
+                          ? `${evt.title} (click to edit)`
+                          : evt.title;
                       return (
                         <div
                           key={`team-${evt.id}`}
@@ -509,15 +522,9 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
                             cursor: mine ? 'pointer' : 'default',
                             opacity: mine ? 1 : 0.7,
                           }}
-                          title={
-                            isAdmin
-                              ? `${evt.title} \u2014 created by ${getCreatorName(evt)}`
-                              : !isAdmin && mine
-                                ? `${evt.title} (click to edit)`
-                                : evt.title
-                          }
+                          title={linked ? `${chipTitle} \u00b7 linked to ${linked.title}` : chipTitle}
                         >
-                          <div className="truncate">{evt.title}</div>
+                          <div className="truncate">{evt.linked_event_id ? '\ud83d\udd17 ' : ''}{evt.title}</div>
                           {evt.start_time && (
                             <div className="text-[10px] font-normal opacity-90 truncate">
                               {evt.start_time}{evt.end_time ? ` – ${evt.end_time}` : ''}
@@ -613,6 +620,7 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
                     const cat = CATEGORIES[evt.category] || CATEGORIES.other;
                     const chipColor = catTextColor(cat, theme);
                     const mine = canEdit(evt);
+                    const linked = getLinkedEvent(evt);
                     return (
                       <div
                         key={evt.id}
@@ -626,7 +634,9 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
                       >
                         <div className="flex items-center gap-2 mb-0.5">
                           <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: cat.color }} />
-                          <div className="text-[14px] font-bold" style={{ color: t.textStrong }}>{evt.title}</div>
+                          <div className="text-[14px] font-bold" style={{ color: t.textStrong }}>
+                            {evt.linked_event_id ? '🔗 ' : ''}{evt.title}
+                          </div>
                           {!isAdmin && mine && <span className="ml-auto text-[10px] font-semibold" style={{ color: cat.color }}>EDIT</span>}
                         </div>
                         <div className="text-[12px] font-semibold" style={{ color: chipColor }}>{cat.label}</div>
@@ -640,6 +650,22 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
                         )}
                         {evt.description && (
                           <div className="text-[12px] mt-1 line-clamp-2" style={{ color: t.muted }}>{evt.description}</div>
+                        )}
+                        {linked && (
+                          isAdmin ? (
+                            <Link
+                              href={`/bananas/events/${evt.linked_event_id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-[11px] mt-1 inline-block underline-offset-2 hover:underline"
+                              style={{ color: t.muted }}
+                            >
+                              Linked: {linked.title} →
+                            </Link>
+                          ) : (
+                            <div className="text-[11px] mt-1 truncate" style={{ color: t.muted }}>
+                              Linked: {linked.title}
+                            </div>
+                          )
                         )}
                         {!isAdmin && !mine && (
                           <div className="text-[10px] mt-1" style={{ color: t.muted }}>Added by team</div>
@@ -671,6 +697,7 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
           event={modalState.event}
           defaultDate={modalState.date}
           categories={CATEGORIES}
+          publicEvents={publicEvents}
           theme={theme}
           onSave={handleModalSave}
           onSaveBatch={handleModalSaveBatch}
