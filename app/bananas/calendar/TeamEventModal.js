@@ -38,6 +38,15 @@ function generateOccurrences(startDateStr, freq, endDateStr) {
   return dates;
 }
 
+// Site events arrive as YYYY-MM-DD; parse at local midnight so the label never
+// shifts a day in negative-offset timezones.
+function formatEventDate(dateStr) {
+  if (!dateStr) return '';
+  return new Date(`${dateStr}T00:00:00`).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+  });
+}
+
 const FREQ_OPTIONS = [
   { value: 'weekly',   label: 'Weekly' },
   { value: 'biweekly', label: 'Bi-Weekly' },
@@ -89,6 +98,7 @@ export default function TeamEventModal({
   event,
   defaultDate,
   categories,
+  publicEvents = [],
   theme = 'dark',
   onSave,
   onSaveBatch,
@@ -107,6 +117,7 @@ export default function TeamEventModal({
   const [endTime, setEndTime] = useState(event?.end_time || '');
   const [category, setCategory] = useState(event?.category || 'internal');
   const [description, setDescription] = useState(event?.description || '');
+  const [linkedEventId, setLinkedEventId] = useState(event?.linked_event_id || '');
 
   // Recurrence state
   const [recurring, setRecurring] = useState(event?.is_recurring || false);
@@ -118,6 +129,11 @@ export default function TeamEventModal({
   const [error, setError] = useState('');
   const [deleteScope, setDeleteScope] = useState(null); // null | 'one' | 'all'
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Newest first, so upcoming events sit at the top and recent past ones follow.
+  const linkableEvents = [...publicEvents].sort((a, b) =>
+    String(b.event_date || '').localeCompare(String(a.event_date || ''))
+  );
 
   // Preview count
   const occurrenceCount = recurring && eventDate && recurrenceEnd
@@ -145,6 +161,7 @@ export default function TeamEventModal({
       end_time: endTime.trim() || null,
       category,
       description: description.trim() || null,
+      linked_event_id: linkedEventId || null,
       is_recurring: recurring,
       recurrence_freq: recurring ? recurrenceFreq : null,
       recurrence_end: recurring ? recurrenceEnd || null : null,
@@ -377,6 +394,33 @@ export default function TeamEventModal({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Link to a real site event */}
+          <div>
+            <label className={labelClass} style={labelStyle}>LINK TO EVENT (OPTIONAL)</label>
+            <select
+              value={linkedEventId}
+              onChange={(e) => setLinkedEventId(e.target.value)}
+              className={inputClass}
+              style={inputStyle}
+            >
+              <option value="">— No linked event —</option>
+              {linkableEvents.map(evt => (
+                <option key={evt.id} value={evt.id}>
+                  {`${evt.title} — ${formatEventDate(evt.event_date)}${evt.visibility === 'internal' ? ' (internal)' : ''}`}
+                </option>
+              ))}
+            </select>
+            {linkedEventId && (
+              <a
+                href={`/bananas/events/${linkedEventId}`}
+                className="inline-block text-[12px] mt-1.5 underline-offset-2 hover:underline"
+                style={{ color: m.muted }}
+              >
+                View linked event in dashboard →
+              </a>
+            )}
           </div>
 
           {/* ── RECURRING TOGGLE ── */}
