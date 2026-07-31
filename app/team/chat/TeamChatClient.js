@@ -11,7 +11,15 @@ import {
   unreadCountByChannel,
   validateChannelName,
   formatMessageTime,
+  validateChatImageFile,
+  buildChatImagePath,
+  replyPreviewText,
 } from '@/lib/chat';
+
+// Signed URLs are requested with this TTL (seconds). Chat images live in a
+// private bucket, so every render resolves a path to a fresh, short-lived URL
+// rather than ever storing/caching a permanent public link.
+const CHAT_IMAGE_SIGNED_URL_TTL = 3600;
 
 // Local, page-scoped light/dark palette — mirrors the pattern used by the
 // admin Team Calendar (app/bananas/calendar/CalendarClient.js). Dark values
@@ -72,7 +80,17 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
   const [creatingChannel, setCreatingChannel] = useState(false);
   const [createChannelError, setCreateChannelError] = useState(null);
 
+  // Image attachment + reply-to-message composer state.
+  const [pendingImage, setPendingImage] = useState(null); // { file, previewUrl }
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageError, setImageError] = useState(null);
+  const [replyTo, setReplyTo] = useState(null); // full chat_messages row being replied to
+  const [imageUrlByPath, setImageUrlByPath] = useState({}); // image_path -> signed url
+  const [flashMessageId, setFlashMessageId] = useState(null);
+
   const bottomRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const knownImagePathsRef = useRef(new Set());
 
   // Read by the realtime handler, which must not resubscribe every time the
   // viewer switches conversations.
@@ -86,6 +104,22 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
     for (const t of team) m[t.user_id] = t;
     return m;
   }, [team]);
+
+  // For resolving reply_to_id -> the quoted message, out of what's already
+  // loaded for the open thread. Deliberately client-side (no denormalized
+  // sender/snippet columns) since this page already loads the full,
+  // unpaginated message history per channel.
+  const messagesById = useMemo(() => {
+    const m = {};
+    for (const msg of messages) m[msg.id] = msg;
+    return m;
+  }, [messages]);
+
+  const nameForSender = useCallback((senderId) => {
+    if (senderId === currentUserId) return 'You';
+    const sender = teamByUserId[senderId];
+    return sender?.full_name || sender?.email || 'Someone';
+  }, [currentUserId, teamByUserId]);
 
   // ---- initial load -------------------------------------------------------
   const loadSidebar = useCallback(async () => {
@@ -154,7 +188,7 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
     (async () => {
       const { data } = await supabase
         .from('chat_messages')
-        .select('id, channel_id, sender_id, body, created_at, deleted_at')
+        .select('id, channel_id, sender_id, body, image_path, reply_to_id, created_at, deleted_at')
         .eq('channel_id', selectedId)
         .is('deleted_at', null)
         .order('created_at', { ascending: true });
@@ -163,10 +197,49 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
       markRead(selectedId);
     })();
 
+    // Switching conversations clears any in-progress reply/attachment draft —
+    // it was scoped to the thread being left.
+    setReplyTo(null);
+    clearPendingImage();
+
     return () => {
       active = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, supabase, markRead]);
+
+  // ---- resolve image_path -> signed URL for every image message loaded ---
+  // The chat-images bucket is private, so a path only becomes viewable via a
+  // short-lived signed URL (re-checked against the storage RLS policy on
+  // every call). knownImagePathsRef avoids re-requesting a URL we already
+  // have without needing imageUrlByPath itself as an effect dependency.
+  useEffect(() => {
+    const missing = [];
+    for (const m of messages) {
+      if (m.image_path && !knownImagePathsRef.current.has(m.image_path)) missing.push(m.image_path);
+    }
+    if (missing.length === 0) return;
+
+    let active = true;
+    (async () => {
+      const { data } = await supabase.storage.from('chat-images').createSignedUrls(missing, CHAT_IMAGE_SIGNED_URL_TTL);
+      if (!active || !data) return;
+      setImageUrlByPath((prev) => {
+        const next = { ...prev };
+        for (const row of data) {
+          if (row.signedUrl && row.path) {
+            next[row.path] = row.signedUrl;
+            knownImagePathsRef.current.add(row.path);
+          }
+        }
+        return next;
+      });
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [messages, supabase]);
 
   // ---- realtime: one subscription across every conversation --------------
   // Unfiltered on purpose. RLS decides which inserts reach this client, so a
@@ -248,6 +321,37 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
     setSelectedId(payload.channel.id);
   }, [creatingChannel, newChannelName, loadSidebar]);
 
+  // ---- image attachment handling ------------------------------------------
+  const clearPendingImage = useCallback(() => {
+    setPendingImage((prev) => {
+      if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+      return null;
+    });
+  }, []);
+
+  const handleImageSelect = useCallback((e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-picking the same file later
+    if (!file) return;
+    const { valid, error } = validateChatImageFile(file);
+    if (!valid) {
+      setImageError(error);
+      return;
+    }
+    setImageError(null);
+    clearPendingImage();
+    setPendingImage({ file, previewUrl: URL.createObjectURL(file) });
+  }, [clearPendingImage]);
+
+  // ---- click-to-reply -------------------------------------------------------
+  const scrollToMessage = useCallback((messageId) => {
+    const el = document.getElementById(`chat-msg-${messageId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setFlashMessageId(messageId);
+    setTimeout(() => setFlashMessageId((prev) => (prev === messageId ? null : prev)), 1200);
+  }, []);
+
   const notifyPush = useCallback(async (messageId) => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (!url) return;
@@ -264,20 +368,48 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
   // ---- send a message -----------------------------------------------------
   const sendMessage = useCallback(async () => {
     const body = draft.trim();
-    if (!body || !selectedId || sending) return;
+    if ((!body && !pendingImage) || !selectedId || sending) return;
     setSending(true);
+
+    let imagePath = null;
+    if (pendingImage) {
+      setUploadingImage(true);
+      const path = buildChatImagePath(selectedId, pendingImage.file.name);
+      const { error: uploadError } = await supabase.storage
+        .from('chat-images')
+        .upload(path, pendingImage.file, { contentType: pendingImage.file.type, upsert: false });
+      setUploadingImage(false);
+      if (uploadError) {
+        setSending(false);
+        setImageError('Could not upload the image. Please try again.');
+        return;
+      }
+      imagePath = path;
+    }
+
+    const replyToId = replyTo?.id || null;
     setDraft('');
+    const draftReplyTo = replyTo;
+    const draftPendingImage = pendingImage;
+    setReplyTo(null);
+    clearPendingImage();
 
     const { data: inserted, error } = await supabase
       .from('chat_messages')
-      .insert({ channel_id: selectedId, sender_id: currentUserId, body })
-      .select('id, channel_id, sender_id, body, created_at, deleted_at')
+      .insert({ channel_id: selectedId, sender_id: currentUserId, body, image_path: imagePath, reply_to_id: replyToId })
+      .select('id, channel_id, sender_id, body, image_path, reply_to_id, created_at, deleted_at')
       .single();
 
     setSending(false);
 
     if (error || !inserted) {
-      setDraft(body); // restore so the user doesn't lose their text
+      // Restore the draft so the user doesn't lose their text/reply context.
+      // Note: if an image had already uploaded above, it stays in storage even
+      // though this message insert failed — a harmless orphaned object with no
+      // message referencing it, not a correctness or security issue.
+      setDraft(body);
+      setReplyTo(draftReplyTo);
+      if (draftPendingImage) setImageError('The image uploaded, but the message failed to send. Please try sending again.');
       return;
     }
 
@@ -286,7 +418,7 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
 
     // Fire-and-forget push notification. Never block the UI on this.
     notifyPush(inserted.id).catch(() => {});
-  }, [draft, selectedId, sending, supabase, currentUserId, markRead, notifyPush]);
+  }, [draft, pendingImage, replyTo, selectedId, sending, supabase, currentUserId, markRead, notifyPush, clearPendingImage]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -467,16 +599,69 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
               <p className="text-[13px]" style={{ color: t.faint }}>No messages yet. Say hello.</p>
             )}
             {messages.map((m) => {
-              const sender = teamByUserId[m.sender_id];
               const mine = m.sender_id === currentUserId;
-              const name = mine ? 'You' : (sender?.full_name || sender?.email || 'Someone');
+              const name = nameForSender(m.sender_id);
+              const quoted = m.reply_to_id ? messagesById[m.reply_to_id] : null;
+              const quotedPreview = m.reply_to_id ? replyPreviewText(quoted) : null;
+              const imageUrl = m.image_path ? imageUrlByPath[m.image_path] : null;
               return (
-                <div key={m.id} className="flex flex-col">
+                <div
+                  key={m.id}
+                  id={`chat-msg-${m.id}`}
+                  className="flex flex-col group rounded-[8px] transition-colors duration-500 -mx-2 px-2"
+                  style={{ background: flashMessageId === m.id ? t.activeRowBg : 'transparent' }}
+                >
                   <div className="flex items-baseline gap-2">
                     <span className="text-[13px] font-bold" style={{ color: mine ? t.accent : t.text }}>{name}</span>
                     <span className="text-[10px]" style={{ color: t.faint }}>{formatMessageTime(m.created_at)}</span>
+                    <button
+                      onClick={() => setReplyTo(m)}
+                      className="text-[10px] font-semibold tracking-[0.08em] opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity ml-1"
+                      style={{ color: t.muted }}
+                      aria-label="Reply to this message"
+                      title="Reply"
+                    >
+                      ↩ REPLY
+                    </button>
                   </div>
-                  <div className="text-[14px] whitespace-pre-wrap break-words mt-0.5" style={{ color: t.bodyText }}>{m.body}</div>
+                  {m.reply_to_id && (
+                    <button
+                      onClick={() => scrollToMessage(m.reply_to_id)}
+                      className="mt-1 self-start max-w-[85%] text-left rounded-[8px] px-2.5 py-1.5 text-[12px] border-l-2 truncate"
+                      style={{ borderColor: t.accent, background: t.inputBg, color: t.muted }}
+                    >
+                      {quotedPreview != null ? (
+                        <>
+                          <span className="font-semibold" style={{ color: t.text }}>{nameForSender(quoted?.sender_id)}</span>
+                          {' '}{quotedPreview}
+                        </>
+                      ) : (
+                        <span style={{ color: t.faint, fontStyle: 'italic' }}>Original message unavailable</span>
+                      )}
+                    </button>
+                  )}
+                  {m.image_path && (
+                    imageUrl ? (
+                      <a href={imageUrl} target="_blank" rel="noreferrer noopener" className="mt-1.5 inline-block">
+                        <img
+                          src={imageUrl}
+                          alt="Shared attachment"
+                          className="max-w-[280px] max-h-[280px] rounded-[10px] border object-cover"
+                          style={{ borderColor: t.border }}
+                        />
+                      </a>
+                    ) : (
+                      <div
+                        className="mt-1.5 w-[160px] h-[100px] rounded-[10px] flex items-center justify-center text-[11px]"
+                        style={{ background: t.inputBg, color: t.faint }}
+                      >
+                        Loading photo…
+                      </div>
+                    )
+                  )}
+                  {m.body && (
+                    <div className="text-[14px] whitespace-pre-wrap break-words mt-0.5" style={{ color: t.bodyText }}>{m.body}</div>
+                  )}
                 </div>
               );
             })}
@@ -485,24 +670,84 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
 
           {/* Composer */}
           {selectedId && (
-            <div className="px-4 py-3 border-t flex items-end gap-3" style={{ borderColor: t.border }}>
-              <textarea
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={handleKeyDown}
-                rows={1}
-                placeholder="Type a message… (Enter to send, Shift+Enter for newline)"
-                className="flex-1 resize-none rounded-[12px] px-4 py-3 text-[14px] outline-none"
-                style={{ background: t.inputBg, border: `1px solid ${t.borderStrong}`, color: t.text, maxHeight: '120px' }}
-              />
-              <button
-                onClick={sendMessage}
-                disabled={sending || !draft.trim()}
-                className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0"
-                style={{ background: t.sendBg, color: t.sendText }}
-              >
-                {sending ? 'SENDING…' : 'SEND'}
-              </button>
+            <div className="border-t" style={{ borderColor: t.border }}>
+              {replyTo && (
+                <div className="px-4 pt-3 flex items-center justify-between gap-2 text-[12px]">
+                  <div className="flex items-baseline gap-2 min-w-0">
+                    <span className="font-semibold flex-shrink-0" style={{ color: t.accent }}>Replying to {nameForSender(replyTo.sender_id)}</span>
+                    <span className="truncate" style={{ color: t.faint }}>{replyPreviewText(replyTo) || ''}</span>
+                  </div>
+                  <button
+                    onClick={() => setReplyTo(null)}
+                    className="flex-shrink-0 text-[13px] leading-none"
+                    style={{ color: t.faint }}
+                    aria-label="Cancel reply"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              {pendingImage && (
+                <div className="px-4 pt-3 flex items-center gap-2">
+                  <img
+                    src={pendingImage.previewUrl}
+                    alt="Selected attachment preview"
+                    className="w-14 h-14 rounded-[8px] object-cover border"
+                    style={{ borderColor: t.border }}
+                  />
+                  <button
+                    onClick={clearPendingImage}
+                    className="text-[12px]"
+                    style={{ color: t.faint }}
+                    aria-label="Remove selected image"
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+
+              {imageError && (
+                <p className="px-4 pt-2 text-[11px]" style={{ color: t.accent }}>{imageError}</p>
+              )}
+
+              <div className="px-4 py-3 flex items-end gap-3">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  onChange={handleImageSelect}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingImage}
+                  className="px-4 py-3 rounded-full text-[16px] leading-none border transition-colors disabled:opacity-40"
+                  style={{ borderColor: t.borderStrong, color: t.muted }}
+                  aria-label="Attach an image"
+                  title="Attach an image"
+                >
+                  📎
+                </button>
+                <textarea
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  rows={1}
+                  placeholder="Type a message… (Enter to send, Shift+Enter for newline)"
+                  className="flex-1 resize-none rounded-[12px] px-4 py-3 text-[14px] outline-none"
+                  style={{ background: t.inputBg, border: `1px solid ${t.borderStrong}`, color: t.text, maxHeight: '120px' }}
+                />
+                <button
+                  onClick={sendMessage}
+                  disabled={sending || uploadingImage || (!draft.trim() && !pendingImage)}
+                  className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0"
+                  style={{ background: t.sendBg, color: t.sendText }}
+                >
+                  {uploadingImage ? 'UPLOADING…' : sending ? 'SENDING…' : 'SEND'}
+                </button>
+              </div>
             </div>
           )}
         </section>
