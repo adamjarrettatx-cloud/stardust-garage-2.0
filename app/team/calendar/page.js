@@ -43,7 +43,7 @@ export default async function TeamCalendarPage() {
   // never shown on the public /events page.
   const { data: publicEvents } = await supabase
     .from('events')
-    .select('id, title, event_date, event_time, slug, visibility, event_type')
+    .select('id, title, event_date, event_time, slug, visibility, event_type, status')
     .order('event_date', { ascending: true });
 
   // Team events — RLS already scopes this to everything for admins, and to

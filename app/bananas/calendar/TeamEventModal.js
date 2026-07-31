@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { linkedEventHref } from '@/lib/linked-event-link';
 
 function toDateInput(date) {
   if (!date) return '';
@@ -99,6 +100,7 @@ export default function TeamEventModal({
   defaultDate,
   categories,
   publicEvents = [],
+  isAdmin = false,
   theme = 'dark',
   onSave,
   onSaveBatch,
@@ -133,6 +135,13 @@ export default function TeamEventModal({
   // Newest first, so upcoming events sit at the top and recent past ones follow.
   const linkableEvents = [...publicEvents].sort((a, b) =>
     String(b.event_date || '').localeCompare(String(a.event_date || ''))
+  );
+
+  // Team members reach this modal for their own events, so the helper link has
+  // to resolve per role — the admin dashboard route would just bounce them.
+  const linkedHref = linkedEventHref(
+    publicEvents.find(e => String(e.id) === String(linkedEventId)),
+    isAdmin
   );
 
   // Preview count
@@ -412,13 +421,13 @@ export default function TeamEventModal({
                 </option>
               ))}
             </select>
-            {linkedEventId && (
+            {linkedHref && (
               <a
-                href={`/bananas/events/${linkedEventId}`}
+                href={linkedHref}
                 className="inline-block text-[12px] mt-1.5 underline-offset-2 hover:underline"
                 style={{ color: m.muted }}
               >
-                View linked event in dashboard →
+                {isAdmin ? 'View linked event in dashboard →' : 'View linked event page →'}
               </a>
             )}
           </div>
