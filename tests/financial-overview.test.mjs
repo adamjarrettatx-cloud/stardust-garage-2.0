@@ -1,6 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { entryNetCents, buildFinancialOverview } from '../lib/financial-overview.js';
+import {
+  entryNetCents,
+  buildFinancialOverview,
+  summarizePosByDay,
+  buildDailyRevenue,
+  isoWeekKey,
+  rollupDailyRevenue,
+} from '../lib/financial-overview.js';
+import { normalizeTransaction } from '../lib/financial-ledger.js';
 
 const TODAY = new Date('2026-06-15T12:00:00Z');
 
@@ -158,4 +166,153 @@ test('buildFinancialOverview: empty input produces all-zero totals without throw
   assert.equal(totals.events, 0);
   assert.equal(totals.revenueEntries, 0);
   assert.equal(totals.lastUpdated, null);
+});
+
+// --- summarizePosByDay / buildDailyRevenue / rollupDailyRevenue --------
+// (the "every dollar, every day" tracking added for weekday-only POS income)
+
+function posRow({ date, amount, direction = 'in', category = 'POS Revenue', source = 'spoton_csv' }) {
+  return normalizeTransaction({
+    id: `${date}-${direction}-${Math.random()}`,
+    transaction_date: date,
+    amount,
+    direction,
+    txn_type: 'operating',
+    category,
+    source,
+  });
+}
+
+test('summarizePosByDay: sums SpotOn revenue and refunds per day, ignores other sources', () => {
+  const transactions = [
+    posRow({ date: '2026-06-10', amount: '400.00' }),
+    posRow({ date: '2026-06-10', amount: '25.00', direction: 'out', category: 'POS Refunds' }),
+    posRow({ date: '2026-06-11', amount: '150.50' }),
+    normalizeTransaction({ id: 'tt1', transaction_date: '2026-06-10', amount: '999.00', direction: 'in', txn_type: 'operating', category: 'Ticket Revenue', source: 'tickettailor' }),
+  ];
+  const byDay = summarizePosByDay(transactions);
+  assert.equal(byDay.size, 2);
+  assert.deepEqual(byDay.get('2026-06-10'), { date: '2026-06-10', revenueCents: 40000, refundCents: 2500 });
+  assert.deepEqual(byDay.get('2026-06-11'), { date: '2026-06-11', revenueCents: 15050, refundCents: 0 });
+});
+
+test('summarizePosByDay: a re-import or a same-day revenue+refund row both accumulate rather than overwrite', () => {
+  const transactions = [
+    posRow({ date: '2026-06-10', amount: '100.00' }),
+    posRow({ date: '2026-06-10', amount: '50.00' }),
+  ];
+  const byDay = summarizePosByDay(transactions);
+  assert.equal(byDay.get('2026-06-10').revenueCents, 15000);
+});
+
+test('buildDailyRevenue: a weekday with only POS activity and no event still produces a day row, with hasEvent=false', () => {
+  const posTransactions = [posRow({ date: '2026-06-03', amount: '620.00' })];
+  const rows = buildDailyRevenue({ entries: [], posTransactions });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].date, '2026-06-03');
+  assert.equal(rows[0].hasEvent, false);
+  assert.equal(rows[0].posRevenueCents, 62000);
+  assert.equal(rows[0].eventGrossCents, 0);
+  assert.equal(rows[0].totalGrossCents, 62000);
+  assert.equal(rows[0].totalNetCents, 62000);
+});
+
+test('buildDailyRevenue: an event day combines with same-day POS sales into one row, and a standalone manual entry does not count as an event', () => {
+  const events = [
+    { id: 'e-ok', title: 'Gala', event_date: '2026-06-10', category: 'party', tt_event_series_id: 'ev_x' },
+  ];
+  const manual = [{
+    id: 'm-standalone', entry_date: '2026-06-10', title: 'Photo booth fee', category: 'other',
+    amount_cents: 3000, local_event_id: null,
+  }];
+  const { entries } = buildFinancialOverview({ events, metrics: [okMetrics], manual, today: TODAY });
+  const posTransactions = [posRow({ date: '2026-06-10', amount: '80.00' })];
+
+  const rows = buildDailyRevenue({ entries, posTransactions });
+  assert.equal(rows.length, 1);
+  const day = rows[0];
+  assert.equal(day.hasEvent, true); // the Gala is a real event
+  assert.equal(day.eventGrossCents, 100000 + 3000); // TT gross + standalone manual
+  assert.equal(day.eventNetCents, 95000 + 3000);
+  assert.equal(day.posRevenueCents, 8000);
+  assert.equal(day.totalGrossCents, 100000 + 3000 + 8000);
+  assert.equal(day.totalNetCents, 95000 + 3000 + 8000);
+  assert.equal(day.entries.length, 2); // the Gala + the standalone manual entry
+});
+
+test('buildDailyRevenue: a day with only a standalone manual entry (no event, no POS) still has hasEvent=false', () => {
+  const manual = [{
+    id: 'm1', entry_date: '2026-07-01', title: 'Venue rental', category: 'venue_rental',
+    amount_cents: 15000, local_event_id: null,
+  }];
+  const { entries } = buildFinancialOverview({ manual, today: TODAY });
+  const rows = buildDailyRevenue({ entries, posTransactions: [] });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].hasEvent, false);
+  assert.equal(rows[0].totalGrossCents, 15000);
+});
+
+test('buildDailyRevenue: empty input produces an empty array without throwing', () => {
+  assert.deepEqual(buildDailyRevenue({}), []);
+});
+
+test('isoWeekKey: Monday-start ISO week matches known reference dates', () => {
+  // 2026-06-10 is a Wednesday; ISO week 24 of 2026 runs Mon Jun 8 - Sun Jun 14.
+  assert.equal(isoWeekKey('2026-06-08'), '2026-W24');
+  assert.equal(isoWeekKey('2026-06-10'), '2026-W24');
+  assert.equal(isoWeekKey('2026-06-14'), '2026-W24');
+  assert.equal(isoWeekKey('2026-06-15'), '2026-W25');
+  // Dec 31 2025 (Wednesday) falls in the same ISO week as Jan 1 2026 — an
+  // ISO week can straddle a calendar-year boundary, and the key must use the
+  // ISO year (2026, via the week's Thursday), not the raw calendar year.
+  assert.equal(isoWeekKey('2025-12-31'), isoWeekKey('2026-01-01'));
+});
+
+test('rollupDailyRevenue: day granularity is a labeled passthrough, one bucket per row', () => {
+  const posTransactions = [posRow({ date: '2026-06-10', amount: '100.00' }), posRow({ date: '2026-06-11', amount: '50.00' })];
+  const daily = buildDailyRevenue({ entries: [], posTransactions });
+  const rolled = rollupDailyRevenue(daily, 'day');
+  assert.equal(rolled.length, 2);
+  assert.equal(rolled[0].key, '2026-06-10');
+  assert.equal(rolled[0].totalGrossCents, 10000);
+  assert.equal(rolled[1].key, '2026-06-11');
+});
+
+test('rollupDailyRevenue: week granularity sums every day in the same ISO week into one bucket', () => {
+  const posTransactions = [
+    posRow({ date: '2026-06-08', amount: '100.00' }), // Mon, week 24
+    posRow({ date: '2026-06-10', amount: '200.00' }), // Wed, week 24
+    posRow({ date: '2026-06-15', amount: '50.00' }),  // Mon, week 25
+  ];
+  const daily = buildDailyRevenue({ entries: [], posTransactions });
+  const rolled = rollupDailyRevenue(daily, 'week');
+  assert.equal(rolled.length, 2);
+  assert.equal(rolled[0].key, '2026-W24');
+  assert.equal(rolled[0].days, 2);
+  assert.equal(rolled[0].totalGrossCents, 30000);
+  assert.equal(rolled[1].key, '2026-W25');
+  assert.equal(rolled[1].totalGrossCents, 5000);
+});
+
+test('rollupDailyRevenue: month granularity sums every day in the same calendar month, and hasEvent propagates if any day in the bucket has one', () => {
+  const events = [
+    { id: 'e-ok', title: 'Gala', event_date: '2026-06-10', category: 'party', tt_event_series_id: 'ev_x' },
+  ];
+  const { entries } = buildFinancialOverview({ events, metrics: [okMetrics], today: TODAY });
+  const posTransactions = [
+    posRow({ date: '2026-06-03', amount: '60.00' }),
+    posRow({ date: '2026-06-25', amount: '40.00' }),
+    posRow({ date: '2026-07-01', amount: '10.00' }),
+  ];
+  const daily = buildDailyRevenue({ entries, posTransactions });
+  const rolled = rollupDailyRevenue(daily, 'month');
+  assert.equal(rolled.length, 2);
+  const june = rolled.find((r) => r.key === '2026-06');
+  assert.equal(june.label, 'Jun 2026');
+  assert.equal(june.days, 3); // Jun 3, Jun 10 (event), Jun 25
+  assert.equal(june.hasEvent, true);
+  assert.equal(june.totalGrossCents, 6000 + 100000 + 4000);
+  const july = rolled.find((r) => r.key === '2026-07');
+  assert.equal(july.hasEvent, false);
+  assert.equal(july.totalGrossCents, 1000);
 });

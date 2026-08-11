@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ownerPageGate } from '@/lib/auth-helpers';
 import { buildFinancialOverview } from '@/lib/financial-overview';
+import { normalizeTransaction } from '@/lib/financial-ledger';
 import { buildAllSalesSeries, earliestWindowStartIso, fetchAllOrderPages } from '@/lib/ticket-sales-timeseries';
 import FinancialsClient from './FinancialsClient';
 
@@ -98,6 +99,26 @@ export default async function FinancialsPage() {
 
   const salesSeries = buildAllSalesSeries({ orders });
 
+  // SpotOn point-of-sale ledger rows (public.financial_transactions,
+  // source='spoton_csv'), imported from the Cash Flow page's CSV importer.
+  // These carry revenue that lands on ANY calendar day — including plain
+  // weekdays with no named event — so the Calendar/Trends views can map
+  // every dollar, not just event-linked income. Read every row (no window)
+  // since the calendar can navigate to any month, and one row per
+  // day/category keeps this cheap. Degrades to an empty set if the ledger
+  // migration (20260726_financial_ledger.sql) hasn't been applied yet in this
+  // environment. TicketTailor-sourced ledger rows are intentionally excluded
+  // here — that revenue is already counted once via `entries` above, and
+  // double-reading it would double-count it in the daily rollups.
+  let posTransactions = [];
+  const posRes = await supabase
+    .from('financial_transactions')
+    .select('id, transaction_date, amount, direction, txn_type, category, source')
+    .eq('source', 'spoton_csv')
+    .order('transaction_date', { ascending: true })
+    .limit(5000);
+  if (!posRes.error && posRes.data) posTransactions = posRes.data.map(normalizeTransaction);
+
   const { entries, performanceRows, totals } = buildFinancialOverview({
     events: events || [],
     metrics,
@@ -113,6 +134,7 @@ export default async function FinancialsPage() {
       performanceRows={performanceRows}
       totals={totals}
       salesSeries={salesSeries}
+      posTransactions={posTransactions}
       todayIso={new Date().toISOString()}
     />
   );

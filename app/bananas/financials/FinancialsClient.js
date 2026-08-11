@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { centsToUsd } from '@/lib/event-analytics';
 import { ENTRY_STATE, entriesInMonth, summarizeIncome } from '@/lib/financial-calendar';
-import { entryNetCents } from '@/lib/financial-overview';
+import { entryNetCents, buildDailyRevenue, rollupDailyRevenue } from '@/lib/financial-overview';
 import { MANUAL_CATEGORIES } from '@/lib/manual-income';
 import { adminFetch } from '@/lib/admin-fetch';
 import AuthenticatedThemeToggleControl from '@/app/components/AuthenticatedThemeToggleControl';
@@ -23,6 +23,7 @@ import RowRefreshButton from '@/app/bananas/analytics/RowRefreshButton';
 import BackfillTTOrdersButton from '@/app/bananas/analytics/BackfillTTOrdersButton';
 import TicketTailorSalesChart from '@/app/bananas/analytics/TicketTailorSalesChart';
 import ManualIncomeDialog from '@/app/bananas/financial-calendar/ManualIncomeDialog';
+import RevenueTrendChart from '@/app/bananas/financials/RevenueTrendChart';
 
 // Merged palette: FINANCIAL_THEMES' richer calendar/detail tokens (cellBg,
 // gridLine, revChipBg, etc.) plus the table-only tokens ANALYTICS_THEMES adds
@@ -90,15 +91,36 @@ function cellIncomeLabel(entry) {
 const TABS = [
   { id: 'calendar', label: 'Calendar' },
   { id: 'performance', label: 'Performance' },
+  { id: 'trends', label: 'Trends' },
 ];
 
-export default function FinancialsClient({ entries, performanceRows, totals, salesSeries, todayIso }) {
+const GRANULARITIES = [
+  { id: 'day', label: 'Day' },
+  { id: 'week', label: 'Week' },
+  { id: 'month', label: 'Month' },
+];
+
+export default function FinancialsClient({ entries, performanceRows, totals, salesSeries, todayIso, posTransactions = [] }) {
   const router = useRouter();
   const today = useMemo(() => new Date(todayIso), [todayIso]);
   const { theme, toggleTheme } = useAuthenticatedTheme();
   const t = THEMES[theme];
 
   const [tab, setTab] = useState('calendar');
+
+  // Every dollar, per calendar day, regardless of whether a named event
+  // landed that day — this is what lets a Tuesday-afternoon walk-in sale
+  // show up next to a Saturday event in the same rollups. See
+  // lib/financial-overview.buildDailyRevenue for the merge logic.
+  const dailyRevenue = useMemo(() => buildDailyRevenue({ entries, posTransactions }), [entries, posTransactions]);
+  const dailyByDate = useMemo(() => new Map(dailyRevenue.map((d) => [d.date, d])), [dailyRevenue]);
+
+  // ---- Trends tab state ----
+  const [trendGranularity, setTrendGranularity] = useState('week');
+  const trendBuckets = useMemo(
+    () => rollupDailyRevenue(dailyRevenue, trendGranularity),
+    [dailyRevenue, trendGranularity],
+  );
 
   // ---- Calendar tab state (adapted from the old Financial Calendar) ----
   const [year, setYear] = useState(today.getFullYear());
@@ -158,6 +180,16 @@ export default function FinancialsClient({ entries, performanceRows, totals, sal
   const monthEntries = useMemo(() => entriesInMonth(entries, year, month), [entries, year, month]);
   const monthSummary = useMemo(() => summarizeIncome(monthEntries), [monthEntries]);
 
+  // All-source figures for the visible month, independent of whether a day
+  // has a named event — pulled from the unified daily rollup rather than
+  // monthEntries so a POS-only weekday still counts.
+  const monthDailyRevenue = useMemo(() => dailyRevenue.filter((d) => {
+    const dt = new Date(`${d.date}T00:00:00`);
+    return dt.getFullYear() === year && dt.getMonth() === month;
+  }), [dailyRevenue, year, month]);
+  const monthPosRevenueCents = useMemo(() => monthDailyRevenue.reduce((sum, d) => sum + d.posRevenueCents, 0), [monthDailyRevenue]);
+  const monthAllSourceNetCents = useMemo(() => monthDailyRevenue.reduce((sum, d) => sum + d.totalNetCents, 0), [monthDailyRevenue]);
+
   const entriesByDate = useMemo(() => {
     const map = {};
     for (const e of monthEntries) {
@@ -189,8 +221,17 @@ export default function FinancialsClient({ entries, performanceRows, totals, sal
   };
 
   const selectedEntries = selectedDay ? getEntriesForDate(selectedDay) : [];
+  const selectedDayIso = selectedDay ? toDateInput(selectedDay) : null;
+  const selectedDayRow = selectedDayIso ? dailyByDate.get(selectedDayIso) : null;
+  const selectedPosRevenueCents = selectedDayRow?.posRevenueCents || 0;
+  const selectedPosRefundCents = selectedDayRow?.posRefundCents || 0;
+  const selectedPosNetCents = selectedDayRow?.posNetCents || 0;
+  const hasSelectedPos = selectedPosRevenueCents !== 0 || selectedPosRefundCents !== 0;
+  const selectedTotalAllSourcesCents = selectedDayRow?.totalNetCents
+    ?? selectedEntries.reduce((sum, e) => sum + entryNetCents(e), 0);
 
   const gridCols = 'grid-cols-[1fr_100px_90px_90px_70px_70px_80px]';
+  const trendGridCols = 'grid-cols-[1fr_110px_110px_100px_110px_110px_60px]';
 
   return (
     <main
@@ -221,9 +262,11 @@ export default function FinancialsClient({ entries, performanceRows, totals, sal
         </div>
       </div>
       <p className="mb-6 text-[14px]" style={{ color: t.muted }}>
-        Every income source in one place — TicketTailor sales (linked events and TT-only events), member-code
-        engagement, and owner-entered manual income (e.g. venue rentals). Revenue figures come from the read-only
-        metrics cache, refreshed on a daily cron or on demand below. Income only; expenses aren&apos;t tracked yet.
+        Every income source in one place, mapped to the calendar day it landed on — TicketTailor sales (linked
+        events and TT-only events), SpotOn point-of-sale revenue (including days with no event on the books),
+        member-code engagement, and owner-entered manual income (e.g. venue rentals). Revenue figures come from the
+        read-only metrics cache, refreshed on a daily cron or on demand below. Income only; expenses aren&apos;t
+        tracked yet.
       </p>
 
       <TicketTailorSalesChart series={salesSeries} t={t} />
@@ -323,10 +366,13 @@ export default function FinancialsClient({ entries, performanceRows, totals, sal
 
       {tab === 'calendar' && (
         <>
-          {/* Monthly income summary */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" data-testid="fin-month-summary">
+          {/* Monthly income summary — named-event figures (TicketTailor + manual)
+              plus the all-source rollup that folds in POS-only days. */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8" data-testid="fin-month-summary">
             {[
-              { label: 'Gross income', value: centsToUsd(monthSummary.grossCents), accent: true },
+              { label: 'Event gross income', value: centsToUsd(monthSummary.grossCents), accent: true },
+              { label: 'POS revenue (SpotOn)', value: centsToUsd(monthPosRevenueCents), pos: true },
+              { label: 'All-source net', value: centsToUsd(monthAllSourceNetCents), accent: true },
               { label: 'Revenue events', value: `${monthSummary.revenueEvents}/${monthSummary.eventCount}` },
               { label: 'Tickets sold', value: monthSummary.ticketsSold },
               { label: 'Orders', value: monthSummary.ordersCount },
@@ -336,9 +382,11 @@ export default function FinancialsClient({ entries, performanceRows, totals, sal
                 className="rounded-[14px] border p-5"
                 style={c.accent
                   ? { background: t.revCardBg, borderColor: t.revCardBorder }
-                  : { background: t.cardBg, borderColor: t.cardBorder }}
+                  : c.pos
+                    ? { background: t.posCardBg, borderColor: t.posCardBorder }
+                    : { background: t.cardBg, borderColor: t.cardBorder }}
               >
-                <div className="text-[10px] font-semibold tracking-[0.14em] uppercase mb-1.5" style={{ color: c.accent ? t.rev : t.muted }}>{c.label}</div>
+                <div className="text-[10px] font-semibold tracking-[0.14em] uppercase mb-1.5" style={{ color: c.accent ? t.rev : c.pos ? t.pos : t.muted }}>{c.label}</div>
                 <div className="text-[24px] font-extrabold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.textStrong }}>{c.value}</div>
               </div>
             ))}
@@ -371,16 +419,19 @@ export default function FinancialsClient({ entries, performanceRows, totals, sal
                   const isToday = isCurrentMonth && isSameDay(cellDate, today);
                   const isSelected = selectedDay && isCurrentMonth && isSameDay(cellDate, selectedDay);
                   const dayEntries = isCurrentMonth ? getEntriesForDate(cellDate) : [];
+                  const dayPos = isCurrentMonth ? dailyByDate.get(toDateInput(cellDate)) : null;
+                  const hasDayPos = !!dayPos && (dayPos.posRevenueCents !== 0 || dayPos.posRefundCents !== 0);
+                  const dayIsClickable = isCurrentMonth && (dayEntries.length > 0 || hasDayPos);
 
                   return (
                     <div
                       key={i}
-                      onClick={() => isCurrentMonth && dayEntries.length > 0 && setSelectedDay(cellDate)}
+                      onClick={() => dayIsClickable && setSelectedDay(cellDate)}
                       className="min-h-[100px] p-2 transition-colors"
                       style={{
                         background: isSelected ? t.selectedBg : isCurrentMonth ? t.cellBg : t.cellBgOutside,
                         outline: isSelected ? t.selectedOutline : 'none',
-                        cursor: isCurrentMonth && dayEntries.length > 0 ? 'pointer' : 'default',
+                        cursor: dayIsClickable ? 'pointer' : 'default',
                       }}
                     >
                       <div className="flex items-center justify-between mb-1.5">
@@ -423,6 +474,17 @@ export default function FinancialsClient({ entries, performanceRows, totals, sal
                         {dayEntries.length > 3 && (
                           <div className="text-[9px] font-semibold" style={{ color: t.muted }}>+{dayEntries.length - 3} more</div>
                         )}
+                        {hasDayPos && (
+                          <div
+                            className="text-[10px] font-semibold px-1.5 py-0.5 rounded flex items-center gap-1 min-w-0"
+                            style={{ background: t.posChipBg, color: t.pos, border: `1px solid ${t.posChipBorder}` }}
+                            title="SpotOn point-of-sale income on this day"
+                            data-testid="fin-cell-pos-chip"
+                          >
+                            <span className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: t.pos }} />
+                            <span className="truncate min-w-0">POS {centsToUsd(dayPos.posNetCents)}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -440,8 +502,23 @@ export default function FinancialsClient({ entries, performanceRows, totals, sal
                   <button onClick={() => setSelectedDay(null)} aria-label="Close detail" className="text-[18px] leading-none transition-opacity hover:opacity-50" style={{ color: t.muted }}>×</button>
                 </div>
 
-                {selectedEntries.length === 0 && (
-                  <p className="text-[12px]" style={{ color: t.faint }}>No events this day.</p>
+                {selectedEntries.length === 0 && !hasSelectedPos && (
+                  <p className="text-[12px]" style={{ color: t.faint }}>No income recorded this day.</p>
+                )}
+
+                {(selectedEntries.length > 0 || hasSelectedPos) && (selectedEntries.length > 1 || hasSelectedPos) && (
+                  <div
+                    className="rounded-[10px] p-3 mb-3 flex items-center justify-between"
+                    style={{ background: t.revSubBg, border: `1px solid ${t.revSubBorder}` }}
+                    data-testid="fin-day-total-all-sources"
+                  >
+                    <span className="text-[11px] font-semibold tracking-[0.06em] uppercase" style={{ color: t.muted }}>
+                      Total this day (all sources)
+                    </span>
+                    <span className="text-[15px] font-extrabold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.rev }}>
+                      {centsToUsd(selectedTotalAllSourcesCents)}
+                    </span>
+                  </div>
                 )}
 
                 <div className="space-y-3">
@@ -600,6 +677,36 @@ export default function FinancialsClient({ entries, performanceRows, totals, sal
                     );
                   })}
                 </div>
+
+                {hasSelectedPos && (
+                  <div
+                    className="rounded-[10px] p-3 mt-3"
+                    style={{ background: t.posDetailBg, border: `1px solid ${t.posDetailBorder}` }}
+                    data-testid="fin-day-pos-detail"
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: t.pos }} />
+                      <span className="text-[13px] font-bold" style={{ color: t.textStrong }}>Point of sale (SpotOn)</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-[11px]">
+                      <div>
+                        <div className="uppercase tracking-[0.08em] mb-0.5" style={{ color: t.faint }}>Revenue</div>
+                        <div className="text-[14px] font-extrabold" style={{ color: t.pos }}>{centsToUsd(selectedPosRevenueCents)}</div>
+                      </div>
+                      <div>
+                        <div className="uppercase tracking-[0.08em] mb-0.5" style={{ color: t.faint }}>Refunds</div>
+                        <div style={{ color: t.mutedStrong }}>{selectedPosRefundCents !== 0 ? centsToUsd(selectedPosRefundCents) : '$0.00'}</div>
+                      </div>
+                      <div>
+                        <div className="uppercase tracking-[0.08em] mb-0.5" style={{ color: t.faint }}>Net</div>
+                        <div style={{ color: t.mutedStrong }}>{centsToUsd(selectedPosNetCents)}</div>
+                      </div>
+                    </div>
+                    <div className="text-[10px] mt-2 pt-2" style={{ color: t.faint, borderTop: `1px solid ${t.divider}` }}>
+                      From imported SpotOn CSV totals for this calendar day — not tied to a named event.
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -607,8 +714,9 @@ export default function FinancialsClient({ entries, performanceRows, totals, sal
           <p className="mt-6 text-[12px]" style={{ color: t.faint }}>
             TicketTailor figures come from the read-only metrics cache, refreshed on a daily cron or on demand
             above (upcoming events show real sales-to-date, not a forecast). Entries tagged <span style={{ color: t.rev }}>Manual</span> are
-            owner-entered income (e.g. venue rentals) with no ticketing record. SpotOn point-of-sale income is not
-            included yet.
+            owner-entered income (e.g. venue rentals) with no ticketing record. Days marked <span style={{ color: t.pos }}>POS</span> include
+            SpotOn point-of-sale income imported from CSV, even on days with no event on the books — see the Trends tab for
+            day/week/month rollups across every revenue source.
           </p>
         </>
       )}
@@ -685,6 +793,98 @@ export default function FinancialsClient({ entries, performanceRows, totals, sal
             Codes column shows member discount codes sent / generated for the event. Gross and Net include manual
             income folded into an event (marked <span style={{ color: t.rev }}>+manual</span>). Other revenue
             columns stay blank until the event is TT-linked and refreshed, or manual income is added.
+          </p>
+        </>
+      )}
+
+      {tab === 'trends' && (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+            <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase" style={{ color: t.muted }}>
+              Revenue over time — every source, every day
+            </h2>
+            <div className="flex items-center gap-1 rounded-full border p-1" style={{ borderColor: t.border }} data-testid="fin-trend-granularity">
+              {GRANULARITIES.map((g) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => setTrendGranularity(g.id)}
+                  data-testid={`fin-trend-granularity-${g.id}`}
+                  className="px-3.5 py-1.5 rounded-full text-[11px] font-semibold tracking-[0.08em] uppercase transition-colors"
+                  style={{
+                    background: trendGranularity === g.id ? t.rev : 'transparent',
+                    color: trendGranularity === g.id ? t.addBtnText : t.mutedStrong,
+                  }}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {(() => {
+            const rangeEventGross = trendBuckets.reduce((sum, b) => sum + b.eventGrossCents, 0);
+            const rangePosRevenue = trendBuckets.reduce((sum, b) => sum + b.posRevenueCents, 0);
+            const rangePosRefund = trendBuckets.reduce((sum, b) => sum + b.posRefundCents, 0);
+            const rangeTotalGross = trendBuckets.reduce((sum, b) => sum + b.totalGrossCents, 0);
+            const rangeTotalNet = trendBuckets.reduce((sum, b) => sum + b.totalNetCents, 0);
+            return (
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6" data-testid="fin-trend-summary">
+                {[
+                  { label: 'Event revenue', value: centsToUsd(rangeEventGross), accent: true },
+                  { label: 'POS revenue (SpotOn)', value: centsToUsd(rangePosRevenue), pos: true },
+                  { label: 'POS refunds', value: centsToUsd(rangePosRefund) },
+                  { label: 'Total gross (all sources)', value: centsToUsd(rangeTotalGross), accent: true },
+                  { label: 'Total net (all sources)', value: centsToUsd(rangeTotalNet), accent: true },
+                ].map((c) => (
+                  <div
+                    key={c.label}
+                    className="rounded-[14px] border p-5"
+                    style={c.accent
+                      ? { background: t.revCardBg, borderColor: t.revCardBorder }
+                      : c.pos
+                        ? { background: t.posCardBg, borderColor: t.posCardBorder }
+                        : { background: t.cardBg, borderColor: t.cardBorder }}
+                  >
+                    <div className="text-[10px] font-semibold tracking-[0.14em] uppercase mb-1.5" style={{ color: c.accent ? t.rev : c.pos ? t.pos : t.muted }}>{c.label}</div>
+                    <div className="text-[22px] font-extrabold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.textStrong }}>{c.value}</div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
+          <RevenueTrendChart buckets={trendBuckets} t={t} granularity={trendGranularity} />
+
+          {trendBuckets.length === 0 ? (
+            <p className="text-[13px]" style={{ color: t.muted }}>No revenue recorded yet.</p>
+          ) : (
+            <div className="rounded-[12px] border overflow-hidden" style={{ background: t.cardBg, borderColor: t.cardBorder }}>
+              <div className="overflow-x-auto">
+              <div className="min-w-[720px]">
+              <div className={`grid ${trendGridCols} gap-2 px-4 py-2.5 text-[11px] font-semibold tracking-[0.08em] uppercase`} style={{ color: t.muted, borderBottom: `1px solid ${t.tableBorder}` }}>
+                <span>Period</span><span>Event revenue</span><span>POS revenue</span><span>POS refunds</span><span>Total gross</span><span>Total net</span><span>Days</span>
+              </div>
+              {trendBuckets.slice().reverse().map((b) => (
+                <div key={b.key} className={`grid ${trendGridCols} gap-2 px-4 py-3 text-[13px] items-center`} style={{ borderTop: `1px solid ${t.rowBorder}` }} data-testid="fin-trend-row">
+                  <span style={{ color: t.textStrong }} title={b.tooltipLabel}>{b.label}</span>
+                  <span style={{ color: b.eventGrossCents > 0 ? t.rev : t.faint }}>{b.eventGrossCents > 0 ? centsToUsd(b.eventGrossCents) : '—'}</span>
+                  <span style={{ color: b.posRevenueCents > 0 ? t.pos : t.faint }}>{b.posRevenueCents > 0 ? centsToUsd(b.posRevenueCents) : '—'}</span>
+                  <span style={{ color: b.posRefundCents !== 0 ? t.warn : t.faint }}>{b.posRefundCents !== 0 ? centsToUsd(b.posRefundCents) : '—'}</span>
+                  <span style={{ color: t.grossText }}>{centsToUsd(b.totalGrossCents)}</span>
+                  <span style={{ color: t.rev }}>{centsToUsd(b.totalNetCents)}</span>
+                  <span style={{ color: t.mutedStrong }}>{b.days}</span>
+                </div>
+              ))}
+              </div>
+              </div>
+            </div>
+          )}
+
+          <p className="mt-6 text-[12px]" style={{ color: t.faint }}>
+            Every calendar day is counted once, whether or not it has a named event — “Event revenue” is TicketTailor +
+            manual income tied to an event, “POS revenue” is SpotOn point-of-sale totals for that day (event days and
+            plain weekdays alike). Totals are gross before refunds/fees except where noted as net.
           </p>
         </>
       )}
