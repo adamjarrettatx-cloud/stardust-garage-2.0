@@ -1,8 +1,15 @@
 # Financial Calendar Runbook
 
-Operational guide for the owner-only Financial Calendar (MVP). **This file
-contains NO secrets — only the names of environment variables and how the
-feature is wired up.**
+Operational guide for the owner-only Financial Calendar, now the **Calendar**
+tab of the merged **Financials** page at `/bananas/financials` (the **Event
+Analytics** per-event performance table lives alongside it as the
+**Performance** tab, driven by the same accounting in
+`lib/financial-overview.js`). **This file contains NO secrets — only the
+names of environment variables and how the feature is wired up.**
+
+`/bananas/analytics` and `/bananas/financial-calendar` are kept as
+server-side redirects to `/bananas/financials` for old links/bookmarks; they
+are no longer separate pages.
 
 ## What it does
 
@@ -19,13 +26,13 @@ feature is wired up.**
 
 | Item | Value |
 | --- | --- |
-| Route | `/bananas/financial-calendar` |
-| Nav entry | Admin dashboard → **Analytics** tab → **Financial Calendar** tile (owner-only) |
+| Route | `/bananas/financials` (Calendar tab) |
+| Nav entry | Admin dashboard → **Analytics** tab → **Financials** tile (owner-only) |
 | Page gate | `ownerPageGate()` (server-side) |
 | API used | `POST /api/admin/refresh-event-metrics` (existing, read-only) |
 
 Authorization is enforced **server-side** by `ownerPageGate()` in
-`lib/auth-helpers.js`, exactly like `/bananas/analytics`:
+`lib/auth-helpers.js`, exactly like the rest of `/bananas/*`:
 
 1. Must be authenticated (else → `/bananas/login`).
 2. Must be an admin per the server-controlled `team_members.role` table — **not**
@@ -176,9 +183,11 @@ Apply migrations in either order — both are independent and additive.
    seed data. After deploy, the owner adds entries via **+ Add income**. (The
    motivating SolarPunk venue rental on 2026-07-18 for $2,800.00 is intentionally
    NOT seeded — create it only after confirming.)
-5. **Verify**: open `/bananas/financial-calendar`; navigate to February–April
-   for TT-only events; add a manual entry and confirm it appears tagged
-   **Manual** and rolls into the month total.
+5. **Verify**: open `/bananas/financials` (Calendar tab); navigate to
+   February–April for TT-only events; add a manual entry and confirm it
+   appears tagged **Manual** and rolls into the month total, and that the
+   same entry is reflected in the Performance tab and the page-level totals
+   (`lib/financial-overview.js`).
 
 ### Environment variables (already used by the existing integration)
 

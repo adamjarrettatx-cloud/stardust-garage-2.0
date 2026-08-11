@@ -53,6 +53,8 @@ const authenticatedRoutes = [...adminRoutes, ...teamRoutes].sort();
 const redirectRoutes = new Map([
   ['/bananas/calendar', '/team/calendar'],
   ['/bananas/progress', '/team/progress'],
+  ['/bananas/analytics', '/bananas/financials'],
+  ['/bananas/financial-calendar', '/bananas/financials'],
 ]);
 const domRoutes = authenticatedRoutes.filter((route) => !redirectRoutes.has(route)).sort();
 
@@ -135,6 +137,7 @@ test('existing reference pages still render a single inline toggle in their page
   const inlineReferenceFiles = [
     'app/bananas/analytics/AnalyticsClient.js',
     'app/bananas/financial-calendar/FinancialCalendarClient.js',
+    'app/bananas/financials/FinancialsClient.js',
     'app/team/calendar/CalendarClient.js',
     'app/team/chat/TeamChatClient.js',
     'app/team/progress/ProgressClient.js',
@@ -151,6 +154,7 @@ test('existing reference pages rely on the shared frame instead of rendering the
   const inlineReferenceFiles = [
     'app/bananas/analytics/AnalyticsClient.js',
     'app/bananas/financial-calendar/FinancialCalendarClient.js',
+    'app/bananas/financials/FinancialsClient.js',
     'app/team/calendar/CalendarClient.js',
   ];
 

@@ -231,8 +231,7 @@ export default function AdminDashboardClient({ isOwner, counts }) {
       {/* ANALYTICS — owner only */}
       {activeTab === 'analytics' && isOwner && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          <Tile href="/bananas/analytics" eyebrow="INSIGHTS" title="Event Analytics" />
-          <Tile href="/bananas/financial-calendar" eyebrow="OWNER ONLY" title="Financial Calendar" />
+          <Tile href="/bananas/financials" eyebrow="OWNER ONLY" title="Financials" />
           <Tile href="/bananas/cash-flow" eyebrow="OWNER ONLY" title="Cash Flow" />
           <Tile href="/capacity" eyebrow="LIVE" title="Capacity Counter" />
         </div>
