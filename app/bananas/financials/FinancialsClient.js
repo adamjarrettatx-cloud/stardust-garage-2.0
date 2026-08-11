@@ -300,12 +300,10 @@ export default function FinancialsClient({ entries, performanceRows, totals, sal
       </div>
 
       {/* Portfolio summary cards — always meaningful, regardless of TT sync state. */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6" data-testid="fin-portfolio-summary">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6" data-testid="fin-portfolio-summary">
         {[
           { label: 'Events', value: totals.events },
           { label: 'TT-linked events', value: totals.ttLinked },
-          { label: 'Member codes', value: totals.memberCodes },
-          { label: 'Codes sent', value: totals.codesSent },
           { label: 'Manual entries', value: totals.manualEntries },
         ].map((c) => (
           <div key={c.label} className="rounded-[14px] border p-5" style={{ background: t.cardBg, borderColor: t.cardBorder }}>
@@ -317,13 +315,11 @@ export default function FinancialsClient({ entries, performanceRows, totals, sal
 
       {/* Revenue cards — the unified accounting total across TT-linked, TT-only, and manual income. */}
       {totals.revenueEntries > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-10" data-testid="fin-revenue-summary">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-10" data-testid="fin-revenue-summary">
           {[
             { label: 'Gross income', value: centsToUsd(totals.grossCents) },
             { label: 'Fees', value: centsToUsd(totals.feesCents) },
             { label: 'Net income', value: centsToUsd(totals.netCents) },
-            { label: 'Tickets sold', value: totals.ticketsSold },
-            { label: 'Orders', value: totals.ordersCount },
           ].map((c) => (
             <div key={c.label} className="rounded-[14px] border p-5" style={{ background: t.revCardBg, borderColor: t.revCardBorder }}>
               <div className="text-[10px] font-semibold tracking-[0.14em] uppercase mb-1.5" style={{ color: t.rev }}>{c.label}</div>
@@ -368,14 +364,11 @@ export default function FinancialsClient({ entries, performanceRows, totals, sal
         <>
           {/* Monthly income summary — named-event figures (TicketTailor + manual)
               plus the all-source rollup that folds in POS-only days. */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8" data-testid="fin-month-summary">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8" data-testid="fin-month-summary">
             {[
               { label: 'Event gross income', value: centsToUsd(monthSummary.grossCents), accent: true },
               { label: 'POS revenue (SpotOn)', value: centsToUsd(monthPosRevenueCents), pos: true },
               { label: 'All-source net', value: centsToUsd(monthAllSourceNetCents), accent: true },
-              { label: 'Revenue events', value: `${monthSummary.revenueEvents}/${monthSummary.eventCount}` },
-              { label: 'Tickets sold', value: monthSummary.ticketsSold },
-              { label: 'Orders', value: monthSummary.ordersCount },
             ].map((c) => (
               <div
                 key={c.label}
