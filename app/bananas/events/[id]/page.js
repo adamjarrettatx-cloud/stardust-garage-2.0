@@ -5,6 +5,7 @@ import { adminPageGate } from '@/lib/auth-helpers';
 import EventForm from '../../components/EventForm';
 import PublishEventButton from '../../components/PublishEventButton';
 import GuestListPanel from './GuestListPanel';
+import ArtistLineupPanel from './ArtistLineupPanel';
 
 export const revalidate = 0;
 
@@ -54,7 +55,12 @@ export default async function EditEventPage({ params }) {
           ttEventSeriesId={event.tt_event_series_id}
         />
       )}
-      footerPanels={<GuestListPanel eventId={event.id} />}
+      footerPanels={(
+        <>
+          <ArtistLineupPanel eventId={event.id} />
+          <GuestListPanel eventId={event.id} />
+        </>
+      )}
     />
   );
 }
