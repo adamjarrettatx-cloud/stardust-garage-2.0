@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { auditContact, contactTypeLabel } from '@/lib/contact-helpers';
+import { auditContact, contactTypeLabel, isContractorContact } from '@/lib/contact-helpers';
 import { buildPartnerActivationUrl } from '@/lib/partner-identity';
 import { resolveSiteUrl } from '@/lib/site-url';
 import { sendPartnerInvite } from '@/lib/email';
@@ -45,6 +45,8 @@ export async function POST(request) {
       .select('id, display_name, primary_contact_name, contact_type, email')
       .eq('id', contactId)
       .maybeSingle();
+
+    const isContractor = isContractorContact(contact?.contact_type);
 
     if (!contact) {
       return NextResponse.json({ error: 'Contact not found.' }, { status: 404 });
@@ -146,7 +148,7 @@ export async function POST(request) {
     let emailSent = true;
     let emailError = null;
     try {
-      await sendPartnerInvite({ email, fullName, contactType, activationUrl });
+      await sendPartnerInvite({ email, fullName, contactType, activationUrl, isContractor });
     } catch (err) {
       emailSent = false;
       emailError = err?.message || String(err);
