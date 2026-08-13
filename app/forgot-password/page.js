@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
 import Wordmark from '@/app/components/Wordmark';
 
 export default function ForgotPasswordPage() {
@@ -16,19 +15,23 @@ export default function ForgotPasswordPage() {
     setError('');
     setLoading(true);
 
-    const supabase = createClient();
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
+    // Goes through our own API instead of supabase.auth.resetPasswordForEmail:
+    // that call mails Supabase's own action_link (a supabase.co URL) before it
+    // redirects back to us. This route mints a link on our own domain instead
+    // — see /api/auth/request-password-reset. It always responds { ok: true }
+    // regardless of whether the email is registered, so the UI below can't be
+    // used to tell which emails exist in our system either.
+    try {
+      await fetch('/api/auth/request-password-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+    } catch (err) {
+      console.error('Reset password error:', err);
+    }
 
     setLoading(false);
-
-    // We don't reveal whether the email exists - always show success.
-    // This is standard security practice: prevents enumeration attacks.
-    if (resetError) {
-      // Log internally but still show success to user
-      console.error('Reset password error:', resetError.message);
-    }
     setSubmitted(true);
   };
 

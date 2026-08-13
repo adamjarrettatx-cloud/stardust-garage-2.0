@@ -15,12 +15,27 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState(false);
   const [validSession, setValidSession] = useState(null); // null = checking, true/false after check
 
-  // When the user clicks the email link, Supabase automatically signs them
-  // in with a recovery session. We verify that session exists before
-  // letting them set a new password.
+  // The reset email links here with ?token_hash=...&type=recovery (see
+  // buildPasswordResetUrl + /api/auth/request-password-reset) instead of
+  // Supabase's own redirect, which is why we redeem it ourselves via
+  // verifyOtp rather than just reading an already-established session —
+  // mirrors ActivateClient's handling of the partner invite link exactly.
+  // Any already-in-flight link sent before this change lands still arrives
+  // as a plain Supabase-established session with no token_hash in the URL,
+  // so that path is kept as a fallback.
   useEffect(() => {
     const checkSession = async () => {
       const supabase = createClient();
+
+      const params = new URLSearchParams(window.location.search);
+      const tokenHash = params.get('token_hash');
+      if (tokenHash) {
+        await supabase.auth.verifyOtp({ type: 'recovery', token_hash: tokenHash });
+        // Single-use token: keep it out of the address bar so a refresh or a
+        // shared URL doesn't look like an expired link.
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       setValidSession(Boolean(session));
     };

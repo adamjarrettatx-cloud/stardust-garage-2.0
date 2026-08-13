@@ -22,7 +22,7 @@ export default function SplashClient({ logoUrl }) {
 
   return (
     <main className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-12 md:pt-20 pb-16">
-      <audio ref={audioRef} loop preload="auto" src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/sdg-bg-track-nmh3bc3xxpb3RhJXNTPJfyOFzXEBFq.mp3" />
+      <audio ref={audioRef} loop preload="auto" src="https://iwgfelvbebqbaotkylsw.supabase.co/storage/v1/object/public/site-assets/sdg-bg-track.mp3" />
 
       <div className="flex flex-col items-center -mt-12 md:-mt-20">
         <div className="flex flex-col items-center mb-8 md:mb-10">
