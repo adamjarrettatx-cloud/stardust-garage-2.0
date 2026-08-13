@@ -92,55 +92,60 @@ test('the legacy reviewed status is gone from the workflow', () => {
   }
   assert.deepEqual(SUBMISSION_LIST_TABS.map((tab) => tab.id), [
     'new',
-    'contacted',
     'seen',
+    'contacted',
     'pending',
     'approved',
     'rejected',
   ]);
 });
 
-test('seen is a signups-only status with its own tab metadata', () => {
+test('seen has its own tab metadata and a manual "mark as seen" button label', () => {
   assert.equal(SUBMISSION_STATUS_META.seen.label, 'Seen');
   assert.equal(SUBMISSION_STATUS_META.seen.tabLabel, 'Seen');
-  assert.equal(SUBMISSION_STATUS_META.seen.color, SUBMISSION_STATUS_META.contacted.color);
+  assert.equal(SUBMISSION_STATUS_META.seen.buttonLabel, 'Mark as seen');
   assert.equal(normalizeSubmissionStatus('seen'), 'seen');
 
   assert.deepEqual(SUBMISSION_TYPE_CONFIGS.signups.tabs, ['new', 'seen']);
   assert.deepEqual(submissionTabsForType('signups').map((tab) => tab.label), ['New', 'Seen']);
 });
 
-test('the other four submission types keep the five-state workflow tabs', () => {
+test('the other four submission types now include seen in their six-state workflow tabs', () => {
   for (const type of ['applications', 'collaborations', 'micro-parties', 'venue-inquiries']) {
     assert.deepEqual(SUBMISSION_TYPE_CONFIGS[type].tabs, [
       'new',
+      'seen',
       'contacted',
       'pending',
       'approved',
       'rejected',
-    ], `${type} tabs should be unchanged`);
-    assert.equal(SUBMISSION_TYPE_CONFIGS[type].tabs.includes('seen'), false);
+    ], `${type} tabs should include seen`);
   }
 });
 
-test('the shared explicit workflow never transitions into or out of seen', () => {
-  for (const status of ['new', 'contacted', 'pending', 'approved', 'rejected']) {
-    assert.equal(canExplicitlyTransitionSubmission(status, 'seen'), false);
-    assert.equal(submissionActionsForStatus(status).some((action) => action.status === 'seen'), false);
-  }
-  assert.deepEqual(submissionActionsForStatus('seen'), []);
-  for (const next of ['new', 'contacted', 'pending', 'approved', 'rejected']) {
-    assert.equal(canExplicitlyTransitionSubmission('seen', next), false);
-  }
-});
-
-test('new submissions only move to contacted or pending', () => {
-  assert.deepEqual(submissionActionsForStatus('new').map((action) => action.status), [
+test('seen sits between new and contacted/pending, and can also be rejected', () => {
+  assert.equal(canExplicitlyTransitionSubmission('new', 'seen'), true);
+  assert.deepEqual(submissionActionsForStatus('seen').map((action) => action.status), [
     'contacted',
     'pending',
+    'rejected',
+  ]);
+  assert.equal(canExplicitlyTransitionSubmission('seen', 'approved'), false);
+  assert.equal(canExplicitlyTransitionSubmission('seen', 'new'), false);
+  for (const status of ['contacted', 'pending', 'approved', 'rejected']) {
+    assert.equal(canExplicitlyTransitionSubmission(status, 'seen'), false);
+  }
+});
+
+test('new submissions can be marked seen, contacted, pending, or rejected immediately', () => {
+  assert.deepEqual(submissionActionsForStatus('new').map((action) => action.status), [
+    'seen',
+    'contacted',
+    'pending',
+    'rejected',
   ]);
   assert.equal(canExplicitlyTransitionSubmission('new', 'approved'), false);
-  assert.equal(canExplicitlyTransitionSubmission('new', 'rejected'), false);
+  assert.equal(canExplicitlyTransitionSubmission('new', 'rejected'), true);
 });
 
 test('contacted and pending submissions only move to approved or rejected', () => {
@@ -156,7 +161,7 @@ test('contacted and pending submissions only move to approved or rejected', () =
 test('approved and rejected are terminal', () => {
   for (const status of ['approved', 'rejected']) {
     assert.deepEqual(submissionActionsForStatus(status), []);
-    for (const next of ['new', 'contacted', 'pending', 'approved', 'rejected']) {
+    for (const next of ['new', 'seen', 'contacted', 'pending', 'approved', 'rejected']) {
       assert.equal(canExplicitlyTransitionSubmission(status, next), next === status);
     }
   }
@@ -285,6 +290,5 @@ test('admin submission views never mutate on view and never delete', () => {
     const content = fs.readFileSync(path.join(REPO_ROOT, relativePath), 'utf8');
     assert.equal(/update\(\{\s*status:/.test(content), false, `${relativePath} should not write status directly`);
     assert.equal(content.includes('.delete()'), false, `${relativePath} should not delete submissions`);
-    assert.equal(content.toLowerCase().includes('seen'), false, `${relativePath} should not reference seen`);
   }
 });
