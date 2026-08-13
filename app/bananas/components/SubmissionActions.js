@@ -7,6 +7,14 @@ const BTN_BASE =
   'px-5 py-2.5 rounded-full text-[12px] font-semibold tracking-[0.12em] transition-all hover:-translate-y-0.5 disabled:opacity-50';
 
 const BTN_STYLES = {
+  seen: {
+    className: BTN_BASE,
+    style: {
+      background: 'rgba(56,189,248,0.12)',
+      color: '#38bdf8',
+      border: '1px solid rgba(56,189,248,0.3)',
+    },
+  },
   contacted: {
     className: BTN_BASE,
     style: {
