@@ -14,6 +14,7 @@ import PartnerSignOutButton from '../PartnerSignOutButton';
 // the page.
 const TABS = [
   { href: '/partner/guest-list', label: 'Guest List' },
+  { href: '/partner/pay', label: 'Pay' },
   { href: '/partner/profile', label: 'My Profile' },
 ];
 

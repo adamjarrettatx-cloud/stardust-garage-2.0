@@ -17,6 +17,10 @@ export default function ContactSelect({
   excludeIds = [],
   hint = null,
   disabled = false,
+  // Restrict the list to contacts whose contact_type overlaps this array,
+  // e.g. CONTRACTOR_CONTACT_TYPES for the Artist Lineup panel. null/omitted
+  // shows every contact, matching prior behavior.
+  contactTypeIn = null,
 }) {
   const [contacts, setContacts] = useState([]);
   const [loadError, setLoadError] = useState('');
@@ -43,8 +47,14 @@ export default function ContactSelect({
   }, []);
 
   const selectable = useMemo(
-    () => contacts.filter((c) => c.id === value || !excludeIds.includes(c.id)),
-    [contacts, value, excludeIds]
+    () =>
+      contacts.filter((c) => {
+        if (c.id === value) return true;
+        if (excludeIds.includes(c.id)) return false;
+        if (contactTypeIn && !(c.contact_type || []).some((t) => contactTypeIn.includes(t))) return false;
+        return true;
+      }),
+    [contacts, value, excludeIds, contactTypeIn]
   );
 
   const visibleContacts = useMemo(() => {

@@ -104,7 +104,8 @@ export default function AdminDashboardClient({ isOwner, counts }) {
     counts.applications +
     counts.potentialMembers +
     counts.collaborations +
-    counts.newSignups;
+    counts.newSignups +
+    (counts.pendingPayRequests || 0);
 
   const rentalsBadge =
     counts.venueInquiries +
@@ -171,6 +172,12 @@ export default function AdminDashboardClient({ isOwner, counts }) {
             href="/bananas/guest-list"
             eyebrow="REPORTING"
             title="Guest List"
+          />
+          <Tile
+            href="/bananas/pay-requests"
+            eyebrow="REVIEW"
+            title="Artist Pay"
+            count={counts.pendingPayRequests}
           />
         </div>
       )}
