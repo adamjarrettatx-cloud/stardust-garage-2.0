@@ -71,7 +71,7 @@ function PartnerState({ booking }) {
 }
 
 function statusBadgeColors(status) {
-  if (status === 'paid') return { color: 'var(--auth-success)', bg: 'var(--auth-success-bg)', border: 'var(--auth-success-border)' };
+  if (status === 'paid' || status === 'approved') return { color: 'var(--auth-success)', bg: 'var(--auth-success-bg)', border: 'var(--auth-success-border)' };
   if (status === 'rejected') return { color: 'var(--auth-danger)', bg: 'var(--auth-danger-bg)', border: 'var(--auth-danger-border)' };
   if (status === 'cancelled') return { color: 'var(--auth-muted)', bg: 'var(--auth-card-bg-alt)', border: 'var(--auth-card-border)' };
   if (status === 'pay_requested' || status === 'in_review') return { color: 'var(--auth-warn)', bg: 'var(--auth-warn-bg)', border: 'var(--auth-warn-border)' };
@@ -313,6 +313,23 @@ export default function ArtistLineupPanel({ eventId }) {
     }
   };
 
+  // Phase 3: admin-only "Reopen for Payment" — the only way a rejected
+  // booking becomes requestable again. Reuses adminFetch's error surface but
+  // hits a booking-level route, not the bookings CRUD route, so it refreshes
+  // by reloading the lineup rather than trusting a bookings[] echo back.
+  const handleReopen = async (booking) => {
+    setRowError((prev) => ({ ...prev, [booking.id]: '' }));
+    setBusy(true);
+    try {
+      await adminFetch(`/api/admin/bookings/${booking.id}/reopen`, { method: 'POST' });
+      await load();
+    } catch (err) {
+      setRowError((prev) => ({ ...prev, [booking.id]: err?.message || 'Could not reopen this booking' }));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const bookedContactIds = (bookings || []).map((b) => b.contact_id);
 
   return (
@@ -450,6 +467,35 @@ export default function ArtistLineupPanel({ eventId }) {
               <div className="mt-3">
                 <PartnerState booking={booking} />
               </div>
+
+              {/* Phase 3 pay-status actions. pay_requested/approved link into the
+                  Review & Pay screen; rejected surfaces the admin-only reopen
+                  action right where the rejection is visible, instead of
+                  making an admin hunt for it in a separate list. */}
+              {(booking.status === 'pay_requested' || booking.status === 'approved') && (
+                <div className="mt-3">
+                  <Link
+                    href="/bananas/pay-requests"
+                    className="text-[12px] font-semibold underline"
+                    style={{ color: 'var(--auth-text)' }}
+                  >
+                    Review &amp; Pay →
+                  </Link>
+                </div>
+              )}
+              {booking.status === 'rejected' && (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => handleReopen(booking)}
+                    disabled={busy}
+                    className="px-4 py-2 rounded-full text-[10px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5 disabled:opacity-40"
+                    style={{ borderColor: 'var(--auth-card-border-strong)', color: 'var(--auth-text)' }}
+                  >
+                    REOPEN FOR PAYMENT
+                  </button>
+                </div>
+              )}
 
               {rowError[booking.id] && (
                 <p className="text-[12px] mt-3" style={{ color: 'var(--auth-danger)' }}>
