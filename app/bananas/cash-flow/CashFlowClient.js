@@ -20,10 +20,12 @@ import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvid
 import CashFlowTrendChart from './CashFlowTrendChart';
 import SpotOnImportDialog from './SpotOnImportDialog';
 import SyncTicketTailorButton from './SyncTicketTailorButton';
+import SyncQuickBooksButton from './SyncQuickBooksButton';
 
 const SOURCE_LABEL = {
   tickettailor: 'TicketTailor',
   spoton_csv: 'SpotOn CSV',
+  quickbooks: 'QuickBooks',
 };
 
 // Badges on the category rollup, so P&L lines are distinguishable from financing
@@ -199,6 +201,7 @@ export default function CashFlowClient({
 
         <div className="flex flex-wrap items-center gap-3">
           <SyncTicketTailorButton t={t} />
+          <SyncQuickBooksButton t={t} />
           <button
             type="button"
             onClick={() => setImportOpen(true)}
