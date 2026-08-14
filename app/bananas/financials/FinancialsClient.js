@@ -22,6 +22,7 @@ import RefreshMetricsButton from '@/app/bananas/analytics/RefreshMetricsButton';
 import RowRefreshButton from '@/app/bananas/analytics/RowRefreshButton';
 import BackfillTTOrdersButton from '@/app/bananas/analytics/BackfillTTOrdersButton';
 import TicketTailorSalesChart from '@/app/bananas/analytics/TicketTailorSalesChart';
+import TotalSalesChart from '@/app/bananas/financials/TotalSalesChart';
 import ManualIncomeDialog from '@/app/bananas/financial-calendar/ManualIncomeDialog';
 import RevenueTrendChart from '@/app/bananas/financials/RevenueTrendChart';
 import ItemAnalytics from '@/app/bananas/financials/ItemAnalytics';
@@ -270,6 +271,8 @@ export default function FinancialsClient({ entries, performanceRows, totals, sal
         read-only metrics cache, refreshed on a daily cron or on demand below. Income only; expenses aren&apos;t
         tracked yet.
       </p>
+
+      <TotalSalesChart dailyRevenue={dailyRevenue} t={t} />
 
       <TicketTailorSalesChart series={salesSeries} t={t} />
 
