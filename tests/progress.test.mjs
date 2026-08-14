@@ -155,6 +155,47 @@ test('sortTasks does not mutate the input array', () => {
   assert.deepEqual(tasks.map((t) => t.id), before);
 });
 
+test('sortTasks by assignee sorts alphabetically with unassigned last', () => {
+  const assignees = [
+    { id: 'u1', label: 'Zach' },
+    { id: 'u2', label: 'Adam' },
+    { id: 'u3', label: 'Maya' },
+  ];
+  const tasks = [
+    task({ id: 'z', assignee_id: 'u1' }),
+    task({ id: 'unassigned', assignee_id: null }),
+    task({ id: 'a', assignee_id: 'u2' }),
+    task({ id: 'm', assignee_id: 'u3' }),
+  ];
+  assert.deepEqual(
+    sortTasks(tasks, 'assignee', 'asc', { assignees }).map((t) => t.id),
+    ['a', 'm', 'z', 'unassigned'],
+  );
+  // desc still keeps unassigned last (nulls-last).
+  assert.deepEqual(
+    sortTasks(tasks, 'assignee', 'desc', { assignees }).map((t) => t.id),
+    ['z', 'm', 'a', 'unassigned'],
+  );
+});
+
+test('sortTasks by flags ranks overdue > stale > due-soon > clean', () => {
+  const today = '2026-07-23';
+  const tasks = [
+    // Clean: due next month, freshly updated.
+    task({ id: 'clean', due_date: '2026-08-30', last_update_at: today, status: 'in_progress' }),
+    // Overdue: past due date, not done.
+    task({ id: 'overdue', due_date: '2026-07-01', last_update_at: today, status: 'in_progress' }),
+    // Due-soon: within DUE_SOON_DAYS.
+    task({ id: 'soon', due_date: '2026-07-24', last_update_at: today, status: 'in_progress' }),
+    // Stale: no due date, hasn't been updated in a long time.
+    task({ id: 'stale', due_date: null, last_update_at: '2026-05-01', status: 'in_progress' }),
+  ];
+  assert.deepEqual(
+    sortTasks(tasks, 'flags', 'desc', { todayStr: today }).map((t) => t.id),
+    ['overdue', 'stale', 'soon', 'clean'],
+  );
+});
+
 test('mapImportStatus maps common free-form phrasings', () => {
   assert.equal(mapImportStatus('Done'), 'done');
   assert.equal(mapImportStatus('Completed and live'), 'done');
