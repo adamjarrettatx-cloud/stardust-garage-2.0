@@ -24,6 +24,7 @@ import BackfillTTOrdersButton from '@/app/bananas/analytics/BackfillTTOrdersButt
 import TicketTailorSalesChart from '@/app/bananas/analytics/TicketTailorSalesChart';
 import ManualIncomeDialog from '@/app/bananas/financial-calendar/ManualIncomeDialog';
 import RevenueTrendChart from '@/app/bananas/financials/RevenueTrendChart';
+import ItemAnalytics from '@/app/bananas/financials/ItemAnalytics';
 
 // Merged palette: FINANCIAL_THEMES' richer calendar/detail tokens (cellBg,
 // gridLine, revChipBg, etc.) plus the table-only tokens ANALYTICS_THEMES adds
@@ -92,6 +93,7 @@ const TABS = [
   { id: 'calendar', label: 'Calendar' },
   { id: 'performance', label: 'Performance' },
   { id: 'trends', label: 'Trends' },
+  { id: 'items', label: 'Item Sales' },
 ];
 
 const GRANULARITIES = [
@@ -881,6 +883,8 @@ export default function FinancialsClient({ entries, performanceRows, totals, sal
           </p>
         </>
       )}
+
+      {tab === 'items' && <ItemAnalytics t={t} />}
 
       <ManualIncomeDialog
         open={dialogOpen}
