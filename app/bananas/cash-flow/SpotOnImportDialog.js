@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { adminFetch } from '@/lib/admin-fetch';
+import { createClient } from '@/lib/supabase/client';
 import { centsToUsd } from '@/lib/event-analytics';
 import { AGGREGATION, SPOTON_FIELDS, validateMapping } from '@/lib/spoton-import';
 
@@ -80,9 +81,27 @@ export default function SpotOnImportDialog({ open, t, onClose }) {
     setBusy(true);
     setError(null);
     try {
-      const body = new FormData();
-      body.append('file', file);
-      const res = await adminFetch('/api/admin/financial-ledger/spoton-import', { method: 'POST', body });
+      // Large exports (year-to-date SpotOn pulls can run well past 4-5MB)
+      // can't ride along in a single serverless-function request body, so the
+      // file goes browser -> Supabase Storage directly via a signed upload
+      // URL, and only a small JSON pointer to it goes to our own API.
+      const signed = await adminFetch('/api/admin/financial-ledger/spoton-import/upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+
+      const supabase = createClient();
+      const { error: uploadError } = await supabase.storage
+        .from(signed.bucket)
+        .uploadToSignedUrl(signed.path, signed.token, file, { contentType: file.type || 'text/csv' });
+      if (uploadError) throw new Error(uploadError.message || 'Could not upload the file to storage.');
+
+      const res = await adminFetch('/api/admin/financial-ledger/spoton-import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storagePath: signed.path, filename: file.name }),
+      });
       setPreview(res);
       setMapping(res.suggestedMapping || {});
       setAggregation(res.suggestedAggregation || AGGREGATION.row);
@@ -190,8 +209,9 @@ export default function SpotOnImportDialog({ open, t, onClose }) {
           /* Step 1 — upload */
           <form onSubmit={upload}>
             <p className="text-[13px] mb-4" style={{ color: t.muted }}>
-              Upload a SpotOn export (.csv, up to 10MB). The file is parsed and previewed here — nothing is
-              written to the ledger until you confirm the column mapping on the next step.
+              Upload a SpotOn export (.csv, up to 25MB — a full year of item-level data included). The file is
+              parsed and previewed here — nothing is written to the ledger until you confirm the column mapping
+              on the next step.
             </p>
             <input
               type="file"
