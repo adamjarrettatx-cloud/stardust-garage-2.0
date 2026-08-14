@@ -174,6 +174,34 @@ function DepartmentTab({ slug, label, active, onSelect }) {
   );
 }
 
+// Clickable column header. Toggles the table sort via `onClick(sortKey)` and
+// shows an arrow indicator when this column is the active sort. Rendered
+// inside <thead><tr> so it must be a real <th>, not a wrapping <button>, or
+// row/column layout will break. The <th> itself is the click target and has
+// button semantics for keyboard/screen-reader users.
+function SortableTh({ label, sortKey, activeKey, dir, onClick, indicator }) {
+  const isActive = activeKey === sortKey;
+  return (
+    <th
+      role="button"
+      tabIndex={0}
+      aria-sort={isActive ? (dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+      onClick={() => onClick(sortKey)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick(sortKey);
+        }
+      }}
+      className="text-left px-4 py-3 font-semibold tracking-[0.08em] cursor-pointer select-none hover:opacity-80"
+      style={{ userSelect: 'none' }}
+      data-testid={`progress-sort-${sortKey}`}
+    >
+      {label}<span aria-hidden="true">{indicator}</span>
+    </th>
+  );
+}
+
 function AdminProgressView({ initialTasks, assignees, isOwner, currentTeamMemberId, todayIso }) {
   const router = useRouter();
   const todayStr = toDateString(todayIso);
@@ -201,8 +229,35 @@ function AdminProgressView({ initialTasks, assignees, isOwner, currentTeamMember
 
   const visible = useMemo(() => {
     const filtered = filterTasks(initialTasks, filters, search);
-    return sortTasks(filtered, sortKey, sortDir);
-  }, [initialTasks, filters, search, sortKey, sortDir]);
+    return sortTasks(filtered, sortKey, sortDir, { assignees, todayStr });
+  }, [initialTasks, filters, search, sortKey, sortDir, assignees, todayStr]);
+
+  // Click a column header to sort by it. First click on an inactive column
+  // uses that column's natural default direction (dates ascend, everything
+  // else descends so the 'strongest' rows sit at the top). Clicking the
+  // already-active column toggles direction.
+  const SORT_DEFAULT_DIR = {
+    title: 'asc',
+    department: 'asc',
+    assignee: 'asc',
+    status: 'asc',
+    due_date: 'asc',
+    priority: 'desc',
+    flags: 'desc',
+    updated_at: 'desc',
+  };
+  const toggleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDir(SORT_DEFAULT_DIR[key] || 'asc');
+    }
+  };
+  const sortIndicator = (key) => {
+    if (sortKey !== key) return '';
+    return sortDir === 'asc' ? ' ↑' : ' ↓';
+  };
 
   const refresh = () => router.refresh();
   const setFilter = (k, v) => setFilters((f) => ({ ...f, [k]: v }));
@@ -401,12 +456,12 @@ function AdminProgressView({ initialTasks, assignees, isOwner, currentTeamMember
             <table className="w-full text-[13px]">
               <thead>
                 <tr style={{ background: t.theadBg, color: t.muted }}>
-                  <th className="text-left px-4 py-3 font-semibold tracking-[0.08em]">DELIVERABLE</th>
-                  <th className="text-left px-4 py-3 font-semibold tracking-[0.08em]">DEPT</th>
-                  <th className="text-left px-4 py-3 font-semibold tracking-[0.08em]">ASSIGNEE</th>
-                  <th className="text-left px-4 py-3 font-semibold tracking-[0.08em]">STATUS</th>
-                  <th className="text-left px-4 py-3 font-semibold tracking-[0.08em]">DUE</th>
-                  <th className="text-left px-4 py-3 font-semibold tracking-[0.08em]">FLAGS</th>
+                  <SortableTh label="DELIVERABLE" sortKey="title" activeKey={sortKey} dir={sortDir} onClick={toggleSort} indicator={sortIndicator('title')} />
+                  <SortableTh label="DEPT" sortKey="department" activeKey={sortKey} dir={sortDir} onClick={toggleSort} indicator={sortIndicator('department')} />
+                  <SortableTh label="ASSIGNEE" sortKey="assignee" activeKey={sortKey} dir={sortDir} onClick={toggleSort} indicator={sortIndicator('assignee')} />
+                  <SortableTh label="STATUS" sortKey="status" activeKey={sortKey} dir={sortDir} onClick={toggleSort} indicator={sortIndicator('status')} />
+                  <SortableTh label="DUE" sortKey="due_date" activeKey={sortKey} dir={sortDir} onClick={toggleSort} indicator={sortIndicator('due_date')} />
+                  <SortableTh label="FLAGS" sortKey="flags" activeKey={sortKey} dir={sortDir} onClick={toggleSort} indicator={sortIndicator('flags')} />
                 </tr>
               </thead>
               <tbody>
