@@ -9,6 +9,7 @@ import {
   SPOTON_IMPORT_BUCKET,
   buildPreview,
   buildSpotOnLedgerRows,
+  buildSpotOnLineItems,
   mapSpotOnRows,
   resolveAggregation,
   sanitizeMapping,
@@ -272,6 +273,26 @@ export async function PATCH(request) {
         .update({ status: 'failed', column_mapping: mapping, error_detail: writeError.message.slice(0, 500) })
         .eq('id', batch.id);
       throw new Error(`Could not write the ledger: ${writeError.message}`);
+    }
+
+    // Item-level rows for the /bananas/financials analytics page. Reads the
+    // fixed SpotOn header names straight off the stored raw rows, independent
+    // of whatever column mapping the admin picked for the ledger amount above
+    // — so this only does anything useful on the real "order item list view"
+    // export, and is a harmless no-op on a daily/batch-level export that lacks
+    // those columns (every mapped field comes back null/0/false).
+    // Best-effort: a failure here must not fail the ledger import that already
+    // succeeded above, so it's logged but swallowed.
+    try {
+      const lineItems = buildSpotOnLineItems(rawRows, batch.id);
+      const LINE_ITEM_CHUNK = 500;
+      for (let i = 0; i < lineItems.length; i += LINE_ITEM_CHUNK) {
+        const slice = lineItems.slice(i, i + LINE_ITEM_CHUNK);
+        const { error: lineItemError } = await supabase.from('spoton_line_items').insert(slice);
+        if (lineItemError) throw new Error(lineItemError.message);
+      }
+    } catch (lineItemError) {
+      console.error('spoton-import PATCH: failed to write spoton_line_items:', lineItemError);
     }
 
     const { error: confirmError } = await supabase
