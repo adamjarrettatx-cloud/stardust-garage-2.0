@@ -22,6 +22,7 @@ const TABS = [
   { id: 'day', label: 'By day' },
   { id: 'week', label: 'By week' },
   { id: 'month', label: 'By month' },
+  { id: 'ytd', label: 'YTD' },
 ];
 
 const GRID_LINES = 4;
@@ -42,11 +43,21 @@ function axisMoney(cents) {
   return `$${dollars.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 }
 
-export default function TotalSalesChart({ dailyRevenue, t }) {
+export default function TotalSalesChart({ dailyRevenue, todayIso, t }) {
   const [granularity, setGranularity] = useState('month');
   const [hovered, setHovered] = useState(null);
 
-  const buckets = useMemo(() => rollupDailyRevenue(dailyRevenue, granularity), [dailyRevenue, granularity]);
+  // YTD is always daily granularity, scoped to Jan 1 of the current year
+  // through today — resets every January so multi-year history never piles
+  // up into one unreadable view the way an unscoped "every day ever" chart
+  // eventually would.
+  const yearStart = useMemo(() => `${new Date(todayIso || Date.now()).getFullYear()}-01-01`, [todayIso]);
+  const ytdDailyRows = useMemo(() => dailyRevenue.filter((d) => d.date >= yearStart), [dailyRevenue, yearStart]);
+
+  const buckets = useMemo(() => {
+    if (granularity === 'ytd') return rollupDailyRevenue(ytdDailyRows, 'day');
+    return rollupDailyRevenue(dailyRevenue, granularity);
+  }, [dailyRevenue, ytdDailyRows, granularity]);
 
   const rangeEventGross = useMemo(() => buckets.reduce((sum, b) => sum + b.eventGrossCents, 0), [buckets]);
   const rangePosRevenue = useMemo(() => buckets.reduce((sum, b) => sum + b.posRevenueCents, 0), [buckets]);
@@ -56,6 +67,12 @@ export default function TotalSalesChart({ dailyRevenue, t }) {
   const axisMax = niceCeiling(Math.max(...buckets.map((b) => b.totalGrossCents), 0));
   const hasActivity = buckets.some((b) => b.totalGrossCents > 0);
   const labelEvery = Math.ceil(buckets.length / MAX_AXIS_LABELS) || 1;
+  // Once a view has a lot of bars (YTD, or "by day" once history stretches
+  // past ~2 months), switch to hairline gaps/corners and drop the x-axis
+  // label row entirely — with 150+ bars in a fixed-width card, labels just
+  // collide. The hover tooltip and the range in the subtitle carry the date
+  // context instead, same convention as the Item Sales tab's all-time chart.
+  const dense = buckets.length > 60;
 
   return (
     <section
@@ -72,7 +89,11 @@ export default function TotalSalesChart({ dailyRevenue, t }) {
             Total sales — TicketTailor + SpotOn
           </h2>
           <p className="text-[12px] mt-0.5" style={{ color: t.muted }}>
-            Every revenue source, one bar per {granularity} · the macro view of the whole business at a glance
+            {granularity === 'ytd'
+              ? (buckets.length > 0
+                ? `${buckets.length} days · ${buckets[0].tooltipLabel} \u2192 ${buckets[buckets.length - 1].tooltipLabel} · every day of ${new Date(todayIso || Date.now()).getFullYear()} in one view`
+                : `Every day of ${new Date(todayIso || Date.now()).getFullYear()} in one view`)
+              : `Every revenue source, one bar per ${granularity} \u00b7 the macro view of the whole business at a glance`}
           </p>
         </div>
 
@@ -142,7 +163,7 @@ export default function TotalSalesChart({ dailyRevenue, t }) {
                   />
                 ))}
 
-                <div className="absolute inset-0 flex items-end gap-[2px]">
+                <div className={`absolute inset-0 flex items-end ${dense ? 'gap-px' : 'gap-[2px]'}`}>
                   {buckets.map((b, i) => {
                     const isHovered = hovered === i;
                     const eventPct = axisMax > 0 ? (b.eventGrossCents / axisMax) * 100 : 0;
@@ -161,7 +182,7 @@ export default function TotalSalesChart({ dailyRevenue, t }) {
                         aria-label={`${b.tooltipLabel}: ${centsToUsd(b.totalGrossCents)} total (${centsToUsd(b.eventGrossCents)} TicketTailor, ${centsToUsd(b.posRevenueCents)} SpotOn)`}
                       >
                         <div
-                          className="w-full rounded-t-[2px] overflow-hidden transition-opacity"
+                          className={`w-full overflow-hidden transition-opacity ${dense ? 'rounded-t-[1px]' : 'rounded-t-[2px]'}`}
                           style={{
                             height: isEmpty ? '1px' : `max(${eventPct + posPct}%, 2px)`,
                             background: isEmpty ? t.rowBorder : undefined,
@@ -196,13 +217,15 @@ export default function TotalSalesChart({ dailyRevenue, t }) {
                 </div>
               </div>
 
-              <div className="flex gap-[2px] mt-1.5">
-                {buckets.map((b, i) => (
-                  <div key={b.key} className="flex-1 min-w-0 text-[9px] text-center leading-tight truncate" style={{ color: t.faint }} title={b.tooltipLabel}>
-                    {i % labelEvery === 0 ? b.label : ''}
-                  </div>
-                ))}
-              </div>
+              {!dense && (
+                <div className="flex gap-[2px] mt-1.5">
+                  {buckets.map((b, i) => (
+                    <div key={b.key} className="flex-1 min-w-0 text-[9px] text-center leading-tight truncate" style={{ color: t.faint }} title={b.tooltipLabel}>
+                      {i % labelEvery === 0 ? b.label : ''}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

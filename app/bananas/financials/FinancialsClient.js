@@ -272,7 +272,7 @@ export default function FinancialsClient({ entries, performanceRows, totals, sal
         tracked yet.
       </p>
 
-      <TotalSalesChart dailyRevenue={dailyRevenue} t={t} />
+      <TotalSalesChart dailyRevenue={dailyRevenue} todayIso={todayIso} t={t} />
 
       <TicketTailorSalesChart series={salesSeries} t={t} />
 
