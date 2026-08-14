@@ -6,6 +6,7 @@ import { isSameOrigin } from '@/lib/manual-income';
 import { ACCOUNT_NAMES } from '@/lib/financial-ledger';
 import {
   MAX_CSV_BYTES,
+  SPOTON_IMPORT_BUCKET,
   buildPreview,
   buildSpotOnLedgerRows,
   mapSpotOnRows,
@@ -19,11 +20,13 @@ import { writeLedgerRows } from '@/lib/financial-ledger-write';
 
 export const runtime = 'nodejs';
 
-// OWNER-ONLY manual SpotOn POS CSV import, in two steps.
+// OWNER-ONLY manual SpotOn POS CSV import, in two steps (plus a 0th step in
+// the sibling upload-url route for large files).
 //
-//   POST  (multipart: file)                       -> parse + preview, store a 'pending' batch
-//   PATCH ({ batchId, mapping, aggregation })     -> re-derive from the STORED rows, write the ledger
-//   DELETE ({ batchId })                          -> discard a pending batch
+//   upload-url POST ({})                           -> mint a signed Supabase Storage upload URL
+//   POST  ({ storagePath, filename })              -> download from Storage, parse + preview, store a 'pending' batch
+//   PATCH ({ batchId, mapping, aggregation })      -> re-derive from the STORED rows, write the ledger
+//   DELETE ({ batchId })                           -> discard a pending batch
 //
 // Why two steps with server-side storage in between: the confirm step must not
 // trust anything the browser computed. It reloads the raw rows this server
@@ -62,53 +65,67 @@ async function readJson(request) {
   }
 }
 
-// Step 1 — upload. Parses the file, stores the parsed rows as a pending batch,
-// and returns a preview plus a suggested mapping. Nothing lands in the ledger.
+// Step 1 — upload. The browser has already put the raw CSV bytes directly
+// into Supabase Storage (see the upload-url sub-route) using a signed upload
+// URL, so this request body is just { storagePath, filename }: tiny JSON,
+// nowhere near Vercel's ~4.5MB serverless function body limit that a large
+// CSV would otherwise hit. This route downloads the object itself — a
+// server-to-Supabase fetch, not a client request body, so the platform limit
+// doesn't apply — parses it, stores the parsed rows as a pending batch, and
+// returns a preview plus a suggested mapping. Nothing lands in the ledger
+// yet. The temp storage object is deleted once it's been read, whether that
+// read succeeds or fails.
 export async function POST(request) {
+  let supabase;
+  let storagePath;
   try {
     const g = await guard(request);
     if (g.error) return g.error;
 
-    let form;
-    try {
-      form = await request.formData();
-    } catch {
-      return NextResponse.json({ error: 'Expected a multipart form upload.' }, { status: 400 });
+    const body = await readJson(request);
+    if (!body) return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 });
+
+    storagePath = String(body.storagePath || '').trim();
+    if (!storagePath) return NextResponse.json({ error: 'A storagePath is required.' }, { status: 400 });
+    // Uploads are written under "<ownerId>/<uuid>.csv" by the upload-url
+    // route; reject anything else so this can't be pointed at an arbitrary
+    // object elsewhere in the bucket.
+    if (!/^[0-9a-f-]{36}\/[0-9a-f-]{36}\.csv$/i.test(storagePath)) {
+      return NextResponse.json({ error: 'Invalid storage path.' }, { status: 400 });
     }
 
-    const file = form.get('file');
-    if (!file || typeof file === 'string') {
-      return NextResponse.json({ error: 'No file was uploaded.' }, { status: 400 });
-    }
-    const filename = String(file.name || 'upload.csv').slice(0, 300);
+    const filename = String(body.filename || 'upload.csv').slice(0, 300);
     if (!/\.csv$/i.test(filename)) {
       return NextResponse.json({ error: 'Only .csv files can be imported.' }, { status: 415 });
     }
-    if (!ALLOWED_MIME.has(String(file.type || ''))) {
-      return NextResponse.json({ error: `Unsupported file type "${file.type}".` }, { status: 415 });
+
+    supabase = createAdminClient();
+    const { data: fileObj, error: downloadError } = await supabase.storage
+      .from(SPOTON_IMPORT_BUCKET)
+      .download(storagePath);
+    if (downloadError) {
+      return NextResponse.json({ error: `Could not read the uploaded file: ${downloadError.message}` }, { status: 422 });
     }
-    if (file.size > MAX_CSV_BYTES) {
+
+    const bytes = Buffer.from(await fileObj.arrayBuffer());
+    if (bytes.byteLength > MAX_CSV_BYTES) {
       return NextResponse.json(
         { error: `The file is larger than ${Math.round(MAX_CSV_BYTES / (1024 * 1024))}MB.` },
         { status: 413 },
       );
     }
-
-    const bytes = Buffer.from(await file.arrayBuffer());
-    // Re-check after reading: file.size is client-reported metadata.
-    if (bytes.byteLength > MAX_CSV_BYTES) {
-      return NextResponse.json({ error: 'The file is too large.' }, { status: 413 });
+    if (fileObj.type && !ALLOWED_MIME.has(String(fileObj.type))) {
+      return NextResponse.json({ error: `Unsupported file type "${fileObj.type}".` }, { status: 415 });
     }
+
     const fileHash = createHash('sha256').update(bytes).digest('hex');
-    // Strip a UTF-8 BOM so the first header name is not "﻿Date".
-    const text = bytes.toString('utf8').replace(/^﻿/, '');
+    // Strip a UTF-8 BOM so the first header name is not "\ufeffDate".
+    const text = bytes.toString('utf8').replace(/^\uFEFF/, '');
 
     const preview = buildPreview(text);
     if (preview.error) {
       return NextResponse.json({ error: preview.error }, { status: 422 });
     }
-
-    const supabase = createAdminClient();
 
     // Duplicate guard: warn (do not block) if this exact file was already
     // imported. The admin can still force it through on confirm — a genuine
@@ -157,10 +174,16 @@ export async function POST(request) {
   } catch (err) {
     console.error('spoton-import POST error:', err);
     return NextResponse.json({ error: 'Server error: ' + (err?.message || 'unknown') }, { status: 500 });
+  } finally {
+    // Best-effort cleanup: the staged object in Storage was only ever meant
+    // to survive long enough for this request to read it. Its rows now live
+    // (or failed to land) in spoton_import_batches, so the temp file is done.
+    if (supabase && storagePath) {
+      supabase.storage.from(SPOTON_IMPORT_BUCKET).remove([storagePath]).catch(() => {});
+    }
   }
 }
 
-// Step 2 — confirm. Everything is recomputed from the stored rows.
 export async function PATCH(request) {
   try {
     const g = await guard(request);
