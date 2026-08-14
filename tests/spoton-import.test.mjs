@@ -93,6 +93,17 @@ test('parseSpotOnDate reads a calendar date without going through an instant', (
   assert.equal(parseSpotOnDate('whenever'), null);
 });
 
+test("parseSpotOnDate reads SpotOn's bare YYYYMMDD Business Date format", () => {
+  // The item-level "Order Item List View" export's own Business Date column
+  // ships with no separators at all — distinct from that same export's
+  // hyphenated "Added Date" column.
+  assert.equal(parseSpotOnDate('20260809'), '2026-08-09');
+  assert.equal(parseSpotOnDate('20260227'), '2026-02-27');
+  // An 8-digit string is never mistaken for a valid calendar date just
+  // because it matches the shape — nonsense stays nonsense.
+  assert.equal(parseSpotOnDate('20261399'), null);
+});
+
 // --- Mapping ----------------------------------------------------------------
 
 test('suggestMapping proposes a mapping and claims each column once', () => {
