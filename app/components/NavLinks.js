@@ -14,6 +14,7 @@ const links = [
     dropdown: [
       { href: '/collaborate/djs', label: 'DJs' },
       { href: '/collaborate/artists', label: 'Artists' },
+      { href: '/collaborate/internship', label: 'Internship' },
     ],
   },
 ];
