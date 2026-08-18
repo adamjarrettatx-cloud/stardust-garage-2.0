@@ -5,6 +5,7 @@ const navLinks = [
   { label: 'Venue Rental', href: '/venue-rental' },
   { label: 'DJs', href: '/collaborate/djs' },
   { label: 'Artists', href: '/collaborate/artists' },
+  { label: 'Internship', href: '/collaborate/internship' },
   { label: 'Member Login', href: '/login' },
 ];
 
