@@ -19,6 +19,7 @@ function formatDate(iso) {
 const ROLE_LABELS = {
   djs: 'DJ',
   artists: 'ARTIST',
+  internship: 'INTERNSHIP',
 };
 
 export default function CollaborationsList({ collabs }) {
