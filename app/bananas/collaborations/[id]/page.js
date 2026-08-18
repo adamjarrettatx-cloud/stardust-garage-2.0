@@ -20,6 +20,7 @@ export const revalidate = 0;
 const ROLE_LABELS = {
   'djs': 'DJ',
   'artists': 'ARTIST',
+  'internship': 'INTERNSHIP',
 };
 
 function formatDate(iso) {
