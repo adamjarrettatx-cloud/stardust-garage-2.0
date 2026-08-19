@@ -3,12 +3,13 @@
 import { useMemo } from 'react';
 import Link from 'next/link';
 import { formatMoney } from '@/lib/studio-helpers';
-import { contactStatusLabel } from '@/lib/contact-helpers';
+import { contactStatusLabel, isContractorContact } from '@/lib/contact-helpers';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import ContactForm from '../ContactForm';
 import { ContactStatusBadge, ContactTypeBadges } from '../ContactBadges';
 import DeleteContactButton from './DeleteContactButton';
 import InvitePartnerButton from './InvitePartnerButton';
+import TaxProfileSection from './TaxProfileSection';
 
 const KIND_LABELS = {
   event: 'EVENT',
@@ -100,6 +101,7 @@ export default function ContactDetailClient({
   contact,
   isAdmin,
   partnerProfile,
+  taxProfile,
   events,
   contracts,
   venueInquiries,
@@ -107,6 +109,7 @@ export default function ContactDetailClient({
   microParties,
   audit,
 }) {
+  const isContractor = isContractorContact(contact.contact_type);
   const timeline = useMemo(() => {
     const items = [
       ...events.map((e) => ({
@@ -183,6 +186,36 @@ export default function ContactDetailClient({
         Added {formatDateTime(contact.created_at)} · last updated {formatDateTime(contact.updated_at)}
       </p>
 
+      {/* NO-W9 WARNING BANNER — page-level so it can't be missed. Only shown for
+          admins viewing a DJ/artist/performer contact that doesn't have a W9 on
+          file yet. A W9 isn't required to run the pay-request flow, but it's
+          required to correctly issue a 1099-NEC at year-end — catching this on
+          the contact page (before we cut a payment) is cheaper than chasing
+          contractors down in January. */}
+      {isAdmin && isContractor && !taxProfile?.w9_on_file && (
+        <div
+          className="mb-10 rounded-[12px] px-5 py-4 border flex items-start gap-3"
+          style={{
+            background: 'var(--auth-warn-bg)',
+            borderColor: 'var(--auth-warn-border)',
+            color: 'var(--auth-warn)',
+          }}
+          role="alert"
+        >
+          <span aria-hidden="true" className="text-[16px] leading-none mt-0.5">⚠</span>
+          <div className="text-[13px] leading-[1.55]">
+            <div className="font-semibold tracking-[0.02em] mb-1">
+              No W9 on file for this contractor.
+            </div>
+            <div>
+              Upload a signed W9 in the Tax Profile section below before year-end so
+              this contact can receive a 1099-NEC. Not required to approve or send a
+              pay request — required to issue their 1099.
+            </div>
+          </div>
+        </div>
+      )}
+
       <ContactForm contact={contact} />
 
       {/* PARTNER ACCESS — directly under the form's saved email field, because
@@ -197,8 +230,15 @@ export default function ContactDetailClient({
             contactId={contact.id}
             email={contact.email}
             partnerProfile={partnerProfile}
+            isContractor={isContractor}
           />
         </section>
+      )}
+
+      {/* TAX PROFILE — DJs/artists/performers get paid as 1099 contractors, so we
+          track W9-on-file status here. Admin-only, mirrors Partner Access. */}
+      {isAdmin && isContractor && (
+        <TaxProfileSection contactId={contact.id} displayName={contact.display_name} taxProfile={taxProfile} />
       )}
 
       {/* LINKED ACTIVITY — auto-populated from anything carrying this contact_id.

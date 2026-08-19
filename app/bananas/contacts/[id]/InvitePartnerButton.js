@@ -18,7 +18,7 @@ function formatDateTime(iso) {
 // login for this contact, so it is admin-only (the route re-checks) and is
 // replaced by a status line the moment a partner_profiles row exists — one
 // partner account per contact, and re-sending is not a thing we need yet.
-export default function InvitePartnerButton({ contactId, email, partnerProfile }) {
+export default function InvitePartnerButton({ contactId, email, partnerProfile, isContractor = false }) {
   const router = useRouter();
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
@@ -88,7 +88,9 @@ export default function InvitePartnerButton({ contactId, email, partnerProfile }
 
       <p className="text-[12px] mt-3" style={{ color: 'var(--auth-muted)' }}>
         {email
-          ? `Emails ${email} a one-time link to verify their address, add a photo and get a guest list login. They get no admin, team or member access.`
+          ? isContractor
+            ? `Emails ${email} a one-time link to verify their address and add a photo. Once activated they can see the events they're booked for and request payment after a set. They get no admin, team or member access.`
+            : `Emails ${email} a one-time link to verify their address, add a photo and get a guest list login. They get no admin, team or member access.`
           : 'Save an email address on this contact first — the invite is sent to the email on file.'}
       </p>
 

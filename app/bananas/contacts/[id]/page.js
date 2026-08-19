@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { requireTeam } from '@/lib/auth-helpers';
 import ContactDetailClient from './ContactDetailClient';
+import { isContractorContact } from '@/lib/contact-helpers';
 
 export const revalidate = 0;
 
@@ -30,6 +31,19 @@ export default async function ContactDetailPage({ params }) {
         await supabase
           .from('partner_profiles')
           .select('id, is_active, invited_at, activated_at')
+          .eq('contact_id', id)
+          .maybeSingle()
+      ).data
+    : null;
+
+  // Same admin gate as partner_profiles above, and only fetched at all for
+  // contractor-type contacts (DJ/artist/performer) since that's the only place
+  // the tax profile section renders.
+  const taxProfile = isAdmin && isContractorContact(contact.contact_type)
+    ? (
+        await supabase
+          .from('contact_tax_profiles')
+          .select('id, contact_id, entity_type, w9_on_file, w9_document_id, w9_received_at, notes, updated_at')
           .eq('contact_id', id)
           .maybeSingle()
       ).data
@@ -75,6 +89,7 @@ export default async function ContactDetailPage({ params }) {
         contact={contact}
         isAdmin={isAdmin}
         partnerProfile={partnerProfile}
+        taxProfile={taxProfile}
         events={events.data || []}
         contracts={contracts.data || []}
         venueInquiries={venueInquiries.data || []}
