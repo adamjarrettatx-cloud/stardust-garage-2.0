@@ -62,7 +62,7 @@ export default function EventContactFields({ isSdgOnly, onSdgOnlyChange, contact
             value={contactId}
             onChange={onContactIdChange}
             required
-            hint="Required for any event with an outside partner."
+            hint="Required for any event with an outside organizer, collective, promoter, or venue renter."
           />
         </div>
       )}

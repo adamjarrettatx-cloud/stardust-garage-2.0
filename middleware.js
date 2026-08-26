@@ -12,9 +12,11 @@ export async function middleware(request) {
   // /capacity/admin sub-route additionally requires admin (re-checked on the
   // page via requireAdmin); here we enforce at least the team gate.
   const isCapacityRoute = pathname === '/capacity' || pathname.startsWith('/capacity/');
-  // Partner pages (promoters/collectives/vendors managing their guest list) are
-  // gated on partner_profiles.is_active, not on team_members at all.
-  const isPartnerRoute = pathname === '/partner' || pathname.startsWith('/partner/');
+  // Portal pages (DJs, collectives, promoters, vendors, etc. managing their
+  // guest list or requesting pay) are gated on partner_profiles.is_active, not
+  // on team_members at all. Called "partner" internally (see partner_profiles);
+  // "portal" is the user-facing name.
+  const isPartnerRoute = pathname === '/portal' || pathname.startsWith('/portal/');
 
   if (!isAdminRoute && !isTeamRoute && !isMemberRoute && !isCapacityRoute && !isPartnerRoute) {
     return NextResponse.next();
@@ -25,27 +27,27 @@ export async function middleware(request) {
     return NextResponse.next();
   }
 
-  // Three partner routes are reachable logged out, for the same underlying
-  // reason: they are how a partner GETS a session, so gating them on one would
-  // bounce every arrival to /login.
+  // Three portal routes are reachable logged out, for the same underlying
+  // reason: they are how a portal user GETS a session, so gating them on one
+  // would bounce every arrival to /login.
   //
-  //   /partner/activate    — the invite email lands here carrying a single-use
+  //   /portal/activate    — the invite email lands here carrying a single-use
   //     ?token_hash=, which the browser client redeems for a session. The page
   //     waits for that, then resolves the invite via
-  //     /api/partner/resolve-identity and offers the sign-in buttons if the
+  //     /api/portal/resolve-identity and offers the sign-in buttons if the
   //     link was already used.
-  //   /partner/login       — where a returning partner signs in. Partners have
+  //   /portal/login       — where a returning portal user signs in. They have
   //     no password, so the unified /login is no use to them.
-  //   /partner/auth/callback — where Google returns after OAuth. The session
+  //   /portal/auth/callback — where Google returns after OAuth. The session
   //     does not exist until this route exchanges the code, and the route does
   //     its own gating: an account with no matching invite is signed straight
   //     back out.
   //
   // Same relaxation shape as the door-device pages below.
   if (
-    pathname === '/partner/activate' ||
-    pathname === '/partner/login' ||
-    pathname === '/partner/auth/callback'
+    pathname === '/portal/activate' ||
+    pathname === '/portal/login' ||
+    pathname === '/portal/auth/callback'
   ) {
     return NextResponse.next();
   }
@@ -100,13 +102,13 @@ export async function middleware(request) {
   // Not logged in -> bounce to the unified login, with a next= param so the
   // login page can send them back to where they were headed after sign-in.
   //
-  // Except under /partner/*: that login is password-based and partners never
-  // get a password, so sending them there is a dead end. They go to the
+  // Except under /portal/*: that login is password-based and portal users
+  // never get a password, so sending them there is a dead end. They go to the
   // Google / magic-link page instead.
   if (!user) {
     const url = request.nextUrl.clone();
     const originalPath = pathname + (request.nextUrl.search || '');
-    url.pathname = isPartnerRoute ? '/partner/login' : '/login';
+    url.pathname = isPartnerRoute ? '/portal/login' : '/login';
     url.search = '';
     if (!isPartnerRoute) url.searchParams.set('next', originalPath);
     return NextResponse.redirect(url);
@@ -133,8 +135,8 @@ export async function middleware(request) {
   // the anon key.
   let isActivePartner = false;
   // Distinct from isActivePartner: someone who has been invited but hasn't
-  // confirmed their name and photo yet. They belong on /partner/activate, not
-  // bounced off the partner area as a stranger.
+  // confirmed their name and photo yet. They belong on /portal/activate, not
+  // bounced off the portal area as a stranger.
   let isInvitedPartner = false;
   if (!isAdmin && teamRole !== 'team') {
     const { data: partner } = await supabase
@@ -151,17 +153,17 @@ export async function middleware(request) {
   // dashboard.
   if (isActivePartner && !isPartnerRoute) {
     const url = request.nextUrl.clone();
-    url.pathname = '/partner';
+    url.pathname = '/portal';
     url.search = '';
     return NextResponse.redirect(url);
   }
 
-  // /partner/* requires an ACTIVE partner profile. An invited partner who never
+  // /portal/* requires an ACTIVE partner profile. An invited partner who never
   // finished setup is sent to do that; everyone else — admins, team, members —
   // goes to the public home page, the mirror image of the rule above.
   if (isPartnerRoute && !isActivePartner) {
     const url = request.nextUrl.clone();
-    url.pathname = isInvitedPartner ? '/partner/activate' : '/';
+    url.pathname = isInvitedPartner ? '/portal/activate' : '/';
     url.search = '';
     return NextResponse.redirect(url);
   }

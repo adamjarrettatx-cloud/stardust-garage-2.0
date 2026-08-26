@@ -13,6 +13,15 @@ const nextConfig = {
       // as before (no auth relaxation here; these are pure path aliases).
       { source: '/c/f', destination: '/capacity/front-door', permanent: false },
       { source: '/c/e', destination: '/capacity/exit-door', permanent: false },
+
+      // Partner → Portal rename. The URL namespace moved from /partner/* to
+      // /portal/* so it is role-agnostic (a contact can be a DJ AND a promoter,
+      // and "partner" was internal dev-speak that leaked into the UI). 308
+      // permanent so cached bookmarks, saved links in invite emails already in
+      // people's inboxes, and any browser autocomplete still resolve. Keep this
+      // in place for at least 90 days before removing.
+      { source: '/partner', destination: '/portal', permanent: true },
+      { source: '/partner/:path*', destination: '/portal/:path*', permanent: true },
     ];
   },
 };

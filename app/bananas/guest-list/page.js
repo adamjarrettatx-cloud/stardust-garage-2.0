@@ -61,7 +61,7 @@ function EventRow({ row }) {
         </span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <Stat label="PARTNERS" value={row.partners} />
+        <Stat label="HOSTS" value={row.partners} />
         <Stat
           label="SLOTS ALLOCATED"
           value={allocated}
@@ -127,7 +127,7 @@ export default async function GuestListSummaryPage() {
         backHref="/bananas"
         backLabel="← BACK TO ADMIN"
         title="Guest List"
-        description="Every event with a guest list allocation. Slots are what partners may spend; used counts names they've added (no-shows free their slot back up). Open an event to see the per-partner breakdown."
+        description="Every event with a guest list allocation. Slots are what your hosts may spend; used counts names they've added (no-shows free their slot back up). Open an event to see the per-host breakdown."
         titleClassName="text-[32px] font-extrabold -tracking-[0.02em] leading-[1.1]"
         className="mb-10"
       />

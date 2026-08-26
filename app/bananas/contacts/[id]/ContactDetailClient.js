@@ -218,17 +218,18 @@ export default function ContactDetailClient({
 
       <ContactForm contact={contact} />
 
-      {/* PARTNER ACCESS — directly under the form's saved email field, because
+      {/* PORTAL ACCESS — directly under the form's saved email field, because
           the email on file is what the invite is sent to. Admin-only: this
           creates a login. */}
       {isAdmin && (
         <section className="rounded-[14px] p-6 border mt-4" style={sectionStyle}>
           <h2 className={sectionHeadingClass} style={sectionHeadingStyle}>
-            PARTNER ACCESS
+            PORTAL ACCESS
           </h2>
           <InvitePartnerButton
             contactId={contact.id}
             email={contact.email}
+            contactType={contact.contact_type}
             partnerProfile={partnerProfile}
             isContractor={isContractor}
           />

@@ -82,7 +82,7 @@ export async function GET(request) {
       guest_profile_id: entry.guest_profile_id,
       // Who put them on the list — the disambiguator when two partners both
       // added a "Chris".
-      partner_name: namesByContact.get(grant?.contact_id) || 'Unknown partner',
+      partner_name: namesByContact.get(grant?.contact_id) || 'Unknown host',
       discount_detail: grant?.discount_detail || null,
     };
   });

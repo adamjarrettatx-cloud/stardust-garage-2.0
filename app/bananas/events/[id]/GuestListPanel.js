@@ -56,7 +56,7 @@ function PartnerState({ grant }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Badge color="var(--auth-warn)" bg="var(--auth-warn-bg)" border="var(--auth-warn-border)">
-        {grant.partner ? 'INVITE PENDING' : 'NO PARTNER LOGIN'}
+        {grant.partner ? 'INVITE PENDING' : 'NO PORTAL LOGIN'}
       </Badge>
       <span className="text-[11px]" style={{ color: 'var(--auth-warn-strong)' }}>
         {grant.partner
