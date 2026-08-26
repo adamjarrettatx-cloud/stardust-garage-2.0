@@ -164,14 +164,14 @@ test('buildPartnerActivationUrl points at the given site, not at Supabase', () =
   );
   assert.equal(
     url,
-    'https://stardust-garage-2-0-git-branch.vercel.app/partner/activate?token_hash=abc123&type=magiclink'
+    'https://stardust-garage-2-0-git-branch.vercel.app/portal/activate?token_hash=abc123&type=magiclink'
   );
 });
 
 test('buildPartnerActivationUrl tolerates a trailing slash and escapes the token', () => {
   assert.equal(
     buildPartnerActivationUrl('https://sdgatx.com/', 'a+b/c='),
-    'https://sdgatx.com/partner/activate?token_hash=a%2Bb%2Fc%3D&type=magiclink'
+    'https://sdgatx.com/portal/activate?token_hash=a%2Bb%2Fc%3D&type=magiclink'
   );
 });
 

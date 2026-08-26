@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { auditContact, contactTypeLabel, isContractorContact } from '@/lib/contact-helpers';
+import { roleLabel } from '@/lib/role-label';
 import { buildPartnerActivationUrl } from '@/lib/partner-identity';
 import { resolveSiteUrl } from '@/lib/site-url';
 import { sendPartnerInvite } from '@/lib/email';
@@ -13,7 +14,7 @@ export const runtime = 'nodejs';
 //
 // Turns a Contact into a Partner: creates (or reuses) a Supabase auth user for
 // the email on file, opens a pending partner_profiles row, and emails them a
-// one-time magic link that lands on /partner/activate where they confirm their
+// one-time magic link that lands on /portal/activate where they confirm their
 // name and upload the photo door staff will see.
 //
 // Provisioning mirrors /api/admin/approve-member: service-role client, dedupe
@@ -141,14 +142,15 @@ export async function POST(request) {
       resolveSiteUrl(request),
       link.properties.hashed_token
     );
-    const contactType = (contact.contact_type || []).map(contactTypeLabel).join(', ');
+    const contactTypeDisplay = (contact.contact_type || []).map(contactTypeLabel).join(', ');
+    const role = roleLabel(contact.contact_type);
 
     // A failed send must not lose the invite: the profile row already exists, so
     // hand the link back to the admin to pass along instead of rolling back.
     let emailSent = true;
     let emailError = null;
     try {
-      await sendPartnerInvite({ email, fullName, contactType, activationUrl, isContractor });
+      await sendPartnerInvite({ email, fullName, role, contactTypeDisplay, activationUrl, isContractor });
     } catch (err) {
       emailSent = false;
       emailError = err?.message || String(err);

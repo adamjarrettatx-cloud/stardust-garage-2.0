@@ -61,9 +61,9 @@ function formatEventDate(dateString) {
 }
 
 function partnerState(grant) {
-  if (grant.partner?.is_active) return { label: 'PARTNER ACTIVE', color: 'var(--auth-success)' };
+  if (grant.partner?.is_active) return { label: 'HOST ACTIVE', color: 'var(--auth-success)' };
   if (grant.partner) return { label: 'INVITE PENDING', color: 'var(--auth-warn)' };
-  return { label: 'NO PARTNER LOGIN', color: 'var(--auth-warn)' };
+  return { label: 'NO PORTAL LOGIN', color: 'var(--auth-warn)' };
 }
 
 function Stat({ label, value, hint = null }) {
@@ -224,7 +224,7 @@ export default async function EventGuestListPage({ params }) {
         className="rounded-[12px] border p-5 mb-8 grid grid-cols-2 sm:grid-cols-4 gap-4"
         style={{ background: 'var(--auth-card-bg-alt)', borderColor: 'var(--auth-card-border)' }}
       >
-        <Stat label="PARTNERS" value={totals.partners} />
+        <Stat label="HOSTS" value={totals.partners} />
         <Stat
           label="SLOTS ALLOCATED"
           value={totals.free_slots + totals.discount_slots}

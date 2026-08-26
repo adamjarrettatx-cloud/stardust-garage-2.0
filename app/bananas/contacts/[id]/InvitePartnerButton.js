@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { roleLabel } from '@/lib/role-label';
 
 function formatDateTime(iso) {
   if (!iso) return '—';
@@ -18,7 +19,9 @@ function formatDateTime(iso) {
 // login for this contact, so it is admin-only (the route re-checks) and is
 // replaced by a status line the moment a partner_profiles row exists — one
 // partner account per contact, and re-sending is not a thing we need yet.
-export default function InvitePartnerButton({ contactId, email, partnerProfile, isContractor = false }) {
+export default function InvitePartnerButton({ contactId, email, contactType, partnerProfile, isContractor = false }) {
+  const role = roleLabel(contactType);
+  const roleUpper = role.toUpperCase();
   const router = useRouter();
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
@@ -65,7 +68,7 @@ export default function InvitePartnerButton({ contactId, email, partnerProfile, 
                 }
           }
         >
-          {partnerProfile.is_active ? 'PARTNER PROFILE ACTIVE' : 'INVITED — PENDING ACTIVATION'}
+          {partnerProfile.is_active ? `${roleUpper} PROFILE ACTIVE` : 'INVITED — PENDING ACTIVATION'}
         </span>
         {partnerProfile.is_active
           ? `Activated ${formatDateTime(partnerProfile.activated_at)}`
@@ -83,7 +86,7 @@ export default function InvitePartnerButton({ contactId, email, partnerProfile, 
         className="px-5 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5 disabled:opacity-40"
         style={{ borderColor: 'var(--auth-card-border-strong)', color: 'var(--auth-text)' }}
       >
-        {sending ? 'SENDING INVITE...' : 'INVITE TO VERIFY AND CREATE THEIR PROFILE'}
+        {sending ? 'SENDING INVITE...' : `INVITE THIS ${roleUpper}`}
       </button>
 
       <p className="text-[12px] mt-3" style={{ color: 'var(--auth-muted)' }}>
@@ -104,7 +107,7 @@ export default function InvitePartnerButton({ contactId, email, partnerProfile, 
         <p className="text-[13px] mt-3" style={{ color: 'var(--auth-muted-strong)' }}>
           {result.emailSent
             ? 'Invite sent.'
-            : 'Partner profile created, but the invite email failed to send. Send them this link directly:'}
+            : `${role} profile created, but the invite email failed to send. Send them this link directly:`}
           {result.activationUrl && (
             <span className="block mt-2 break-all text-[12px]" style={{ color: 'var(--auth-text)' }}>
               {result.activationUrl}

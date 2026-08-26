@@ -15,7 +15,7 @@ export const runtime = 'nodejs';
 // a supabase.co URL in the recipient's inbox, and exactly the kind of
 // provider-branded link this route exists to avoid.
 //
-// Same shape as /api/partner/request-signin-link: we still generate the
+// Same shape as /api/portal/request-signin-link: we still generate the
 // token with generateLink() and still deliver through Resend, we just mint
 // our own /reset-password?token_hash=... link (see buildPasswordResetUrl)
 // and redeem it ourselves via verifyOtp on the client.
