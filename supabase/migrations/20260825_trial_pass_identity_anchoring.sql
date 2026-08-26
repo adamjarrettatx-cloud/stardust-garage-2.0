@@ -74,12 +74,14 @@ ALTER TABLE public.trial_passes
 -- 2. Swap the lower(email) unique index for one on email_canonical
 -- ---------------------------------------------------------------------------
 
--- The 20260819 migration created `trial_passes_email_lower_idx` as a partial
--- unique index on lower(email) WHERE email IS NOT NULL. That still works, but
--- with a canonical column present the create route wants to look up by
--- canonical to catch dot/plus tricks, and having two overlapping unique
--- indexes wastes writes and confuses insert-conflict logic.
+-- The 20260819 migration created `trial_passes_email_key` as a unique index
+-- on lower(email). That still works, but with a canonical column present the
+-- create route wants to look up by canonical to catch dot/plus tricks, and
+-- having two overlapping unique indexes wastes writes and confuses
+-- insert-conflict logic. Drop both possible historical names in case an
+-- earlier draft of this migration ran against a dev db.
 
+DROP INDEX IF EXISTS public.trial_passes_email_key;
 DROP INDEX IF EXISTS public.trial_passes_email_lower_idx;
 
 CREATE UNIQUE INDEX IF NOT EXISTS trial_passes_email_canonical_idx
