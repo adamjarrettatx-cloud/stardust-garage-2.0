@@ -8,6 +8,7 @@ import {
   TRIAL_WINDOW_DAYS,
   addDays,
   buildPassUrl,
+  canonicalizeEmail,
   daysRemaining,
   daysSinceIssued,
   effectiveExpiry,
@@ -165,7 +166,49 @@ test('the three-question form accepts a normal guest and normalizes them', () =>
     full_name: 'Jane Q Doe',
     phone: '+15125550134',
     email: 'jane.doe@example.com',
+    email_canonical: 'jane.doe@example.com',
   });
+});
+
+// --- Email canonicalization -------------------------------------------------
+//
+// email_canonical is the actual dedupe key. If this drifts out of lockstep
+// with the generated column SQL in 20260825_trial_pass_identity_anchoring.sql,
+// the unique index stops catching what the JS thinks it caught. These are the
+// abuse cases we know about: Gmail dot-trick, plus-tag, googlemail alias.
+
+test('canonicalizeEmail collapses the Gmail dot-trick', () => {
+  assert.equal(canonicalizeEmail('jane.doe@gmail.com'), 'janedoe@gmail.com');
+  assert.equal(canonicalizeEmail('j.a.n.e.d.o.e@gmail.com'), 'janedoe@gmail.com');
+  assert.equal(canonicalizeEmail('JaneDoe@GMail.com'), 'janedoe@gmail.com');
+});
+
+test('canonicalizeEmail strips +tags from any provider', () => {
+  assert.equal(canonicalizeEmail('jane+trial@gmail.com'), 'jane@gmail.com');
+  assert.equal(canonicalizeEmail('jane.doe+trial+again@gmail.com'), 'janedoe@gmail.com');
+  assert.equal(canonicalizeEmail('jane+123@example.com'), 'jane@example.com');
+  assert.equal(canonicalizeEmail('jane+foo@yahoo.com'), 'jane@yahoo.com');
+});
+
+test('canonicalizeEmail treats googlemail.com as gmail.com', () => {
+  assert.equal(canonicalizeEmail('jane.doe@googlemail.com'), 'janedoe@gmail.com');
+  assert.equal(canonicalizeEmail('jane+trial@googlemail.com'), 'jane@gmail.com');
+});
+
+test('canonicalizeEmail leaves non-Gmail providers otherwise alone', () => {
+  // Dots in a non-Gmail local part are a real difference — jane.doe@icloud.com
+  // and janedoe@icloud.com are two different inboxes.
+  assert.equal(canonicalizeEmail('jane.doe@icloud.com'), 'jane.doe@icloud.com');
+  assert.equal(canonicalizeEmail('Jane.Doe@Icloud.COM'), 'jane.doe@icloud.com');
+  assert.equal(canonicalizeEmail('jane@fastmail.com'), 'jane@fastmail.com');
+});
+
+test('canonicalizeEmail returns empty for empty and does not crash on junk', () => {
+  assert.equal(canonicalizeEmail(''), '');
+  assert.equal(canonicalizeEmail(null), '');
+  assert.equal(canonicalizeEmail(undefined), '');
+  // No @ — return the trimmed lowercase input rather than throwing.
+  assert.equal(canonicalizeEmail('not-an-email'), 'not-an-email');
 });
 
 test('each missing or malformed field names itself', () => {
