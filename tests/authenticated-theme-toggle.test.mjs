@@ -117,10 +117,10 @@ test('authenticated route shell wraps themed routes in one shared content frame 
 
 test('representative authenticated routes render inline headers and avoid navbar-shell toggle markup', () => {
   const representativeFiles = [
-    // The admin dashboard's header moved into app/bananas/layout.js so it
-    // persists across navigation between admin pages; page.js is now only the
-    // events list that sits below the tile grid.
-    'app/bananas/layout.js',
+    // The admin dashboard's header lives in the shell (AdminShell.js) so it
+    // persists across navigation between admin pages, and is now shared with
+    // the /team routes that appear as tiles. page.js is only the events list.
+    'app/bananas/AdminShell.js',
     'app/bananas/applications/page.js',
     'app/bananas/documents/page.js',
     'app/bananas/events/[id]/financials/page.js',

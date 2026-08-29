@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { linkedEventHref } from '@/lib/linked-event-link';
 import TeamEventModal from '@/app/bananas/calendar/TeamEventModal';
 import AuthenticatedThemeToggleControl from '@/app/components/AuthenticatedThemeToggleControl';
+import { useInAdminShell } from '@/app/components/AdminShellContext';
 import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -243,15 +244,20 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
   // Selected day detail
   const selectedEvents = selectedDay ? getEventsForDate(selectedDay) : null;
 
+  // Inside the admin shell the container, header and the way back already
+  // exist; rendering our own would duplicate all three.
+  const inShell = useInAdminShell();
+  const Frame = inShell ? 'div' : 'main';
+
   return (
-    <main
-      className="px-6 py-12 transition-colors duration-150"
+    <Frame
+      className={inShell ? 'transition-colors duration-150' : 'px-6 py-12 transition-colors duration-150'}
       style={{ color: t.text }}
     >
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
         <div>
-          {isAdmin && (
+          {isAdmin && !inShell && (
             <Link
               href="/bananas"
               className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-3 transition-opacity hover:opacity-70"
@@ -261,7 +267,7 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
             </Link>
           )}
           <h1
-            className="text-[36px] font-extrabold -tracking-[0.02em] leading-[1.1]"
+            className={`font-extrabold -tracking-[0.02em] leading-[1.15] ${inShell ? 'text-[30px]' : 'text-[36px]'}`}
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.textStrong }}
           >
             Team Calendar
@@ -722,6 +728,6 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
           onClose={() => setModalState(null)}
         />
       )}
-    </main>
+    </Frame>
   );
 }

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import AuthenticatedThemeToggleControl from '@/app/components/AuthenticatedThemeToggleControl';
 import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
+import { useInAdminShell } from '@/app/components/AdminShellContext';
 import {
   channelDisplayName,
   unreadCountByChannel,
@@ -458,16 +459,31 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
     return map;
   }, [channels, roster, currentUserId]);
 
+  // Inside the admin shell the surrounding container, the "Admin" header, the
+  // sign-out button and the way back all already exist. Rendering our own would
+  // stack two headers and two sign-out buttons on one screen.
+  const inShell = useInAdminShell();
+  const Frame = inShell ? 'div' : 'main';
+
   return (
-    <main
-      className="max-w-[1400px] mx-auto px-6 py-12 transition-colors duration-150"
-      style={{ background: t.pageBg, color: t.text }}
+    <Frame
+      className={
+        inShell
+          ? 'transition-colors duration-150'
+          : 'max-w-[1400px] mx-auto px-6 py-12 transition-colors duration-150'
+      }
+      style={inShell ? { color: t.text } : { background: t.pageBg, color: t.text }}
     >
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
         <div>
-          <Link href="/team/calendar" className="text-[12px] tracking-[0.1em] hover:underline" style={{ color: t.muted }}>← TEAM</Link>
-          <h1 className="text-[36px] font-extrabold -tracking-[0.02em] leading-[1.1] mt-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.text }}>
+          {!inShell && (
+            <Link href="/team/calendar" className="text-[12px] tracking-[0.1em] hover:underline" style={{ color: t.muted }}>← TEAM</Link>
+          )}
+          <h1
+            className={`font-extrabold -tracking-[0.02em] leading-[1.15] ${inShell ? 'text-[30px]' : 'text-[36px] mt-1'}`}
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.text }}
+          >
             Team Chat
           </h1>
           <p className="text-[13px] mt-1" style={{ color: t.muted }}>
@@ -476,20 +492,24 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
         </div>
         <div className="flex items-center gap-3">
           <AuthenticatedThemeToggleControl theme={theme} onToggle={toggleTheme} />
-          <Link
-            href="/team/progress"
-            className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"
-            style={{ borderColor: t.borderStrong, color: t.accent }}
-          >
-            TASKS
-          </Link>
-          <button
-            onClick={handleSignOut}
-            className="px-4 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"
-            style={{ borderColor: t.borderStrong, color: t.muted }}
-          >
-            SIGN OUT
-          </button>
+          {!inShell && (
+            <Link
+              href="/team/progress"
+              className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"
+              style={{ borderColor: t.borderStrong, color: t.accent }}
+            >
+              TASKS
+            </Link>
+          )}
+          {!inShell && (
+            <button
+              onClick={handleSignOut}
+              className="px-4 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"
+              style={{ borderColor: t.borderStrong, color: t.muted }}
+            >
+              SIGN OUT
+            </button>
+          )}
         </div>
       </div>
 
@@ -752,7 +772,7 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
           )}
         </section>
       </div>
-    </main>
+    </Frame>
   );
 }
 

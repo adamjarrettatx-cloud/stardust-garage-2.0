@@ -15,6 +15,7 @@ import TaskDrawer from '@/app/bananas/progress/TaskDrawer';
 import TaskFormModal from '@/app/bananas/progress/TaskFormModal';
 import ImportModal from '@/app/bananas/progress/ImportModal';
 import AuthenticatedThemeToggleControl from '@/app/components/AuthenticatedThemeToggleControl';
+import { useInAdminShell } from '@/app/components/AdminShellContext';
 import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
 
 async function apiJson(url, options) {
@@ -316,13 +317,30 @@ function AdminProgressView({ initialTasks, assignees, isOwner, currentTeamMember
     minHeight: '44px',
   };
 
+  // Only this admin view can appear inside the shell; the team-member view
+  // below is never wrapped, so it keeps its own chrome unconditionally.
+  const inShell = useInAdminShell();
+  const Frame = inShell ? 'div' : 'main';
+
   return (
-    <main className="max-w-[1400px] mx-auto px-6 py-12 transition-colors duration-150" style={{ background: t.pageBg, color: t.text }}>
+    <Frame
+      className={
+        inShell
+          ? 'transition-colors duration-150'
+          : 'max-w-[1400px] mx-auto px-6 py-12 transition-colors duration-150'
+      }
+      style={inShell ? { color: t.text } : { background: t.pageBg, color: t.text }}
+    >
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
         <div>
-          <Link href="/bananas" className="text-[12px] tracking-[0.1em] hover:underline" style={{ color: t.muted }}>← ADMIN</Link>
-          <h1 className="text-[40px] font-extrabold -tracking-[0.02em] leading-[1.1] mt-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.text }}>
+          {!inShell && (
+            <Link href="/bananas" className="text-[12px] tracking-[0.1em] hover:underline" style={{ color: t.muted }}>← ADMIN</Link>
+          )}
+          <h1
+            className={`font-extrabold -tracking-[0.02em] leading-[1.15] ${inShell ? 'text-[30px]' : 'text-[40px] mt-1'}`}
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.text }}
+          >
             Tasks
           </h1>
           <p className="text-[13px] mt-1" style={{ color: t.muted }}>
@@ -539,7 +557,7 @@ function AdminProgressView({ initialTasks, assignees, isOwner, currentTeamMember
       {showImport && (
         <ImportModal onClose={() => setShowImport(false)} onImported={refresh} />
       )}
-    </main>
+    </Frame>
   );
 }
 

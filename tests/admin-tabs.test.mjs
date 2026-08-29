@@ -27,6 +27,9 @@ const CLIENT = fs.readFileSync(
 );
 const PAGE = fs.readFileSync(path.join(REPO_ROOT, 'app/bananas/page.js'), 'utf8');
 const SHELL = fs.readFileSync(path.join(REPO_ROOT, 'app/bananas/AdminShell.js'), 'utf8');
+const TEAM_LAYOUT = fs.readFileSync(path.join(REPO_ROOT, 'app/team/layout.js'), 'utf8');
+const COUNTS = fs.readFileSync(path.join(REPO_ROOT, 'lib/admin-counts.js'), 'utf8');
+const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8');
 const LAYOUT = fs.readFileSync(path.join(REPO_ROOT, 'app/bananas/layout.js'), 'utf8');
 
 // --- Tab definitions --------------------------------------------------------
@@ -310,7 +313,7 @@ test('the shell owns the header and sidebar so they survive navigation', () => {
   // opening one from a tile replaced the whole view and you had to click back
   // out. The header and sidebar living in the layout is what keeps them put.
   assert.match(LAYOUT, /AdminShell/, 'the layout must render the shell');
-  assert.match(LAYOUT, /AuthenticatedPageHeader/, 'the header belongs to the layout now');
+  assert.match(SHELL, /AuthenticatedPageHeader/, 'the header belongs to the shell now');
   assert.match(SHELL, /function Sidebar/, 'the sidebar belongs to the shell now');
   assert.ok(
     !/function Sidebar/.test(CLIENT),
@@ -327,7 +330,8 @@ test('destination pages no longer render their own page container', () => {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) walk(full);
       else if (entry.name.endsWith('.js')) {
-        if (full.endsWith('app/bananas/layout.js')) continue;
+        // The shell itself is the one place allowed to open a <main>.
+        if (full.endsWith('app/bananas/AdminShell.js')) continue;
         if (/<main[\s>]/.test(fs.readFileSync(full, 'utf8'))) offenders.push(full);
       }
     }
@@ -337,8 +341,8 @@ test('destination pages no longer render their own page container', () => {
 });
 
 test('the shell keeps exactly one page container', () => {
-  const opens = [...LAYOUT.matchAll(/<main[\s>]/g)].length;
-  assert.equal(opens, 1, 'the layout should open exactly one <main>');
+  const opens = [...SHELL.matchAll(/<main[\s>]/g)].length;
+  assert.equal(opens, 1, 'the shell should open exactly one <main>');
 });
 
 test('every tile route maps back to the section it belongs to', () => {
@@ -460,7 +464,7 @@ test('a destination page title never competes with the app title', () => {
   // at the same time, so both were set at 40px. Inside the shell they stack,
   // and two identical 40px headings gave the eye no starting point.
   const appTitle = Number(
-    LAYOUT.match(/titleClassName="text-\[([\d.]+)px\]/)[1]
+    SHELL.match(/titleClassName="text-\[([\d.]+)px\]/)[1]
   );
   assert.equal(appTitle, 40, 'the app-level header should stay dominant');
 
@@ -470,7 +474,7 @@ test('a destination page title never competes with the app title', () => {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) walk(full);
       else if (entry.name.endsWith('.js')) {
-        if (full.endsWith('app/bananas/layout.js')) continue;
+        if (full.endsWith('app/bananas/AdminShell.js')) continue;
         const src = fs.readFileSync(full, 'utf8');
         for (const m of src.matchAll(/titleClassName="text-\[([\d.]+)px\]/g)) {
           if (Number(m[1]) >= appTitle) offenders.push(`${full} (${m[1]}px)`);
@@ -480,4 +484,98 @@ test('a destination page title never competes with the app title', () => {
   };
   walk(path.join(REPO_ROOT, 'app/bananas'));
   assert.deepEqual(offenders, [], `page titles at or above the app title: ${offenders.join(', ')}`);
+});
+
+// --- /team routes inside the shell ------------------------------------------
+
+test('the team layout never gates access, only presentation', () => {
+  // /team/login must stay reachable with no session, and every page underneath
+  // keeps its own auth check. A layout does not re-run on client-side
+  // navigation between child routes, so it can never be relied on for access
+  // control — and must not lock anyone out either.
+  assert.ok(
+    !/redirect\(/.test(TEAM_LAYOUT),
+    'the team layout must not redirect; /team/login has no session yet'
+  );
+  assert.match(TEAM_LAYOUT, /if \(!user\) return children/);
+});
+
+test('a non-admin team member never gets the admin sidebar', () => {
+  // The sidebar lists Memberships, Analytics and Settings — none of which a
+  // plain team member can open.
+  assert.match(TEAM_LAYOUT, /role !== 'admin'\) return children/);
+  assert.match(TEAM_LAYOUT, /from\('team_members'\)/, 'role must come from the server');
+});
+
+test('the team layout only wraps routes that belong to a section', () => {
+  // /team/documents, the trial-pass tools and /team/login have no tile, so the
+  // shell must leave them alone rather than framing them in admin chrome.
+  assert.match(TEAM_LAYOUT, /tileRequired/);
+  assert.match(SHELL, /if \(tileRequired && !tile\) return children/);
+  for (const p of ['/team/documents', '/team/trial-pass/manual', '/team/login']) {
+    assert.equal(tabForPath(p), null, `${p} should not resolve to a section`);
+  }
+});
+
+test('the three team tiles do resolve to the Team section', () => {
+  for (const p of ['/team/progress', '/team/calendar', '/team/chat']) {
+    assert.equal(tabForPath(p), 'team', `${p} should sit in the Team section`);
+  }
+});
+
+test('sidebar counts are defined once and shared by both layouts', () => {
+  // Two copies of these ten queries would drift the moment a tile gained or
+  // lost a count.
+  assert.match(LAYOUT, /fetchAdminCounts/);
+  assert.match(TEAM_LAYOUT, /fetchAdminCounts/);
+  assert.match(COUNTS, /export async function fetchAdminCounts/);
+  for (const file of [LAYOUT, TEAM_LAYOUT]) {
+    assert.ok(
+      !/membership_applications/.test(file),
+      'a layout is querying counts directly instead of using fetchAdminCounts'
+    );
+  }
+});
+
+test('every count key a tile refers to is actually produced', () => {
+  const keys = allAdminTiles()
+    .map((tile) => tile.countKey)
+    .filter(Boolean);
+  assert.ok(keys.length > 0, 'no tiles declare a count');
+  for (const key of keys) {
+    assert.match(
+      COUNTS,
+      new RegExp(`\\n\\s*${key}:`),
+      `tile count "${key}" is never produced by fetchAdminCounts`
+    );
+  }
+});
+
+test('team pages drop their own chrome only when the shell provides it', () => {
+  // Reached directly by a non-admin, these pages still need their own
+  // container, header and way out. Reached from the admin sidebar, rendering
+  // those again would stack two headers and two sign-out buttons.
+  const shellAware = [
+    'app/team/chat/TeamChatClient.js',
+    'app/team/calendar/CalendarClient.js',
+    'app/team/progress/ProgressClient.js',
+  ];
+  for (const rel of shellAware) {
+    const src = read(rel);
+    assert.match(src, /useInAdminShell/, `${rel} does not check for the shell`);
+    assert.match(src, /const Frame = inShell \? 'div' : 'main'/, `${rel} always opens a <main>`);
+  }
+});
+
+test('the tasks page keeps unconditional chrome for the team-member view', () => {
+  // Only the admin view is ever wrapped, so the team-member view below it must
+  // keep its own <main> with no condition attached.
+  const src = read('app/team/progress/ProgressClient.js');
+  const teamView = src.slice(src.indexOf('function TeamProgressView'));
+  assert.match(teamView, /<main className="max-w-\[900px\]/);
+});
+
+test('the shell context defaults to false so an unwrapped page keeps its chrome', () => {
+  const src = read('app/components/AdminShellContext.js');
+  assert.match(src, /createContext\(false\)/);
 });
