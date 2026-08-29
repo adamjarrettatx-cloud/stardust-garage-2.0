@@ -4,7 +4,6 @@ import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
 import EventForm from '../../components/EventForm';
 import PublishEventButton from '../../components/PublishEventButton';
-import GuestListPanel from './GuestListPanel';
 import ArtistLineupPanel from './ArtistLineupPanel';
 
 export const revalidate = 0;
@@ -58,7 +57,30 @@ export default async function EditEventPage({ params }) {
       footerPanels={(
         <>
           <ArtistLineupPanel eventId={event.id} />
-          <GuestListPanel eventId={event.id} />
+          {/* The guest list used to be a panel at the bottom of this form, which
+              meant the Events row's GUEST LIST button and this page showed two
+              halves of one job. It's a full screen of its own now - roll-up,
+              grant form, hosts and named guests - so this links there rather
+              than shipping a second copy that can drift. */}
+          <Link
+            href={`/bananas/guest-list/${event.id}`}
+            className="block rounded-[12px] border p-5 mt-8 transition-colors hover:bg-white/5"
+            style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}
+          >
+            <div
+              className="text-[12px] font-semibold tracking-[0.14em] mb-1"
+              style={{ color: 'var(--auth-muted)' }}
+            >
+              GUEST LIST ALLOCATION
+            </div>
+            <div className="text-[13px]" style={{ color: 'var(--auth-text)' }}>
+              Grant door spots to partners and see every named guest for this
+              event.{' '}
+              <span className="font-semibold" style={{ color: 'var(--auth-accent)' }}>
+                OPEN GUEST LIST →
+              </span>
+            </div>
+          </Link>
         </>
       )}
     />

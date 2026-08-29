@@ -12,7 +12,6 @@ import {
   crumbForPath,
   adminTabById,
 } from '../lib/admin-tabs.js';
-import { GUEST_LIST_ANCHOR } from '../lib/guestlist-helpers.js';
 
 // Owner decision 2026-08-29: Guest List and Artist Pay are per-event work, so
 // they are opened from the event's own row in the Events list and nowhere else.
@@ -213,40 +212,81 @@ test('Artist Pay unscoped still behaves as it did', () => {
   assert.match(PAY_PAGE, /Review pay requests and track cumulative pay per contractor/);
 });
 
-// --- EDIT ALLOCATION lands on the panel, not the top of the form ------------
-// Owner report 2026-08-29: clicking EDIT ALLOCATION from a per-event guest list
-// opened the event page at the top, leaving the admin to scroll past every form
-// field to reach the box they asked for.
+// --- Guest List is one screen ----------------------------------------------
+// Owner decision 2026-08-29: clicking GUEST LIST on an event row opens the whole
+// job on one page. It was a read-only breakdown that sent you to a panel buried
+// at the bottom of the event edit form to change anything - two screens and a
+// scroll for one task.
 
-const GUEST_LIST_PANEL = read('app/bananas/events/[id]/GuestListPanel.js');
+const GUEST_LIST_PANEL = read('app/bananas/guest-list/[id]/GuestListPanel.js');
+const EVENT_EDIT_PAGE = read('app/bananas/events/[id]/page.js');
+const HELPERS = read('lib/guestlist-helpers.js');
 
-test('EDIT ALLOCATION deep links to the allocation panel', () => {
-  assert.match(EVENT_GUEST_LIST, /href=\{`\/bananas\/events\/\$\{event\.id\}#\$\{GUEST_LIST_ANCHOR\}`\}/);
-  // Both sides import the anchor from lib rather than repeating the string, so
-  // renaming the panel's id can't silently break the link.
-  assert.match(EVENT_GUEST_LIST, /GUEST_LIST_ANCHOR,?\n?[\s\S]{0,120}from '@\/lib\/guestlist-helpers'/);
-  assert.match(GUEST_LIST_PANEL, /GUEST_LIST_ANCHOR/);
-  assert.equal(GUEST_LIST_ANCHOR, 'guest-list-allocation');
+test('the editing panel lives on the guest list route', () => {
+  assert.match(EVENT_GUEST_LIST, /import GuestListPanel from '\.\/GuestListPanel'/);
+  assert.match(EVENT_GUEST_LIST, /<GuestListPanel eventId=\{event\.id\} \/>/);
+  assert.equal(
+    fs.existsSync(path.join(REPO_ROOT, 'app/bananas/events/[id]/GuestListPanel.js')),
+    false,
+    'the panel is still sitting under the event route too'
+  );
 });
 
-test('the allocation panel carries the anchor id and clears the header', () => {
-  assert.match(GUEST_LIST_PANEL, /id=\{GUEST_LIST_ANCHOR\}/);
-  // Without scroll margin the heading sits flush against the viewport edge.
-  assert.match(GUEST_LIST_PANEL, /scroll-mt-\d/);
-  assert.match(GUEST_LIST_PANEL, /GUEST LIST ALLOCATION/);
+test('the event form links to the guest list instead of duplicating it', () => {
+  assert.match(EVENT_EDIT_PAGE, /href=\{`\/bananas\/guest-list\/\$\{event\.id\}`\}/);
+  assert.match(EVENT_EDIT_PAGE, /OPEN GUEST LIST/);
+  assert.ok(
+    !/<GuestListPanel/.test(EVENT_EDIT_PAGE),
+    'a second copy of the panel is back on the event form'
+  );
+  // The lineup panel is unrelated work and stays put.
+  assert.match(EVENT_EDIT_PAGE, /<ArtistLineupPanel eventId=\{event\.id\} \/>/);
 });
 
-test('the panel scrolls itself into view after its grants settle', () => {
-  // The browser's own hash scroll fires before the grants arrive and the panel
-  // grows as rows load, so it lands short. Guard against a regression to
-  // relying on the native behaviour alone.
-  assert.match(GUEST_LIST_PANEL, /scrollIntoView/);
-  assert.match(GUEST_LIST_PANEL, /const listSettled = grants !== null \|\| Boolean\(loadError\)/);
-  assert.match(GUEST_LIST_PANEL, /window\.location\.hash !== `#\$\{GUEST_LIST_ANCHOR\}`/);
-  // Once only: a later refresh must not yank the page while the admin is
-  // typing in the form above.
-  assert.match(GUEST_LIST_PANEL, /scrolledToAnchor\.current = true/);
-  assert.match(GUEST_LIST_PANEL, /if \(!listSettled \|\| scrolledToAnchor\.current\) return/);
+test('the scroll-to-anchor workaround is gone with the split it patched', () => {
+  // The hash + scrollIntoView pair only existed because the panel was at the
+  // bottom of another page. Nothing should need it now.
+  assert.ok(!HELPERS.includes('GUEST_LIST_ANCHOR'), 'the anchor constant survived');
+  assert.ok(!GUEST_LIST_PANEL.includes('scrollIntoView'), 'the panel still scrolls itself');
+  assert.ok(!/EDIT ALLOCATION/.test(EVENT_GUEST_LIST), 'the hand-off button is back');
+  // The way to the rest of the event still exists, just as a plain link.
+  assert.match(EVENT_GUEST_LIST, /EVENT DETAILS/);
+  assert.match(EVENT_GUEST_LIST, /href=\{`\/bananas\/events\/\$\{event\.id\}`\}/);
+});
+
+test('the one screen carries everything the read-only page showed', () => {
+  // Roll-up, grant form, host allocations, named guests and door signatures all
+  // on the page that the Events row opens.
+  assert.match(GUEST_LIST_PANEL, /HOSTS/);
+  assert.match(GUEST_LIST_PANEL, /SLOTS ALLOCATED/);
+  assert.match(GUEST_LIST_PANEL, /CHECKED IN/);
+  assert.match(GUEST_LIST_PANEL, /GRANT SLOTS/);
+  assert.match(GUEST_LIST_PANEL, /SIGNATURE ON FILE/);
+  assert.match(GUEST_LIST_PANEL, /guest-signature\/\$\{entry\.signature_profile_id\}/);
+  // Guest names are visible without a click, since this page is named for them.
+  assert.match(GUEST_LIST_PANEL, /!collapsed\[grant\.id\] && entries\.length > 0/);
+});
+
+test('the roll-up is computed from the live grant list', () => {
+  // A server-rendered strip above a client panel goes stale the moment a grant
+  // is edited, which is how the old page behaved.
+  assert.match(GUEST_LIST_PANEL, /function Totals\(\{ grants \}\)/);
+  assert.match(GUEST_LIST_PANEL, /const totals = summarizeGrants\(grants\)/);
+  assert.ok(
+    !/summarizeGrants/.test(EVENT_GUEST_LIST),
+    'the page is computing totals server-side again'
+  );
+});
+
+test('grant entries carry their signature from the loader', () => {
+  // The panel reads grants from the API, so the signature lookup has to travel
+  // with the grant rather than being a second server-only query.
+  assert.match(HELPERS, /async function loadEntrySignatures/);
+  assert.match(HELPERS, /signature_profile_id: signatures\.get\(entry\.id\) \|\| null/);
+  assert.ok(
+    !/loadEntrySignatures/.test(EVENT_GUEST_LIST),
+    'the page still runs its own signature query'
+  );
 });
 
 // --- Four buttons in one row stay readable on a small screen ----------------
