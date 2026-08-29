@@ -887,16 +887,16 @@ test('the legend and the scorecard read after the calendar, not before it', () =
 });
 
 test('a section that renders its own content gets no heading block', () => {
-  // The tile sections need a heading to say what their tiles are for. Events
-  // and Chat do not: the sidebar entry names them, and what follows — a
-  // calendar, an events list, a channel list — announces itself.
+  // The tile sections need a heading to say what their tiles are for. Events,
+  // Chat and Tasks do not: the sidebar entry names them, and what follows — a
+  // calendar, an events list, a channel list, a task table — announces itself.
   const src = read('app/bananas/AdminDashboardClient.js');
   assert.match(src, /\{section && !section\.rendersOwnContent && \(/);
 
-  for (const id of ['events', 'chat']) {
+  for (const id of ['events', 'chat', 'tasks']) {
     assert.equal(adminTabById(id).rendersOwnContent, true, `${id} would render a heading again`);
   }
-  for (const id of ['team', 'memberships']) {
+  for (const id of ['people', 'memberships']) {
     assert.ok(!adminTabById(id).rendersOwnContent, `${id} lost its tile-grid heading`);
     assert.ok(adminTabById(id).description, `${id} has no description to show`);
   }
