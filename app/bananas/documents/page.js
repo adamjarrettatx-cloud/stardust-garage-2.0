@@ -52,14 +52,12 @@ export default async function DocumentsPage({ searchParams }) {
     .limit(200);
 
   return (
-    <main className="max-w-[1100px] mx-auto px-6 py-16">
+    <>
       <AuthenticatedPageHeader
-        backHref="/bananas"
-        backLabel="← BACK TO ADMIN"
         title="Documents"
         description="Contracts, vendor docs, SOPs, finance — every upload is logged. Files never leave a private bucket."
         eyebrow="PRIVATE · ADMIN ONLY"
-        titleClassName="text-[32px] font-extrabold -tracking-[0.02em] leading-[1.1]"
+        titleClassName="text-[30px] font-extrabold -tracking-[0.02em] leading-[1.15]"
       />
 
       <DocumentsClient
@@ -70,6 +68,6 @@ export default async function DocumentsPage({ searchParams }) {
         filters={{ q, category, status }}
         contractTemplatesEnabled={isContractTemplatesEnabled()}
       />
-    </main>
+    </>
   );
 }

@@ -46,12 +46,10 @@ export default async function AdminStudioBookingsPage() {
   );
 
   return (
-    <main className="max-w-[1100px] mx-auto px-6 py-16">
+    <>
       <AuthenticatedPageHeader
-        backHref="/bananas"
-        backLabel="← BACK TO ADMIN"
         title="Studio Bookings"
-        titleClassName="text-[32px] font-extrabold -tracking-[0.02em] leading-[1.1]"
+        titleClassName="text-[30px] font-extrabold -tracking-[0.02em] leading-[1.15]"
         className="mb-10"
       />
 
@@ -102,7 +100,7 @@ export default async function AdminStudioBookingsPage() {
           ))}
         </div>
       )}
-    </main>
+    </>
   );
 }
 

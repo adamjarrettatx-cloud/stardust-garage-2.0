@@ -19,8 +19,8 @@ export default async function TemplateEditorPage({ params }) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
 
   return (
-    <main className="max-w-[900px] mx-auto px-6 py-16">
+    <div className="max-w-[900px]">
       <TemplateEditorClient templateId={id} categories={DOCUMENT_CATEGORIES} />
-    </main>
+    </div>
   );
 }

@@ -30,16 +30,14 @@ export default async function SignupsPage() {
     : '';
 
   return (
-    <main className="max-w-[1100px] mx-auto px-6 py-16">
+    <>
       <AuthenticatedPageHeader
-        backHref="/bananas"
-        backLabel="← BACK TO ADMIN"
         title="Signups"
         description="People who signed up via “Stay in the loop” on the homepage, plus first-time guests who signed a consent form at the door."
-        titleClassName="text-[40px] font-extrabold -tracking-[0.02em] leading-[1.1]"
+        titleClassName="text-[30px] font-extrabold -tracking-[0.02em] leading-[1.15]"
         className="mb-10"
       />
       <SignupsClient signups={signups || []} csvHref={csvHref} />
-    </main>
+    </>
   );
 }

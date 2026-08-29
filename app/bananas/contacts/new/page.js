@@ -10,7 +10,7 @@ export default async function NewContactPage() {
   if (unauthorized) redirect('/login');
 
   return (
-    <main className="max-w-[700px] mx-auto px-6 py-16">
+    <div className="max-w-[700px]">
       <AuthenticatedPageHeader
         backHref="/bananas/contacts"
         backLabel="← BACK TO CONTACTS"
@@ -20,6 +20,6 @@ export default async function NewContactPage() {
       />
 
       <ContactForm />
-    </main>
+    </div>
   );
 }

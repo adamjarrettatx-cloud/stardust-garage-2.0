@@ -84,7 +84,7 @@ export default async function ContactDetailPage({ params }) {
   ]);
 
   return (
-    <main className="max-w-[900px] mx-auto px-6 py-16">
+    <div className="max-w-[900px]">
       <ContactDetailClient
         contact={contact}
         isAdmin={isAdmin}
@@ -97,6 +97,6 @@ export default async function ContactDetailPage({ params }) {
         microParties={microParties.data || []}
         audit={audit.data || []}
       />
-    </main>
+    </div>
   );
 }

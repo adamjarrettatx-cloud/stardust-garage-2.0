@@ -196,13 +196,13 @@ export default async function EventGuestListPage({ params }) {
   const signatures = await loadEntrySignatures(admin, rows.map((grant) => grant.id));
 
   return (
-    <main className="max-w-[1000px] mx-auto px-6 py-16">
+    <div className="max-w-[1000px]">
       <AuthenticatedPageHeader
         backHref="/bananas/guest-list"
         backLabel="← BACK TO GUEST LIST"
         title={event.title || 'Untitled event'}
         description={formatEventDate(event.event_date)}
-        titleClassName="text-[32px] font-extrabold -tracking-[0.02em] leading-[1.1]"
+        titleClassName="text-[30px] font-extrabold -tracking-[0.02em] leading-[1.15]"
         className="mb-10"
       >
         <Link
@@ -248,6 +248,6 @@ export default async function EventGuestListPage({ params }) {
       ) : (
         rows.map((grant) => <GrantCard key={grant.id} grant={grant} signatures={signatures} />)
       )}
-    </main>
+    </div>
   );
 }

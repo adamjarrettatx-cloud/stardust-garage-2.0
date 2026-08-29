@@ -49,7 +49,7 @@ export default async function ApplicationDetail({ params }) {
   if (error || !app) notFound();
 
   return (
-    <main className="max-w-[860px] mx-auto px-6 py-16">
+    <div className="max-w-[860px]">
       <AuthenticatedPageHeader
         backHref="/bananas/applications"
         backLabel="← BACK TO APPLICATIONS"
@@ -160,6 +160,6 @@ export default async function ApplicationDetail({ params }) {
           </div>
         </DetailSection>
       </div>
-    </main>
+    </div>
   );
 }

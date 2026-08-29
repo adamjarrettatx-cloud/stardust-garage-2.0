@@ -28,17 +28,17 @@ export default async function EventFinancialsPage({ params }) {
     .order('updated_at', { ascending: false });
 
   return (
-    <main className="max-w-[900px] mx-auto px-6 py-16">
+    <div className="max-w-[900px]">
       <AuthenticatedPageHeader
         backHref={`/bananas/events/${id}`}
         backLabel="← BACK TO EVENT"
         title="Event Financials"
         description={`${data.event.title}. Combines TicketTailor ticket sales, imported POS CSV totals, and contract split terms into a per-event profit view. Ticket revenue is sourced from TicketTailor only.`}
         eyebrow="ADMIN ONLY"
-        titleClassName="text-[32px] font-extrabold -tracking-[0.02em] leading-[1.1]"
+        titleClassName="text-[30px] font-extrabold -tracking-[0.02em] leading-[1.15]"
       />
 
       <EventFinancialsClient eventId={id} initial={data} contracts={contracts || []} />
-    </main>
+    </div>
   );
 }

@@ -61,7 +61,7 @@ export default async function DocumentDetailPage({ params }) {
   }
 
   return (
-    <main className="max-w-[900px] mx-auto px-6 py-16">
+    <div className="max-w-[900px]">
       <DocumentDetailClient
         document={doc}
         versions={versions || []}
@@ -72,6 +72,6 @@ export default async function DocumentDetailPage({ params }) {
         signNowConfigured={isSignNowConfigured()}
         contractTemplatesEnabled={isContractTemplatesEnabled()}
       />
-    </main>
+    </div>
   );
 }

@@ -68,12 +68,10 @@ export default async function AdminMembersPage() {
   const inactive = (members || []).filter((m) => !m.is_active);
 
   return (
-    <main className="max-w-[1100px] mx-auto px-6 py-16">
+    <>
       <AuthenticatedPageHeader
-        backHref="/bananas"
-        backLabel="← BACK TO ADMIN"
         title="Members"
-        titleClassName="text-[32px] font-extrabold -tracking-[0.02em] leading-[1.1]"
+        titleClassName="text-[30px] font-extrabold -tracking-[0.02em] leading-[1.15]"
         className="mb-10"
       />
 
@@ -98,7 +96,7 @@ export default async function AdminMembersPage() {
           {inactive.map((m) => <MemberRow key={m.id} member={m} />)}
         </div>
       )}
-    </main>
+    </>
   );
 }
 

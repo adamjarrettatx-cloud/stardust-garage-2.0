@@ -237,18 +237,8 @@ export default function FinancialsClient({ entries, performanceRows, totals, sal
   const trendGridCols = 'grid-cols-[1fr_110px_110px_100px_110px_110px_60px]';
 
   return (
-    <main
-      className="max-w-[1100px] mx-auto px-6 py-16 transition-colors duration-150"
-      style={{ color: t.text }}
-      data-testid="financials"
-    >
-      <Link
-        href="/bananas"
-        className="text-[12px] tracking-[0.14em] mb-4 inline-block transition-opacity hover:opacity-70"
-        style={{ color: t.muted }}
-      >
-        ← BACK TO ADMIN
-      </Link>
+    <div style={{ color: t.text }}
+      data-testid="financials">
 
       <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
         <h1
@@ -897,6 +887,6 @@ export default function FinancialsClient({ entries, performanceRows, totals, sal
         theme={theme}
         onClose={closeDialog}
       />
-    </main>
+    </div>
   );
 }

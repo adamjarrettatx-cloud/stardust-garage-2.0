@@ -49,7 +49,7 @@ export default async function InquiryDetail({ params }) {
   if (error || !i) notFound();
 
   return (
-    <main className="max-w-[860px] mx-auto px-6 py-16">
+    <div className="max-w-[860px]">
       <AuthenticatedPageHeader
         backHref="/bananas/venue-inquiries"
         backLabel="← BACK TO INQUIRIES"
@@ -161,6 +161,6 @@ export default async function InquiryDetail({ params }) {
           </div>
         </DetailSection>
       </div>
-    </main>
+    </div>
   );
 }

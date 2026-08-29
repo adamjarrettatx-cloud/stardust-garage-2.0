@@ -60,7 +60,7 @@ export default async function MicroPartyDetail({ params }) {
   if (error || !i) notFound();
 
   return (
-    <main className="max-w-[860px] mx-auto px-6 py-16">
+    <div className="max-w-[860px]">
       <AuthenticatedPageHeader
         backHref="/bananas/micro-parties"
         backLabel="← BACK TO MICRO PARTY INQUIRIES"
@@ -126,6 +126,6 @@ export default async function MicroPartyDetail({ params }) {
           </DetailGrid>
         </DetailSection>
       </div>
-    </main>
+    </div>
   );
 }
