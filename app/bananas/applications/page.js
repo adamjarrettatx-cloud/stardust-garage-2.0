@@ -17,17 +17,15 @@ export default async function ApplicationsPage() {
     .order('created_at', { ascending: false });
 
   return (
-    <main className="max-w-[1200px] mx-auto px-6 py-16">
+    <>
       <AuthenticatedPageHeader
-        backHref="/bananas"
-        backLabel="← BACK TO ADMIN"
         title="Membership Applications"
         description="Applications submitted through the Members page."
-        titleClassName="text-[40px] font-extrabold -tracking-[0.02em] leading-[1.1]"
+        titleClassName="text-[30px] font-extrabold -tracking-[0.02em] leading-[1.15]"
         className="mb-10"
       />
 
       <ApplicationsList applications={applications || []} />
-    </main>
+    </>
   );
 }

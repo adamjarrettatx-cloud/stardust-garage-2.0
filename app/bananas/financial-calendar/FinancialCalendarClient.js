@@ -161,19 +161,10 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
   const selectedEntries = selectedDay ? getEntriesForDate(selectedDay) : [];
 
   return (
-    <main
-      className="px-6 py-12 transition-colors duration-150"
+    <div className="px-6 py-12 transition-colors duration-150"
       style={{ color: t.text }}
       data-testid="financial-calendar"
     >
-      {/* Header */}
-      <Link
-        href="/bananas"
-        className="text-[12px] tracking-[0.14em] mb-4 inline-block transition-opacity hover:opacity-70"
-        style={{ color: t.muted }}
-      >
-        ← BACK TO ADMIN
-      </Link>
 
       <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
         <h1
@@ -512,6 +503,6 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
         theme={theme}
         onClose={closeDialog}
       />
-    </main>
+    </div>
   );
 }

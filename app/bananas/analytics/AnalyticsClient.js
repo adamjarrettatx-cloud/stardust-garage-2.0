@@ -31,18 +31,10 @@ export default function AnalyticsClient({ rows, totals, salesSeries, lastFetched
   const gridCols = 'grid-cols-[1fr_100px_90px_90px_70px_70px_80px]';
 
   return (
-    <main
-      className="max-w-[1100px] mx-auto px-6 py-16 transition-colors duration-150"
+    <div className="max-w-[1100px] transition-colors duration-150"
       style={{ color: t.text }}
       data-testid="event-analytics"
     >
-      <Link
-        href="/bananas"
-        className="text-[12px] tracking-[0.14em] mb-4 inline-block transition-opacity hover:opacity-70"
-        style={{ color: t.muted }}
-      >
-        ← BACK TO ADMIN
-      </Link>
 
       <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
         <h1
@@ -175,6 +167,6 @@ export default function AnalyticsClient({ rows, totals, salesSeries, lastFetched
         Codes column shows member discount codes sent / generated for the event. Revenue columns are blank
         until the event is TT-linked and its metrics have been refreshed.
       </p>
-    </main>
+    </div>
   );
 }

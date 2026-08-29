@@ -19,14 +19,12 @@ export default async function SecurityPage({ searchParams }) {
   const enforced = adminMfaEnforced();
 
   return (
-    <main className="max-w-[800px] mx-auto px-6 py-16">
+    <>
       <AuthenticatedPageHeader
-        backHref="/bananas"
-        backLabel="← BACK TO ADMIN"
         title="Security"
         description={`Manage two-factor authentication for your account. Current assurance level: ${status.currentLevel || 'aal1'}.`}
         eyebrow={enforced ? 'MFA REQUIRED' : 'MFA OPTIONAL'}
-        titleClassName="text-[40px] font-extrabold -tracking-[0.02em] leading-[1.1]"
+        titleClassName="text-[30px] font-extrabold -tracking-[0.02em] leading-[1.15]"
         className="mb-8"
       />
 
@@ -43,6 +41,6 @@ export default async function SecurityPage({ searchParams }) {
       )}
 
       <MfaEnrollClient />
-    </main>
+    </>
   );
 }

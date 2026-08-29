@@ -172,10 +172,8 @@ export default function TeamManagementClient({ members: initialMembers }) {
   const labelStyle = { color: 'var(--auth-muted)' };
 
   return (
-    <main className="max-w-[900px] mx-auto px-6 py-16">
+    <>
       <AuthenticatedPageHeader
-        backHref="/bananas"
-        backLabel="← BACK TO ADMIN"
         title="Team Members"
         description="Manage who has access to the team portal"
         titleClassName="text-[36px] font-extrabold -tracking-[0.02em] leading-[1.1]"
@@ -408,6 +406,6 @@ export default function TeamManagementClient({ members: initialMembers }) {
           })}
         </div>
       )}
-    </main>
+    </>
   );
 }

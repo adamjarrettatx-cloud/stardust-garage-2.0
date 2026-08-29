@@ -19,16 +19,14 @@ export default async function SettingsPage() {
   });
 
   return (
-    <main className="max-w-[800px] mx-auto px-6 py-16">
+    <>
       <AuthenticatedPageHeader
-        backHref="/bananas"
-        backLabel="← BACK TO ADMIN"
         title="Site Settings"
-        titleClassName="text-[40px] font-extrabold -tracking-[0.02em] leading-[1.1]"
+        titleClassName="text-[30px] font-extrabold -tracking-[0.02em] leading-[1.15]"
         className="mb-10"
       />
 
       <SettingsForm initialSettings={settings} />
-    </main>
+    </>
   );
 }

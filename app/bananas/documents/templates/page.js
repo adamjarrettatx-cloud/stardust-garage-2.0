@@ -21,17 +21,17 @@ export default async function TemplatesPage() {
   if (!isContractTemplatesEnabled()) redirect('/bananas/documents');
 
   return (
-    <main className="max-w-[1000px] mx-auto px-6 py-16">
+    <div className="max-w-[1000px]">
       <AuthenticatedPageHeader
         backHref="/bananas/documents"
         backLabel="← BACK TO DOCUMENTS"
         title="Contract Templates"
         description="Upload a reusable contract PDF, then place fields on it. Create contracts from a template to clone its layout — the recipient-fillable fields stay editable per contract."
         eyebrow="PRIVATE · ADMIN ONLY"
-        titleClassName="text-[32px] font-extrabold -tracking-[0.02em] leading-[1.1]"
+        titleClassName="text-[30px] font-extrabold -tracking-[0.02em] leading-[1.15]"
       />
 
       <TemplatesClient categories={DOCUMENT_CATEGORIES} />
-    </main>
+    </div>
   );
 }

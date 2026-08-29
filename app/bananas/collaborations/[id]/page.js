@@ -49,7 +49,7 @@ export default async function CollaborationDetail({ params }) {
   if (error || !c) notFound();
 
   return (
-    <main className="max-w-[860px] mx-auto px-6 py-16">
+    <div className="max-w-[860px]">
       <AuthenticatedPageHeader
         backHref="/bananas/collaborations"
         backLabel="← BACK TO COLLABORATIONS"
@@ -116,6 +116,6 @@ export default async function CollaborationDetail({ params }) {
           </DetailGrid>
         </DetailSection>
       </div>
-    </main>
+    </div>
   );
 }

@@ -16,14 +16,14 @@ export default async function PayRequestsPage() {
   if (gate) redirect(gate);
 
   return (
-    <main className="max-w-[1000px] mx-auto px-6 py-16">
+    <>
       <AuthenticatedPageHeader
         title="Artist Pay"
         description="Review pay requests and track cumulative pay per contractor."
-        titleClassName="text-[40px] font-extrabold -tracking-[0.02em] leading-[1.1]"
+        titleClassName="text-[30px] font-extrabold -tracking-[0.02em] leading-[1.15]"
         className="mb-10"
       />
       <PayRequestsClient />
-    </main>
+    </>
   );
 }

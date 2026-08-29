@@ -122,13 +122,11 @@ export default async function GuestListSummaryPage() {
   const past = rows.filter((r) => (r.event.event_date || '') < today);
 
   return (
-    <main className="max-w-[1100px] mx-auto px-6 py-16">
+    <>
       <AuthenticatedPageHeader
-        backHref="/bananas"
-        backLabel="← BACK TO ADMIN"
         title="Guest List"
         description="Every event with a guest list allocation. Slots are what your hosts may spend; used counts names they've added (no-shows free their slot back up). Open an event to see the per-host breakdown."
-        titleClassName="text-[32px] font-extrabold -tracking-[0.02em] leading-[1.1]"
+        titleClassName="text-[30px] font-extrabold -tracking-[0.02em] leading-[1.15]"
         className="mb-10"
       />
 
@@ -144,6 +142,6 @@ export default async function GuestListSummaryPage() {
         emptyText="No upcoming event has guest list grants yet. Grant slots from an event's detail page."
       />
       {past.length > 0 && <Section label="PAST" rows={past} emptyText="" />}
-    </main>
+    </>
   );
 }

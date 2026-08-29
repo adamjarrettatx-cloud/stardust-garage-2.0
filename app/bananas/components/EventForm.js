@@ -282,7 +282,7 @@ export default function EventForm({
   const inputClass = 'w-full px-5 py-3.5 rounded-[10px] text-[14px] outline-none border transition-colors focus:border-white/30';
 
   return (
-    <main className="max-w-[700px] mx-auto px-6 py-16">
+    <div className="max-w-[700px]">
       <AuthenticatedPageHeader
         backHref="/bananas"
         backLabel="← BACK TO ADMIN"
@@ -637,6 +637,6 @@ export default function EventForm({
       </form>
 
       {footerPanels}
-    </main>
+    </div>
   );
 }

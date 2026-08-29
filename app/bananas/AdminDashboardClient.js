@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
-  resolveAdminTab,
-  visibleAdminTabGroups,
   adminTabById,
+  ADMIN_TILE_ACTIONS,
+  ADMIN_TABS,
+  adminTilesFor,
+  adminTabBadge,
 } from '@/lib/admin-tabs';
 
 // ---------------------------------------------------------------------------
@@ -26,7 +27,7 @@ import {
 // Permissions moved to a lock marker (`restricted`) and status moved to its own
 // pill (`status`), so all three signals stay visible without competing for the
 // same slot.
-const ACTIONS = ['REVIEW', 'MANAGE', 'VIEW', 'TRACK'];
+const ACTIONS = ADMIN_TILE_ACTIONS;
 
 const RESTRICTION_LABELS = {
   owner: 'Owner only',
@@ -34,52 +35,24 @@ const RESTRICTION_LABELS = {
 };
 
 // ---------------------------------------------------------------------------
-// Tile content, keyed by tab id
+// Tile content
 // ---------------------------------------------------------------------------
-// Declared as data rather than JSX so the eyebrow vocabulary is auditable at a
-// glance (and testable — see tests/admin-tabs.test.mjs).
-function tilesFor(counts) {
-  return {
-    team: [
-      { href: '/team/progress', action: 'TRACK', title: 'Tasks', sub: 'Assigned work by department' },
-      { href: '/team/calendar', action: 'VIEW', title: 'Team Calendar', sub: 'Shifts and internal dates', restricted: 'team' },
-      { href: '/team/chat', action: 'VIEW', title: 'Team Chat', sub: 'Internal channels', count: counts.unreadChat, status: 'NEW' },
-    ],
-    memberships: [
-      { href: '/bananas/applications', action: 'REVIEW', title: 'Applications', sub: 'Awaiting your decision', count: counts.applications },
-      { href: '/bananas/members', action: 'MANAGE', title: 'Members', sub: 'Active roster and billing', count: counts.pastDueMembers },
-    ],
-    people: [
-      { href: '/bananas/contacts', action: 'VIEW', title: 'Contacts', sub: 'Everyone in the database' },
-      { href: '/bananas/collaborations', action: 'REVIEW', title: 'Collaborations', sub: 'Inbound partnership requests', count: counts.collaborations },
-      { href: '/bananas/signups', action: 'VIEW', title: 'Signups', sub: 'Mailing list additions', count: counts.newSignups },
-      { href: '/bananas/guest-list', action: 'MANAGE', title: 'Guest List', sub: 'Per-event entry grants' },
-      { href: '/bananas/pay-requests', action: 'REVIEW', title: 'Artist Pay', sub: 'Payout requests', count: counts.pendingPayRequests },
-    ],
-    rentals: [
-      { href: '/bananas/venue-inquiries', action: 'REVIEW', title: 'Venue Inquiries', sub: 'Full-venue requests', count: counts.venueInquiries },
-      { href: '/bananas/micro-parties', action: 'REVIEW', title: 'Micro Parties', sub: 'Small private bookings', count: counts.microParties },
-      { href: '/bananas/studio-bookings', action: 'MANAGE', title: 'Studio Bookings', sub: 'Hourly studio time', count: counts.upcomingBookings },
-    ],
-    documents: [
-      { href: '/bananas/documents', action: 'VIEW', title: 'Documents', sub: 'Signed and internal files', restricted: 'team' },
-    ],
-    analytics: [
-      { href: '/bananas/financials', action: 'VIEW', title: 'Financials', sub: 'Revenue and expenses', restricted: 'owner' },
-      { href: '/bananas/cash-flow', action: 'VIEW', title: 'Cash Flow', sub: 'Money in and out', restricted: 'owner' },
-      { href: '/capacity', action: 'VIEW', title: 'Capacity Counter', sub: 'Real-time headcount', status: 'LIVE' },
-    ],
-    settings: [
-      { href: '/bananas/settings', action: 'MANAGE', title: 'Settings', sub: 'Venue configuration' },
-      { href: '/bananas/studio-settings', action: 'MANAGE', title: 'Studio Settings', sub: 'Rates and hours', restricted: 'owner' },
-      { href: '/bananas/team', action: 'MANAGE', title: 'Team Members', sub: 'Logins and roles', restricted: 'owner' },
-      { href: '/bananas/security', action: 'MANAGE', title: 'Security / MFA', sub: 'Your sign-in protection' },
-    ],
-  };
+// The definitions themselves now live in lib/admin-tabs.js, because the
+// persistent shell needs them too (it maps the current pathname back to a
+// section so the sidebar can highlight where you are). Here we only bind the
+// live counts onto them.
+function tilesFor(counts = {}) {
+  return Object.fromEntries(
+    ADMIN_TABS.map((tab) => [
+      tab.id,
+      adminTilesFor(tab.id).map(({ countKey, ...tile }) => ({
+        ...tile,
+        count: countKey ? counts[countKey] || 0 : 0,
+      })),
+    ])
+  );
 }
 
-// Sum of the counts on a tab's own tiles, so the number beside a section in the
-// sidebar always matches what you find after opening it.
 function badgeFor(tabId, tiles) {
   return (tiles[tabId] || []).reduce((sum, t) => sum + (t.count || 0), 0);
 }
@@ -185,163 +158,49 @@ function Tile({ href, action, title, sub, count = 0, restricted, status }) {
 }
 
 // ---------------------------------------------------------------------------
-// Sidebar
+// Tile grid
 // ---------------------------------------------------------------------------
-// Replaces the old horizontal pill bar. Every destination is visible at once,
-// so a staff member never has to click through tabs to discover what exists,
-// and the grouping (Operations / Money / Admin) teaches the structure without
-// anyone reading a manual. It also keeps working as sections are added, which a
-// single row of pills does not.
+// Just the tile grid now. The sidebar moved to AdminShell so it can live in
+// app/bananas/layout.js and survive navigation - clicking a tile swaps this
+// panel for the destination page instead of replacing the whole screen, so
+// there is no longer a full page to click back out of.
 //
-// Below the lg breakpoint the group headings drop away and this degrades to a
-// horizontally scrolling row.
-function Sidebar({ groups, active, onSelect, badges }) {
-  return (
-    <nav
-      className="flex gap-2 overflow-x-auto pb-1.5 lg:block lg:overflow-visible lg:pb-0 lg:sticky lg:top-6"
-      role="tablist"
-      aria-label="Admin sections"
-      aria-orientation="vertical"
-    >
-      {groups.map(({ group, tabs }, groupIndex) => (
-        <div key={group} className="contents lg:block">
-          <div
-            className={`hidden lg:block text-[11px] font-bold tracking-[0.14em] px-3 mb-2 ${
-              groupIndex === 0 ? '' : 'mt-[26px]'
-            }`}
-            style={{ color: 'var(--auth-muted)' }}
-          >
-            {group}
-          </div>
-
-          {tabs.map((tab) => {
-            const isActive = tab.id === active;
-            const badge = badges[tab.id] || 0;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                id={`admin-tab-${tab.id}`}
-                aria-selected={isActive}
-                aria-controls={`admin-panel-${tab.id}`}
-                onClick={() => onSelect(tab.id)}
-                className="shrink-0 lg:w-full flex items-center justify-between gap-2.5 text-left text-[15.5px] font-semibold -tracking-[0.01em] px-3 py-[11px] rounded-[10px] transition-colors whitespace-nowrap lg:whitespace-normal"
-                style={{
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  background: isActive ? 'var(--auth-card-bg)' : 'transparent',
-                  color: isActive ? 'var(--auth-text)' : 'var(--auth-muted)',
-                  fontWeight: isActive ? 700 : 600,
-                  boxShadow: isActive
-                    ? 'inset 3px 0 0 var(--auth-accent), 0 1px 2px rgba(0,0,0,0.06)'
-                    : 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                <span>{tab.label}</span>
-                {badge > 0 && (
-                  <span
-                    className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-[11.5px] font-bold leading-none"
-                    style={{
-                      background: 'var(--auth-accent)',
-                      color: 'var(--auth-accent-text)',
-                    }}
-                  >
-                    {badge > 99 ? '99+' : badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      ))}
-    </nav>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Main client component
-// ---------------------------------------------------------------------------
-export default function AdminDashboardClient({ isOwner, counts, initialTab }) {
+// `activeTab` is owned by the shell, which also owns the URL (?tab=) and the
+// back/forward handling.
+export default function AdminDashboardClient({ isOwner, counts, activeTab }) {
   const tiles = tilesFor(counts);
-  const groups = visibleAdminTabGroups(isOwner);
-
-  // `initialTab` is resolved server-side from ?tab= so a deep link renders the
-  // right section on first paint with no flash of the default tab.
-  const [activeTab, setActiveTab] = useState(() =>
-    resolveAdminTab(initialTab, { isOwner })
-  );
-
-  // Selecting a section writes it to the URL with history.pushState rather than
-  // router.push. That gives real deep links, working browser back/forward and a
-  // shareable address per section, while keeping the switch instant — this page
-  // is `revalidate = 0`, so a router.push would re-run every count query in
-  // page.js just to move between tabs.
-  const selectTab = useCallback(
-    (id) => {
-      const next = resolveAdminTab(id, { isOwner });
-      setActiveTab(next);
-      const url = new URL(window.location.href);
-      url.searchParams.set('tab', next);
-      window.history.pushState(null, '', url);
-    },
-    [isOwner]
-  );
-
-  // Keep the rendered section in sync when the user presses back/forward.
-  useEffect(() => {
-    const onPopState = () => {
-      const params = new URLSearchParams(window.location.search);
-      setActiveTab(resolveAdminTab(params.get('tab'), { isOwner }));
-    };
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
-  }, [isOwner]);
-
-  const badges = Object.fromEntries(
-    Object.keys(tiles).map((id) => [id, badgeFor(id, tiles)])
-  );
-
   const section = adminTabById(activeTab);
   const sectionTiles = tiles[activeTab] || [];
 
+  // Belt and braces: the shell already resolves owner-only sections, but never
+  // render owner tiles for a non-owner even if an unexpected id arrives here.
+  const visibleTiles = isOwner
+    ? sectionTiles
+    : sectionTiles.filter((tile) => tile.restricted !== 'owner');
+
   return (
-    <div className="lg:grid lg:grid-cols-[232px_1fr] lg:gap-9 lg:items-start">
-      <Sidebar
-        groups={groups}
-        active={activeTab}
-        onSelect={selectTab}
-        badges={badges}
-      />
+    <div id={`admin-panel-${activeTab}`}>
+      {section && (
+        <>
+          <h2
+            className="text-[23px] font-bold -tracking-[0.02em] mb-[4px]"
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+          >
+            {section.label}
+          </h2>
+          <p
+            className="text-[14.5px] mb-[20px] leading-[1.5]"
+            style={{ color: 'var(--auth-muted)' }}
+          >
+            {section.description}
+          </p>
+        </>
+      )}
 
-      <div
-        id={`admin-panel-${activeTab}`}
-        role="tabpanel"
-        aria-labelledby={`admin-tab-${activeTab}`}
-        className="mt-6 lg:mt-0"
-      >
-        {section && (
-          <>
-            <h2
-              className="text-[23px] font-bold -tracking-[0.02em] mb-[4px]"
-              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-            >
-              {section.label}
-            </h2>
-            <p
-              className="text-[14.5px] mb-[20px] leading-[1.5]"
-              style={{ color: 'var(--auth-muted)' }}
-            >
-              {section.description}
-            </p>
-          </>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3.5">
-          {sectionTiles.map((tile) => (
-            <Tile key={tile.href} {...tile} />
-          ))}
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3.5">
+        {visibleTiles.map((tile) => (
+          <Tile key={tile.href} {...tile} />
+        ))}
       </div>
     </div>
   );

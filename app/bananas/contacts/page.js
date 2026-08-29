@@ -19,17 +19,15 @@ export default async function ContactsPage() {
     .order('display_name', { ascending: true });
 
   return (
-    <main className="max-w-[1200px] mx-auto px-6 py-16">
+    <>
       <AuthenticatedPageHeader
-        backHref="/bananas"
-        backLabel="← BACK TO ADMIN"
         title="Contacts"
         description="The people, collectives, renters and vendors SDG does business with. Relationships live here so they stay with the org."
-        titleClassName="text-[40px] font-extrabold -tracking-[0.02em] leading-[1.1]"
+        titleClassName="text-[30px] font-extrabold -tracking-[0.02em] leading-[1.15]"
         className="mb-10"
       />
 
       <ContactsList contacts={contacts || []} />
-    </main>
+    </>
   );
 }
