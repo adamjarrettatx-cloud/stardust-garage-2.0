@@ -35,7 +35,6 @@ export default async function AdminDashboard() {
     upcomingBookingsCount,
     activeMembersCount,
     pastDueMembersCount,
-    potentialMembersCount,
     unreadChat,
     pendingPayRequestsCount,
   ] = await Promise.all([
@@ -47,7 +46,6 @@ export default async function AdminDashboard() {
     supabase.from('studio_bookings').select('*', { count: 'exact', head: true }).eq('status', 'confirmed').gte('booking_date', today),
     supabase.from('member_profiles').select('*', { count: 'exact', head: true }).eq('is_active', true),
     supabase.from('member_profiles').select('*', { count: 'exact', head: true }).eq('subscription_status', 'past_due'),
-    supabase.from('potential_members').select('*', { count: 'exact', head: true }).eq('status', 'potential'),
     // Unread Team Chat messages for whoever is signed in. Scoped to the caller
     // by the RPC itself — it takes no arguments.
     supabase.rpc('chat_unread_counts'),
@@ -69,7 +67,6 @@ export default async function AdminDashboard() {
     upcomingBookings: upcomingBookingsCount?.count || 0,
     activeMembers: activeMembersCount?.count || 0,
     pastDueMembers: pastDueMembersCount?.count || 0,
-    potentialMembers: potentialMembersCount?.count || 0,
     unreadChat: totalUnreadCount(unreadChat?.data),
     pendingPayRequests: pendingPayRequestsCount?.count || 0,
   };

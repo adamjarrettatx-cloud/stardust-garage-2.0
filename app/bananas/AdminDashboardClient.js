@@ -96,13 +96,12 @@ export default function AdminDashboardClient({ isOwner, counts }) {
   //
   // "Submissions" used to lump every inbound-people form together. It's now
   // split in two:
-  //   - Community: people relating to membership (applications, potential
-  //     members admins add themselves, collaborations, signups).
+  //   - Community: people relating to membership (applications,
+  //     collaborations, signups).
   //   - Rentals: people relating to renting the space (venue inquiries,
   //     micro parties).
   const communityBadge =
     counts.applications +
-    counts.potentialMembers +
     counts.collaborations +
     counts.newSignups +
     (counts.pendingPayRequests || 0);
@@ -144,12 +143,6 @@ export default function AdminDashboardClient({ isOwner, counts }) {
             eyebrow="REVIEW"
             title="Applications"
             count={counts.applications}
-          />
-          <Tile
-            href="/bananas/potential-members"
-            eyebrow="CREATE"
-            title="Potential Members"
-            count={counts.potentialMembers}
           />
           <Tile
             href="/bananas/collaborations"
