@@ -2,10 +2,11 @@
 
 // Analytics dashboard for the trial pass program.
 //
-// Server-rendered on load with data pulled by loadTrialPassAnalytics(). This
-// component is client-only so it can drive interactive charts and a "refresh"
-// button without a full page reload (a future improvement \u2014 for now the page
-// is force-dynamic so every visit rehydrates fresh).
+// Every hex/rgba color below is chosen so the light-mode substring overrides
+// in app/globals.css can find and remap it (see the [style*='#141414'] etc.
+// selectors). Do NOT introduce arbitrary rgba white/black values \u2014 they will
+// look correct in dark mode and disappear entirely in light mode, which is
+// exactly the bug this file was rewritten to fix.
 //
 // Layout:
 //   1. KPI cards (issued / active / applied / converted, plus 7d & 30d)
@@ -15,10 +16,14 @@
 //   5. Recent activity table
 
 const GOLD = '#ffb84d';
-const CREAM = 'rgba(255,255,255,0.85)';
-const DIM = 'rgba(255,255,255,0.55)';
-const CARD = 'rgba(255,255,255,0.04)';
-const CARD_BORDER = 'rgba(255,255,255,0.08)';
+
+// Tokens that participate in the auth-theme-root light-mode overrides.
+const CARD_BG = '#141414';       // maps to var(--auth-card-bg) in light
+const TRACK_BG = '#1a1a1a';      // maps to var(--auth-card-bg-alt) in light
+const BORDER = '#2a2a2a';        // maps to var(--auth-card-border) in light
+const TEXT_STRONG = '#f5f5f5';   // maps to var(--auth-text) in light
+const TEXT_MUTED = '#8a8a8a';    // maps to var(--auth-muted) in light
+const TEXT_MUTED_STRONG = '#bbb'; // maps to var(--auth-muted-strong) in light
 
 function pct(rate) {
   if (!rate || Number.isNaN(rate)) return '0%';
@@ -27,24 +32,24 @@ function pct(rate) {
 
 function StatusPill({ status, appliedAt, convertedAt }) {
   let label = status;
-  let color = DIM;
-  let bg = 'rgba(255,255,255,0.05)';
+  let bg = TRACK_BG;
+  let color = TEXT_MUTED_STRONG;
   if (convertedAt) {
     label = 'Member';
     color = '#4ade80';
-    bg = 'rgba(74,222,128,0.12)';
+    bg = TRACK_BG;
   } else if (appliedAt) {
     label = 'Applied';
     color = GOLD;
-    bg = 'rgba(255,184,77,0.15)';
+    bg = TRACK_BG;
   } else if (status === 'active') {
     label = 'Active';
-    color = '#ffffff';
-    bg = 'rgba(255,255,255,0.08)';
+    color = TEXT_STRONG;
+    bg = TRACK_BG;
   } else if (status === 'expired') {
     label = 'Expired';
-    color = DIM;
-    bg = 'rgba(255,255,255,0.04)';
+    color = TEXT_MUTED;
+    bg = TRACK_BG;
   }
   return (
     <span
@@ -60,22 +65,22 @@ function KpiCard({ label, value, sub }) {
   return (
     <div
       className="rounded-2xl p-5"
-      style={{ background: CARD, border: `1px solid ${CARD_BORDER}` }}
+      style={{ background: CARD_BG, border: `1px solid ${BORDER}` }}
     >
       <div
         className="text-[10px] font-semibold tracking-[0.2em] uppercase mb-3"
-        style={{ color: DIM }}
+        style={{ color: TEXT_MUTED }}
       >
         {label}
       </div>
       <div
         className="text-[36px] font-extrabold -tracking-[0.02em] leading-none mb-1.5"
-        style={{ color: '#ffffff', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+        style={{ color: TEXT_STRONG, fontFamily: "'Plus Jakarta Sans', sans-serif" }}
       >
         {value}
       </div>
       {sub && (
-        <div className="text-[12px]" style={{ color: DIM }}>
+        <div className="text-[12px]" style={{ color: TEXT_MUTED }}>
           {sub}
         </div>
       )}
@@ -95,11 +100,11 @@ function FunnelBar({ funnel, rates }) {
   return (
     <div
       className="rounded-2xl p-6 mb-10"
-      style={{ background: CARD, border: `1px solid ${CARD_BORDER}` }}
+      style={{ background: CARD_BG, border: `1px solid ${BORDER}` }}
     >
       <div
         className="text-[11px] font-semibold tracking-[0.2em] uppercase mb-5"
-        style={{ color: DIM }}
+        style={{ color: TEXT_MUTED }}
       >
         Conversion Funnel
       </div>
@@ -109,26 +114,29 @@ function FunnelBar({ funnel, rates }) {
           return (
             <div key={stage.label}>
               <div className="flex items-baseline justify-between mb-1.5">
-                <div className="text-[13px] font-medium" style={{ color: CREAM }}>
+                <div className="text-[13px] font-medium" style={{ color: TEXT_STRONG }}>
                   {stage.label}
                 </div>
                 <div className="flex items-baseline gap-3">
                   {stage.rate !== null && (
-                    <span className="text-[11px]" style={{ color: DIM }}>
+                    <span className="text-[11px]" style={{ color: TEXT_MUTED }}>
                       {pct(stage.rate)} of prior step
                     </span>
                   )}
                   <span
                     className="text-[16px] font-bold"
                     style={{
-                      color: i === stages.length - 1 && stage.value > 0 ? '#4ade80' : '#ffffff',
+                      color: i === stages.length - 1 && stage.value > 0 ? '#4ade80' : TEXT_STRONG,
                     }}
                   >
                     {stage.value}
                   </span>
                 </div>
               </div>
-              <div className="h-2.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+              <div
+                className="h-2.5 rounded-full overflow-hidden"
+                style={{ background: TRACK_BG }}
+              >
                 <div
                   className="h-full rounded-full transition-all"
                   style={{
@@ -141,9 +149,12 @@ function FunnelBar({ funnel, rates }) {
           );
         })}
       </div>
-      <div className="mt-6 pt-5" style={{ borderTop: `1px solid ${CARD_BORDER}` }}>
+      <div className="mt-6 pt-5" style={{ borderTop: `1px solid ${BORDER}` }}>
         <div className="flex items-baseline justify-between">
-          <div className="text-[12px] tracking-[0.16em] uppercase font-semibold" style={{ color: DIM }}>
+          <div
+            className="text-[12px] tracking-[0.16em] uppercase font-semibold"
+            style={{ color: TEXT_MUTED }}
+          >
             End-to-end conversion
           </div>
           <div className="text-[24px] font-extrabold" style={{ color: GOLD }}>
@@ -160,16 +171,16 @@ function BreakdownList({ title, rows, formatKey = (k) => k, emptyText = 'None ye
   return (
     <div
       className="rounded-2xl p-6"
-      style={{ background: CARD, border: `1px solid ${CARD_BORDER}` }}
+      style={{ background: CARD_BG, border: `1px solid ${BORDER}` }}
     >
       <div
         className="text-[11px] font-semibold tracking-[0.2em] uppercase mb-5"
-        style={{ color: DIM }}
+        style={{ color: TEXT_MUTED }}
       >
         {title}
       </div>
       {rows.length === 0 ? (
-        <div className="text-[13px]" style={{ color: DIM }}>
+        <div className="text-[13px]" style={{ color: TEXT_MUTED }}>
           {emptyText}
         </div>
       ) : (
@@ -180,17 +191,23 @@ function BreakdownList({ title, rows, formatKey = (k) => k, emptyText = 'None ye
             return (
               <div key={key}>
                 <div className="flex items-baseline justify-between mb-1">
-                  <div className="text-[13px]" style={{ color: CREAM }}>
+                  <div className="text-[13px]" style={{ color: TEXT_STRONG }}>
                     {formatKey(key)}
                   </div>
-                  <div className="text-[13px] font-semibold" style={{ color: '#ffffff' }}>
+                  <div
+                    className="text-[13px] font-semibold"
+                    style={{ color: TEXT_STRONG }}
+                  >
                     {r.count}
-                    <span className="text-[11px] ml-2" style={{ color: DIM }}>
+                    <span className="text-[11px] ml-2" style={{ color: TEXT_MUTED }}>
                       {pct(share)}
                     </span>
                   </div>
                 </div>
-                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                <div
+                  className="h-1.5 rounded-full overflow-hidden"
+                  style={{ background: TRACK_BG }}
+                >
                   <div
                     className="h-full rounded-full"
                     style={{ width: `${share * 100}%`, background: GOLD }}
@@ -230,15 +247,15 @@ function DaysHistogram({ buckets }) {
   return (
     <div
       className="rounded-2xl p-6"
-      style={{ background: CARD, border: `1px solid ${CARD_BORDER}` }}
+      style={{ background: CARD_BG, border: `1px solid ${BORDER}` }}
     >
       <div
         className="text-[11px] font-semibold tracking-[0.2em] uppercase mb-1"
-        style={{ color: DIM }}
+        style={{ color: TEXT_MUTED }}
       >
         First check-in timing
       </div>
-      <div className="text-[12px] mb-5" style={{ color: DIM }}>
+      <div className="text-[12px] mb-5" style={{ color: TEXT_MUTED }}>
         Days between issue and first door check-in.{' '}
         {total > 0 ? `${total} checked-in passes.` : ''}
       </div>
@@ -247,7 +264,7 @@ function DaysHistogram({ buckets }) {
           const height = (b.count / max) * 100;
           return (
             <div key={b.label} className="flex-1 flex flex-col items-center gap-2">
-              <div className="text-[11px] font-semibold" style={{ color: '#ffffff' }}>
+              <div className="text-[11px] font-semibold" style={{ color: TEXT_STRONG }}>
                 {b.count}
               </div>
               <div
@@ -259,7 +276,7 @@ function DaysHistogram({ buckets }) {
               />
               <div
                 className="text-[10px] font-semibold tracking-[0.06em] uppercase text-center"
-                style={{ color: DIM }}
+                style={{ color: TEXT_MUTED }}
               >
                 {b.label}
               </div>
@@ -275,23 +292,23 @@ function RecentTable({ rows }) {
   return (
     <div
       className="rounded-2xl overflow-hidden"
-      style={{ background: CARD, border: `1px solid ${CARD_BORDER}` }}
+      style={{ background: CARD_BG, border: `1px solid ${BORDER}` }}
     >
       <div
         className="px-6 py-5 text-[11px] font-semibold tracking-[0.2em] uppercase"
-        style={{ color: DIM, borderBottom: `1px solid ${CARD_BORDER}` }}
+        style={{ color: TEXT_MUTED, borderBottom: `1px solid ${BORDER}` }}
       >
         Recent Trial Members
       </div>
       {rows.length === 0 ? (
-        <div className="p-6 text-[13px]" style={{ color: DIM }}>
+        <div className="p-6 text-[13px]" style={{ color: TEXT_MUTED }}>
           No passes issued yet. Once the first guest scans a QR, they show up here.
         </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
             <thead>
-              <tr style={{ color: DIM }}>
+              <tr style={{ color: TEXT_MUTED }}>
                 <th className="text-left font-semibold px-6 py-3">Name</th>
                 <th className="text-left font-semibold px-4 py-3">Status</th>
                 <th className="text-left font-semibold px-4 py-3">Source</th>
@@ -302,10 +319,10 @@ function RecentTable({ rows }) {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id} style={{ borderTop: `1px solid ${CARD_BORDER}` }}>
+                <tr key={r.id} style={{ borderTop: `1px solid ${BORDER}` }}>
                   <td className="px-6 py-3.5">
-                    <div style={{ color: '#ffffff', fontWeight: 500 }}>{r.fullName}</div>
-                    <div className="text-[11px] mt-0.5" style={{ color: DIM }}>
+                    <div style={{ color: TEXT_STRONG, fontWeight: 500 }}>{r.fullName}</div>
+                    <div className="text-[11px] mt-0.5" style={{ color: TEXT_MUTED }}>
                       {r.email}
                     </div>
                   </td>
@@ -316,16 +333,19 @@ function RecentTable({ rows }) {
                       convertedAt={r.convertedAt}
                     />
                   </td>
-                  <td className="px-4 py-3.5" style={{ color: CREAM }}>
+                  <td className="px-4 py-3.5" style={{ color: TEXT_STRONG }}>
                     {formatSource(r.signupSource)}
                   </td>
-                  <td className="px-4 py-3.5 text-right" style={{ color: '#ffffff', fontWeight: 600 }}>
+                  <td
+                    className="px-4 py-3.5 text-right"
+                    style={{ color: TEXT_STRONG, fontWeight: 600 }}
+                  >
                     {r.checkinCount}
                   </td>
-                  <td className="px-4 py-3.5 text-right" style={{ color: CREAM }}>
-                    {r.status === 'active' ? `${r.daysLeft}d` : '—'}
+                  <td className="px-4 py-3.5 text-right" style={{ color: TEXT_STRONG }}>
+                    {r.status === 'active' ? `${r.daysLeft}d` : '\u2014'}
                   </td>
-                  <td className="px-6 py-3.5 text-right" style={{ color: DIM }}>
+                  <td className="px-6 py-3.5 text-right" style={{ color: TEXT_MUTED }}>
                     {new Date(r.issuedAt).toLocaleDateString('en-US', {
                       month: 'short',
                       day: 'numeric',
@@ -350,18 +370,26 @@ export default function AnalyticsDashboard({ data }) {
         <KpiCard
           label="Passes issued"
           value={totals.all}
-          sub={`${totals.last7} in last 7d · ${totals.last30} in last 30d`}
+          sub={`${totals.last7} in last 7d \u00b7 ${totals.last30} in last 30d`}
         />
         <KpiCard label="Active" value={totals.active} sub="Within the 30-day window" />
         <KpiCard
           label="Applied"
           value={totals.applied}
-          sub={rates.issuedToCheckin > 0 ? `${pct(rates.checkinToApplied)} of check-ins` : 'Awaiting apps'}
+          sub={
+            rates.issuedToCheckin > 0
+              ? `${pct(rates.checkinToApplied)} of check-ins`
+              : 'Awaiting apps'
+          }
         />
         <KpiCard
           label="Approved members"
           value={totals.converted}
-          sub={totals.converted > 0 ? `${pct(rates.endToEnd)} end-to-end conversion` : 'None yet'}
+          sub={
+            totals.converted > 0
+              ? `${pct(rates.endToEnd)} end-to-end conversion`
+              : 'None yet'
+          }
         />
       </div>
 
@@ -378,7 +406,7 @@ export default function AnalyticsDashboard({ data }) {
           title="Door denial reasons"
           rows={denialReasons}
           formatKey={formatDenialReason}
-          emptyText="No denials yet — every scan has been let in."
+          emptyText="No denials yet \u2014 every scan has been let in."
         />
       </div>
 
