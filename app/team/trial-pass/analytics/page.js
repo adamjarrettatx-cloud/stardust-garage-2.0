@@ -40,13 +40,13 @@ export default async function TrialPassAnalyticsPage() {
             </div>
             <h1
               className="text-[32px] md:text-[42px] font-extrabold -tracking-[0.02em] leading-[1.1] mb-3"
-              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#ffffff' }}
+              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#f5f5f5' }}
             >
               Trial Members Funnel
             </h1>
             <p
               className="text-[14px] leading-[1.6] max-w-[640px]"
-              style={{ color: 'rgba(255,255,255,0.65)' }}
+              style={{ color: '#8a8a8a' }}
             >
               From QR scan to full membership. Everything below updates in real time as guests sign up,
               check in at the door, and apply.
@@ -58,7 +58,7 @@ export default async function TrialPassAnalyticsPage() {
           ) : (
             <div
               className="rounded-2xl p-6 text-[14px]"
-              style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.65)' }}
+              style={{ background: '#141414', color: '#8a8a8a', border: '1px solid #2a2a2a' }}
             >
               Analytics could not be loaded. Check the Supabase connection and try again.
             </div>
