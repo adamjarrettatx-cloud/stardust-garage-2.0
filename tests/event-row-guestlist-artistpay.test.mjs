@@ -158,15 +158,39 @@ test('1099 tracking stays year-wide even when the page is scoped', () => {
 });
 
 test('leaving a per-event guest list returns you to the Events list', () => {
-  // Owner decision: the way out is the event list you came from, not the
-  // all-events door summary. Both surfaces still exist as URLs; only the trail
-  // out changed.
+  // Owner decision: the way out is the event list you came from.
   assert.match(EVENT_GUEST_LIST, /backHref="\/bananas\?tab=events"/);
   assert.match(EVENT_GUEST_LIST, /BACK TO EVENTS/);
   assert.ok(
     !/backHref="\/bananas\/guest-list"/.test(EVENT_GUEST_LIST),
-    'the back link points at the all-events summary again'
+    'the back link points at the deleted all-events summary again'
   );
+});
+
+test('the all-events guest list summary is gone, helpers and all', () => {
+  // Owner decision 2026-08-29: unnecessary once every guest list is opened from
+  // its event. Deleted rather than left orphaned at a URL nothing links to.
+  assert.equal(
+    fs.existsSync(path.join(REPO_ROOT, 'app/bananas/guest-list/page.js')),
+    false,
+    'the summary page is back'
+  );
+  // The per-event page it used to wrap must survive the deletion.
+  assert.equal(
+    fs.existsSync(path.join(REPO_ROOT, 'app/bananas/guest-list/[id]/page.js')),
+    true,
+    'the per-event guest list page went with it'
+  );
+  // Its two helpers had exactly one consumer, so leaving them behind would be
+  // dead code that still reads as a supported query.
+  const helpers = read('lib/guestlist-helpers.js');
+  for (const dead of ['summarizeEventGuestlists', 'loadGuestlistSummary', 'SUMMARY_SELECT']) {
+    assert.ok(!helpers.includes(dead), `${dead} is still defined with no caller`);
+  }
+  // ...while the helpers the per-event page and the allocation panel share stay.
+  for (const live of ['loadEventGrants', 'summarizeGrants', 'auditGuestlist']) {
+    assert.ok(helpers.includes(live), `${live} was removed by mistake`);
+  }
 });
 
 test('a scoped page offers the way back out to every event', () => {
