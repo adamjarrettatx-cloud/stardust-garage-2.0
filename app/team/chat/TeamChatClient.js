@@ -491,7 +491,12 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <AuthenticatedThemeToggleControl theme={theme} onToggle={toggleTheme} />
+          {/* The shell header already carries the theme toggle next to Log Out.
+              Rendered only when this page supplies its own header instead — a
+              non-admin team member never sees the shell. */}
+          {!inShell && (
+            <AuthenticatedThemeToggleControl theme={theme} onToggle={toggleTheme} />
+          )}
           {!inShell && (
             <Link
               href="/team/progress"

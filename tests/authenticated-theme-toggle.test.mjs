@@ -136,20 +136,39 @@ test('representative authenticated routes render inline headers and avoid navbar
   }
 });
 
-test('existing reference pages still render a single inline toggle in their page header', () => {
-  const inlineReferenceFiles = [
+test('reference pages keep their own inline header, without a duplicate toggle', () => {
+  // This list used to require a toggle on all six. That was written before the
+  // admin shell became persistent: the shell header now renders one toggle for
+  // every page inside it, so a page-level toggle is a second identical switch
+  // on the same screen.
+  //
+  // The split below is the rule now. See tests/single-theme-toggle.test.mjs.
+  const alwaysInsideShell = [
     'app/bananas/analytics/AnalyticsClient.js',
     'app/bananas/financial-calendar/FinancialCalendarClient.js',
     'app/bananas/financials/FinancialsClient.js',
+  ];
+  // Reachable by non-admin team members, who never see the shell, so these keep
+  // a toggle — suppressed when the shell is present.
+  const sometimesInsideShell = [
     'app/team/calendar/CalendarClient.js',
     'app/team/chat/TeamChatClient.js',
     'app/team/progress/ProgressClient.js',
   ];
 
-  for (const relativePath of inlineReferenceFiles) {
+  for (const relativePath of [...alwaysInsideShell, ...sometimesInsideShell]) {
     const content = fs.readFileSync(path.join(REPO_ROOT, relativePath), 'utf8');
-    assert.match(content, /AuthenticatedThemeToggleControl/);
     assert.equal(content.includes('AuthenticatedPageHeader'), false, `${relativePath} should keep its existing inline header implementation`);
+  }
+
+  for (const relativePath of alwaysInsideShell) {
+    const content = fs.readFileSync(path.join(REPO_ROOT, relativePath), 'utf8');
+    assert.doesNotMatch(content, /AuthenticatedThemeToggleControl/, `${relativePath} duplicates the shell's toggle`);
+  }
+
+  for (const relativePath of sometimesInsideShell) {
+    const content = fs.readFileSync(path.join(REPO_ROOT, relativePath), 'utf8');
+    assert.match(content, /AuthenticatedThemeToggleControl/, `${relativePath} needs a toggle for non-admin team members`);
   }
 });
 

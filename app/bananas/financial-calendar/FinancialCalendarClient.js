@@ -8,7 +8,6 @@ import { ENTRY_STATE, entriesInMonth, summarizeIncome } from '@/lib/financial-ca
 import { MANUAL_CATEGORIES } from '@/lib/manual-income';
 import { adminFetch } from '@/lib/admin-fetch';
 import RefreshMetricsButton from '@/app/bananas/analytics/RefreshMetricsButton';
-import AuthenticatedThemeToggleControl from '@/app/components/AuthenticatedThemeToggleControl';
 import { FINANCIAL_THEMES as THEMES, stateColor } from '@/lib/admin-theme';
 import ManualIncomeDialog from './ManualIncomeDialog';
 import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
@@ -67,7 +66,9 @@ function cellIncomeLabel(entry) {
 export default function FinancialCalendarClient({ entries, todayIso }) {
   const router = useRouter();
   const today = useMemo(() => new Date(todayIso), [todayIso]);
-  const { theme, toggleTheme } = useAuthenticatedTheme();
+  // Only `theme` is read here: the toggle control lives in the admin shell
+  // header, so this page selects its palette but never offers the switch.
+  const { theme } = useAuthenticatedTheme();
 
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -177,7 +178,6 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
           <div className="text-[11px] tracking-[0.18em]" style={{ color: t.muted }}>
             OWNER ONLY
           </div>
-          <AuthenticatedThemeToggleControl theme={theme} onToggle={toggleTheme} />
         </div>
       </div>
       <p className="mb-6 text-[14px]" style={{ color: t.muted }}>
