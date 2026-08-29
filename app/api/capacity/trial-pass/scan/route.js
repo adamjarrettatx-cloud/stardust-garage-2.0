@@ -8,6 +8,7 @@ import { resolveSiteUrl } from '@/lib/site-url';
 import { sendTrialPassApplicationInvite } from '@/lib/email';
 import {
   DOOR_RESULTS,
+  TRIAL_WINDOW_DAYS,
   daysRemaining,
   effectiveExpiry,
   evaluateDoorScan,
@@ -97,7 +98,7 @@ export async function POST(request) {
 
   const { data: pass, error: passError } = await admin
     .from('trial_passes')
-    .select('id, full_name, email, status, issued_at, expires_at, extended_until, applied_at, converted_at')
+    .select('id, full_name, email, status, issued_at, expires_at, extended_until, applied_at, converted_at, activated_at, signup_expires_at')
     .eq('qr_token_hash', hashPassToken(passToken))
     .maybeSingle();
 
@@ -161,6 +162,46 @@ export async function POST(request) {
     // 23505 is the one-allowed-scan-per-event unique index doing its job under
     // a double-tap; the decision above stands either way.
     console.error('[door.trial-pass.scan.log]', logError);
+  }
+
+  // ---------------------------------------------------------------------------
+  // ACTIVATION: first `allowed` check-in starts the 30-day clock.
+  //
+  // The 30-day membership window does not begin at signup — it begins now,
+  // the first time the guest physically walks in the door. We set:
+  //   activated_at = now
+  //   expires_at   = now + 30 days
+  //
+  // Concurrency: the .is('activated_at', null) filter makes this a
+  // conditional update. If a second scanner (or a double-tap on the kiosk)
+  // races us, only one write wins; the other is a no-op and the guest keeps
+  // the original activation timestamp. Never resets the clock.
+  //
+  // We use the app-server's `now` for both timestamps so `expires_at` is
+  // always exactly TRIAL_WINDOW_DAYS after `activated_at`, no drift from
+  // Postgres's clock.
+  //
+  // If the update returns a row, use it as `pass` for the rest of the
+  // response so the guest screen shows the freshly-set expiry, not the
+  // stale null it was born with.
+  if (decision.allowed && !pass.activated_at) {
+    const activatedAt = new Date();
+    const expiresAt = new Date(activatedAt.getTime() + TRIAL_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+    const { data: activated, error: activateError } = await admin
+      .from('trial_passes')
+      .update({
+        activated_at: activatedAt.toISOString(),
+        expires_at: expiresAt.toISOString(),
+      })
+      .eq('id', pass.id)
+      .is('activated_at', null)
+      .select('id, full_name, email, status, issued_at, expires_at, extended_until, applied_at, converted_at, activated_at, signup_expires_at')
+      .maybeSingle();
+    if (activateError) {
+      console.error('[door.trial-pass.scan.activate]', activateError);
+    } else if (activated) {
+      pass = activated;
+    }
   }
 
   const expiry = effectiveExpiry(pass);

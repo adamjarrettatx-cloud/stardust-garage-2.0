@@ -56,9 +56,14 @@ export async function GET(request) {
       .from('trial_passes')
       .select(
         'id, full_name, email, status, issued_at, expires_at, extended_until, ' +
+          'activated_at, signup_expires_at, ' +
           'applied_at, converted_at, reminders_sent, qr_token_hash',
       )
       .in('status', ['active', 'extended'])
+      // Widen the SQL prefilter to the higher of the two ceilings so
+      // unactivated passes (max 3 nudges) and activated passes (max 4)
+      // both make it through. reminderDueFor() then applies the correct
+      // per-phase cap in JS.
       .lt('reminders_sent', MAX_REMINDERS)
       .is('applied_at', null)
       .is('converted_at', null);
@@ -103,13 +108,23 @@ export async function GET(request) {
         // and re-issue the same pass with a fresh token, so "tap the link,
         // type your email, your pass is back" is a complete recovery path
         // without us ever holding a replayable credential.
+        // Two very different template calls depending on activation:
+        //   activation_nudge — pass has never been used; expiresLabel is the
+        //     signup_expires_at deadline (activate by...).
+        //   application_nudge — pass activated; expiresLabel is the actual
+        //     30-day (or extended) expiry date.
+        const expiresLabelSource =
+          due.kind === 'activation_nudge'
+            ? pass.signup_expires_at
+            : pass.extended_until || pass.expires_at;
         const result = await sendTrialPassReminder({
           email: pass.email,
           fullName: pass.full_name,
           passUrl: `${siteUrl}/pass`,
           applyUrl: `${siteUrl}/members`,
           daysLeft: due.daysLeft,
-          expiresLabel: formatPassDate(pass.extended_until || pass.expires_at),
+          expiresLabel: formatPassDate(expiresLabelSource),
+          kind: due.kind,
         });
 
         const sentAt = new Date().toISOString();
@@ -144,21 +159,38 @@ export async function GET(request) {
       }
     }
 
-    // Close out windows that have run down. Loaded separately from the nudge
-    // set because a pass can be past expiry while still having nudges left in
-    // theory (someone who signed up and never got mailed), and both need
-    // handling in the same pass.
-    const { data: openPasses, error: openError } = await admin
-      .from('trial_passes')
-      .select('id, status, expires_at, extended_until')
-      .in('status', ['active', 'extended'])
-      .lt('expires_at', now.toISOString());
+    // Close out windows that have run down. Two cases:
+    //   1. Activated passes past their 30-day expires_at
+    //   2. Unactivated passes past their 60-day signup_expires_at
+    // Loaded as two queries because a single OR() across nullable columns is
+    // fragile in postgrest, and both scans are indexed.
+    const [expiredActivatedRes, expiredUnactivatedRes] = await Promise.all([
+      admin
+        .from('trial_passes')
+        .select('id, status, expires_at, extended_until, activated_at, signup_expires_at')
+        .in('status', ['active', 'extended'])
+        .not('activated_at', 'is', null)
+        .lt('expires_at', now.toISOString()),
+      admin
+        .from('trial_passes')
+        .select('id, status, expires_at, extended_until, activated_at, signup_expires_at')
+        .in('status', ['active', 'extended'])
+        .is('activated_at', null)
+        .lt('signup_expires_at', now.toISOString()),
+    ]);
 
-    if (openError) {
-      throw new Error(`Failed to load expiring passes: ${openError.message}`);
+    if (expiredActivatedRes.error) {
+      throw new Error(`Failed to load expired activated passes: ${expiredActivatedRes.error.message}`);
+    }
+    if (expiredUnactivatedRes.error) {
+      throw new Error(`Failed to load expired unactivated passes: ${expiredUnactivatedRes.error.message}`);
     }
 
-    const toExpire = (openPasses || []).filter((pass) => needsExpiryFlip(pass, now)).map((p) => p.id);
+    const openPasses = [
+      ...(expiredActivatedRes.data || []),
+      ...(expiredUnactivatedRes.data || []),
+    ];
+    const toExpire = openPasses.filter((pass) => needsExpiryFlip(pass, now)).map((p) => p.id);
     let expired = 0;
     if (toExpire.length > 0) {
       const { error: expireError } = await admin

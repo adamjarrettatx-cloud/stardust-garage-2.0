@@ -9,6 +9,7 @@ import {
   effectiveExpiry,
   formatPassDate,
   hashPassToken,
+  isActivated,
   isPassLive,
   isWellFormedPassToken,
   passStatusLabel,
@@ -51,7 +52,7 @@ export default async function TrialPassViewPage({ params }) {
   const admin = createAdminClient();
   const { data: pass, error } = await admin
     .from('trial_passes')
-    .select('id, full_name, status, issued_at, expires_at, extended_until, applied_at, converted_at')
+    .select('id, full_name, status, issued_at, expires_at, extended_until, applied_at, converted_at, activated_at, signup_expires_at')
     .eq('qr_token_hash', hashPassToken(token))
     .maybeSingle();
 
@@ -62,10 +63,28 @@ export default async function TrialPassViewPage({ params }) {
   if (!pass) notFound();
 
   const live = isPassLive(pass);
+  const activated = isActivated(pass);
   const expiry = effectiveExpiry(pass);
   const daysLeft = daysRemaining(pass);
   const statusLabel = passStatusLabel(pass);
   const firstName = String(pass.full_name || '').split(' ')[0] || 'there';
+
+  // Three states, three headlines:
+  //   live + activated   → "Show this code at the door…"
+  //   live + unactivated → "Your 30 days start on your first visit…"
+  //   expired            → "This pass has expired…"
+  const bodyCopy = !live
+    ? 'This pass has expired. Ask a staff member at the door about extending it, or apply for membership.'
+    : activated
+      ? 'Show this code at the door. Staff scan it and your access is checked automatically.'
+      : 'Your 30-day trial starts the first night you come out. Show this code at the door to activate it.';
+
+  // The header on the expiry card tracks the same three states.
+  const expiryLabel = !live
+    ? 'EXPIRED ON'
+    : activated
+      ? 'GOOD THROUGH'
+      : 'ACTIVATE BY';
 
   // The QR encodes this page's own URL, so a scan at the door resolves to the
   // same token the guest is looking at. Regenerated per render rather than
@@ -97,9 +116,7 @@ export default async function TrialPassViewPage({ params }) {
           {firstName}&apos;s Trial SDG Pass
         </h1>
         <p className="text-[14px] leading-[1.6] mb-7" style={{ color: 'rgba(255,255,255,0.65)' }}>
-          {live
-            ? 'Show this code at the door. Staff scan it and your access is checked automatically.'
-            : 'This pass has expired. Ask a staff member at the door about extending it, or apply for membership.'}
+          {bodyCopy}
         </p>
 
         {live && qrSvg ? (
@@ -116,7 +133,7 @@ export default async function TrialPassViewPage({ params }) {
           style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
         >
           <div className="text-[10px] font-semibold tracking-[0.16em] mb-1.5" style={{ color: 'rgba(255,255,255,0.45)' }}>
-            {live ? 'GOOD THROUGH' : 'EXPIRED ON'}
+            {expiryLabel}
           </div>
           <div className="text-[15px] font-semibold" style={{ color: '#ffffff' }}>
             {formatPassDate(expiry)}
