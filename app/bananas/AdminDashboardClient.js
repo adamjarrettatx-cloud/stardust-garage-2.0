@@ -92,16 +92,26 @@ function TabBar({ tabs, active, onChange }) {
 // Main client component
 // ---------------------------------------------------------------------------
 export default function AdminDashboardClient({ isOwner, counts }) {
-  // Build tabs based on role
+  // Build tabs based on role.
   //
-  // "Submissions" used to lump every inbound-people form together. It's now
-  // split in two:
-  //   - Community: people relating to membership (applications,
-  //     collaborations, signups).
-  //   - Rentals: people relating to renting the space (venue inquiries,
-  //     micro parties).
-  const communityBadge =
+  // The old "Community" tab had become a grab bag — the membership pipeline,
+  // the contact directory, inbound collaboration requests, mailing-list
+  // signups, guest lists and artist payouts all shared one grid, which staff
+  // found hard to navigate. Owner decision 2026-08-29 splits it in two:
+  //   - Memberships: the membership pipeline only (applications in, members
+  //     managed). If it's about someone's membership status, it's here.
+  //   - People: every person record that is NOT a membership decision — the
+  //     contact directory, collaboration requests, signups, event guest lists
+  //     and artist pay.
+  // Rentals stays as-is: people relating to renting the space.
+  //
+  // Each tab badge is the sum of the counts on its own tiles, so the number on
+  // the tab always matches what a staff member finds after clicking it.
+  const membershipsBadge =
     counts.applications +
+    counts.pastDueMembers;
+
+  const peopleBadge =
     counts.collaborations +
     counts.newSignups +
     (counts.pendingPayRequests || 0);
@@ -116,7 +126,8 @@ export default function AdminDashboardClient({ isOwner, counts }) {
 
   const allTabs = [
     { id: 'team', label: 'Team', ownerOnly: false, badge: counts.unreadChat },
-    { id: 'community', label: 'Community', ownerOnly: false, badge: communityBadge },
+    { id: 'memberships', label: 'Memberships', ownerOnly: false, badge: membershipsBadge },
+    { id: 'people', label: 'People', ownerOnly: false, badge: peopleBadge },
     { id: 'rentals', label: 'Rentals', ownerOnly: false, badge: rentalsBadge },
     { id: 'documents', label: 'Documents', ownerOnly: false, badge: 0 },
     { id: 'analytics', label: 'Analytics', ownerOnly: true, badge: 0 },
@@ -134,21 +145,34 @@ export default function AdminDashboardClient({ isOwner, counts }) {
     <div>
       <TabBar tabs={visibleTabs} active={activeTab} onChange={setActiveTab} />
 
-      {/* COMMUNITY — everything related to membership: people applying,
-          people admins want to bring on, and people reaching out to us. */}
-      {activeTab === 'community' && (
+      {/* MEMBERSHIPS — the membership pipeline only. Applications come in here
+          and members are managed here; nothing else belongs in this tab. */}
+      {activeTab === 'memberships' && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <Tile
+            href="/bananas/applications"
+            eyebrow="REVIEW"
+            title="Applications"
+            count={counts.applications}
+          />
           <Tile
             href="/bananas/members"
             eyebrow="MANAGE"
             title="Members"
             count={counts.pastDueMembers}
           />
+        </div>
+      )}
+
+      {/* PEOPLE — every person record that isn't a membership decision: the
+          contact directory, inbound collaboration requests, mailing-list
+          signups, event guest lists and artist pay. */}
+      {activeTab === 'people' && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           <Tile
-            href="/bananas/applications"
-            eyebrow="REVIEW"
-            title="Applications"
-            count={counts.applications}
+            href="/bananas/contacts"
+            eyebrow="DIRECTORY"
+            title="Contacts"
           />
           <Tile
             href="/bananas/collaborations"
@@ -161,11 +185,6 @@ export default function AdminDashboardClient({ isOwner, counts }) {
             eyebrow="VIEW"
             title="Signups"
             count={counts.newSignups}
-          />
-          <Tile
-            href="/bananas/contacts"
-            eyebrow="DIRECTORY"
-            title="Contacts"
           />
           <Tile
             href="/bananas/guest-list"
