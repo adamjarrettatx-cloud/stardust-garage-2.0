@@ -4,6 +4,11 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import { formatMoney } from '@/lib/studio-helpers';
 import { contactStatusLabel, isContractorContact } from '@/lib/contact-helpers';
+import {
+  defaultSignerEmail,
+  isEventOrganizer,
+  organizerDisplayLabel,
+} from '@/lib/event-organizer';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import ContactForm from '../ContactForm';
 import { ContactStatusBadge, ContactTypeBadges } from '../ContactBadges';
@@ -110,6 +115,24 @@ export default function ContactDetailClient({
   audit,
 }) {
   const isContractor = isContractorContact(contact.contact_type);
+  const isOrganizer = isEventOrganizer(contact);
+  // What is still missing before a contract can be created and sent for this
+  // organizer. Mirrors the blockers contractSendReadiness() enforces server-side
+  // at send time — surfaced here so staff fix the profile before they get to the
+  // send button, which is the whole point of "profile-first".
+  const organizerGaps = useMemo(() => {
+    if (!isOrganizer) return [];
+    const gaps = [];
+    if (!defaultSignerEmail(contact)) {
+      gaps.push('a signer email (Email, or Default Signer Email)');
+    }
+    if (!contact.legal_name) gaps.push('a legal name for the agreement');
+    if (!contact.entity_type) gaps.push('an entity type (individual or business)');
+    if (!contact.address_line1 || !contact.address_city || !contact.address_state) {
+      gaps.push('a mailing address for notices');
+    }
+    return gaps;
+  }, [isOrganizer, contact]);
   const timeline = useMemo(() => {
     const items = [
       ...events.map((e) => ({
@@ -185,6 +208,47 @@ export default function ContactDetailClient({
       <p className="text-[11px] mb-10" style={{ color: 'var(--auth-faint)' }}>
         Added {formatDateTime(contact.created_at)} · last updated {formatDateTime(contact.updated_at)}
       </p>
+
+      {/* EVENT ORGANIZER READINESS — a contract cannot be sent to a profile with
+          no signer email, and a contract with a blank legal name is worthless.
+          Blocking that at send time is too late, so it is surfaced on the profile. */}
+      {isOrganizer && organizerGaps.length > 0 && (
+        <div
+          className="mb-10 rounded-[12px] px-5 py-4 border flex items-start gap-3"
+          style={{
+            background: 'var(--auth-warn-bg)',
+            borderColor: 'var(--auth-warn-border)',
+            color: 'var(--auth-warn)',
+          }}
+          role="alert"
+        >
+          <span aria-hidden="true" className="text-[16px] leading-none mt-0.5">⚠</span>
+          <div className="text-[13px] leading-[1.55]">
+            <div className="font-semibold tracking-[0.02em] mb-1">
+              This Event Organizer is not contract-ready.
+            </div>
+            <div>
+              Still needs {organizerGaps.join(', ')}. Fill in Legal &amp; Signing Details below —
+              a missing signer email will block sending a contract.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isOrganizer && organizerGaps.length === 0 && (
+        <div
+          className="mb-10 rounded-[12px] px-5 py-4 border text-[13px] leading-[1.55]"
+          style={{
+            background: 'var(--auth-card-bg-alt)',
+            borderColor: 'var(--auth-card-border-strong)',
+            color: 'var(--auth-text)',
+          }}
+        >
+          <span className="font-semibold">Contract-ready.</span> Agreements will be issued to{' '}
+          {organizerDisplayLabel(contact)} and sent to {defaultSignerEmail(contact)}. Start a
+          contract from the event this organizer is attached to.
+        </div>
+      )}
 
       {/* NO-W9 WARNING BANNER — page-level so it can't be missed. Only shown for
           admins viewing a DJ/artist/performer contact that doesn't have a W9 on

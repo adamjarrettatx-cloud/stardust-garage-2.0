@@ -9,7 +9,9 @@ import {
   SIGNATURE_PROVIDERS,
   isoToVenueInputValue,
   formatVenueDateTime,
+  isContractLocked,
 } from '@/lib/contract-helpers';
+import { signerSlotLabel } from '@/lib/event-organizer';
 import { DOCUMENTS_THEMES as THEMES } from '@/lib/admin-theme';
 import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
 
@@ -72,6 +74,11 @@ export default function ContractPanel({ documentId, initialContract, events, sig
 
   const status = contract?.status || 'draft';
   const allowedNext = CONTRACT_TRANSITIONS[status] || [];
+
+  // A signed (or closed-out) contract's terms must keep matching the executed
+  // paper, so the editor is withdrawn. The API enforces the same rule with a 409;
+  // this just means staff never get that far.
+  const locked = isContractLocked(status);
 
   // SignNow send prerequisites, mirrored from the server route so the UI can
   // explain *why* the button is disabled instead of failing on click.
@@ -295,7 +302,13 @@ export default function ContractPanel({ documentId, initialContract, events, sig
             <div className="space-y-2">
               {signers.length === 0 && <p className="text-[12px]" style={{ color: t.faint }}>No signers added.</p>}
               {signers.map((s, i) => (
-                <div key={i} className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-center">
+                <div key={i} className="grid grid-cols-[auto_1fr_1fr_auto_auto] gap-2 items-center">
+                  {/* Slot label: field assignments reference signers by POSITION
+                      (signer_1 = the Event Organizer), so the row has to say which
+                      slot it is or reordering silently repoints every field. */}
+                  <span className="text-[11px] whitespace-nowrap" style={{ color: t.faint }}>
+                    {signerSlotLabel(i + 1)}
+                  </span>
                   <input placeholder="Name" value={s.name}
                     onChange={(e) => updateSigner(i, 'name', e.target.value)}
                     className="px-3 py-2 text-[13px] rounded-[8px] outline-none" style={inputStyle} />
@@ -356,11 +369,22 @@ export default function ContractPanel({ documentId, initialContract, events, sig
             {contract.notes && (<><dt style={{ color: t.muted }}>Notes</dt><dd className="whitespace-pre-wrap">{contract.notes}</dd></>)}
           </dl>
 
+          {locked && (
+            <div className="mb-3 p-3 rounded-[10px] text-[12px]"
+              style={{ background: t.warnBg, border: `1px solid ${t.warnBorder}`, color: t.warn }}>
+              This contract is {STATUS_LABEL[status] || status} and is now read-only — its details,
+              signers and fields have to keep matching what was signed. To change terms, create a new
+              draft or a replacement contract from the event.
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center gap-2 mb-3">
-            <button onClick={() => setEditing(true)}
-              className="text-[12px] px-3 py-1.5 rounded-[8px]" style={ghostButtonStyle}>
-              Edit details
-            </button>
+            {!locked && (
+              <button onClick={() => setEditing(true)}
+                className="text-[12px] px-3 py-1.5 rounded-[8px]" style={ghostButtonStyle}>
+                Edit details
+              </button>
+            )}
             {allowedNext.map((next) => (
               <button key={next} onClick={() => transition(next)} disabled={transitioning}
                 className="text-[12px] px-3 py-1.5 rounded-[8px]"

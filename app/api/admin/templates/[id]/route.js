@@ -3,6 +3,7 @@ import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient, audit, DOCUMENT_BUCKET, DOCUMENT_CATEGORIES } from '@/lib/document-helpers';
 import { validateFieldLayout } from '@/lib/contract-fields';
 import { isContractTemplatesEnabled } from '@/lib/feature-flags';
+import { TEMPLATE_KIND_VALUES } from '@/lib/event-organizer';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -60,6 +61,33 @@ export async function PATCH(request, { params }) {
     patch.category = body.category;
   }
   if (typeof body.is_active === 'boolean') patch.is_active = body.is_active;
+  if (typeof body.kind === 'string') {
+    if (!TEMPLATE_KIND_VALUES.has(body.kind)) {
+      return NextResponse.json({ error: 'Invalid template kind' }, { status: 400 });
+    }
+    patch.kind = body.kind;
+  }
+  if (typeof body.requires_master === 'boolean') patch.requires_master = body.requires_master;
+  // requires_master only means something for per-event agreements. Resolve the
+  // pair against whatever the row will actually be after this patch, so you can
+  // flip kind and requires_master in one request without tripping the rule.
+  if ('kind' in patch || 'requires_master' in patch) {
+    const admin = createAdminClient();
+    const { data: current } = await admin
+      .from('contract_templates')
+      .select('kind, requires_master')
+      .eq('id', id)
+      .maybeSingle();
+    if (!current) return NextResponse.json({ error: 'Template not found' }, { status: 404 });
+    const nextKind = patch.kind ?? current.kind;
+    const nextRequires = 'requires_master' in patch ? patch.requires_master : current.requires_master;
+    if (nextRequires && nextKind !== 'event') {
+      return NextResponse.json(
+        { error: 'Only event templates can require a Master Agreement.' },
+        { status: 400 },
+      );
+    }
+  }
   if ('field_layout' in body) {
     const res = validateFieldLayout(body.field_layout);
     if (!res.ok) return NextResponse.json({ error: res.error }, { status: 400 });

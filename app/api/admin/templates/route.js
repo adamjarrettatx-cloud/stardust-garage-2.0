@@ -11,6 +11,7 @@ import {
 } from '@/lib/document-helpers';
 import { buildTemplateStoragePath, readPdfMeta, TEMPLATE_MIME } from '@/lib/template-helpers';
 import { isContractTemplatesEnabled } from '@/lib/feature-flags';
+import { TEMPLATE_KIND_VALUES } from '@/lib/event-organizer';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -38,7 +39,7 @@ export async function GET(request) {
   const admin = createAdminClient();
   let query = admin
     .from('contract_templates')
-    .select('id, title, description, category, filename, mime_type, size_bytes, page_count, field_layout, is_active, created_at, updated_at')
+    .select('id, title, description, category, kind, requires_master, filename, mime_type, size_bytes, page_count, field_layout, is_active, created_at, updated_at')
     .order('updated_at', { ascending: false });
   if (!includeInactive) query = query.eq('is_active', true);
 
@@ -77,10 +78,20 @@ export async function POST(request) {
   const title = String(form.get('title') || '').trim();
   const description = String(form.get('description') || '').trim();
   const category = String(form.get('category') || 'contracts').trim();
+  // kind drives the profile-first flow: a 'master' template produces the
+  // umbrella agreement an organizer signs once, an 'event' template produces the
+  // per-event agreement that can reference it. Default 'other' keeps every
+  // pre-existing template behaving exactly as before.
+  const kind = String(form.get('kind') || 'other').trim();
+  const requiresMaster = String(form.get('requires_master') || '') === 'true';
   const file = form.get('file');
 
   if (!title) return NextResponse.json({ error: 'Title is required.' }, { status: 400 });
   if (!VALID_CATEGORIES.has(category)) return NextResponse.json({ error: 'Invalid category.' }, { status: 400 });
+  if (!TEMPLATE_KIND_VALUES.has(kind)) return NextResponse.json({ error: 'Invalid template kind.' }, { status: 400 });
+  if (requiresMaster && kind !== 'event') {
+    return NextResponse.json({ error: 'Only event templates can require a Master Agreement.' }, { status: 400 });
+  }
   if (!file || typeof file === 'string') return NextResponse.json({ error: 'A PDF file is required.' }, { status: 400 });
   if (file.type !== TEMPLATE_MIME) {
     return NextResponse.json({ error: 'Templates must be PDF files. Convert to PDF and try again.' }, { status: 400 });
@@ -110,6 +121,8 @@ export async function POST(request) {
       title,
       description: description || null,
       category,
+      kind,
+      requires_master: requiresMaster,
       storage_path: storagePath,
       filename: file.name,
       mime_type: TEMPLATE_MIME,
@@ -131,7 +144,7 @@ export async function POST(request) {
   await audit({
     admin, action: 'template_create',
     actorId: user.id, actorEmail: user.email, request,
-    details: { template_id: templateId, filename: file.name, pages: meta.pageCount },
+    details: { template_id: templateId, filename: file.name, pages: meta.pageCount, kind, requires_master: requiresMaster },
   });
 
   return NextResponse.json({ ok: true, template: tpl });

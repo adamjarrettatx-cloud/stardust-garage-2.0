@@ -3,6 +3,7 @@ import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient, audit } from '@/lib/document-helpers';
 import { validateFieldLayout, sanitizeFieldValues } from '@/lib/contract-fields';
 import { isContractTemplatesEnabled } from '@/lib/feature-flags';
+import { isContractLocked } from '@/lib/contract-helpers';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,9 +41,22 @@ export async function PUT(request, { params }) {
 
   const { data: existing } = await admin
     .from('document_contracts')
-    .select('field_layout')
+    .select('field_layout, status')
     .eq('document_id', id)
     .maybeSingle();
+
+  // A signed agreement's fields ARE its terms. Once signatures exist, the layout
+  // and the baked values are frozen; changing them would leave our record
+  // describing a document nobody signed.
+  if (existing && isContractLocked(existing.status)) {
+    return NextResponse.json(
+      {
+        error: `This contract is ${existing.status}; its fields can no longer be changed. Create a new draft or replacement contract instead.`,
+        code: 'CONTRACT_LOCKED',
+      },
+      { status: 409 },
+    );
+  }
 
   const patch = {};
 
@@ -81,7 +95,13 @@ export async function PUT(request, { params }) {
   await audit({
     admin, action: 'contract_fields_update', documentId: id,
     actorId: user.id, actorEmail: user.email, request,
-    details: { field_count: patch.field_layout?.length, values_saved: 'field_values' in patch },
+    details: {
+      field_count: patch.field_layout?.length,
+      values_saved: 'field_values' in patch,
+      // Value KEYS only. Field values can contain counterparty terms and personal
+      // details, and the audit log is read by more people than the contract is.
+      value_keys: 'field_values' in patch ? Object.keys(patch.field_values || {}) : undefined,
+    },
   });
 
   const { data: contract } = await admin

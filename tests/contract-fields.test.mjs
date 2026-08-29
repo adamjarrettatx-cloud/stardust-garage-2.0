@@ -20,6 +20,7 @@ import {
   layoutBoxToScreen,
   fieldRectForSignNow,
   SIGNNOW_FIELD_Y_ORIGIN,
+  buildSignNowFields,
 } from '../lib/contract-fields.js';
 
 test('ASSIGNABLE_ROLES = business + signer_1..N', () => {
@@ -140,4 +141,55 @@ test('fieldRectForSignNow flips stored bottom-left y to SignNow top-left', () =>
   // stored y=700 is the bottom edge from the page bottom; top edge from the
   // page top = 792 - 700 - 20 = 72.
   assert.deepEqual(rect, { x: 50, y: 72, width: 200, height: 20 });
+});
+
+// ---------------------------------------------------------------------------
+// The `date` field type
+// ---------------------------------------------------------------------------
+
+test('date is a first-class field type alongside the original four', () => {
+  assert.deepEqual(FIELD_TYPES, ['text', 'date', 'checkbox', 'signature', 'initials']);
+});
+
+test('normalizeField and validateFieldLayout accept a date field', () => {
+  const field = normalizeField({
+    id: 'f_d1',
+    page_number: 0,
+    x: 20,
+    y: 40,
+    width: 120,
+    height: 22,
+    type: 'date',
+    label: 'Event date',
+    assigned_to: 'signer_1',
+  });
+  assert.equal(field.type, 'date');
+
+  const res = validateFieldLayout([field]);
+  assert.equal(res.ok, true, JSON.stringify(res));
+});
+
+test('a date field is sent to SignNow as text', () => {
+  // SignNow has no first-class date field in the shape we PUT, so the date-ness
+  // is ours to enforce and the wire type degrades to text rather than risking a
+  // rejected send.
+  const layout = [
+    normalizeField({ id: 'f_d1', page_number: 0, x: 20, y: 40, width: 120, height: 22, type: 'date', label: 'Event date', assigned_to: 'signer_1' }),
+    normalizeField({ id: 'f_s1', page_number: 0, x: 20, y: 100, width: 160, height: 40, type: 'signature', label: 'Sign', assigned_to: 'signer_1' }),
+  ];
+  const fields = buildSignNowFields(layout, [{ width: 612, height: 792 }]);
+  const date = fields.find((f) => f.name === 'f_d1');
+  assert.equal(date.type, 'text');
+  assert.equal(date.role, 'Signer 1');
+  // The signature field is untouched by the mapping.
+  assert.equal(fields.find((f) => f.name === 'f_s1').type, 'signature');
+});
+
+test('a business-assigned date never becomes an interactive SignNow field', () => {
+  // Business values are baked into the PDF before send; exposing them as fields
+  // would let the counterparty edit our own terms.
+  const layout = [
+    normalizeField({ id: 'f_b1', page_number: 0, x: 20, y: 40, width: 120, height: 22, type: 'date', label: 'Effective', assigned_to: 'business' }),
+  ];
+  assert.deepEqual(buildSignNowFields(layout, [{ width: 612, height: 792 }]), []);
 });

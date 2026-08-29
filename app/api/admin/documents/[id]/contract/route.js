@@ -6,6 +6,8 @@ import {
   isValidContractStatus,
   canTransitionContract,
   isTerminalContractStatus,
+  isContractLocked,
+  lockedContractViolations,
 } from '@/lib/contract-helpers';
 
 export const runtime = 'nodejs';
@@ -66,9 +68,26 @@ export async function PUT(request, { params }) {
 
   const { data: existing } = await admin
     .from('document_contracts')
-    .select('id')
+    .select('id, status')
     .eq('document_id', id)
     .maybeSingle();
+
+  // FINALIZED CONTRACTS ARE READ-ONLY. Once a contract is signed (or otherwise
+  // closed out) its terms must match the executed paper, so only internal notes
+  // may change. A real change needs a new draft or a replacement contract.
+  if (existing && isContractLocked(existing.status)) {
+    const blocked = lockedContractViolations(built.patch);
+    if (blocked.length) {
+      return NextResponse.json(
+        {
+          error: `This contract is ${existing.status} and can no longer be edited. Create a new draft or replacement contract instead.`,
+          code: 'CONTRACT_LOCKED',
+          fields: blocked,
+        },
+        { status: 409 },
+      );
+    }
+  }
 
   if (existing) {
     if (Object.keys(built.patch).length) {

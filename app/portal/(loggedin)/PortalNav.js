@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import PortalSignOutButton from '../PortalSignOutButton';
-import { canHostGuestList, canRequestPay, portalName } from '@/lib/role-label';
+import { canHostGuestList, canRequestPay, canSignContracts, portalName } from '@/lib/role-label';
 
 // Two destinations, and that is the whole product for a partner. Promoters and
 // collectives open this on a phone in a green room ten minutes before doors, so
@@ -16,12 +16,20 @@ import { canHostGuestList, canRequestPay, portalName } from '@/lib/role-label';
 const ALL_TABS = [
   { href: '/portal/guest-list', label: 'Guest List', show: canHostGuestList },
   { href: '/portal/pay', label: 'Pay', show: canRequestPay },
+  // Contracts is shown to the types we sign with, and to anyone who actually has
+  // a contract — so a DJ who gets sent one agreement can find it, without every
+  // DJ carrying an empty tab.
+  {
+    href: '/portal/contracts',
+    label: 'Contracts',
+    show: (type, { hasContracts } = {}) => canSignContracts(type) || Boolean(hasContracts),
+  },
   { href: '/portal/profile', label: 'My Profile', show: () => true },
 ];
 
-export default function PortalNav({ contactType }) {
+export default function PortalNav({ contactType, hasContracts = false }) {
   const pathname = usePathname();
-  const tabs = ALL_TABS.filter((t) => t.show(contactType));
+  const tabs = ALL_TABS.filter((t) => t.show(contactType, { hasContracts }));
   const name = portalName(contactType);
 
   return (

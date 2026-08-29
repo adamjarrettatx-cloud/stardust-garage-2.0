@@ -10,6 +10,10 @@ import {
   normalizeContractDateTime,
   isoToVenueInputValue,
   formatVenueDateTime,
+  CONTRACT_LOCKED_STATUSES,
+  isContractLocked,
+  CONTRACT_LOCKED_EDITABLE_FIELDS,
+  lockedContractViolations,
 } from '../lib/contract-helpers.js';
 
 test('isValidContractStatus', () => {
@@ -133,4 +137,79 @@ test('buildContractPatch validates signers via validateSigners', () => {
   const ok = buildContractPatch({ signers: [{ name: 'A', email: 'a@b.com' }] });
   assert.equal(ok.ok, true);
   assert.equal(ok.patch.signers.length, 1);
+});
+
+// ---------------------------------------------------------------------------
+// Locked (finalized) contracts — a signed agreement must not be editable
+// ---------------------------------------------------------------------------
+
+test('isContractLocked covers every status past the point of no return', () => {
+  for (const status of ['partially_signed', 'signed', 'declined', 'void', 'expired']) {
+    assert.equal(isContractLocked(status), true, status);
+  }
+  // Still editable: nobody has signed anything yet.
+  for (const status of ['draft', 'pending_review', 'sent']) {
+    assert.equal(isContractLocked(status), false, status);
+  }
+  assert.equal(isContractLocked(undefined), false);
+});
+
+test('CONTRACT_LOCKED_STATUSES starts at the first signature, not at terminal', () => {
+  // partially_signed is NOT terminal, but it IS locked: one party has already
+  // signed the exact bytes we sent, so changing the terms afterwards would make
+  // that signature apply to a document that no longer exists.
+  assert.equal(isTerminalContractStatus('partially_signed'), false);
+  assert.equal(isContractLocked('partially_signed'), true);
+  assert.deepEqual(CONTRACT_LOCKED_STATUSES, ['partially_signed', 'signed', 'declined', 'void', 'expired']);
+});
+
+test('lockedContractViolations allows internal notes and nothing else', () => {
+  assert.deepEqual(CONTRACT_LOCKED_EDITABLE_FIELDS, ['notes']);
+  assert.deepEqual(lockedContractViolations({ notes: 'called them to confirm' }), []);
+  assert.deepEqual(lockedContractViolations({}), []);
+  assert.deepEqual(
+    lockedContractViolations({ notes: 'ok', flat_fee_cents: 150000, expiration_date: null }),
+    ['flat_fee_cents', 'expiration_date'],
+  );
+  assert.deepEqual(lockedContractViolations({ status: 'draft' }), ['status']);
+});
+
+// ---------------------------------------------------------------------------
+// Profile linkage columns on the contract patch
+// ---------------------------------------------------------------------------
+
+test('buildContractPatch accepts the profile linkage ids and clears them explicitly', () => {
+  const CONTACT = '11111111-1111-1111-1111-111111111111';
+  const MASTER = '22222222-2222-2222-2222-222222222222';
+
+  const set = buildContractPatch({
+    contact_id: CONTACT,
+    master_contract_id: MASTER,
+    artist_contact_id: CONTACT,
+    collective_contact_id: CONTACT,
+    vendor_contact_id: CONTACT,
+    owner_user_id: CONTACT,
+  });
+  assert.equal(set.ok, true, set.error);
+  assert.equal(set.patch.contact_id, CONTACT);
+  assert.equal(set.patch.master_contract_id, MASTER);
+  assert.equal(set.patch.artist_contact_id, CONTACT);
+  assert.equal(set.patch.collective_contact_id, CONTACT);
+  assert.equal(set.patch.vendor_contact_id, CONTACT);
+  assert.equal(set.patch.owner_user_id, CONTACT);
+
+  // An empty string means "unlink", not "write garbage".
+  const cleared = buildContractPatch({ master_contract_id: '' });
+  assert.equal(cleared.ok, true, cleared.error);
+  assert.equal(cleared.patch.master_contract_id, null);
+
+  // Keys never sent are never written, so a partial panel save can't unlink.
+  const untouched = buildContractPatch({ notes: 'hi' });
+  assert.equal(untouched.ok, true);
+  assert.equal('contact_id' in untouched.patch, false);
+});
+
+test('buildContractPatch rejects a malformed linkage id', () => {
+  const res = buildContractPatch({ contact_id: 'not-a-uuid' });
+  assert.equal(res.ok, false);
 });

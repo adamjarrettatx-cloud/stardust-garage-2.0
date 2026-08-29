@@ -8,6 +8,22 @@ import {
   CONTACT_TYPE_OPTIONS,
   CONTACT_STATUS_OPTIONS,
 } from '@/lib/contact-helpers';
+import {
+  ENTITY_TYPE_OPTIONS,
+  buildOrganizerPatch,
+  needsLegalCounterpartyFields,
+} from '@/lib/event-organizer';
+
+// The legal-counterparty fields, in render order. Kept as data so the fieldset
+// stays a single source of truth with lib/event-organizer.js and the migration.
+const ADDRESS_FIELDS = [
+  { key: 'address_line1', label: 'STREET ADDRESS', span: 2, placeholder: '1234 Example St' },
+  { key: 'address_line2', label: 'SUITE / UNIT', span: 2, placeholder: 'Optional' },
+  { key: 'address_city', label: 'CITY', span: 1 },
+  { key: 'address_state', label: 'STATE', span: 1, placeholder: 'TX' },
+  { key: 'address_postal_code', label: 'ZIP / POSTAL', span: 1 },
+  { key: 'address_country', label: 'COUNTRY', span: 1, placeholder: 'USA' },
+];
 
 function emptyAdditionalContact() {
   return { name: '', role: '', email: '', phone: '' };
@@ -52,8 +68,26 @@ export default function ContactForm({ contact = null }) {
     Array.isArray(contact?.additional_contacts) ? contact.additional_contacts : []
   );
 
+  // Legal-counterparty block — what has to be true about a profile before it can
+  // be named on a contract and sent for signature.
+  const [legalName, setLegalName] = useState(contact?.legal_name || '');
+  const [entityType, setEntityType] = useState(contact?.entity_type || '');
+  const [address, setAddress] = useState(() =>
+    ADDRESS_FIELDS.reduce((acc, f) => ({ ...acc, [f.key]: contact?.[f.key] || '' }), {})
+  );
+  const [defaultSignerName, setDefaultSignerName] = useState(contact?.default_signer_name || '');
+  const [defaultSignerEmail, setDefaultSignerEmail] = useState(contact?.default_signer_email || '');
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // Shown for Event Organizers and the other types that sign agreements. Always
+  // shown when the row already has legal data, so an existing profile can never
+  // hide fields that are currently populated.
+  const showLegalFields =
+    needsLegalCounterpartyFields(contactTypes) ||
+    !!(legalName || entityType || defaultSignerName || defaultSignerEmail) ||
+    ADDRESS_FIELDS.some((f) => address[f.key]);
 
   const toggleType = (value) => {
     setContactTypes((prev) =>
@@ -79,6 +113,20 @@ export default function ContactForm({ contact = null }) {
       return;
     }
 
+    // Same pure validator the server route uses, so the client can't produce a
+    // payload the API would reject.
+    const organizer = buildOrganizerPatch({
+      legal_name: legalName,
+      entity_type: entityType,
+      default_signer_name: defaultSignerName,
+      default_signer_email: defaultSignerEmail,
+      ...ADDRESS_FIELDS.reduce((acc, f) => ({ ...acc, [f.key]: address[f.key] }), {}),
+    });
+    if (!organizer.ok) {
+      setError(organizer.error);
+      return;
+    }
+
     setSaving(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -99,6 +147,7 @@ export default function ContactForm({ contact = null }) {
       additional_contacts: additionalContacts.filter((c) =>
         [c.name, c.role, c.email, c.phone].some((v) => (v || '').trim())
       ),
+      ...organizer.patch,
       updated_by: user?.id || null,
     };
     if (!isEditing) payload.created_by = user?.id || null;
@@ -217,6 +266,12 @@ export default function ContactForm({ contact = null }) {
             Do Not Book is flagged in red across the directory so nobody books them by accident.
           </p>
         )}
+        {status === 'archived' && (
+          <p className="text-[11px] mt-2" style={{ color: '#ffb84d' }}>
+            Archived profiles stay on file for signed contracts and history, but are hidden from
+            pickers and cannot be sent new contracts.
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -290,6 +345,99 @@ export default function ContactForm({ contact = null }) {
           />
         </div>
       </div>
+
+      {/* LEGAL COUNTERPARTY — what goes on the agreement itself. Only rendered
+          for types that actually sign with us, so the form stays short for a
+          plain DJ contact. */}
+      {showLegalFields && (
+        <div
+          className="rounded-[12px] border p-5"
+          style={{ background: '#121212', borderColor: 'rgba(255,255,255,0.08)' }}
+        >
+          <div className="mb-1 text-[12px] font-semibold tracking-[0.14em]" style={{ color: '#f5f5f5' }}>
+            LEGAL &amp; SIGNING DETAILS
+          </div>
+          <p className="text-[11px] mb-5" style={{ color: '#777' }}>
+            Used to fill contracts and route signature requests. Complete this before creating a
+            contract for this counterparty.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass} style={labelStyle}>LEGAL NAME</label>
+              <input
+                type="text"
+                value={legalName}
+                onChange={(e) => setLegalName(e.target.value)}
+                placeholder="Exact name on the agreement"
+                className={inputClass}
+                style={inputStyle}
+              />
+              <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+                Leave blank to use the display name.
+              </p>
+            </div>
+            <div>
+              <label className={labelClass} style={labelStyle}>ENTITY TYPE</label>
+              <select
+                value={entityType}
+                onChange={(e) => setEntityType(e.target.value)}
+                className={inputClass}
+                style={inputStyle}
+              >
+                <option value="">Not specified</option>
+                {ENTITY_TYPE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+            {ADDRESS_FIELDS.map((f) => (
+              <div key={f.key} className={f.span === 2 ? 'sm:col-span-2' : ''}>
+                <label className={labelClass} style={labelStyle}>{f.label}</label>
+                <input
+                  type="text"
+                  value={address[f.key]}
+                  onChange={(e) => setAddress((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                  placeholder={f.placeholder || ''}
+                  className={inputClass}
+                  style={inputStyle}
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+            <div>
+              <label className={labelClass} style={labelStyle}>DEFAULT SIGNER NAME</label>
+              <input
+                type="text"
+                value={defaultSignerName}
+                onChange={(e) => setDefaultSignerName(e.target.value)}
+                placeholder="Who signs on their behalf"
+                className={inputClass}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label className={labelClass} style={labelStyle}>DEFAULT SIGNER EMAIL</label>
+              <input
+                type="email"
+                value={defaultSignerEmail}
+                onChange={(e) => setDefaultSignerEmail(e.target.value)}
+                placeholder="Where signature requests go"
+                className={inputClass}
+                style={inputStyle}
+              />
+              <p className="text-[11px] mt-2" style={{ color: '#555' }}>
+                Falls back to the email above if blank.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div>
         <label className={labelClass} style={labelStyle}>INTERNAL NOTES</label>

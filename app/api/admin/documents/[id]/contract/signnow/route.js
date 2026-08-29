@@ -10,9 +10,13 @@ import {
   SignNowNotConfiguredError,
   SignNowApiError,
 } from '@/lib/signnow';
-import { canTransitionContract, isTerminalContractStatus } from '@/lib/contract-helpers';
+import { canTransitionContract, isTerminalContractStatus, formatVenueDateTime } from '@/lib/contract-helpers';
 import { validateLayoutAgainstSigners, buildSignNowFields } from '@/lib/contract-fields';
 import { readPdfMeta, bakeBusinessFields } from '@/lib/template-helpers';
+import { contractSendReadiness, defaultSignerName, defaultSignerEmail } from '@/lib/event-organizer';
+import { buildContractNotification, recordContractNotification, markNotificationEmailed } from '@/lib/contract-notify';
+import { sendContractSignatureRequest } from '@/lib/email';
+import { resolveSiteUrl } from '@/lib/site-url';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -282,6 +286,53 @@ export async function POST(request, { params }) {
     );
   }
 
+  // PROFILE-FIRST PRE-SEND GATE.
+  //
+  // The Event Contracts panel shows these same blockers, but the panel is only a
+  // preview: this is the check that actually decides. It runs the identical
+  // helper the UI runs, so what staff are told is exactly what is enforced, and
+  // a stale tab or a direct API call can't slip an unusable contract out the door
+  // (missing organizer signer email, unfilled required Stardust fields, a missing
+  // Master Agreement on a template that requires one).
+  const [{ data: organizer }, { data: template }] = await Promise.all([
+    contract.contact_id
+      ? admin
+          .from('contacts')
+          .select('id, display_name, legal_name, email, status, default_signer_name, default_signer_email')
+          .eq('id', contract.contact_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    contract.template_id
+      ? admin
+          .from('contract_templates')
+          .select('id, title, kind, requires_master')
+          .eq('id', contract.template_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  // Only gate contracts that actually carry an organizer or a typed template.
+  // Legacy contracts created before this workflow have neither and must keep
+  // sending exactly as they did before.
+  if (contract.contact_id || template) {
+    const readiness = contractSendReadiness({ contract, organizer, template });
+    if (!readiness.ok) {
+      return NextResponse.json(
+        {
+          error: readiness.errors[0],
+          code: 'CONTRACT_NOT_READY',
+          blockers: readiness.errors,
+          warnings: readiness.warnings,
+        },
+        { status: 400 },
+      );
+    }
+  }
+
+  // A resend is any send after the first: SignNow issues a fresh envelope, so the
+  // local record has to reflect that this is not the original request.
+  const isResend = Boolean(contract.external_envelope_id || contract.sent_at);
+
   const file = await loadLatestFile(admin, id);
   if (!file) {
     return NextResponse.json(
@@ -342,11 +393,16 @@ export async function POST(request, { params }) {
     );
   }
 
+  const nowIso = new Date().toISOString();
   const patch = {
     signature_provider: 'signnow',
     external_envelope_id: result.envelopeId,
     status: 'sent',
-    sent_at: contract.sent_at || new Date().toISOString(),
+    // sent_at is the *first* send (kept stable for reporting); last_sent_at and
+    // send_count track resends so staff can see "asked 3 times, still nothing".
+    sent_at: contract.sent_at || nowIso,
+    last_sent_at: nowIso,
+    send_count: Number(contract.send_count || 0) + 1,
   };
   const { error: updateError } = await admin
     .from('document_contracts')
@@ -361,10 +417,82 @@ export async function POST(request, { params }) {
   }
 
   await audit({
-    admin, action: 'contract_send', documentId: id,
+    admin, action: isResend ? 'contract_resend' : 'contract_send', documentId: id,
     actorId: user.id, actorEmail: user.email, request,
-    details: { provider: 'signnow', envelopeId: result.envelopeId, signers: signers.length },
+    details: {
+      provider: 'signnow',
+      envelopeId: result.envelopeId,
+      signers: signers.length,
+      send_count: patch.send_count,
+      contact_id: contract.contact_id || null,
+    },
   });
+
+  // NOTIFY THE ORGANIZER (best-effort, never fails the send).
+  //
+  // SignNow already emails the signing invite. This is the *venue's* own record
+  // and heads-up so the contract shows up in the organizer's portal and in an
+  // email that matches Stardust branding. It deliberately carries no signing
+  // link and no storage URL — only the authenticated portal address — so nothing
+  // here can become a public route to a contract.
+  if (contract.contact_id && organizer) {
+    try {
+      const { data: docRow } = await admin
+        .from('documents')
+        .select('title')
+        .eq('id', id)
+        .maybeSingle();
+      let eventRow = null;
+      if (contract.event_id) {
+        const { data: ev } = await admin
+          .from('events')
+          .select('title, event_date')
+          .eq('id', contract.event_id)
+          .maybeSingle();
+        eventRow = ev || null;
+      }
+
+      const payload = buildContractNotification({
+        kind: isResend ? 'signature_reminder' : 'signature_requested',
+        contractId: contract.id,
+        documentId: id,
+        contactId: contract.contact_id,
+        documentTitle: docRow?.title || 'Contract',
+        organizer,
+        eventTitle: eventRow?.title || null,
+        eventDate: eventRow?.event_date || null,
+        expirationDate: contract.expiration_date || null,
+        isResend,
+      });
+      const notificationId = await recordContractNotification({ admin, payload, createdBy: user.id });
+
+      const toEmail = defaultSignerEmail(organizer);
+      if (toEmail) {
+        const sent = await sendContractSignatureRequest({
+          email: toEmail,
+          fullName: defaultSignerName(organizer),
+          documentTitle: payload.title,
+          eventLine: eventRow?.title || null,
+          deadlineLabel: contract.expiration_date ? formatVenueDateTime(contract.expiration_date) : null,
+          portalUrl: `${resolveSiteUrl(request)}/portal/contracts`,
+          isReminder: isResend,
+        });
+        if (sent && notificationId) {
+          await markNotificationEmailed({ admin, notificationId });
+        }
+      }
+
+      await audit({
+        admin, action: 'contract_notify', documentId: id,
+        actorId: user.id, actorEmail: user.email, request,
+        details: { kind: payload.kind, contact_id: contract.contact_id, emailed: Boolean(toEmail) },
+      });
+    } catch (notifyErr) {
+      // The contract IS out for signature at this point. A failed courtesy
+      // notification must not report the send as failed.
+      console.error('[signnow.send] notify failed', notifyErr);
+    }
+  }
 
   const { data: updated } = await admin
     .from('document_contracts')
