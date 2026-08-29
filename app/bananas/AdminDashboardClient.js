@@ -106,15 +106,18 @@ export default function AdminDashboardClient({ isOwner, counts }) {
     counts.newSignups +
     (counts.pendingPayRequests || 0);
 
+  // Studio Bookings now lives under Rentals (renting the space by the hour is
+  // the same kind of work as renting it for a party), so its upcoming-bookings
+  // count rolls into the Rentals badge.
   const rentalsBadge =
     counts.venueInquiries +
-    counts.microParties;
+    counts.microParties +
+    counts.upcomingBookings;
 
   const allTabs = [
     { id: 'team', label: 'Team', ownerOnly: false, badge: counts.unreadChat },
     { id: 'community', label: 'Community', ownerOnly: false, badge: communityBadge },
     { id: 'rentals', label: 'Rentals', ownerOnly: false, badge: rentalsBadge },
-    { id: 'studio', label: 'Studio', ownerOnly: false, badge: counts.upcomingBookings },
     { id: 'documents', label: 'Documents', ownerOnly: false, badge: 0 },
     { id: 'analytics', label: 'Analytics', ownerOnly: true, badge: 0 },
     { id: 'settings', label: 'Settings', ownerOnly: true, badge: 0 },
@@ -175,7 +178,8 @@ export default function AdminDashboardClient({ isOwner, counts }) {
         </div>
       )}
 
-      {/* RENTALS — Micro Parties and Venue Inquiries only. */}
+      {/* RENTALS — everything about renting the space: Venue Inquiries, Micro
+          Parties, and Studio Bookings. */}
       {activeTab === 'rentals' && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           <Tile
@@ -190,22 +194,11 @@ export default function AdminDashboardClient({ isOwner, counts }) {
             title="Micro Parties"
             count={counts.microParties}
           />
-        </div>
-      )}
-
-      {/* STUDIO */}
-      {activeTab === 'studio' && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           <Tile
             href="/bananas/studio-bookings"
             eyebrow="MANAGE"
             title="Studio Bookings"
             count={counts.upcomingBookings}
-          />
-          <Tile
-            href="/bananas/studio-settings"
-            eyebrow="MANAGE"
-            title="Studio Settings"
           />
         </div>
       )}
@@ -239,6 +232,7 @@ export default function AdminDashboardClient({ isOwner, counts }) {
       {activeTab === 'settings' && isOwner && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           <Tile href="/bananas/settings" eyebrow="MANAGE" title="Settings" />
+          <Tile href="/bananas/studio-settings" eyebrow="MANAGE" title="Studio Settings" />
           <Tile href="/bananas/team" eyebrow="MANAGE" title="Team Members" />
           <Tile href="/bananas/security" eyebrow="ACCOUNT" title="Security / MFA" />
         </div>
