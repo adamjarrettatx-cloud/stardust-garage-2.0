@@ -218,28 +218,23 @@ test('Artist Pay unscoped still behaves as it did', () => {
 // at the bottom of the event edit form to change anything - two screens and a
 // scroll for one task.
 
-const GUEST_LIST_PANEL = read('app/bananas/guest-list/[id]/GuestListPanel.js');
+const GUEST_LIST_PANEL = read('app/bananas/components/GuestListPanel.js');
 const EVENT_EDIT_PAGE = read('app/bananas/events/[id]/page.js');
 const HELPERS = read('lib/guestlist-helpers.js');
 
-test('the editing panel lives on the guest list route', () => {
-  assert.match(EVENT_GUEST_LIST, /import GuestListPanel from '\.\/GuestListPanel'/);
+test('one shared panel serves the guest list screen and the event form', () => {
+  // Owner decision 2026-08-29: allocations can be sorted out from either place,
+  // so the panel is a shared component rather than two copies that drift.
+  assert.match(EVENT_GUEST_LIST, /import GuestListPanel from '\.\.\/\.\.\/components\/GuestListPanel'/);
   assert.match(EVENT_GUEST_LIST, /<GuestListPanel eventId=\{event\.id\} \/>/);
+  assert.match(EVENT_EDIT_PAGE, /import GuestListPanel from '\.\.\/\.\.\/components\/GuestListPanel'/);
+  assert.match(EVENT_EDIT_PAGE, /<GuestListPanel eventId=\{event\.id\} \/>/);
   assert.equal(
     fs.existsSync(path.join(REPO_ROOT, 'app/bananas/events/[id]/GuestListPanel.js')),
     false,
-    'the panel is still sitting under the event route too'
+    'a route-local copy of the panel is back'
   );
-});
-
-test('the event form links to the guest list instead of duplicating it', () => {
-  assert.match(EVENT_EDIT_PAGE, /href=\{`\/bananas\/guest-list\/\$\{event\.id\}`\}/);
-  assert.match(EVENT_EDIT_PAGE, /OPEN GUEST LIST/);
-  assert.ok(
-    !/<GuestListPanel/.test(EVENT_EDIT_PAGE),
-    'a second copy of the panel is back on the event form'
-  );
-  // The lineup panel is unrelated work and stays put.
+  // The lineup panel is unrelated work and stays on the event form.
   assert.match(EVENT_EDIT_PAGE, /<ArtistLineupPanel eventId=\{event\.id\} \/>/);
 });
 

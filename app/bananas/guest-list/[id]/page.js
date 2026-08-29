@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { adminPageGate } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
-import GuestListPanel from './GuestListPanel';
+import GuestListPanel from '../../components/GuestListPanel';
 
 export const revalidate = 0;
 export const dynamic = 'force-dynamic';
@@ -15,7 +15,9 @@ export const dynamic = 'force-dynamic';
 // the work is done here. It used to be a read-only breakdown that sent you to a
 // panel buried at the bottom of the event edit form to change anything, which
 // meant two screens and a scroll for one job. The editing panel now lives on
-// this route and the event form links to it instead of duplicating it.
+// this route. The event edit form keeps the same panel at the bottom, so an
+// allocation can be sorted out either from the guest list or mid-event-edit;
+// both render one shared component, so the two can't drift apart.
 //
 // The page itself stays deliberately thin: only the event name and date are
 // server-rendered, because everything else has to stay live as grants are added,

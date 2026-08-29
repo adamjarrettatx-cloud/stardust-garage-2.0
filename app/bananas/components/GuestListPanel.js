@@ -10,7 +10,7 @@ import {
   summarizeGrants,
   validateGrantSlots,
 } from '@/lib/guestlist-helpers';
-import ContactSelect from '../../components/ContactSelect';
+import ContactSelect from './ContactSelect';
 
 const labelClass = 'block text-[11px] font-semibold tracking-[0.14em] mb-2';
 const labelStyle = { color: 'var(--auth-muted)' };
