@@ -14,7 +14,6 @@ import {
   summarizeOperating,
   yearToDateRange,
 } from '@/lib/financial-ledger';
-import AuthenticatedThemeToggleControl from '@/app/components/AuthenticatedThemeToggleControl';
 import { CASHFLOW_THEMES as THEMES } from '@/lib/admin-theme';
 import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
 import CashFlowTrendChart from './CashFlowTrendChart';
@@ -49,7 +48,9 @@ export default function CashFlowClient({
   trendMonths,
   migrationApplied,
 }) {
-  const { theme, toggleTheme } = useAuthenticatedTheme();
+  // Only `theme` is read here: the toggle control lives in the admin shell
+  // header, so this page selects its palette but never offers the switch.
+  const { theme } = useAuthenticatedTheme();
   const t = THEMES[theme];
 
   const today = useMemo(() => new Date(todayIso), [todayIso]);
@@ -115,7 +116,6 @@ export default function CashFlowClient({
         </h1>
         <div className="flex items-center gap-3">
           <div className="text-[11px] tracking-[0.18em]" style={{ color: t.muted }}>OWNER ONLY</div>
-          <AuthenticatedThemeToggleControl theme={theme} onToggle={toggleTheme} />
         </div>
       </div>
       <p className="mb-6 text-[14px]" style={{ color: t.muted }}>

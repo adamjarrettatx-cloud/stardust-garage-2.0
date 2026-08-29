@@ -15,7 +15,6 @@ import { ENTRY_STATE, entriesInMonth, summarizeIncome } from '@/lib/financial-ca
 import { entryNetCents, buildDailyRevenue, rollupDailyRevenue } from '@/lib/financial-overview';
 import { MANUAL_CATEGORIES } from '@/lib/manual-income';
 import { adminFetch } from '@/lib/admin-fetch';
-import AuthenticatedThemeToggleControl from '@/app/components/AuthenticatedThemeToggleControl';
 import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
 import { ANALYTICS_THEMES, FINANCIAL_THEMES } from '@/lib/admin-theme';
 import RefreshMetricsButton from '@/app/bananas/analytics/RefreshMetricsButton';
@@ -106,7 +105,9 @@ const GRANULARITIES = [
 export default function FinancialsClient({ entries, performanceRows, totals, salesSeries, todayIso, posTransactions = [] }) {
   const router = useRouter();
   const today = useMemo(() => new Date(todayIso), [todayIso]);
-  const { theme, toggleTheme } = useAuthenticatedTheme();
+  // Only `theme` is read here: the toggle control lives in the admin shell
+  // header, so this page selects its palette but never offers the switch.
+  const { theme } = useAuthenticatedTheme();
   const t = THEMES[theme];
 
   const [tab, setTab] = useState('calendar');
@@ -251,7 +252,6 @@ export default function FinancialsClient({ entries, performanceRows, totals, sal
           <div className="text-[11px] tracking-[0.18em]" style={{ color: t.muted }}>
             OWNER ONLY
           </div>
-          <AuthenticatedThemeToggleControl theme={theme} onToggle={toggleTheme} />
         </div>
       </div>
       <p className="mb-6 text-[14px]" style={{ color: t.muted }}>

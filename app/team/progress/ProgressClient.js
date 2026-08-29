@@ -13,7 +13,6 @@ import {
 } from '@/app/bananas/progress/ui';
 import TaskDrawer from '@/app/bananas/progress/TaskDrawer';
 import TaskFormModal from '@/app/bananas/progress/TaskFormModal';
-import ImportModal from '@/app/bananas/progress/ImportModal';
 import AuthenticatedThemeToggleControl from '@/app/components/AuthenticatedThemeToggleControl';
 import { useInAdminShell } from '@/app/components/AdminShellContext';
 import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
@@ -216,8 +215,10 @@ function AdminProgressView({ initialTasks, assignees, isOwner, currentTeamMember
   const [sortKey, setSortKey] = useState('priority');
   const [sortDir, setSortDir] = useState('desc');
   const [drawerTask, setDrawerTask] = useState(null);
-  const [formTask, setFormTask] = useState(undefined); // undefined = closed, null = create, object = edit
-  const [showImport, setShowImport] = useState(false);
+  // undefined = closed, object = edit. There is no longer a `null` (create)
+  // entry point: new tasks are created through Quick Add below, which is the
+  // only path the team actually uses. The form remains for editing.
+  const [formTask, setFormTask] = useState(undefined);
   const [quickAddText, setQuickAddText] = useState('');
   const [quickAdding, setQuickAdding] = useState(false);
   const [quickAddMsg, setQuickAddMsg] = useState(null); // { text, isError }
@@ -348,17 +349,12 @@ function AdminProgressView({ initialTasks, assignees, isOwner, currentTeamMember
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <AuthenticatedThemeToggleControl theme={theme} onToggle={toggleTheme} />
-          <button onClick={() => setShowImport(true)}
-            className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.12em] hover:bg-white/5"
-            style={{ minHeight: '44px', border: `1px solid ${t.ghostBorder}`, color: t.ghostText, cursor: 'pointer' }}>
-            IMPORT CSV
-          </button>
-          <button onClick={() => setFormTask(null)}
-            className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] hover:-translate-y-0.5 transition-transform"
-            style={{ minHeight: '44px', background: '#ffb84d', color: '#0a0a0a', border: 'none', cursor: 'pointer' }}>
-            + NEW TASK
-          </button>
+          {/* The shell header already carries the theme toggle next to Log Out.
+              Rendered only when this page supplies its own header instead — a
+              non-admin team member never sees the shell. */}
+          {!inShell && (
+            <AuthenticatedThemeToggleControl theme={theme} onToggle={toggleTheme} />
+          )}
         </div>
       </div>
 
@@ -553,9 +549,6 @@ function AdminProgressView({ initialTasks, assignees, isOwner, currentTeamMember
           onClose={() => setFormTask(undefined)}
           onSaved={refresh}
         />
-      )}
-      {showImport && (
-        <ImportModal onClose={() => setShowImport(false)} onImported={refresh} />
       )}
     </Frame>
   );

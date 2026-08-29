@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { centsToUsd } from '@/lib/event-analytics';
-import AuthenticatedThemeToggleControl from '@/app/components/AuthenticatedThemeToggleControl';
 import { ANALYTICS_THEMES as THEMES } from '@/lib/admin-theme';
 import RefreshMetricsButton from './RefreshMetricsButton';
 import RowRefreshButton from './RowRefreshButton';
@@ -25,7 +24,9 @@ function fmtFetched(iso) {
 }
 
 export default function AnalyticsClient({ rows, totals, salesSeries, lastFetched, hasAnyMetrics }) {
-  const { theme, toggleTheme } = useAuthenticatedTheme();
+  // Only `theme` is read here: the toggle control lives in the admin shell
+  // header, so this page selects its palette but never offers the switch.
+  const { theme } = useAuthenticatedTheme();
   const t = THEMES[theme];
 
   const gridCols = 'grid-cols-[1fr_100px_90px_90px_70px_70px_80px]';
@@ -47,7 +48,6 @@ export default function AnalyticsClient({ rows, totals, salesSeries, lastFetched
           <div className="text-[11px] tracking-[0.18em]" style={{ color: t.muted }}>
             OWNER ONLY
           </div>
-          <AuthenticatedThemeToggleControl theme={theme} onToggle={toggleTheme} />
         </div>
       </div>
       <p className="mb-6 text-[14px]" style={{ color: t.muted }}>
