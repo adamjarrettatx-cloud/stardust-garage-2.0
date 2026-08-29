@@ -15,6 +15,7 @@ import {
   validateChatImageFile,
   buildChatImagePath,
   replyPreviewText,
+  channelDeleteConfirmed,
 } from '@/lib/chat';
 
 // Signed URLs are requested with this TTL (seconds). Chat images live in a
@@ -61,7 +62,13 @@ const THEMES = {
   },
 };
 
-export default function TeamChatClient({ currentUserId, currentUserName, canCreateChannel }) {
+// `canModerate` is the owner's account. It reveals the delete affordances on
+// every message (including other people's and DMs) and on group channels.
+// Hiding them from everyone else is cosmetic only: both API routes re-check the
+// caller and the restrictive RLS policies in
+// supabase/migrations/20260829_chat_owner_only_moderation.sql refuse a direct
+// PostgREST delete no matter what the browser sends.
+export default function TeamChatClient({ currentUserId, currentUserName, canCreateChannel, canModerate }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const { theme, toggleTheme } = useAuthenticatedTheme();
@@ -88,6 +95,21 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
   const [replyTo, setReplyTo] = useState(null); // full chat_messages row being replied to
   const [imageUrlByPath, setImageUrlByPath] = useState({}); // image_path -> signed url
   const [flashMessageId, setFlashMessageId] = useState(null);
+
+  // Moderation state (owner only).
+  // `armedDeleteId` is the two-step guard on a message: the first click on
+  // DELETE arms that one message and the second click performs it, so a stray
+  // click while reading never destroys a message and no modal has to interrupt
+  // the thread. Arming one message disarms any other.
+  const [armedDeleteId, setArmedDeleteId] = useState(null);
+  const [deletingMessageId, setDeletingMessageId] = useState(null);
+  const [moderationError, setModerationError] = useState(null);
+  // Channel deletion is heavier: it names the channel awaiting deletion and
+  // holds what the owner has typed so far to confirm it.
+  const [channelPendingDelete, setChannelPendingDelete] = useState(null); // channel row
+  const [channelDeleteText, setChannelDeleteText] = useState('');
+  const [channelDeleteError, setChannelDeleteError] = useState(null);
+  const [deletingChannel, setDeletingChannel] = useState(false);
 
   const bottomRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -181,9 +203,42 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
       .eq('user_id', currentUserId);
   }, [supabase, currentUserId]);
 
+  // Re-read every unread count from Postgres. Used after a deletion, where the
+  // arithmetic in the browser can no longer be trusted: the message that raised
+  // a badge may be the one that just disappeared.
+  const refreshUnread = useCallback(async () => {
+    const { data } = await supabase.rpc('chat_unread_counts');
+    setUnreadByChannel(unreadCountByChannel(data));
+  }, [supabase]);
+
+  // Drop a channel that no longer exists from every piece of local state, and
+  // move off it if it was open. Shared by the owner's own delete and by the
+  // realtime DELETE that tells everyone else. Without the re-selection the
+  // viewer would be left staring at a thread whose channel is gone, and the
+  // composer would post into a dead id.
+  const forgetChannel = useCallback((channelId) => {
+    setChannels((prev) => prev.filter((c) => c.id !== channelId));
+    setRoster((prev) => prev.filter((r) => r.channel_id !== channelId));
+    setUnreadByChannel((prev) => {
+      if (!(channelId in prev)) return prev;
+      const next = { ...prev };
+      delete next[channelId];
+      return next;
+    });
+    // Deselecting is enough to clear the thread: the message-loading effect
+    // below empties the pane whenever there is no selection.
+    setSelectedId((prev) => (prev === channelId ? null : prev));
+  }, []);
+
   // ---- load messages for the selected channel ----------------------------
   useEffect(() => {
-    if (!selectedId) return;
+    // No selection means no thread — reached on first load and again after the
+    // open channel is deleted out from under the viewer.
+    if (!selectedId) {
+      setMessages([]);
+      setReplyTo(null);
+      return undefined;
+    }
     let active = true;
 
     (async () => {
@@ -267,12 +322,44 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
           }));
         }
       )
+      // A delete is an UPDATE that sets deleted_at, so without this handler a
+      // message the owner removed would stay on every other teammate's screen
+      // until they reloaded — the exact window where somebody reads the thing
+      // that was just deleted. Only the owner can produce these updates.
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'chat_messages' },
+        (payload) => {
+          const msg = payload.new;
+          if (!msg?.deleted_at) return;
+          setMessages((prev) => prev.filter((m) => m.id !== msg.id));
+          // A deleted message stops counting as unread, so a badge raised by it
+          // has to come down. Re-reading the counts in Postgres is cheaper to
+          // get right than guessing which badge to decrement.
+          setUnreadByChannel((prev) => (prev[msg.channel_id] ? { ...prev, [msg.channel_id]: 0 } : prev));
+          refreshUnread();
+        }
+      )
+      // Channel deletes. Postgres sends only the primary key for a DELETE (the
+      // table's replica identity is the default), which is all that is needed to
+      // drop the channel from the sidebar. Unlike INSERT/UPDATE, DELETE events
+      // are not RLS-filtered — a bare channel id is not information worth
+      // withholding, and every client either has that channel or ignores the id.
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'chat_channels' },
+        (payload) => {
+          const goneId = payload.old?.id;
+          if (!goneId) return;
+          forgetChannel(goneId);
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase, currentUserId, markRead]);
+  }, [supabase, currentUserId, markRead, refreshUnread, forgetChannel]);
 
   // Auto-scroll to newest message.
   useEffect(() => {
@@ -321,6 +408,63 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
     await loadSidebar();
     setSelectedId(payload.channel.id);
   }, [creatingChannel, newChannelName, loadSidebar]);
+
+  // ---- delete a message (owner only) --------------------------------------
+  // Reaches every message the owner can see: their own, a teammate's, in a group
+  // channel or in a DM. The route does the soft delete server-side; removing the
+  // row from local state here is what makes it vanish instantly for the owner,
+  // while the realtime UPDATE handler above does the same for everyone else.
+  const deleteMessage = useCallback(async (messageId) => {
+    if (deletingMessageId) return;
+    setDeletingMessageId(messageId);
+    setModerationError(null);
+
+    const res = await fetch(`/api/team/chat/messages/${messageId}`, { method: 'DELETE' });
+    const payload = await res.json().catch(() => ({}));
+    setDeletingMessageId(null);
+    setArmedDeleteId(null);
+
+    if (!res.ok) {
+      setModerationError(payload.error || 'Could not delete that message.');
+      return;
+    }
+
+    setMessages((prev) => prev.filter((m) => m.id !== messageId));
+    // If the deleted message was the one being replied to, the composer's quote
+    // now points at nothing.
+    setReplyTo((prev) => (prev?.id === messageId ? null : prev));
+    refreshUnread();
+  }, [deletingMessageId, refreshUnread]);
+
+  // ---- delete a channel (owner only) --------------------------------------
+  // Guarded by typing the channel name; the route enforces the same rule so a
+  // hand-made request cannot skip it.
+  const deleteChannel = useCallback(async () => {
+    if (!channelPendingDelete || deletingChannel) return;
+    if (!channelDeleteConfirmed(channelDeleteText, channelPendingDelete.name)) {
+      setChannelDeleteError(`Type "${channelPendingDelete.name}" to confirm.`);
+      return;
+    }
+
+    setDeletingChannel(true);
+    setChannelDeleteError(null);
+    const res = await fetch(`/api/team/chat/channels/${channelPendingDelete.id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirm: channelDeleteText }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    setDeletingChannel(false);
+
+    if (!res.ok) {
+      setChannelDeleteError(payload.error || 'Could not delete that channel.');
+      return;
+    }
+
+    forgetChannel(channelPendingDelete.id);
+    setChannelPendingDelete(null);
+    setChannelDeleteText('');
+  }, [channelPendingDelete, channelDeleteText, deletingChannel, forgetChannel]);
 
   // ---- image attachment handling ------------------------------------------
   const clearPendingImage = useCallback(() => {
@@ -575,14 +719,70 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
                 <p className="text-[12px]" style={{ color: t.faint }}>No channels yet.</p>
               )}
               {groupChannels.map((c) => (
-                <SidebarRow
-                  key={c.id}
-                  active={c.id === selectedId}
-                  unreadCount={unreadFor(c.id)}
-                  onClick={() => setSelectedId(c.id)}
-                  label={`# ${channelDisplayName(c, roster, teamByUserId, currentUserId)}`}
-                  t={t}
-                />
+                <div key={c.id}>
+                  <SidebarRow
+                    active={c.id === selectedId}
+                    unreadCount={unreadFor(c.id)}
+                    onClick={() => setSelectedId(c.id)}
+                    label={`# ${channelDisplayName(c, roster, teamByUserId, currentUserId)}`}
+                    t={t}
+                    onDelete={canModerate ? () => {
+                      setChannelPendingDelete(c);
+                      setChannelDeleteText('');
+                      setChannelDeleteError(null);
+                    } : null}
+                  />
+
+                  {/* Confirmation lives inline under the row it will destroy, so
+                      the channel being deleted is never in doubt. */}
+                  {channelPendingDelete?.id === c.id && (
+                    <div
+                      className="mt-1 mb-2 rounded-[10px] p-2.5"
+                      style={{ background: t.inputBg, border: `1px solid ${t.borderStrong}` }}
+                    >
+                      <p className="text-[11px] leading-snug" style={{ color: t.muted }}>
+                        Deletes <span style={{ color: t.text, fontWeight: 600 }}>#{c.name}</span> and every
+                        message in it, for everyone. Type the name to confirm.
+                      </p>
+                      <input
+                        value={channelDeleteText}
+                        onChange={(e) => setChannelDeleteText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            deleteChannel();
+                          }
+                          if (e.key === 'Escape') setChannelPendingDelete(null);
+                        }}
+                        autoFocus
+                        placeholder={c.name}
+                        aria-label={`Type ${c.name} to confirm deleting the channel`}
+                        className="w-full mt-2 rounded-[8px] px-2.5 py-1.5 text-[12px] outline-none"
+                        style={{ background: t.panelBg, border: `1px solid ${t.borderStrong}`, color: t.text }}
+                      />
+                      <div className="flex items-center gap-2 mt-2">
+                        <button
+                          onClick={deleteChannel}
+                          disabled={deletingChannel || !channelDeleteConfirmed(channelDeleteText, c.name)}
+                          className="flex-1 px-2 py-1.5 rounded-full text-[10px] font-semibold tracking-[0.12em] transition-opacity disabled:opacity-40"
+                          style={{ background: t.sendBg, color: t.sendText }}
+                        >
+                          {deletingChannel ? 'DELETING…' : 'DELETE'}
+                        </button>
+                        <button
+                          onClick={() => setChannelPendingDelete(null)}
+                          className="px-2 py-1.5 text-[10px] font-semibold tracking-[0.12em]"
+                          style={{ color: t.muted }}
+                        >
+                          CANCEL
+                        </button>
+                      </div>
+                      {channelDeleteError && (
+                        <p className="text-[11px] mt-2" style={{ color: t.accent }}>{channelDeleteError}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
 
@@ -648,6 +848,32 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
                     >
                       ↩ REPLY
                     </button>
+                    {canModerate && (
+                      <button
+                        onClick={() => {
+                          if (armedDeleteId === m.id) {
+                            deleteMessage(m.id);
+                            return;
+                          }
+                          setArmedDeleteId(m.id);
+                          setModerationError(null);
+                        }}
+                        onBlur={() => setArmedDeleteId((prev) => (prev === m.id ? null : prev))}
+                        disabled={deletingMessageId === m.id}
+                        className={`text-[10px] font-semibold tracking-[0.08em] transition-opacity ${
+                          armedDeleteId === m.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus:opacity-100'
+                        }`}
+                        style={{ color: armedDeleteId === m.id ? t.accent : t.muted }}
+                        aria-label={armedDeleteId === m.id ? 'Confirm deleting this message' : 'Delete this message'}
+                        title={armedDeleteId === m.id ? 'Click again to delete' : 'Delete'}
+                      >
+                        {deletingMessageId === m.id
+                          ? 'DELETING…'
+                          : armedDeleteId === m.id
+                            ? 'CONFIRM DELETE'
+                            : '✕ DELETE'}
+                      </button>
+                    )}
                   </div>
                   {m.reply_to_id && (
                     <button
@@ -692,6 +918,10 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
             })}
             <div ref={bottomRef} />
           </div>
+
+          {moderationError && (
+            <p className="px-5 pb-2 text-[11px]" style={{ color: t.accent }}>{moderationError}</p>
+          )}
 
           {/* Composer */}
           {selectedId && (
@@ -781,27 +1011,44 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
   );
 }
 
-function SidebarRow({ active, unreadCount, onClick, label, t }) {
+// `onDelete` is optional and only ever supplied for the owner on a group
+// channel. The row is a wrapper rather than one big button because a delete
+// control nested inside the row's own button would be invalid markup and would
+// fire the row's click along with its own.
+function SidebarRow({ active, unreadCount, onClick, label, t, onDelete = null }) {
   const unread = unreadCount > 0;
   return (
-    <button
-      onClick={onClick}
-      className="w-full text-left px-3 py-2 rounded-[10px] text-[13px] flex items-center gap-2 transition-colors"
-      style={{
-        background: active ? t.activeRowBg : 'transparent',
-        color: active ? t.text : t.inactiveText,
-      }}
+    <div
+      className="group flex items-center rounded-[10px] transition-colors"
+      style={{ background: active ? t.activeRowBg : 'transparent' }}
     >
-      <span className="truncate flex-1" style={{ fontWeight: unread ? 700 : 400, color: unread && !active ? t.text : undefined }}>{label}</span>
-      {unread && (
-        <span
-          className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold leading-none flex-shrink-0"
-          style={{ background: t.accent, color: t.panelBg }}
-          aria-label={`${unreadCount} unread`}
+      <button
+        onClick={onClick}
+        className="min-w-0 flex-1 text-left pl-3 pr-1 py-2 text-[13px] flex items-center gap-2"
+        style={{ color: active ? t.text : t.inactiveText }}
+      >
+        <span className="truncate flex-1" style={{ fontWeight: unread ? 700 : 400, color: unread && !active ? t.text : undefined }}>{label}</span>
+        {unread && (
+          <span
+            className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold leading-none flex-shrink-0"
+            style={{ background: t.accent, color: t.panelBg }}
+            aria-label={`${unreadCount} unread`}
+          >
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        )}
+      </button>
+      {onDelete && (
+        <button
+          onClick={onDelete}
+          className="flex-shrink-0 px-2.5 py-2 text-[12px] leading-none opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+          style={{ color: t.muted }}
+          aria-label={`Delete ${label}`}
+          title="Delete channel"
         >
-          {unreadCount > 99 ? '99+' : unreadCount}
-        </span>
+          ✕
+        </button>
       )}
-    </button>
+    </div>
   );
 }

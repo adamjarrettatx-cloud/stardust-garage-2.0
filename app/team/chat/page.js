@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { canCreateChatChannel } from '@/lib/chat';
+import { canCreateChatChannel, canModerateChat } from '@/lib/chat';
 import TeamChatClient from './TeamChatClient';
 
 export const revalidate = 0;
@@ -27,6 +27,10 @@ export default async function TeamChatPage() {
       currentUserId={user.id}
       currentUserName={teamMember.full_name || teamMember.email}
       canCreateChannel={canCreateChatChannel({ role: teamMember.role, email: user.email })}
+      // Owner-only moderation: delete any message (anyone's, channel or DM) and
+      // delete a group channel. Computed on the server from the team_members row
+      // rather than anything the browser could set.
+      canModerate={canModerateChat({ role: teamMember.role, email: user.email })}
     />
   );
 }
