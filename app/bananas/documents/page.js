@@ -18,8 +18,12 @@ export default async function DocumentsPage({ searchParams }) {
 
   const sp = await searchParams;
   const q        = (sp?.q || '').toString().trim();
-  const category = (sp?.category || '').toString().trim();
-  const status   = (sp?.status || 'active').toString().trim();
+  // Contracts is the default view now that the "All" tab is gone — one of the
+  // category tabs is always the active one.
+  const category = (sp?.category || 'contracts').toString().trim();
+  // The status dropdown was removed from the toolbar. Nothing is hidden by
+  // default anymore; non-active docs still show their status chip in the list.
+  const status   = (sp?.status || 'all').toString().trim();
 
   const supabase = await createClient();
 
@@ -58,6 +62,7 @@ export default async function DocumentsPage({ searchParams }) {
         description="Contracts, vendor docs, SOPs, finance — every upload is logged. Files never leave a private bucket."
         eyebrow="PRIVATE · ADMIN ONLY"
         titleClassName="text-[30px] font-extrabold -tracking-[0.02em] leading-[1.15]"
+        showThemeToggle={false}
       />
 
       <DocumentsClient
