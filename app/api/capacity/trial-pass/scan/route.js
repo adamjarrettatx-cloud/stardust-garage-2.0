@@ -4,6 +4,8 @@ import { isSupabaseConfigured } from '@/lib/supabase/stub';
 import { requireTeam } from '@/lib/auth-helpers';
 import { resolveDeviceFromToken } from '@/lib/capacity-device-auth';
 import { extractDeviceToken } from '@/lib/capacity-device-utils';
+import { resolveSiteUrl } from '@/lib/site-url';
+import { sendTrialPassApplicationInvite } from '@/lib/email';
 import {
   DOOR_RESULTS,
   daysRemaining,
@@ -95,7 +97,7 @@ export async function POST(request) {
 
   const { data: pass, error: passError } = await admin
     .from('trial_passes')
-    .select('id, full_name, status, issued_at, expires_at, extended_until, applied_at, converted_at')
+    .select('id, full_name, email, status, issued_at, expires_at, extended_until, applied_at, converted_at')
     .eq('qr_token_hash', hashPassToken(passToken))
     .maybeSingle();
 
@@ -162,6 +164,77 @@ export async function POST(request) {
   }
 
   const expiry = effectiveExpiry(pass);
+
+  // Fire the first-visit application-invite email, exactly once per pass, when
+  // the door decision was 'allowed'. The invite is the highest-conversion
+  // email in the trial funnel — the guest just walked into the room and had a
+  // real experience — so we send it now rather than waiting for the day-6
+  // reminder to catch them cold.
+  //
+  // Guardrails, in order:
+  //   1. Only on decision.allowed (denials never trigger a follow-up).
+  //   2. Skip if the guest already applied or converted — they don't need to
+  //      be invited to apply to something they already applied to.
+  //   3. Skip if we already tried to send this kind for this pass, resolved by
+  //      the unique index (trial_pass_id, kind, sequence) on trial_pass_emails.
+  //      The claim is inserted BEFORE Resend is called, so a retried route or
+  //      a double-scan can never mail the same person twice.
+  //   4. Missing email is not an error — pre-2026 pass rows might not have one.
+  //   5. Resend failures are swallowed: the door decision has already been
+  //      logged, and blocking the response on an email provider outage would
+  //      make the check-in slower than it has any reason to be. On failure the
+  //      claim is released so the next allowed scan (if any) can retry.
+  if (
+    decision.allowed &&
+    pass.email &&
+    !pass.applied_at &&
+    !pass.converted_at &&
+    (!logError || logError.code === '23505')
+  ) {
+    const { error: claimError } = await admin.from('trial_pass_emails').insert({
+      trial_pass_id: pass.id,
+      kind: 'application_invite',
+      sequence: 0,
+    });
+
+    if (!claimError) {
+      // Not awaited: the door needs its allow/deny back inside a couple hundred
+      // milliseconds, and Resend can take longer than that under load.
+      (async () => {
+        try {
+          const siteUrl = resolveSiteUrl(request);
+          const result = await sendTrialPassApplicationInvite({
+            email: pass.email,
+            fullName: pass.full_name,
+            applyUrl: `${siteUrl}/members`,
+            passUrl: `${siteUrl}/pass`,
+            daysLeft: daysRemaining(pass),
+            expiresLabel: expiry ? formatPassDate(expiry) : '',
+          });
+          await admin
+            .from('trial_pass_emails')
+            .update({ sent_at: new Date().toISOString(), provider_id: result?.id || null })
+            .eq('trial_pass_id', pass.id)
+            .eq('kind', 'application_invite')
+            .eq('sequence', 0);
+        } catch (err) {
+          console.error('[door.trial-pass.scan.invite]', pass.id, err?.message || err);
+          // Release the claim so a later allowed scan (rare but possible) retries.
+          await admin
+            .from('trial_pass_emails')
+            .delete()
+            .eq('trial_pass_id', pass.id)
+            .eq('kind', 'application_invite')
+            .eq('sequence', 0)
+            .is('sent_at', null);
+        }
+      })();
+    } else if (claimError.code !== '23505') {
+      // 23505 is the idempotency guard doing its job — not an error. Any other
+      // code is a real problem worth surfacing to logs but not to the door.
+      console.error('[door.trial-pass.scan.invite.claim]', pass.id, claimError);
+    }
+  }
 
   return NextResponse.json({
     ok: decision.allowed,
