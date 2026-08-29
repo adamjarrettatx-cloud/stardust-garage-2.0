@@ -66,7 +66,7 @@ export async function POST(request, { params }) {
   if (!contact) return NextResponse.json({ error: 'Contact not found' }, { status: 404 });
 
   // granted_by is a team_members id, matching how the rest of /bananas records
-  // which staff member did something (see potential_members.added_by).
+  // which staff member did something (see team_members.invited_by).
   const { data: callerTeamMember } = await admin
     .from('team_members')
     .select('id')
