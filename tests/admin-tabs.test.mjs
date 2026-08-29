@@ -720,3 +720,26 @@ test('the shell context defaults to false so an unwrapped page keeps its chrome'
   const src = read('app/components/AdminShellContext.js');
   assert.match(src, /createContext\(false\)/);
 });
+
+test('the calendar renders no header of its own inside the Events tab', () => {
+  // The tab already says "Events" and describes itself directly above the
+  // calendar, so a second title, a second description line and an add button
+  // inches from the list's "+ NEW EVENT" were three duplicates in a row.
+  const src = read('app/components/EventsCalendarClient.js');
+  assert.match(src, /\{!isSection && \(/, 'the header is no longer gated on the variant');
+
+  // Everything that used to be in that header must sit inside the gate, and
+  // the legend — where the section variant now starts — must sit outside it.
+  const gate = src.indexOf('{!isSection && (');
+  const legend = src.indexOf('{/* Legend */}');
+  const pageOnlyHeader = src.slice(gate, legend);
+  const afterLegend = src.slice(legend);
+  for (const needle of ['Events Calendar', '+ ADD TO CALENDAR', 'double-click to add']) {
+    assert.ok(pageOnlyHeader.includes(needle), `"${needle}" left the page-only header`);
+    assert.ok(!afterLegend.includes(needle), `"${needle}" escaped the page-only header`);
+  }
+
+  // Losing the header's hint must not make adding undiscoverable, so the one
+  // instruction the calendar needs moves to the section description.
+  assert.match(adminTabById('events').description, /double-click a day to add/);
+});
