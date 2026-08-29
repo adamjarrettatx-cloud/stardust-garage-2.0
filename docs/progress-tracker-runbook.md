@@ -61,7 +61,7 @@ Enforcement is **server-side and in RLS**, never only in the UI:
 ## Navigation
 
 - Admin/Owner: **Admin → Team tab → Progress** (`/bananas/progress`).
-- Team: **Team Calendar → PROGRESS** button (`/team/progress`).
+- Team: **Events Calendar → TASKS** button (`/team/progress`).
 
 Middleware already gates `/bananas/*` (admin) and `/team/*` (team+admin); no
 middleware change was needed. The nav links are not the security boundary — the

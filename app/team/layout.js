@@ -8,10 +8,11 @@ export const revalidate = 0;
 // ---------------------------------------------------------------------------
 // Team layout
 // ---------------------------------------------------------------------------
-// Tasks, Team Calendar and Team Chat all appear as tiles in the admin Team
-// section, but they live under /team because non-admin team members use the
-// same three pages. So the admin shell is applied conditionally rather than
-// unconditionally:
+// Tasks and Team Chat appear as tiles in the admin Team section, but they live
+// under /team because non-admin team members use the same pages. (The calendar
+// used to be a third tile; it is now the Events Calendar at the top of the
+// Events section, and /team/calendar serves non-admin team members only.) So
+// the admin shell is applied conditionally rather than unconditionally:
 //
 //   admin, on a route that has a tile  -> wrap in the shell, sidebar and all
 //   anyone else, or any other route    -> render the page exactly as before

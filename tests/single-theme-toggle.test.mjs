@@ -43,7 +43,7 @@ test('team pages offer a toggle only when they are not inside the shell', () => 
   // shell and so need their own toggle. For an admin the shell provides it, so
   // theirs must be suppressed rather than deleted.
   const conditional = [
-    'app/team/calendar/CalendarClient.js',
+    'app/components/EventsCalendarClient.js',
     'app/team/chat/TeamChatClient.js',
   ];
   for (const rel of conditional) {

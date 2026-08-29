@@ -14,7 +14,7 @@ are no longer separate pages.
 ## What it does
 
 - Presents TicketTailor **income by event date** on a month calendar that reuses
-  the Team Calendar interaction/visual conventions and the Event Analytics data
+  the Events Calendar interaction/visual conventions and the Event Analytics data
   and styling.
 - Shows **historical** income (from stored metrics) and **current/live**
   sales-to-date.

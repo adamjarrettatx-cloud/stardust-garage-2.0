@@ -23,7 +23,7 @@ import {
 const CHAT_IMAGE_SIGNED_URL_TTL = 3600;
 
 // Local, page-scoped light/dark palette — mirrors the pattern used by the
-// admin Team Calendar (app/bananas/calendar/CalendarClient.js). Dark values
+// Events Calendar (app/components/EventsCalendarClient.js). Dark values
 // are the original hardcoded colors this page always used; light values are
 // new. No global theme system involved.
 const THEMES = {
