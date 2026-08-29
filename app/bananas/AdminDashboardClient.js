@@ -125,7 +125,10 @@ export default function AdminDashboardClient({ isOwner, counts }) {
 
   const visibleTabs = allTabs.filter((t) => !t.ownerOnly || isOwner);
 
-  const [activeTab, setActiveTab] = useState('community');
+  // Team is the default landing tab (owner decision 2026-08-29) and is the
+  // first entry in allTabs. It is never ownerOnly, so it is always present in
+  // visibleTabs for any admin who reaches this page.
+  const [activeTab, setActiveTab] = useState('team');
 
   return (
     <div>
