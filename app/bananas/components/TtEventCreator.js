@@ -183,7 +183,7 @@ export default function TtEventCreator() {
   return (
     <div className="max-w-[700px]">
       <AuthenticatedPageHeader
-        backHref="/bananas"
+        backHref="/bananas?tab=events"
         backLabel="← BACK TO ADMIN"
         title="New Ticketed Event"
         description="Creates and publishes a website event and a TicketTailor event series together — date, times and ticket types included. Both go live as soon as TicketTailor confirms the box office and returns a ticket link; if anything fails, the website event is kept as a hidden draft so the public page never shows an event you can’t buy tickets for."
@@ -424,7 +424,7 @@ export default function TtEventCreator() {
             {saving ? 'PUBLISHING…' : 'CREATE & PUBLISH'}
           </button>
           <Link
-            href="/bananas"
+            href="/bananas?tab=events"
             className="px-8 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5 flex items-center"
             style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
           >
