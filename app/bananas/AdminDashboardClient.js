@@ -90,8 +90,8 @@ function badgeFor(tabId, tiles) {
 function LockIcon() {
   return (
     <svg
-      width="10"
-      height="10"
+      width="12"
+      height="12"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -114,22 +114,22 @@ function Tile({ href, action, title, sub, count = 0, restricted, status }) {
   return (
     <Link
       href={href}
-      className="relative rounded-[14px] p-4 pb-[17px] border transition-all hover:-translate-y-px"
+      className="relative rounded-[14px] p-5 pb-[21px] border transition-all hover:-translate-y-px"
       style={{
         background: isHighlighted ? 'var(--auth-warn-bg)' : 'var(--auth-card-bg)',
         borderColor: isHighlighted ? 'var(--auth-warn-border)' : 'var(--auth-card-border)',
       }}
     >
-      <div className="flex items-center gap-2 mb-[7px] pr-7">
+      <div className="flex items-center gap-2 mb-[9px] pr-8">
         <span
-          className="text-[9px] font-bold tracking-[0.14em]"
+          className="text-[11px] font-bold tracking-[0.12em]"
           style={{ color: 'var(--auth-muted)' }}
         >
           {action}
         </span>
         {status && (
           <span
-            className="text-[8.5px] font-bold tracking-[0.12em] px-[5px] py-[2px] rounded-[4px] leading-none"
+            className="text-[10.5px] font-bold tracking-[0.1em] px-[6px] py-[3px] rounded-[5px] leading-none"
             style={{
               background: 'var(--auth-ghost-bg)',
               color: 'var(--auth-muted)',
@@ -142,7 +142,7 @@ function Tile({ href, action, title, sub, count = 0, restricted, status }) {
       </div>
 
       <div
-        className="text-[15px] font-bold -tracking-[0.01em]"
+        className="text-[17.5px] font-bold -tracking-[0.015em]"
         style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
       >
         {title}
@@ -150,7 +150,7 @@ function Tile({ href, action, title, sub, count = 0, restricted, status }) {
 
       {sub && (
         <div
-          className="text-[11.5px] mt-[5px] leading-[1.4]"
+          className="text-[13.5px] mt-[6px] leading-[1.45]"
           style={{ color: 'var(--auth-muted)' }}
         >
           {sub}
@@ -159,7 +159,7 @@ function Tile({ href, action, title, sub, count = 0, restricted, status }) {
 
       {restricted && (
         <div
-          className="flex items-center gap-[5px] mt-[9px] text-[10px] font-semibold tracking-[0.04em]"
+          className="flex items-center gap-[6px] mt-[11px] text-[12px] font-semibold tracking-[0.02em]"
           style={{ color: 'var(--auth-muted)' }}
         >
           <LockIcon />
@@ -169,7 +169,7 @@ function Tile({ href, action, title, sub, count = 0, restricted, status }) {
 
       {count > 0 && (
         <span
-          className="absolute top-3 right-3 inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-[11px] font-bold leading-none"
+          className="absolute top-3.5 right-3.5 inline-flex items-center justify-center min-w-[24px] h-[24px] px-1.5 rounded-full text-[12.5px] font-bold leading-none"
           style={{
             background: 'var(--auth-accent)',
             color: 'var(--auth-accent-text)',
@@ -206,8 +206,8 @@ function Sidebar({ groups, active, onSelect, badges }) {
       {groups.map(({ group, tabs }, groupIndex) => (
         <div key={group} className="contents lg:block">
           <div
-            className={`hidden lg:block text-[9.5px] font-bold tracking-[0.15em] px-2.5 mb-2 ${
-              groupIndex === 0 ? '' : 'mt-[22px]'
+            className={`hidden lg:block text-[11px] font-bold tracking-[0.14em] px-3 mb-2 ${
+              groupIndex === 0 ? '' : 'mt-[26px]'
             }`}
             style={{ color: 'var(--auth-muted)' }}
           >
@@ -226,7 +226,7 @@ function Sidebar({ groups, active, onSelect, badges }) {
                 aria-selected={isActive}
                 aria-controls={`admin-panel-${tab.id}`}
                 onClick={() => onSelect(tab.id)}
-                className="shrink-0 lg:w-full flex items-center justify-between gap-2 text-left text-[13.5px] font-semibold -tracking-[0.005em] px-[11px] py-[9px] rounded-[9px] transition-colors whitespace-nowrap lg:whitespace-normal"
+                className="shrink-0 lg:w-full flex items-center justify-between gap-2.5 text-left text-[15.5px] font-semibold -tracking-[0.01em] px-3 py-[11px] rounded-[10px] transition-colors whitespace-nowrap lg:whitespace-normal"
                 style={{
                   fontFamily: "'Plus Jakarta Sans', sans-serif",
                   background: isActive ? 'var(--auth-card-bg)' : 'transparent',
@@ -241,7 +241,7 @@ function Sidebar({ groups, active, onSelect, badges }) {
                 <span>{tab.label}</span>
                 {badge > 0 && (
                   <span
-                    className="inline-flex items-center justify-center min-w-[19px] h-[19px] px-1 rounded-full text-[10px] font-bold leading-none"
+                    className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-[11.5px] font-bold leading-none"
                     style={{
                       background: 'var(--auth-accent)',
                       color: 'var(--auth-accent-text)',
@@ -306,7 +306,7 @@ export default function AdminDashboardClient({ isOwner, counts, initialTab }) {
   const sectionTiles = tiles[activeTab] || [];
 
   return (
-    <div className="lg:grid lg:grid-cols-[210px_1fr] lg:gap-8 lg:items-start">
+    <div className="lg:grid lg:grid-cols-[232px_1fr] lg:gap-9 lg:items-start">
       <Sidebar
         groups={groups}
         active={activeTab}
@@ -323,13 +323,13 @@ export default function AdminDashboardClient({ isOwner, counts, initialTab }) {
         {section && (
           <>
             <h2
-              className="text-[19px] font-bold -tracking-[0.015em] mb-[3px]"
+              className="text-[23px] font-bold -tracking-[0.02em] mb-[4px]"
               style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
             >
               {section.label}
             </h2>
             <p
-              className="text-[12.5px] mb-[18px]"
+              className="text-[14.5px] mb-[20px] leading-[1.5]"
               style={{ color: 'var(--auth-muted)' }}
             >
               {section.description}
@@ -337,7 +337,7 @@ export default function AdminDashboardClient({ isOwner, counts, initialTab }) {
           </>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3.5">
           {sectionTiles.map((tile) => (
             <Tile key={tile.href} {...tile} />
           ))}
