@@ -12,6 +12,7 @@ import {
   crumbForPath,
   adminTabById,
 } from '../lib/admin-tabs.js';
+import { GUEST_LIST_ANCHOR } from '../lib/guestlist-helpers.js';
 
 // Owner decision 2026-08-29: Guest List and Artist Pay are per-event work, so
 // they are opened from the event's own row in the Events list and nowhere else.
@@ -210,4 +211,63 @@ test('Artist Pay unscoped still behaves as it did', () => {
   // already links there breaks.
   assert.match(PAY_CLIENT, /eventId \? \(requests \|\| \[\]\)\.filter/);
   assert.match(PAY_PAGE, /Review pay requests and track cumulative pay per contractor/);
+});
+
+// --- EDIT ALLOCATION lands on the panel, not the top of the form ------------
+// Owner report 2026-08-29: clicking EDIT ALLOCATION from a per-event guest list
+// opened the event page at the top, leaving the admin to scroll past every form
+// field to reach the box they asked for.
+
+const GUEST_LIST_PANEL = read('app/bananas/events/[id]/GuestListPanel.js');
+
+test('EDIT ALLOCATION deep links to the allocation panel', () => {
+  assert.match(EVENT_GUEST_LIST, /href=\{`\/bananas\/events\/\$\{event\.id\}#\$\{GUEST_LIST_ANCHOR\}`\}/);
+  // Both sides import the anchor from lib rather than repeating the string, so
+  // renaming the panel's id can't silently break the link.
+  assert.match(EVENT_GUEST_LIST, /GUEST_LIST_ANCHOR,?\n?[\s\S]{0,120}from '@\/lib\/guestlist-helpers'/);
+  assert.match(GUEST_LIST_PANEL, /GUEST_LIST_ANCHOR/);
+  assert.equal(GUEST_LIST_ANCHOR, 'guest-list-allocation');
+});
+
+test('the allocation panel carries the anchor id and clears the header', () => {
+  assert.match(GUEST_LIST_PANEL, /id=\{GUEST_LIST_ANCHOR\}/);
+  // Without scroll margin the heading sits flush against the viewport edge.
+  assert.match(GUEST_LIST_PANEL, /scroll-mt-\d/);
+  assert.match(GUEST_LIST_PANEL, /GUEST LIST ALLOCATION/);
+});
+
+test('the panel scrolls itself into view after its grants settle', () => {
+  // The browser's own hash scroll fires before the grants arrive and the panel
+  // grows as rows load, so it lands short. Guard against a regression to
+  // relying on the native behaviour alone.
+  assert.match(GUEST_LIST_PANEL, /scrollIntoView/);
+  assert.match(GUEST_LIST_PANEL, /const listSettled = grants !== null \|\| Boolean\(loadError\)/);
+  assert.match(GUEST_LIST_PANEL, /window\.location\.hash !== `#\$\{GUEST_LIST_ANCHOR\}`/);
+  // Once only: a later refresh must not yank the page while the admin is
+  // typing in the form above.
+  assert.match(GUEST_LIST_PANEL, /scrolledToAnchor\.current = true/);
+  assert.match(GUEST_LIST_PANEL, /if \(!listSettled \|\| scrolledToAnchor\.current\) return/);
+});
+
+// --- Four buttons in one row stay readable on a small screen ----------------
+// Owner decision 2026-08-29: shorten the two long labels below the sm
+// breakpoint rather than let the action row wrap onto a second line.
+
+test('the long event row labels shorten on small screens', () => {
+  assert.match(EVENTS_SECTION, /<span className="sm:hidden">GUESTS<\/span>/);
+  assert.match(EVENTS_SECTION, /<span className="hidden sm:inline">GUEST LIST<\/span>/);
+  assert.match(EVENTS_SECTION, /<span className="sm:hidden">PAY<\/span>/);
+  assert.match(EVENTS_SECTION, /<span className="hidden sm:inline">ARTIST PAY<\/span>/);
+});
+
+test('both label halves ship in the markup, so no width guess is needed', () => {
+  // A JS-measured label would flash the wrong wording on first paint and hide
+  // the full text from search and screen readers.
+  assert.ok(
+    !/useMediaQuery|window\.innerWidth|matchMedia/.test(EVENTS_SECTION),
+    'the row started measuring its own width to pick a label'
+  );
+  // The full wording stays discoverable even when the short label is displayed.
+  assert.match(EVENTS_SECTION, /title=\{`Guest list for \$\{event\.title\}`\}/);
+  assert.match(EVENTS_SECTION, /title=\{`Artist pay for \$\{event\.title\}`\}/);
 });

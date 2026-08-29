@@ -108,25 +108,34 @@ export default function EventsSection({ upcoming, past }) {
               {/* Guest List and Artist Pay are per-event work, so they open
                   scoped to this event rather than to an all-events summary you
                   then have to search. They used to be People tiles, which is
-                  exactly the trip this removes. */}
+                  exactly the trip this removes.
+
+                  Four buttons is a lot for one row, so the two long labels
+                  shorten below 640px instead of wrapping the row onto a second
+                  line. Both halves are always in the markup - only one is
+                  displayed - so the label never depends on a JS width guess and
+                  the full wording stays available to search and screen readers.
+                  The title attribute keeps the event name on hover either way. */}
               <div className="flex flex-wrap gap-2 justify-end flex-shrink-0">
                 <Link
                   href={`/bananas/guest-list/${event.id}`}
-                  className="auth-theme-border-button px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
+                  className="auth-theme-border-button px-3 sm:px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
                   title={`Guest list for ${event.title}`}
                 >
-                  GUEST LIST
+                  <span className="sm:hidden">GUESTS</span>
+                  <span className="hidden sm:inline">GUEST LIST</span>
                 </Link>
                 <Link
                   href={`/bananas/pay-requests?event=${event.id}`}
-                  className="auth-theme-border-button px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
+                  className="auth-theme-border-button px-3 sm:px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
                   title={`Artist pay for ${event.title}`}
                 >
-                  ARTIST PAY
+                  <span className="sm:hidden">PAY</span>
+                  <span className="hidden sm:inline">ARTIST PAY</span>
                 </Link>
                 <Link
                   href={`/bananas/events/${event.id}`}
-                  className="auth-theme-border-button px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
+                  className="auth-theme-border-button px-3 sm:px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
                 >
                   EDIT
                 </Link>

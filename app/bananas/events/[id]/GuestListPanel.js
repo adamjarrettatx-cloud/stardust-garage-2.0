@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { adminFetch } from '@/lib/admin-fetch';
 import {
   compTypeLabel,
   entryStatusLabel,
   grantNotificationNotice,
+  GUEST_LIST_ANCHOR,
   validateGrantSlots,
 } from '@/lib/guestlist-helpers';
 import ContactSelect from '../../components/ContactSelect';
@@ -175,6 +176,8 @@ function GrantForm({ form, setForm, usage = null, busy, error, onSubmit, onCance
 // component never has to patch its own state guess into place.
 export default function GuestListPanel({ eventId }) {
   const [grants, setGrants] = useState(null);
+  const panelRef = useRef(null);
+  const scrolledToAnchor = useRef(false);
   const [loadError, setLoadError] = useState('');
   const [addForm, setAddForm] = useState(null);
   const [addContactId, setAddContactId] = useState(null);
@@ -211,6 +214,20 @@ export default function GuestListPanel({ eventId }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Arriving from a guest list page's EDIT ALLOCATION link, this panel is far
+  // below the fold of a long event form. The browser's own hash scroll fires
+  // before the grants come back, and the panel grows by however many rows load,
+  // so it lands short of the heading. Scroll ourselves once the first load has
+  // settled, and only once, so a later refresh doesn't yank the page while the
+  // admin is typing in the form above.
+  const listSettled = grants !== null || Boolean(loadError);
+  useEffect(() => {
+    if (!listSettled || scrolledToAnchor.current) return;
+    if (window.location.hash !== `#${GUEST_LIST_ANCHOR}`) return;
+    scrolledToAnchor.current = true;
+    panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [listSettled]);
 
   const openAdd = () => {
     setAddContactId(null);
@@ -310,7 +327,9 @@ export default function GuestListPanel({ eventId }) {
 
   return (
     <section
-      className="rounded-[12px] border p-5 mt-8"
+      ref={panelRef}
+      id={GUEST_LIST_ANCHOR}
+      className="rounded-[12px] border p-5 mt-8 scroll-mt-6"
       style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}
     >
       <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
