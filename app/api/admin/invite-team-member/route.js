@@ -1,14 +1,14 @@
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { requireAdminMfa } from '@/lib/auth-helpers';
+import { requireOwnerMfa } from '@/lib/auth-helpers';
 import { normalizeDepartmentTags } from '@/lib/progress';
 
 export const runtime = 'nodejs';
 
 export async function POST(request) {
   try {
-    // Verify caller is an admin via team_members (server-controlled).
-    const { user, unauthorized, reason } = await requireAdminMfa();
+    // Owner-only: creating a login is an owner action, not a general admin one.
+    const { user, unauthorized, reason } = await requireOwnerMfa();
     if (unauthorized) {
       return NextResponse.json({ error: 'Unauthorized', reason }, { status: 401 });
     }
