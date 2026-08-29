@@ -27,6 +27,10 @@ export default function AuthenticatedPageHeader({
   titleStyle = null,
   descriptionStyle = null,
   eyebrowStyle = null,
+  // Pages rendered inside the admin shell already inherit the shell header's
+  // toggle, so they opt out here instead of putting two identical switches on
+  // the same screen. See tests/single-theme-toggle.test.mjs.
+  showThemeToggle = true,
 }) {
   return (
     <div className={className} data-testid="auth-page-header">
@@ -53,7 +57,7 @@ export default function AuthenticatedPageHeader({
               {eyebrow}
             </div>
           ) : null}
-          <AuthenticatedPageThemeToggle />
+          {showThemeToggle ? <AuthenticatedPageThemeToggle /> : null}
           {children}
         </div>
       </div>

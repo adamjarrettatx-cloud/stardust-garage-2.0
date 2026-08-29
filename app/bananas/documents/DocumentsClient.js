@@ -183,7 +183,7 @@ export default function DocumentsClient({ initialDocuments, initialError, events
 
   return (
     <>
-      {/* Toolbar — search + status + upload */}
+      {/* Toolbar — search + upload */}
       <div className="flex flex-wrap gap-3 items-center mb-4">
         <input
           type="search"
@@ -193,17 +193,6 @@ export default function DocumentsClient({ initialDocuments, initialError, events
           className="flex-1 min-w-[240px] px-4 py-2.5 text-[14px] rounded-[10px] outline-none focus:border-white/30"
           style={inputStyle}
         />
-        <select
-          value={filters.status || 'active'}
-          onChange={(e) => setFilter('status', e.target.value)}
-          className="px-3 py-2.5 text-[14px] rounded-[10px] outline-none cursor-pointer"
-          style={inputStyle}
-        >
-          <option value="active">Active</option>
-          <option value="draft">Draft</option>
-          <option value="archived">Archived</option>
-          <option value="all">All</option>
-        </select>
         {contractTemplatesEnabled && (
           <>
             <Link
@@ -238,11 +227,11 @@ export default function DocumentsClient({ initialDocuments, initialError, events
         role="tablist"
         aria-label="Document categories"
       >
-        {[{ value: '', label: 'All' }, ...categories].map((c) => {
-          const isActive = (filters.category || '') === c.value;
+        {categories.map((c) => {
+          const isActive = filters.category === c.value;
           return (
             <button
-              key={c.value || 'all'}
+              key={c.value}
               role="tab"
               aria-selected={isActive}
               onClick={() => setFilter('category', c.value)}
