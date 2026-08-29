@@ -300,13 +300,6 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
                 TASKS
               </Link>
               <Link
-                href="/team/events"
-                className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors"
-                style={{ borderColor: 'var(--auth-ghost-border)', color: 'var(--auth-accent)' }}
-              >
-                EVENTS
-              </Link>
-              <Link
                 href="/team/documents"
                 className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors"
                 style={{ borderColor: 'var(--auth-ghost-border)', color: 'var(--auth-accent)' }}
