@@ -25,6 +25,7 @@ const EVENTS_SECTION = read('app/bananas/components/EventsSection.js');
 const PAY_PAGE = read('app/bananas/pay-requests/page.js');
 const PAY_CLIENT = read('app/bananas/pay-requests/PayRequestsClient.js');
 const SHELL = read('app/bananas/AdminShell.js');
+const EVENT_GUEST_LIST = read('app/bananas/guest-list/[id]/page.js');
 
 // --- The event row is the only entry point ----------------------------------
 
@@ -154,6 +155,18 @@ test('1099 tracking stays year-wide even when the page is scoped', () => {
   // wrong for the only purpose it has.
   assert.match(PAY_CLIENT, /<NineNineNineTab requests=\{requests\} scoped=\{Boolean\(eventId\)\}/);
   assert.match(PAY_CLIENT, /totals stay year-wide across every event/);
+});
+
+test('leaving a per-event guest list returns you to the Events list', () => {
+  // Owner decision: the way out is the event list you came from, not the
+  // all-events door summary. Both surfaces still exist as URLs; only the trail
+  // out changed.
+  assert.match(EVENT_GUEST_LIST, /backHref="\/bananas\?tab=events"/);
+  assert.match(EVENT_GUEST_LIST, /BACK TO EVENTS/);
+  assert.ok(
+    !/backHref="\/bananas\/guest-list"/.test(EVENT_GUEST_LIST),
+    'the back link points at the all-events summary again'
+  );
 });
 
 test('a scoped page offers the way back out to every event', () => {
