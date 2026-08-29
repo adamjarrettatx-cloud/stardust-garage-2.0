@@ -261,6 +261,26 @@ test('the type scale keeps a readable hierarchy', () => {
 
 // --- Owner-only pages still gate themselves --------------------------------
 
+test('trial pass surfaces are reachable from the Memberships tab', () => {
+  // The two trial-pass surfaces (/team/trial-pass/analytics and
+  // /team/trial-pass/manual) existed as pages long before the sidebar linked
+  // them. This test locks them into the Memberships tab so a future refactor
+  // can't quietly orphan them again.
+  const memberships = ADMIN_TILES.memberships;
+  const hrefs = memberships.map((t) => t.href);
+  assert.ok(hrefs.includes('/team/trial-pass/analytics'), 'Trial Passes analytics tile missing from Memberships');
+  assert.ok(hrefs.includes('/team/trial-pass/manual'), 'Issue Trial Pass tile missing from Memberships');
+  const analytics = memberships.find((t) => t.href === '/team/trial-pass/analytics');
+  const manual = memberships.find((t) => t.href === '/team/trial-pass/manual');
+  assert.equal(analytics.title, 'Trial Passes');
+  assert.equal(manual.title, 'Issue Trial Pass');
+  assert.equal(manual.restricted, 'team', 'manual issuance page is team-only, tile should show the lock');
+  // Intentionally no countKey on the analytics tile: an active trial pass
+  // is inventory, not queued work. If someone adds a countKey here without
+  // rethinking that, this catches it.
+  assert.ok(!analytics.countKey, 'Trial Passes tile should not carry a queued-work badge');
+});
+
 test('owner-only tabs point at pages that enforce access server-side', () => {
   // Hiding a tab is presentation, not security. Every page behind an owner-only
   // tab must gate itself, so a guessed URL cannot bypass the sidebar.
