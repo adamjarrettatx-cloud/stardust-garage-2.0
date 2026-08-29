@@ -37,7 +37,6 @@ function task(overrides = {}) {
     last_update_at: null,
     created_at: TODAY,
     completed_at: null,
-    archived: false,
     assignee_id: null,
     updated_at: TODAY,
     ...overrides,
@@ -125,10 +124,11 @@ test('filterTasks applies department/status/priority/assignee/search', () => {
   assert.deepEqual(filterTasks(tasks, {}, 'FLYER').map((t) => t.id), ['1']);
 });
 
-test('filterTasks archived flag include/exclude', () => {
-  const tasks = [task({ id: '1', archived: false }), task({ id: '2', archived: true })];
-  assert.deepEqual(filterTasks(tasks, { archived: false }).map((t) => t.id), ['1']);
-  assert.deepEqual(filterTasks(tasks, { archived: true }).map((t) => t.id), ['2']);
+test('filterTasks ignores a stray archived filter key', () => {
+  // Archiving was removed entirely. A stale caller passing the old key must not
+  // silently filter everything out.
+  const tasks = [task({ id: '1' }), task({ id: '2' })];
+  assert.deepEqual(filterTasks(tasks, { archived: true }).map((t) => t.id), ['1', '2']);
 });
 
 test('sortTasks by priority desc puts urgent first, nulls handled for due_date', () => {

@@ -174,10 +174,9 @@ function AdminProgressView({ initialTasks, assignees, isOwner, currentTeamMember
   const { theme, toggleTheme } = useAuthenticatedTheme();
   const t = ADMIN_THEMES[theme];
 
-  // Only the department tab strip filters this page now; the search box and the
-  // status/priority/assignee selects were removed. `archived: false` is no
-  // longer toggleable and is kept so filterTasks() keeps hiding archived tasks.
-  const [filters, setFilters] = useState({ department: '', archived: false });
+  // The department tab strip is the only filter on this page now; the search
+  // box, the status/priority/assignee selects and the archive toggle are gone.
+  const [filters, setFilters] = useState({ department: '' });
   const [sortKey, setSortKey] = useState('priority');
   const [sortDir, setSortDir] = useState('desc');
   const [drawerTask, setDrawerTask] = useState(null);

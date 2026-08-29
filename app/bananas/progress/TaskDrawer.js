@@ -27,15 +27,13 @@ const ACTION_LABELS = {
   due_changed: 'changed the due date',
   cadence_changed: 'changed the update cadence',
   percent_changed: 'updated percent complete',
-  archived: 'archived the task',
-  unarchived: 'unarchived the task',
   completed: 'marked it complete',
   update_posted: 'posted an update',
   edited: 'edited the task',
 };
 
 // Shared task detail drawer. `canManage` unlocks the admin quick actions
-// (complete/archive/edit); `canDelete` unlocks owner hard delete; every team
+// (complete/edit); `canDelete` unlocks owner hard delete; every team
 // member with access can post updates. Used by both the admin dashboard and the
 // team page, so authorization is driven by props the server set, never by the
 // drawer trusting the client.
@@ -184,14 +182,6 @@ export default function TaskDrawer({
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <DeptChip slug={current.department} theme={theme} />
               <PriorityBadge value={current.priority} />
-              {current.archived && (
-                <span
-                  className="text-[10px] font-bold px-2 py-0.5 rounded-md"
-                  style={{ background: t.archivedBg, color: t.archivedText }}
-                >
-                  ARCHIVED
-                </span>
-              )}
             </div>
             <h2 className="text-[20px] font-extrabold leading-tight break-words"
               style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.text }}>
@@ -247,9 +237,6 @@ export default function TaskDrawer({
               {current.status !== 'done' && (
                 <ActionBtn onClick={() => patch({ status: 'done' })} disabled={busy} t={t}>Mark complete</ActionBtn>
               )}
-              <ActionBtn onClick={() => patch({ archived: !current.archived })} disabled={busy} t={t}>
-                {current.archived ? 'Unarchive' : 'Archive'}
-              </ActionBtn>
               {onEdit && <ActionBtn onClick={() => onEdit(current)} disabled={busy} t={t}>Edit</ActionBtn>}
               {canDelete && (
                 <ActionBtn onClick={hardDelete} disabled={busy} danger t={t}>Delete</ActionBtn>
