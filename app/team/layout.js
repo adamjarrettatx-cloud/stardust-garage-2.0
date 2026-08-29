@@ -8,8 +8,8 @@ export const revalidate = 0;
 // ---------------------------------------------------------------------------
 // Team layout
 // ---------------------------------------------------------------------------
-// Tasks is a tile in the admin Team section and Chat is a section of its own,
-// but both live under /team because non-admin team members use the same pages.
+// Tasks and Chat are each a section of their own in the admin sidebar, but both
+// live under /team because non-admin team members use the same pages.
 // (The calendar used to be a Team tile; it is now the Events Calendar at the
 // top of the Events section, and /team/calendar serves non-admin team members
 // only.) So the admin shell is applied conditionally rather than

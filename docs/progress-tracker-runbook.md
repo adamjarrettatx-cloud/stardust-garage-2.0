@@ -60,7 +60,9 @@ Enforcement is **server-side and in RLS**, never only in the UI:
 
 ## Navigation
 
-- Admin/Owner: **Admin → Team tab → Progress** (`/bananas/progress`).
+- Admin/Owner: **Admin → Tasks** in the sidebar (`/team/progress`). Tasks is a
+  top-level section of its own; the Team section it used to sit under no longer
+  exists. `/bananas/progress` still redirects here.
 - Team: **Events Calendar → TASKS** button (`/team/progress`).
 
 Middleware already gates `/bananas/*` (admin) and `/team/*` (team+admin); no
