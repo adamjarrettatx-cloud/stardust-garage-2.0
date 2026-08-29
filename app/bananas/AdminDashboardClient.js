@@ -1,34 +1,172 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import {
+  resolveAdminTab,
+  visibleAdminTabGroups,
+  adminTabById,
+} from '@/lib/admin-tabs';
+
+// ---------------------------------------------------------------------------
+// Eyebrow vocabulary
+// ---------------------------------------------------------------------------
+// The small caps label on each tile used to mix three unrelated ideas: actions
+// (REVIEW, MANAGE, TRACK), permissions (TEAM ONLY, OWNER ONLY, PRIVATE) and
+// status (NEW, LIVE). Staff couldn't learn a pattern because there wasn't one —
+// "PRIVATE" and "REPORTING" told you nothing comparable about the two tiles
+// they sat on.
+//
+// Now the eyebrow answers exactly one question: what kind of work is this?
+//   REVIEW — items are queued and waiting on a decision from you
+//   MANAGE — you create and edit records here
+//   VIEW   — read-only; look something up
+//   TRACK  — ongoing progress you check in on
+//
+// Permissions moved to a lock marker (`restricted`) and status moved to its own
+// pill (`status`), so all three signals stay visible without competing for the
+// same slot.
+const ACTIONS = ['REVIEW', 'MANAGE', 'VIEW', 'TRACK'];
+
+const RESTRICTION_LABELS = {
+  owner: 'Owner only',
+  team: 'Team only',
+};
+
+// ---------------------------------------------------------------------------
+// Tile content, keyed by tab id
+// ---------------------------------------------------------------------------
+// Declared as data rather than JSX so the eyebrow vocabulary is auditable at a
+// glance (and testable — see tests/admin-tabs.test.mjs).
+function tilesFor(counts) {
+  return {
+    team: [
+      { href: '/team/progress', action: 'TRACK', title: 'Tasks', sub: 'Assigned work by department' },
+      { href: '/team/calendar', action: 'VIEW', title: 'Team Calendar', sub: 'Shifts and internal dates', restricted: 'team' },
+      { href: '/team/chat', action: 'VIEW', title: 'Team Chat', sub: 'Internal channels', count: counts.unreadChat, status: 'NEW' },
+    ],
+    memberships: [
+      { href: '/bananas/applications', action: 'REVIEW', title: 'Applications', sub: 'Awaiting your decision', count: counts.applications },
+      { href: '/bananas/members', action: 'MANAGE', title: 'Members', sub: 'Active roster and billing', count: counts.pastDueMembers },
+    ],
+    people: [
+      { href: '/bananas/contacts', action: 'VIEW', title: 'Contacts', sub: 'Everyone in the database' },
+      { href: '/bananas/collaborations', action: 'REVIEW', title: 'Collaborations', sub: 'Inbound partnership requests', count: counts.collaborations },
+      { href: '/bananas/signups', action: 'VIEW', title: 'Signups', sub: 'Mailing list additions', count: counts.newSignups },
+      { href: '/bananas/guest-list', action: 'MANAGE', title: 'Guest List', sub: 'Per-event entry grants' },
+      { href: '/bananas/pay-requests', action: 'REVIEW', title: 'Artist Pay', sub: 'Payout requests', count: counts.pendingPayRequests },
+    ],
+    rentals: [
+      { href: '/bananas/venue-inquiries', action: 'REVIEW', title: 'Venue Inquiries', sub: 'Full-venue requests', count: counts.venueInquiries },
+      { href: '/bananas/micro-parties', action: 'REVIEW', title: 'Micro Parties', sub: 'Small private bookings', count: counts.microParties },
+      { href: '/bananas/studio-bookings', action: 'MANAGE', title: 'Studio Bookings', sub: 'Hourly studio time', count: counts.upcomingBookings },
+    ],
+    documents: [
+      { href: '/bananas/documents', action: 'VIEW', title: 'Documents', sub: 'Signed and internal files', restricted: 'team' },
+    ],
+    analytics: [
+      { href: '/bananas/financials', action: 'VIEW', title: 'Financials', sub: 'Revenue and expenses', restricted: 'owner' },
+      { href: '/bananas/cash-flow', action: 'VIEW', title: 'Cash Flow', sub: 'Money in and out', restricted: 'owner' },
+      { href: '/capacity', action: 'VIEW', title: 'Capacity Counter', sub: 'Real-time headcount', status: 'LIVE' },
+    ],
+    settings: [
+      { href: '/bananas/settings', action: 'MANAGE', title: 'Settings', sub: 'Venue configuration' },
+      { href: '/bananas/studio-settings', action: 'MANAGE', title: 'Studio Settings', sub: 'Rates and hours', restricted: 'owner' },
+      { href: '/bananas/team', action: 'MANAGE', title: 'Team Members', sub: 'Logins and roles', restricted: 'owner' },
+      { href: '/bananas/security', action: 'MANAGE', title: 'Security / MFA', sub: 'Your sign-in protection' },
+    ],
+  };
+}
+
+// Sum of the counts on a tab's own tiles, so the number beside a section in the
+// sidebar always matches what you find after opening it.
+function badgeFor(tabId, tiles) {
+  return (tiles[tabId] || []).reduce((sum, t) => sum + (t.count || 0), 0);
+}
+
+// ---------------------------------------------------------------------------
+// Icons
+// ---------------------------------------------------------------------------
+function LockIcon() {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      aria-hidden="true"
+      className="shrink-0"
+    >
+      <rect x="4" y="11" width="16" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </svg>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Tile
 // ---------------------------------------------------------------------------
-function Tile({ href, eyebrow, title, count = 0 }) {
+function Tile({ href, action, title, sub, count = 0, restricted, status }) {
   const isHighlighted = count > 0;
   return (
     <Link
       href={href}
-      className="relative rounded-[14px] p-5 border transition-colors hover:border-white/20"
+      className="relative rounded-[14px] p-4 pb-[17px] border transition-all hover:-translate-y-px"
       style={{
         background: isHighlighted ? 'var(--auth-warn-bg)' : 'var(--auth-card-bg)',
         borderColor: isHighlighted ? 'var(--auth-warn-border)' : 'var(--auth-card-border)',
       }}
     >
-      <div
-        className="text-[10px] font-semibold tracking-[0.14em] mb-1.5"
-        style={{ color: 'var(--auth-muted)' }}
-      >
-        {eyebrow}
+      <div className="flex items-center gap-2 mb-[7px] pr-7">
+        <span
+          className="text-[9px] font-bold tracking-[0.14em]"
+          style={{ color: 'var(--auth-muted)' }}
+        >
+          {action}
+        </span>
+        {status && (
+          <span
+            className="text-[8.5px] font-bold tracking-[0.12em] px-[5px] py-[2px] rounded-[4px] leading-none"
+            style={{
+              background: 'var(--auth-ghost-bg)',
+              color: 'var(--auth-muted)',
+              border: '1px solid var(--auth-ghost-border)',
+            }}
+          >
+            {status}
+          </span>
+        )}
       </div>
+
       <div
-        className="text-[15px] font-bold"
+        className="text-[15px] font-bold -tracking-[0.01em]"
         style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
       >
         {title}
       </div>
+
+      {sub && (
+        <div
+          className="text-[11.5px] mt-[5px] leading-[1.4]"
+          style={{ color: 'var(--auth-muted)' }}
+        >
+          {sub}
+        </div>
+      )}
+
+      {restricted && (
+        <div
+          className="flex items-center gap-[5px] mt-[9px] text-[10px] font-semibold tracking-[0.04em]"
+          style={{ color: 'var(--auth-muted)' }}
+        >
+          <LockIcon />
+          {RESTRICTION_LABELS[restricted]}
+        </div>
+      )}
+
       {count > 0 && (
         <span
           className="absolute top-3 right-3 inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-[11px] font-bold leading-none"
@@ -37,7 +175,7 @@ function Tile({ href, eyebrow, title, count = 0 }) {
             color: 'var(--auth-accent-text)',
             fontFamily: "'Plus Jakarta Sans', sans-serif",
           }}
-          aria-label={`${count} new`}
+          aria-label={`${count} pending`}
         >
           {count > 99 ? '99+' : count}
         </span>
@@ -47,218 +185,166 @@ function Tile({ href, eyebrow, title, count = 0 }) {
 }
 
 // ---------------------------------------------------------------------------
-// Tab bar
+// Sidebar
 // ---------------------------------------------------------------------------
-function TabBar({ tabs, active, onChange }) {
+// Replaces the old horizontal pill bar. Every destination is visible at once,
+// so a staff member never has to click through tabs to discover what exists,
+// and the grouping (Operations / Money / Admin) teaches the structure without
+// anyone reading a manual. It also keeps working as sections are added, which a
+// single row of pills does not.
+//
+// Below the lg breakpoint the group headings drop away and this degrades to a
+// horizontally scrolling row.
+function Sidebar({ groups, active, onSelect, badges }) {
   return (
-    <div className="flex gap-1 mb-8 flex-wrap" role="tablist">
-      {tabs.map((tab) => {
-        const isActive = tab.id === active;
-        return (
-          <button
-            key={tab.id}
-            role="tab"
-            aria-selected={isActive}
-            onClick={() => onChange(tab.id)}
-            className="px-4 py-2 rounded-[14px] text-[12px] font-semibold tracking-[0.1em] transition-colors"
-            style={{
-              background: isActive ? 'var(--auth-accent)' : 'var(--auth-ghost-bg)',
-              color: isActive ? 'var(--auth-accent-text)' : 'var(--auth-ghost-text)',
-              fontFamily: "'Plus Jakarta Sans', sans-serif",
-              border: `1px solid ${isActive ? 'var(--auth-accent)' : 'var(--auth-ghost-border)'}`,
-              cursor: 'pointer',
-            }}
+    <nav
+      className="flex gap-2 overflow-x-auto pb-1.5 lg:block lg:overflow-visible lg:pb-0 lg:sticky lg:top-6"
+      role="tablist"
+      aria-label="Admin sections"
+      aria-orientation="vertical"
+    >
+      {groups.map(({ group, tabs }, groupIndex) => (
+        <div key={group} className="contents lg:block">
+          <div
+            className={`hidden lg:block text-[9.5px] font-bold tracking-[0.15em] px-2.5 mb-2 ${
+              groupIndex === 0 ? '' : 'mt-[22px]'
+            }`}
+            style={{ color: 'var(--auth-muted)' }}
           >
-            {tab.label}
-            {tab.badge > 0 && (
-              <span
-                className="ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-none"
+            {group}
+          </div>
+
+          {tabs.map((tab) => {
+            const isActive = tab.id === active;
+            const badge = badges[tab.id] || 0;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                id={`admin-tab-${tab.id}`}
+                aria-selected={isActive}
+                aria-controls={`admin-panel-${tab.id}`}
+                onClick={() => onSelect(tab.id)}
+                className="shrink-0 lg:w-full flex items-center justify-between gap-2 text-left text-[13.5px] font-semibold -tracking-[0.005em] px-[11px] py-[9px] rounded-[9px] transition-colors whitespace-nowrap lg:whitespace-normal"
                 style={{
-                  background: isActive ? 'rgba(0,0,0,0.25)' : 'var(--auth-accent)',
-                  color: 'var(--auth-accent-text)',
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  background: isActive ? 'var(--auth-card-bg)' : 'transparent',
+                  color: isActive ? 'var(--auth-text)' : 'var(--auth-muted)',
+                  fontWeight: isActive ? 700 : 600,
+                  boxShadow: isActive
+                    ? 'inset 3px 0 0 var(--auth-accent), 0 1px 2px rgba(0,0,0,0.06)'
+                    : 'none',
+                  cursor: 'pointer',
                 }}
               >
-                {tab.badge > 99 ? '99+' : tab.badge}
-              </span>
-            )}
-          </button>
-        );
-      })}
-    </div>
+                <span>{tab.label}</span>
+                {badge > 0 && (
+                  <span
+                    className="inline-flex items-center justify-center min-w-[19px] h-[19px] px-1 rounded-full text-[10px] font-bold leading-none"
+                    style={{
+                      background: 'var(--auth-accent)',
+                      color: 'var(--auth-accent-text)',
+                    }}
+                  >
+                    {badge > 99 ? '99+' : badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      ))}
+    </nav>
   );
 }
 
 // ---------------------------------------------------------------------------
 // Main client component
 // ---------------------------------------------------------------------------
-export default function AdminDashboardClient({ isOwner, counts }) {
-  // Build tabs based on role.
-  //
-  // The old "Community" tab had become a grab bag — the membership pipeline,
-  // the contact directory, inbound collaboration requests, mailing-list
-  // signups, guest lists and artist payouts all shared one grid, which staff
-  // found hard to navigate. Owner decision 2026-08-29 splits it in two:
-  //   - Memberships: the membership pipeline only (applications in, members
-  //     managed). If it's about someone's membership status, it's here.
-  //   - People: every person record that is NOT a membership decision — the
-  //     contact directory, collaboration requests, signups, event guest lists
-  //     and artist pay.
-  // Rentals stays as-is: people relating to renting the space.
-  //
-  // Each tab badge is the sum of the counts on its own tiles, so the number on
-  // the tab always matches what a staff member finds after clicking it.
-  const membershipsBadge =
-    counts.applications +
-    counts.pastDueMembers;
+export default function AdminDashboardClient({ isOwner, counts, initialTab }) {
+  const tiles = tilesFor(counts);
+  const groups = visibleAdminTabGroups(isOwner);
 
-  const peopleBadge =
-    counts.collaborations +
-    counts.newSignups +
-    (counts.pendingPayRequests || 0);
+  // `initialTab` is resolved server-side from ?tab= so a deep link renders the
+  // right section on first paint with no flash of the default tab.
+  const [activeTab, setActiveTab] = useState(() =>
+    resolveAdminTab(initialTab, { isOwner })
+  );
 
-  // Studio Bookings now lives under Rentals (renting the space by the hour is
-  // the same kind of work as renting it for a party), so its upcoming-bookings
-  // count rolls into the Rentals badge.
-  const rentalsBadge =
-    counts.venueInquiries +
-    counts.microParties +
-    counts.upcomingBookings;
+  // Selecting a section writes it to the URL with history.pushState rather than
+  // router.push. That gives real deep links, working browser back/forward and a
+  // shareable address per section, while keeping the switch instant — this page
+  // is `revalidate = 0`, so a router.push would re-run every count query in
+  // page.js just to move between tabs.
+  const selectTab = useCallback(
+    (id) => {
+      const next = resolveAdminTab(id, { isOwner });
+      setActiveTab(next);
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', next);
+      window.history.pushState(null, '', url);
+    },
+    [isOwner]
+  );
 
-  const allTabs = [
-    { id: 'team', label: 'Team', ownerOnly: false, badge: counts.unreadChat },
-    { id: 'memberships', label: 'Memberships', ownerOnly: false, badge: membershipsBadge },
-    { id: 'people', label: 'People', ownerOnly: false, badge: peopleBadge },
-    { id: 'rentals', label: 'Rentals', ownerOnly: false, badge: rentalsBadge },
-    { id: 'documents', label: 'Documents', ownerOnly: false, badge: 0 },
-    { id: 'analytics', label: 'Analytics', ownerOnly: true, badge: 0 },
-    { id: 'settings', label: 'Settings', ownerOnly: true, badge: 0 },
-  ];
+  // Keep the rendered section in sync when the user presses back/forward.
+  useEffect(() => {
+    const onPopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      setActiveTab(resolveAdminTab(params.get('tab'), { isOwner }));
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [isOwner]);
 
-  const visibleTabs = allTabs.filter((t) => !t.ownerOnly || isOwner);
+  const badges = Object.fromEntries(
+    Object.keys(tiles).map((id) => [id, badgeFor(id, tiles)])
+  );
 
-  // Team is the default landing tab (owner decision 2026-08-29) and is the
-  // first entry in allTabs. It is never ownerOnly, so it is always present in
-  // visibleTabs for any admin who reaches this page.
-  const [activeTab, setActiveTab] = useState('team');
+  const section = adminTabById(activeTab);
+  const sectionTiles = tiles[activeTab] || [];
 
   return (
-    <div>
-      <TabBar tabs={visibleTabs} active={activeTab} onChange={setActiveTab} />
+    <div className="lg:grid lg:grid-cols-[210px_1fr] lg:gap-8 lg:items-start">
+      <Sidebar
+        groups={groups}
+        active={activeTab}
+        onSelect={selectTab}
+        badges={badges}
+      />
 
-      {/* MEMBERSHIPS — the membership pipeline only. Applications come in here
-          and members are managed here; nothing else belongs in this tab. */}
-      {activeTab === 'memberships' && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          <Tile
-            href="/bananas/applications"
-            eyebrow="REVIEW"
-            title="Applications"
-            count={counts.applications}
-          />
-          <Tile
-            href="/bananas/members"
-            eyebrow="MANAGE"
-            title="Members"
-            count={counts.pastDueMembers}
-          />
-        </div>
-      )}
+      <div
+        id={`admin-panel-${activeTab}`}
+        role="tabpanel"
+        aria-labelledby={`admin-tab-${activeTab}`}
+        className="mt-6 lg:mt-0"
+      >
+        {section && (
+          <>
+            <h2
+              className="text-[19px] font-bold -tracking-[0.015em] mb-[3px]"
+              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+            >
+              {section.label}
+            </h2>
+            <p
+              className="text-[12.5px] mb-[18px]"
+              style={{ color: 'var(--auth-muted)' }}
+            >
+              {section.description}
+            </p>
+          </>
+        )}
 
-      {/* PEOPLE — every person record that isn't a membership decision: the
-          contact directory, inbound collaboration requests, mailing-list
-          signups, event guest lists and artist pay. */}
-      {activeTab === 'people' && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          <Tile
-            href="/bananas/contacts"
-            eyebrow="DIRECTORY"
-            title="Contacts"
-          />
-          <Tile
-            href="/bananas/collaborations"
-            eyebrow="REVIEW"
-            title="Collaborations"
-            count={counts.collaborations}
-          />
-          <Tile
-            href="/bananas/signups"
-            eyebrow="VIEW"
-            title="Signups"
-            count={counts.newSignups}
-          />
-          <Tile
-            href="/bananas/guest-list"
-            eyebrow="REPORTING"
-            title="Guest List"
-          />
-          <Tile
-            href="/bananas/pay-requests"
-            eyebrow="REVIEW"
-            title="Artist Pay"
-            count={counts.pendingPayRequests}
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+          {sectionTiles.map((tile) => (
+            <Tile key={tile.href} {...tile} />
+          ))}
         </div>
-      )}
-
-      {/* RENTALS — everything about renting the space: Venue Inquiries, Micro
-          Parties, and Studio Bookings. */}
-      {activeTab === 'rentals' && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          <Tile
-            href="/bananas/venue-inquiries"
-            eyebrow="REVIEW"
-            title="Venue Inquiries"
-            count={counts.venueInquiries}
-          />
-          <Tile
-            href="/bananas/micro-parties"
-            eyebrow="REVIEW"
-            title="Micro Parties"
-            count={counts.microParties}
-          />
-          <Tile
-            href="/bananas/studio-bookings"
-            eyebrow="MANAGE"
-            title="Studio Bookings"
-            count={counts.upcomingBookings}
-          />
-        </div>
-      )}
-
-      {/* TEAM */}
-      {activeTab === 'team' && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          <Tile href="/team/progress" eyebrow="TRACK" title="Tasks" />
-          <Tile href="/team/calendar" eyebrow="TEAM ONLY" title="Team Calendar" />
-          <Tile href="/team/chat" eyebrow="NEW" title="Team Chat" count={counts.unreadChat} />
-        </div>
-      )}
-
-      {/* DOCUMENTS */}
-      {activeTab === 'documents' && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          <Tile href="/bananas/documents" eyebrow="PRIVATE" title="Documents" />
-        </div>
-      )}
-
-      {/* ANALYTICS — owner only */}
-      {activeTab === 'analytics' && isOwner && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          <Tile href="/bananas/financials" eyebrow="OWNER ONLY" title="Financials" />
-          <Tile href="/bananas/cash-flow" eyebrow="OWNER ONLY" title="Cash Flow" />
-          <Tile href="/capacity" eyebrow="LIVE" title="Capacity Counter" />
-        </div>
-      )}
-
-      {/* SETTINGS — owner only */}
-      {activeTab === 'settings' && isOwner && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          <Tile href="/bananas/settings" eyebrow="MANAGE" title="Settings" />
-          <Tile href="/bananas/studio-settings" eyebrow="MANAGE" title="Studio Settings" />
-          <Tile href="/bananas/team" eyebrow="MANAGE" title="Team Members" />
-          <Tile href="/bananas/security" eyebrow="ACCOUNT" title="Security / MFA" />
-        </div>
-      )}
+      </div>
     </div>
   );
 }
+
+export { ACTIONS, tilesFor, badgeFor };
