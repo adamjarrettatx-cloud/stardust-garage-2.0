@@ -362,67 +362,6 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
       </div>
       )}
 
-      {/* Legend */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        <span className="flex items-center gap-1.5 text-[12px] font-semibold tracking-[0.1em]" style={{ color: t.muted }}>
-          LEGEND:
-        </span>
-        <span className="flex items-center gap-1.5 text-[12px]">
-          <span className="w-2.5 h-2.5 rounded-sm" style={{ background: PUBLIC_STYLE.dark.color, border: `1px solid ${PUBLIC_STYLE.dark.border}` }} />
-          <span style={{ color: t.mutedStrong }}>Public Event</span>
-        </span>
-        <span className="flex items-center gap-1.5 text-[12px]">
-          <span className="w-2.5 h-2.5 rounded-sm" style={{ background: INTERNAL_STYLE.dark.color, border: `1px solid ${INTERNAL_STYLE.dark.border}` }} />
-          <span style={{ color: t.mutedStrong }}>Micro Party (Internal)</span>
-        </span>
-        {Object.entries(CATEGORIES).map(([key, cat]) => (
-          <span key={key} className="flex items-center gap-1.5 text-[12px]">
-            <span className="w-2.5 h-2.5 rounded-sm" style={{ background: cat.color }} />
-            <span style={{ color: t.mutedStrong }}>{cat.label}</span>
-          </span>
-        ))}
-        {!isAdmin && (
-          <span className="flex items-center gap-1.5 text-[12px] ml-auto">
-            <span className="w-2.5 h-2.5 rounded-full border" style={{ borderColor: t.border }} />
-            <span style={{ color: t.muted }}>Tap your own events to edit</span>
-          </span>
-        )}
-      </div>
-
-      {/* Monthly Scorecard — visible to the whole team, tracks who's creating events */}
-      <div
-        className="rounded-[14px] border p-4 mb-6"
-        style={{ background: t.cellBg, borderColor: t.borderSoft }}
-      >
-        <div className="text-[11px] font-semibold tracking-[0.14em] mb-3" style={{ color: t.muted }}>
-          EVENTS CREATED — {MONTHS[month].toUpperCase()} {year}
-        </div>
-        {monthlyScorecard().length === 0 ? (
-          <p className="text-[13px]" style={{ color: t.muted }}>No calendar entries added this month yet.</p>
-        ) : (
-          <div className="flex flex-wrap gap-3">
-            {monthlyScorecard().map(([name, count], idx) => (
-              <div
-                key={name}
-                className="flex items-center gap-2 px-4 py-2 rounded-full border"
-                style={{
-                  borderColor: idx === 0 ? 'rgba(139,92,246,0.5)' : t.border,
-                  background: idx === 0 ? 'rgba(139,92,246,0.12)' : 'transparent',
-                }}
-              >
-                <span className="text-[13px] font-semibold" style={{ color: t.textStrong }}>{name}</span>
-                <span
-                  className="text-[13px] font-extrabold min-w-[20px] text-center"
-                  style={{ color: idx === 0 ? '#8b5cf6' : t.mutedStrong }}
-                >
-                  {count}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
       {/* Month nav */}
       <div className="flex items-center gap-4 mb-4">
         <button
@@ -736,6 +675,69 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
             >
               + ADD TO THIS DAY
             </button>
+          </div>
+        )}
+      </div>
+
+      {/* Legend and the monthly scorecard read as a summary of the grid rather
+          than a preamble to it, so they follow it. */}
+      {/* Legend */}
+      <div className="flex flex-wrap gap-3 mt-8 mb-5">
+        <span className="flex items-center gap-1.5 text-[12px] font-semibold tracking-[0.1em]" style={{ color: t.muted }}>
+          LEGEND:
+        </span>
+        <span className="flex items-center gap-1.5 text-[12px]">
+          <span className="w-2.5 h-2.5 rounded-sm" style={{ background: PUBLIC_STYLE.dark.color, border: `1px solid ${PUBLIC_STYLE.dark.border}` }} />
+          <span style={{ color: t.mutedStrong }}>Public Event</span>
+        </span>
+        <span className="flex items-center gap-1.5 text-[12px]">
+          <span className="w-2.5 h-2.5 rounded-sm" style={{ background: INTERNAL_STYLE.dark.color, border: `1px solid ${INTERNAL_STYLE.dark.border}` }} />
+          <span style={{ color: t.mutedStrong }}>Micro Party (Internal)</span>
+        </span>
+        {Object.entries(CATEGORIES).map(([key, cat]) => (
+          <span key={key} className="flex items-center gap-1.5 text-[12px]">
+            <span className="w-2.5 h-2.5 rounded-sm" style={{ background: cat.color }} />
+            <span style={{ color: t.mutedStrong }}>{cat.label}</span>
+          </span>
+        ))}
+        {!isAdmin && (
+          <span className="flex items-center gap-1.5 text-[12px] ml-auto">
+            <span className="w-2.5 h-2.5 rounded-full border" style={{ borderColor: t.border }} />
+            <span style={{ color: t.muted }}>Tap your own events to edit</span>
+          </span>
+        )}
+      </div>
+
+      {/* Monthly Scorecard — visible to the whole team, tracks who's creating events */}
+      <div
+        className="rounded-[14px] border p-4"
+        style={{ background: t.cellBg, borderColor: t.borderSoft }}
+      >
+        <div className="text-[11px] font-semibold tracking-[0.14em] mb-3" style={{ color: t.muted }}>
+          EVENTS CREATED — {MONTHS[month].toUpperCase()} {year}
+        </div>
+        {monthlyScorecard().length === 0 ? (
+          <p className="text-[13px]" style={{ color: t.muted }}>No calendar entries added this month yet.</p>
+        ) : (
+          <div className="flex flex-wrap gap-3">
+            {monthlyScorecard().map(([name, count], idx) => (
+              <div
+                key={name}
+                className="flex items-center gap-2 px-4 py-2 rounded-full border"
+                style={{
+                  borderColor: idx === 0 ? 'rgba(139,92,246,0.5)' : t.border,
+                  background: idx === 0 ? 'rgba(139,92,246,0.12)' : 'transparent',
+                }}
+              >
+                <span className="text-[13px] font-semibold" style={{ color: t.textStrong }}>{name}</span>
+                <span
+                  className="text-[13px] font-extrabold min-w-[20px] text-center"
+                  style={{ color: idx === 0 ? '#8b5cf6' : t.mutedStrong }}
+                >
+                  {count}
+                </span>
+              </div>
+            ))}
           </div>
         )}
       </div>
