@@ -3,13 +3,17 @@ import assert from 'node:assert/strict';
 import {
   DOOR_RESULTS,
   MAX_REMINDERS,
+  MAX_UNACTIVATED_REMINDERS,
   REMINDER_INTERVAL_DAYS,
   TRIAL_EXTENSION_DAYS,
+  TRIAL_SIGNUP_WINDOW_DAYS,
   TRIAL_WINDOW_DAYS,
+  UNACTIVATED_REMINDER_DAYS,
   addDays,
   buildPassUrl,
   canonicalizeEmail,
   daysRemaining,
+  daysSinceActivated,
   daysSinceIssued,
   effectiveExpiry,
   evaluateDoorScan,
@@ -17,12 +21,14 @@ import {
   formatPassDate,
   generatePassToken,
   hashPassToken,
+  isActivated,
   isEventTrialEligible,
   isPassLive,
   isWellFormedPassToken,
   needsExpiryFlip,
   normalizePhone,
   passStatusLabel,
+  passWindowState,
   reminderDueFor,
   validateTrialPassIntake,
 } from '../lib/trial-pass.js';
@@ -37,11 +43,40 @@ import { encodeQrMatrix } from '../lib/qr-code.js';
 const ISSUED = '2026-08-01T20:00:00.000Z';
 const at = (days, hours = 0) => new Date(Date.parse(ISSUED) + days * 86400000 + hours * 3600000);
 
+// Default fixture is an *activated* pass — the door has already seen this
+// guest once, so activated_at is set to the issue date and expires_at is
+// 30 days after that. Almost every legacy test in this file was written
+// against that shape (30-day countdown, day-24 last nudge, etc), so keeping
+// the default here means those tests keep meaning what they meant.
+//
+// For unactivated-pass behavior use makeUnactivatedPass() below.
 function makePass(overrides = {}) {
   return {
     status: 'active',
     issued_at: ISSUED,
+    activated_at: ISSUED,
     expires_at: addDays(ISSUED, TRIAL_WINDOW_DAYS).toISOString(),
+    signup_expires_at: addDays(ISSUED, TRIAL_SIGNUP_WINDOW_DAYS).toISOString(),
+    extended_until: null,
+    applied_at: null,
+    converted_at: null,
+    reminders_sent: 0,
+    full_name: 'Jane Q Doe',
+    ...overrides,
+  };
+}
+
+// A signed-up pass that has never seen the door.
+//   activated_at = null
+//   expires_at   = null (populated at first check-in)
+//   signup_expires_at = issued + 60 days
+function makeUnactivatedPass(overrides = {}) {
+  return {
+    status: 'active',
+    issued_at: ISSUED,
+    activated_at: null,
+    expires_at: null,
+    signup_expires_at: addDays(ISSUED, TRIAL_SIGNUP_WINDOW_DAYS).toISOString(),
     extended_until: null,
     applied_at: null,
     converted_at: null,
@@ -411,4 +446,104 @@ test('status labels say what the guest needs to hear', () => {
   assert.equal(passStatusLabel(makePass({ status: 'applied' }), at(5)), 'Application submitted');
   assert.equal(passStatusLabel(makePass({ status: 'converted' }), at(5)), 'Member');
   assert.equal(passStatusLabel(null), 'Not found');
+  assert.equal(
+    passStatusLabel(makeUnactivatedPass(), at(5)),
+    'Ready to use',
+    'the pill on the unactivated pass reads Ready to use, not Active',
+  );
+});
+
+// --- Activation-on-first-visit ---------------------------------------------
+//
+// The 30-day membership window starts on first door check-in, not at signup.
+// These tests pin down the pre-activation state — the 60-day outer window,
+// the pass-page copy branch, the reminder ladder split — so a regression on
+// this feature is caught before it ships to the door.
+
+test('isActivated distinguishes signed-up from checked-in', () => {
+  assert.equal(isActivated(makePass()), true);
+  assert.equal(isActivated(makeUnactivatedPass()), false);
+  assert.equal(isActivated(null), false);
+});
+
+test('unactivated passes use the 60-day signup window as their expiry', () => {
+  const pass = makeUnactivatedPass();
+  const expiry = effectiveExpiry(pass);
+  assert.equal(
+    expiry.toISOString(),
+    addDays(ISSUED, TRIAL_SIGNUP_WINDOW_DAYS).toISOString(),
+    'the outer signup_expires_at drives expiry when there is no activation',
+  );
+  assert.equal(isPassLive(pass, at(30)), true, 'still alive well after the notional 30-day mark');
+  assert.equal(isPassLive(pass, at(59, 23)), true);
+  assert.equal(isPassLive(pass, at(TRIAL_SIGNUP_WINDOW_DAYS)), false, 'dies at the 60-day line');
+});
+
+test('passWindowState returns the right phase for the pass-page copy', () => {
+  const unactivated = passWindowState(makeUnactivatedPass(), at(10));
+  assert.equal(unactivated.phase, 'unactivated');
+  assert.equal(unactivated.daysToSignupExpiry, 50);
+
+  const activated = passWindowState(makePass(), at(10));
+  assert.equal(activated.phase, 'activated');
+  assert.equal(activated.daysToExpiry, 20);
+
+  const expiredUnactivated = passWindowState(makeUnactivatedPass(), at(TRIAL_SIGNUP_WINDOW_DAYS));
+  assert.equal(expiredUnactivated.phase, 'expired');
+
+  const expiredActivated = passWindowState(makePass(), at(TRIAL_WINDOW_DAYS));
+  assert.equal(expiredActivated.phase, 'expired');
+});
+
+test('daysSinceActivated is 0 for a pass that never activated', () => {
+  assert.equal(daysSinceActivated(makeUnactivatedPass(), at(20)), 0);
+  assert.equal(daysSinceActivated(makePass(), at(6)), 6);
+});
+
+test('unactivated reminders land on days 14, 30 and 45 with a different CTA', () => {
+  let sent = 0;
+  const seen = [];
+  for (let day = 0; day <= TRIAL_SIGNUP_WINDOW_DAYS; day++) {
+    const due = reminderDueFor(makeUnactivatedPass({ reminders_sent: sent }), at(day));
+    if (due.due) {
+      seen.push({ day, kind: due.kind });
+      sent = due.sequence;
+    }
+  }
+  assert.deepEqual(
+    seen.map((s) => s.day),
+    UNACTIVATED_REMINDER_DAYS,
+    'three nudges, at 14 / 30 / 45',
+  );
+  assert.ok(
+    seen.every((s) => s.kind === 'activation_nudge'),
+    'unactivated passes are asked to come out, not to apply',
+  );
+  assert.equal(sent, MAX_UNACTIVATED_REMINDERS);
+});
+
+test('activated reminders keep their old cadence and use the application CTA', () => {
+  const due = reminderDueFor(makePass({ reminders_sent: 0 }), at(6));
+  assert.equal(due.due, true);
+  assert.equal(due.kind, 'application_nudge');
+});
+
+test('an unactivated pass past its 60-day window needs the expiry flip', () => {
+  assert.equal(
+    needsExpiryFlip(makeUnactivatedPass(), at(TRIAL_SIGNUP_WINDOW_DAYS + 1)),
+    true,
+    'the cron catches passes that timed out without ever being used',
+  );
+  assert.equal(needsExpiryFlip(makeUnactivatedPass(), at(30)), false, 'still inside the outer window');
+});
+
+test('door decision on an expired unactivated pass names the real reason', () => {
+  const decision = evaluateDoorScan({
+    pass: makeUnactivatedPass(),
+    event: MUSIC_FRIDAY,
+    now: at(TRIAL_SIGNUP_WINDOW_DAYS + 1),
+  });
+  assert.equal(decision.allowed, false);
+  assert.equal(decision.result, DOOR_RESULTS.denied_expired);
+  assert.match(decision.reason, /never activated/i, 'staff should not be told to sell an extension');
 });

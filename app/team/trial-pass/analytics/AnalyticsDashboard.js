@@ -30,7 +30,7 @@ function pct(rate) {
   return `${Math.round(rate * 100)}%`;
 }
 
-function StatusPill({ status, appliedAt, convertedAt }) {
+function StatusPill({ status, appliedAt, convertedAt, activationPhase }) {
   let label = status;
   let bg = TRACK_BG;
   let color = TEXT_MUTED_STRONG;
@@ -41,6 +41,11 @@ function StatusPill({ status, appliedAt, convertedAt }) {
   } else if (appliedAt) {
     label = 'Applied';
     color = GOLD;
+    bg = TRACK_BG;
+  } else if (status === 'active' && activationPhase === 'unactivated') {
+    // Signed up but never came out. The 30-day clock has not started.
+    label = 'Ready to use';
+    color = TEXT_MUTED_STRONG;
     bg = TRACK_BG;
   } else if (status === 'active') {
     label = 'Active';
@@ -331,6 +336,7 @@ function RecentTable({ rows }) {
                       status={r.status}
                       appliedAt={r.appliedAt}
                       convertedAt={r.convertedAt}
+                      activationPhase={r.activationPhase}
                     />
                   </td>
                   <td className="px-4 py-3.5" style={{ color: TEXT_STRONG }}>
@@ -366,13 +372,22 @@ export default function AnalyticsDashboard({ data }) {
 
   return (
     <>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
         <KpiCard
           label="Passes issued"
           value={totals.all}
           sub={`${totals.last7} in last 7d \u00b7 ${totals.last30} in last 30d`}
         />
-        <KpiCard label="Active" value={totals.active} sub="Within the 30-day window" />
+        <KpiCard
+          label="Ready to use"
+          value={totals.activeUnactivated}
+          sub="Signed up, not yet visited"
+        />
+        <KpiCard
+          label="In 30-day window"
+          value={totals.activeActivated}
+          sub="Activated on first visit"
+        />
         <KpiCard
           label="Applied"
           value={totals.applied}

@@ -90,10 +90,12 @@ test('day-of-first-checkin bucketing catches the boundaries', () => {
 });
 
 test('recent list uses effective expiry and preserves order', () => {
+  // Both passes are activated (activated_at set) so daysLeft is driven by
+  // extended_until · expires_at, not the 60-day signup window.
   const out = computeAnalytics({
     passes: [
-      { id: 'newer', full_name: 'Newer Guest', email: 'n@example.com', status: 'active', signup_source: 'trial_pass_qr', issued_at: dayAgo(1), expires_at: new Date(now + 20 * DAY_MS).toISOString(), extended_until: null, applied_at: null, converted_at: null },
-      { id: 'older', full_name: 'Older Guest', email: 'o@example.com', status: 'active', signup_source: 'trial_pass_qr', issued_at: dayAgo(5), expires_at: new Date(now + 10 * DAY_MS).toISOString(), extended_until: new Date(now + 15 * DAY_MS).toISOString(), applied_at: null, converted_at: null },
+      { id: 'newer', full_name: 'Newer Guest', email: 'n@example.com', status: 'active', signup_source: 'trial_pass_qr', issued_at: dayAgo(1), activated_at: dayAgo(1), expires_at: new Date(now + 20 * DAY_MS).toISOString(), extended_until: null, applied_at: null, converted_at: null },
+      { id: 'older', full_name: 'Older Guest', email: 'o@example.com', status: 'active', signup_source: 'trial_pass_qr', issued_at: dayAgo(5), activated_at: dayAgo(5), expires_at: new Date(now + 10 * DAY_MS).toISOString(), extended_until: new Date(now + 15 * DAY_MS).toISOString(), applied_at: null, converted_at: null },
     ],
     checkins: [],
   });
@@ -101,6 +103,26 @@ test('recent list uses effective expiry and preserves order', () => {
   strictEqual(out.recent[1].id, 'older');
   // extended_until should win over expires_at for daysLeft.
   strictEqual(out.recent[1].daysLeft, 15);
+  strictEqual(out.recent[0].activationPhase, 'activated');
+});
+
+test('activation splits: unactivated pass has its own KPI and phase', () => {
+  const out = computeAnalytics({
+    passes: [
+      // Activated: 30-day clock ticking.
+      { id: 'a', full_name: 'A', email: 'a@x.com', status: 'active', signup_source: 'trial_pass_qr', issued_at: dayAgo(2), activated_at: dayAgo(2), expires_at: new Date(now + 28 * DAY_MS).toISOString(), extended_until: null, applied_at: null, converted_at: null, signup_expires_at: new Date(now + 58 * DAY_MS).toISOString() },
+      // Unactivated: never checked in. daysLeft counts down to 60-day cutoff.
+      { id: 'b', full_name: 'B', email: 'b@x.com', status: 'active', signup_source: 'trial_pass_qr', issued_at: dayAgo(3), activated_at: null, expires_at: null, extended_until: null, applied_at: null, converted_at: null, signup_expires_at: new Date(now + 57 * DAY_MS).toISOString() },
+    ],
+    checkins: [],
+  });
+  strictEqual(out.totals.active, 2);
+  strictEqual(out.totals.activeActivated, 1);
+  strictEqual(out.totals.activeUnactivated, 1);
+  const byId = Object.fromEntries(out.recent.map((r) => [r.id, r]));
+  strictEqual(byId.a.activationPhase, 'activated');
+  strictEqual(byId.b.activationPhase, 'unactivated');
+  strictEqual(byId.b.daysLeft, 57);
 });
 
 test('multiple check-ins for same pass count once toward funnel but track individually', () => {
