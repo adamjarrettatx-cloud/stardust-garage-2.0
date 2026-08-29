@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth-helpers';
+import { requireOwner } from '@/lib/auth-helpers';
 import { createClient } from '@/lib/supabase/server';
 import { normalizeDepartmentTags } from '@/lib/progress';
 
@@ -12,7 +12,9 @@ export const runtime = 'nodejs';
 // Uses the user-context client so the "Admins can manage team members" RLS
 // policy authorises the write — no service-role client needed.
 export async function PATCH(request, { params }) {
-  const { unauthorized } = await requireAdmin();
+  // Owner-only: department tags control task visibility, and this endpoint is
+  // only reachable from the owner-only Team Members page.
+  const { unauthorized } = await requireOwner();
   if (unauthorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
