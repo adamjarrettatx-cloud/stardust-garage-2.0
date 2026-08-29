@@ -7,13 +7,9 @@ import { createClient } from '@/lib/supabase/client';
 export default function SettingsForm({ initialSettings }) {
   const router = useRouter();
   const [logoUrl, setLogoUrl] = useState(initialSettings.logo_url || '');
-  const [heroImage, setHeroImage] = useState(initialSettings.homepage_hero_image || '');
-  const [heroDate, setHeroDate] = useState(initialSettings.homepage_hero_date || '');
-  const [heroTitle, setHeroTitle] = useState(initialSettings.homepage_hero_title || '');
   const [splashLogoImage, setSplashLogoImage] = useState(initialSettings.splash_logo_image || '');
 
   const [uploadingLogo, setUploadingLogo] = useState(false);
-  const [uploadingHero, setUploadingHero] = useState(false);
   const [uploadingSplashLogo, setUploadingSplashLogo] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -52,9 +48,6 @@ export default function SettingsForm({ initialSettings }) {
 
     const updates = [
       { key: 'logo_url', value: logoUrl.trim() },
-      { key: 'homepage_hero_image', value: heroImage.trim() },
-      { key: 'homepage_hero_date', value: heroDate.trim() },
-      { key: 'homepage_hero_title', value: heroTitle.trim() },
       { key: 'splash_logo_image', value: splashLogoImage.trim() },
     ];
 
@@ -177,43 +170,6 @@ export default function SettingsForm({ initialSettings }) {
         </p>
       </section>
 
-      {/* HOMEPAGE HERO */}
-      <section
-        className="rounded-[14px] p-8 border"
-        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
-      >
-        <h2 className="text-[18px] font-bold mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-          Homepage Hero
-        </h2>
-
-        {renderImageUploader('HERO IMAGE', heroImage, setHeroImage, uploadingHero, setUploadingHero, '16 / 7')}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-          <div>
-            <label className={labelClass} style={labelStyle}>HERO DATE (small text)</label>
-            <input
-              type="text"
-              value={heroDate}
-              onChange={(e) => setHeroDate(e.target.value)}
-              placeholder="e.g. MAY 3, 2026"
-              className={inputClass}
-              style={inputStyle}
-            />
-          </div>
-          <div>
-            <label className={labelClass} style={labelStyle}>HERO TITLE (large text)</label>
-            <input
-              type="text"
-              value={heroTitle}
-              onChange={(e) => setHeroTitle(e.target.value)}
-              placeholder="e.g. Basement Beats Showcase"
-              className={inputClass}
-              style={inputStyle}
-            />
-          </div>
-        </div>
-      </section>
-
       {/* SPLASH PAGE */}
       <section
         className="rounded-[14px] p-8 border"
@@ -244,7 +200,7 @@ export default function SettingsForm({ initialSettings }) {
 
       <button
         type="submit"
-        disabled={saving || uploadingLogo || uploadingHero || uploadingSplashLogo}
+        disabled={saving || uploadingLogo || uploadingSplashLogo}
         className="w-full py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
         style={{ background: '#ffffff', color: '#0a0a0a' }}
       >
