@@ -825,3 +825,20 @@ test('the calendar renders no header of its own inside the Events tab', () => {
   // instruction the calendar needs moves to the section description.
   assert.match(adminTabById('events').description, /double-click a day to add/);
 });
+
+test('the legend and the scorecard read after the calendar, not before it', () => {
+  // Both summarise the grid, so above it they were two rows of preamble
+  // between the section heading and the thing you came to look at.
+  const src = read('app/components/EventsCalendarClient.js');
+  const monthNav = src.indexOf('{/* Month nav */}');
+  const grid = src.indexOf('{/* Grid cells */}');
+  const legend = src.indexOf('{/* Legend */}');
+  const scorecard = src.indexOf('{/* Monthly Scorecard');
+
+  for (const [name, at] of [['month nav', monthNav], ['grid', grid], ['legend', legend], ['scorecard', scorecard]]) {
+    assert.ok(at > 0, `the calendar lost its ${name}`);
+  }
+  assert.ok(monthNav < grid, 'the month nav belongs above the grid');
+  assert.ok(grid < legend, 'the legend must follow the grid');
+  assert.ok(legend < scorecard, 'the scorecard reads after the legend');
+});
