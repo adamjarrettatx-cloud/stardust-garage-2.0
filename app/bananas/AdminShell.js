@@ -12,6 +12,9 @@ import {
   resolveAdminTab,
 } from '@/lib/admin-tabs';
 import AdminDashboardClient from './AdminDashboardClient';
+import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
+import LogoutButton from './components/LogoutButton';
+import { AdminShellProvider } from '@/app/components/AdminShellContext';
 
 // ---------------------------------------------------------------------------
 // Sidebar
@@ -141,7 +144,18 @@ function SectionTrail({ sectionLabel, sectionTabId, pageTitle }) {
 // ---------------------------------------------------------------------------
 // Shell
 // ---------------------------------------------------------------------------
-export default function AdminShell({ isOwner, counts, children }) {
+// `tileRequired` is set by the /team layout. Those routes are shared with
+// non-admin team members and include pages with no tile at all (the SOP
+// library, the trial-pass tools, the login screen), so the shell must only
+// take over when the pathname actually belongs to a section. Under /bananas it
+// always applies.
+export default function AdminShell({
+  userEmail,
+  isOwner,
+  counts,
+  tileRequired = false,
+  children,
+}) {
   const pathname = usePathname() || '';
   const searchParams = useSearchParams();
   const groups = visibleAdminTabGroups(isOwner);
@@ -184,8 +198,23 @@ export default function AdminShell({ isOwner, counts, children }) {
   const tile = isDashboardRoot ? null : tileForPath(pathname);
   const section = groups.flatMap((g) => g.tabs).find((t) => t.id === activeTab);
 
+  // Nothing here belongs to a section, so leave the page exactly as it would
+  // render on its own rather than framing an unrelated screen in admin chrome.
+  if (tileRequired && !tile) return children;
+
   return (
-    <div className="lg:grid lg:grid-cols-[232px_1fr] lg:gap-9 lg:items-start">
+    <AdminShellProvider>
+    <main className="max-w-[1320px] mx-auto px-6 py-16">
+      <AuthenticatedPageHeader
+        title="Admin"
+        description={userEmail ? `Signed in as ${userEmail}` : null}
+        titleClassName="text-[40px] font-extrabold -tracking-[0.02em] leading-[1.1]"
+        className="mb-10"
+      >
+        <LogoutButton />
+      </AuthenticatedPageHeader>
+
+      <div className="lg:grid lg:grid-cols-[232px_1fr] lg:gap-9 lg:items-start">
       <Sidebar
         groups={groups}
         activeTab={activeTab}
@@ -217,6 +246,8 @@ export default function AdminShell({ isOwner, counts, children }) {
 
         {children}
       </div>
-    </div>
+      </div>
+    </main>
+    </AdminShellProvider>
   );
 }
