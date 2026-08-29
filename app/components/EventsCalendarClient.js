@@ -111,13 +111,25 @@ function parseLocalDate(str) {
   return new Date(y, m - 1, d);
 }
 
-// Unified Team Calendar. Admins get "+ Add Event" for every event, click any
-// chip to edit, and a light/dark toggle (matching the admin dashboard's other
-// pages). Team members keep the personalized, read-mostly view: they can add
-// events and edit their own, but everyone else's team events render dimmed
-// and non-interactive. The isAdmin flag is a UI convenience only — the actual
-// dataset each role receives is already scoped server-side (page.js) / by RLS.
-export default function CalendarClient({ publicEvents, teamEvents: initialTeamEvents, isAdmin, currentUserId, currentUserName, creatorNames = {}, chatUnreadCount = 0 }) {
+// The Events Calendar — the venue's programming calendar. Everything we are
+// doing or plan to do as a business, in calendar view: published website
+// events (read-only here) plus internal entries the team adds themselves.
+// It is not a rota; who is working when is not on it.
+//
+// It renders in two places from this one component:
+//
+//   variant="section" — at the top of the Events section of /bananas, sitting
+//                       above the events list. The shell already supplies the
+//                       page container, header and theme toggle.
+//   variant="page"    — the standalone /team/calendar page a non-admin team
+//                       member lands on, which brings its own chrome.
+//
+// Admins can add an entry on any day and click any chip to edit. Team members
+// keep the personalized, read-mostly view: they can add entries and edit their
+// own, but everyone else's render dimmed and non-interactive. The isAdmin flag
+// is a UI convenience only — the dataset each role receives is already scoped
+// server-side (lib/events-calendar-data.js) and by RLS.
+export default function EventsCalendarClient({ publicEvents, teamEvents: initialTeamEvents, isAdmin, currentUserId, currentUserName, creatorNames = {}, chatUnreadCount = 0, variant = 'page' }) {
   const router = useRouter();
   const supabase = createClient();
   const today = new Date();
@@ -177,8 +189,8 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
     [publicEvents]
   );
 
-  // Monthly scorecard: who's created how many team events in the currently
-  // viewed month, admin-only. Ranked descending so it reads like a leaderboard.
+  // Monthly scorecard: who's added how many internal calendar entries in the
+  // currently viewed month. Ranked descending so it reads like a leaderboard.
   const monthlyScorecard = useCallback(() => {
     const counts = {};
     teamEvents.forEach((evt) => {
@@ -249,13 +261,19 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
   const inShell = useInAdminShell();
   const Frame = inShell ? 'div' : 'main';
 
+  // As a section of the Events tab the calendar is one block on a page that
+  // continues below it, so it takes a section heading rather than a page title
+  // and closes with a rule that separates it from the events list.
+  const isSection = variant === 'section';
+  const Heading = isSection ? 'h2' : 'h1';
+
   return (
     <Frame
       className={inShell ? 'transition-colors duration-150' : 'px-6 py-12 transition-colors duration-150'}
       style={{ color: t.text }}
     >
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+      <div className={`flex flex-wrap items-center justify-between gap-4 ${isSection ? 'mb-6' : 'mb-8'}`}>
         <div>
           {isAdmin && !inShell && (
             <Link
@@ -266,15 +284,15 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
               ← BACK TO ADMIN
             </Link>
           )}
-          <h1
-            className={`font-extrabold -tracking-[0.02em] leading-[1.15] ${inShell ? 'text-[30px]' : 'text-[36px]'}`}
+          <Heading
+            className={`font-extrabold -tracking-[0.02em] leading-[1.15] ${isSection ? 'text-[23px]' : inShell ? 'text-[30px]' : 'text-[36px]'}`}
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.textStrong }}
           >
-            Team Calendar
-          </h1>
-          <p className="text-[14px] mt-1" style={{ color: t.muted }}>
+            Events Calendar
+          </Heading>
+          <p className={`${isSection ? 'text-[14.5px]' : 'text-[14px]'} mt-1`} style={{ color: t.muted }}>
             {isAdmin
-              ? 'Click a day to view · double-click to add an event'
+              ? 'Everything on the books · click a day to view · double-click to add'
               : `Welcome, ${currentUserName} · click a day to view · double-click to add`}
           </p>
         </div>
@@ -334,7 +352,7 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
             className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5"
             style={{ background: t.addEventBg, color: t.addEventText }}
           >
-            + ADD EVENT
+            + ADD TO CALENDAR
           </button>
         </div>
       </div>
@@ -375,7 +393,7 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
           EVENTS CREATED — {MONTHS[month].toUpperCase()} {year}
         </div>
         {monthlyScorecard().length === 0 ? (
-          <p className="text-[13px]" style={{ color: t.muted }}>No team events created this month yet.</p>
+          <p className="text-[13px]" style={{ color: t.muted }}>No calendar entries added this month yet.</p>
         ) : (
           <div className="flex flex-wrap gap-3">
             {monthlyScorecard().map(([name, count], idx) => (
@@ -640,7 +658,7 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
 
             {selectedEvents.team.length > 0 && (
               <div>
-                <div className="text-[11px] font-semibold tracking-[0.12em] mb-2" style={{ color: t.muted }}>TEAM EVENTS</div>
+                <div className="text-[11px] font-semibold tracking-[0.12em] mb-2" style={{ color: t.muted }}>INTERNAL EVENTS</div>
                 <div className="space-y-2">
                   {selectedEvents.team.map(evt => {
                     const cat = CATEGORIES[evt.category] || CATEGORIES.other;
@@ -695,7 +713,7 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
                           )
                         )}
                         {!isAdmin && !mine && (
-                          <div className="text-[10px] mt-1" style={{ color: t.muted }}>Added by team</div>
+                          <div className="text-[10px] mt-1" style={{ color: t.muted }}>Added by a teammate</div>
                         )}
                       </div>
                     );
@@ -711,11 +729,17 @@ export default function CalendarClient({ publicEvents, teamEvents: initialTeamEv
               onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
             >
-              + ADD EVENT THIS DAY
+              + ADD TO THIS DAY
             </button>
           </div>
         )}
       </div>
+
+      {/* Above the events list, the calendar needs a visible end so the two
+          don't read as one continuous block. */}
+      {isSection && (
+        <hr className="mt-10 mb-8 border-0 border-t" style={{ borderColor: t.borderSoft }} />
+      )}
 
       {/* Modal */}
       {modalState && (

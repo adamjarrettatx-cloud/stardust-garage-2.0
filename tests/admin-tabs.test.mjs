@@ -592,8 +592,8 @@ test('the trial pass pages own a tile but stay outside the shell', () => {
     assert.equal(tabForPath(p), 'memberships', `${p} should still own a tile`);
     assert.equal(isShellExempt(p), true, `${p} must not be wrapped in the shell`);
   }
-  // The exemption is narrow — it must not swallow the three Team pages.
-  for (const p of ['/team/progress', '/team/calendar', '/team/chat']) {
+  // The exemption is narrow — it must not swallow the Team pages.
+  for (const p of ['/team/progress', '/team/chat']) {
     assert.equal(isShellExempt(p), false, `${p} should render inside the shell`);
   }
 });
@@ -611,10 +611,11 @@ test('a shell-exempt page is the one place allowed its own header', () => {
   }
 });
 
-test('the team tiles do resolve to the Team section', () => {
-  for (const p of ['/team/progress', '/team/calendar']) {
-    assert.equal(tabForPath(p), 'team', `${p} should sit in the Team section`);
-  }
+test('Tasks is what is left in the Team section', () => {
+  // The calendar moved to Events and Chat became a section of its own, so Team
+  // is now the work itself rather than a bucket of loosely related pages.
+  assert.deepEqual(ADMIN_TILES.team.map((t) => t.href), ['/team/progress']);
+  assert.equal(tabForPath('/team/progress'), 'team');
 });
 
 // --- Chat section -----------------------------------------------------------
@@ -674,6 +675,63 @@ test('a link section can never become the dashboard root panel', () => {
   assert.equal(resolveRootAdminTab('analytics', { isOwner: false }), DEFAULT_ADMIN_TAB);
 });
 
+// --- Events Calendar --------------------------------------------------------
+
+test('the calendar belongs to Events, not Team', () => {
+  // It was a Team tile called "Team Calendar", which framed the venue's
+  // programming calendar as a staffing surface. It is now the Events Calendar
+  // rendered at the top of the Events section, so no tile points at it and the
+  // old path resolves to Events rather than Team.
+  assert.equal(
+    ADMIN_TILES.team.some((t) => t.href === '/team/calendar'),
+    false,
+    'the calendar is back to being a Team tile'
+  );
+  assert.equal(tileForPath('/team/calendar'), null);
+  assert.equal(tabForPath('/team/calendar'), 'events');
+
+  // The calendar is programming, not scheduling: no shift or staffing language
+  // anywhere on it. (Plain "shifts" is left alone — date-math comments about
+  // timezone shifting are not what this is guarding.)
+  const staffingWords = /staffing|shift schedule|shift coverage|Shifts and|on shift/i;
+  const sources = [
+    'lib/admin-tabs.js',
+    'app/components/EventsCalendarClient.js',
+    'app/bananas/EventsTabPanel.js',
+    'app/bananas/calendar/TeamEventModal.js',
+  ];
+  for (const rel of sources) {
+    const src = read(rel);
+    assert.doesNotMatch(src, staffingWords, `${rel} still talks about shifts`);
+    assert.doesNotMatch(src, /Team Calendar/, `${rel} still calls it the Team Calendar`);
+  }
+});
+
+test('the Events section renders the calendar above the events list', () => {
+  // Opening Events shows the whole programme in calendar view first, then the
+  // record-by-record list. Order matters: the calendar is the top of the tab.
+  const panel = read('app/bananas/EventsTabPanel.js');
+  const calendarAt = panel.indexOf('<EventsCalendarClient');
+  const listAt = panel.indexOf('<EventsSection');
+  assert.ok(calendarAt > 0, 'the Events section lost its calendar');
+  assert.ok(listAt > 0, 'the Events section lost its list');
+  assert.ok(calendarAt < listAt, 'the calendar must render above the events list');
+  assert.match(panel, /variant="section"/);
+
+  // One dataset, one loader — the section and the standalone team page must not
+  // grow two different versions of the same calendar.
+  assert.match(PAGE, /loadEventsCalendarData/);
+  assert.match(read('app/team/calendar/page.js'), /loadEventsCalendarData/);
+});
+
+test('an admin opening the old calendar path lands in Events', () => {
+  // /team/calendar exists for non-admin team members, who have no admin
+  // dashboard to open. An admin would otherwise see a second copy of the grid
+  // that already sits at the top of Events.
+  const src = read('app/team/calendar/page.js');
+  assert.match(src, /if \(data\.isAdmin\) redirect\('\/bananas\?tab=events'\)/);
+});
+
 test('sidebar counts are defined once and shared by both layouts', () => {
   // Two copies of these ten queries would drift the moment a tile gained or
   // lost a count.
@@ -722,7 +780,7 @@ test('team pages drop their own chrome only when the shell provides it', () => {
   // those again would stack two headers and two sign-out buttons.
   const shellAware = [
     'app/team/chat/TeamChatClient.js',
-    'app/team/calendar/CalendarClient.js',
+    'app/components/EventsCalendarClient.js',
     'app/team/progress/ProgressClient.js',
   ];
   for (const rel of shellAware) {
