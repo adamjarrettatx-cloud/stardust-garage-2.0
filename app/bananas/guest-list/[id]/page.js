@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import {
   compTypeLabel,
   entryStatusLabel,
+  GUEST_LIST_ANCHOR,
   loadEventGrants,
   summarizeGrants,
 } from '@/lib/guestlist-helpers';
@@ -205,8 +206,11 @@ export default async function EventGuestListPage({ params }) {
         titleClassName="text-[30px] font-extrabold -tracking-[0.02em] leading-[1.15]"
         className="mb-10"
       >
+        {/* Deep link to the allocation panel itself. Without the hash this drops
+            the admin at the top of the event form and leaves them to scroll past
+            every field to reach the box they asked for. */}
         <Link
-          href={`/bananas/events/${event.id}`}
+          href={`/bananas/events/${event.id}#${GUEST_LIST_ANCHOR}`}
           className="auth-theme-border-button px-4 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
           style={{ color: 'var(--auth-accent)' }}
         >
