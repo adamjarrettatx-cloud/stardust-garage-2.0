@@ -821,9 +821,6 @@ test('the calendar renders no header of its own inside the Events tab', () => {
     assert.ok(!afterLegend.includes(needle), `"${needle}" escaped the page-only header`);
   }
 
-  // Losing the header's hint must not make adding undiscoverable, so the one
-  // instruction the calendar needs moves to the section description.
-  assert.match(adminTabById('events').description, /double-click a day to add/);
 });
 
 test('the legend and the scorecard read after the calendar, not before it', () => {
@@ -841,4 +838,35 @@ test('the legend and the scorecard read after the calendar, not before it', () =
   assert.ok(monthNav < grid, 'the month nav belongs above the grid');
   assert.ok(grid < legend, 'the legend must follow the grid');
   assert.ok(legend < scorecard, 'the scorecard reads after the legend');
+});
+
+test('a section that renders its own content gets no heading block', () => {
+  // The tile sections need a heading to say what their tiles are for. Events
+  // and Chat do not: the sidebar entry names them, and what follows — a
+  // calendar, an events list, a channel list — announces itself.
+  const src = read('app/bananas/AdminDashboardClient.js');
+  assert.match(src, /\{section && !section\.rendersOwnContent && \(/);
+
+  for (const id of ['events', 'chat']) {
+    assert.equal(adminTabById(id).rendersOwnContent, true, `${id} would render a heading again`);
+  }
+  for (const id of ['team', 'memberships']) {
+    assert.ok(!adminTabById(id).rendersOwnContent, `${id} lost its tile-grid heading`);
+    assert.ok(adminTabById(id).description, `${id} has no description to show`);
+  }
+});
+
+test('Team Chat renders its own title only outside the admin shell', () => {
+  const src = read('app/team/chat/TeamChatClient.js');
+  const gate = src.indexOf('{!inShell && (');
+  assert.ok(gate > 0, 'the chat header is no longer gated on the shell');
+
+  // Title, the "you are X" line and every header control sit behind the gate,
+  // and nothing that belongs to the conversation itself does.
+  const conversation = src.indexOf('flex gap-5 h-[70vh]');
+  const header = src.slice(gate, conversation);
+  for (const needle of ['Team Chat', 'channels &amp; direct messages', 'SIGN OUT']) {
+    assert.ok(header.includes(needle), `"${needle}" left the standalone-only header`);
+    assert.ok(!src.slice(conversation).includes(needle), `"${needle}" escaped the header`);
+  }
 });

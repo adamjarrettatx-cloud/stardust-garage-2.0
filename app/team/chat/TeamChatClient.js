@@ -474,49 +474,60 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
       }
       style={inShell ? { color: t.text } : { background: t.pageBg, color: t.text }}
     >
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
-        <div>
-          {!inShell && (
-            <Link href="/team/calendar" className="text-[12px] tracking-[0.1em] hover:underline" style={{ color: t.muted }}>← TEAM</Link>
-          )}
-          <h1
-            className={`font-extrabold -tracking-[0.02em] leading-[1.15] ${inShell ? 'text-[30px]' : 'text-[36px] mt-1'}`}
-            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.text }}
-          >
-            Team Chat
-          </h1>
-          <p className="text-[13px] mt-1" style={{ color: t.muted }}>
-            {currentUserName} · channels &amp; direct messages
-          </p>
+      {/* Header — standalone page only. Every control in it (the way back,
+          the theme toggle, sign out) is the shell's job inside the shell,
+          and a non-admin team member never sees the shell. */}
+      {!inShell && (
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
+          <div>
+            {!inShell && (
+              <Link href="/team/calendar" className="text-[12px] tracking-[0.1em] hover:underline" style={{ color: t.muted }}>← TEAM</Link>
+            )}
+            {/* In the shell the sidebar's Chat entry is already lit and the
+                channel list below names the room you are in, so a title and a
+                "you are Adam Jarrett" line only pushed the conversation down. */}
+            {!inShell && (
+              <>
+                <h1
+                  className="font-extrabold -tracking-[0.02em] leading-[1.15] text-[36px] mt-1"
+                  style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.text }}
+                >
+                  Team Chat
+                </h1>
+                <p className="text-[13px] mt-1" style={{ color: t.muted }}>
+                  {currentUserName} · channels &amp; direct messages
+                </p>
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            {/* The shell header already carries the theme toggle next to Log Out.
+                Rendered only when this page supplies its own header instead — a
+                non-admin team member never sees the shell. */}
+            {!inShell && (
+              <AuthenticatedThemeToggleControl theme={theme} onToggle={toggleTheme} />
+            )}
+            {!inShell && (
+              <Link
+                href="/team/progress"
+                className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"
+                style={{ borderColor: t.borderStrong, color: t.accent }}
+              >
+                TASKS
+              </Link>
+            )}
+            {!inShell && (
+              <button
+                onClick={handleSignOut}
+                className="px-4 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"
+                style={{ borderColor: t.borderStrong, color: t.muted }}
+              >
+                SIGN OUT
+              </button>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          {/* The shell header already carries the theme toggle next to Log Out.
-              Rendered only when this page supplies its own header instead — a
-              non-admin team member never sees the shell. */}
-          {!inShell && (
-            <AuthenticatedThemeToggleControl theme={theme} onToggle={toggleTheme} />
-          )}
-          {!inShell && (
-            <Link
-              href="/team/progress"
-              className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"
-              style={{ borderColor: t.borderStrong, color: t.accent }}
-            >
-              TASKS
-            </Link>
-          )}
-          {!inShell && (
-            <button
-              onClick={handleSignOut}
-              className="px-4 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"
-              style={{ borderColor: t.borderStrong, color: t.muted }}
-            >
-              SIGN OUT
-            </button>
-          )}
-        </div>
-      </div>
+      )}
 
       <div className="flex gap-5 h-[70vh] min-h-[480px]">
         {/* Sidebar */}
