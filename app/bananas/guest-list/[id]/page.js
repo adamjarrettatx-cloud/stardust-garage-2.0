@@ -198,8 +198,8 @@ export default async function EventGuestListPage({ params }) {
   return (
     <div className="max-w-[1000px]">
       <AuthenticatedPageHeader
-        backHref="/bananas/guest-list"
-        backLabel="← BACK TO GUEST LIST"
+        backHref="/bananas?tab=events"
+        backLabel="← BACK TO EVENTS"
         title={event.title || 'Untitled event'}
         description={formatEventDate(event.event_date)}
         titleClassName="text-[30px] font-extrabold -tracking-[0.02em] leading-[1.15]"

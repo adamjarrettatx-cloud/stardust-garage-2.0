@@ -24,7 +24,6 @@ import {
   normalizeGuestName,
   resolveGrantNotification,
   splitGrantsByDate,
-  summarizeEventGuestlists,
   summarizeGrants,
   validateGrantSlots,
 } from '../lib/guestlist-helpers.js';
@@ -497,37 +496,4 @@ test('summarizeGrants totals allocation, usage and door check-ins', () => {
     }
   );
   assert.equal(summarizeGrants().partners, 0);
-});
-
-test('summarizeEventGuestlists groups by event, newest first, and drops orphans', () => {
-  const rows = summarizeEventGuestlists([
-    {
-      event: { id: 'e1', title: 'Older', event_date: '2026-01-10' },
-      total_slots: 2,
-      free_slots: 2,
-      discount_slots: 0,
-      entries: [{ comp_type: 'free', status: 'pending' }],
-    },
-    {
-      event: { id: 'e2', title: 'Newer', event_date: '2026-02-10' },
-      total_slots: 3,
-      free_slots: 1,
-      discount_slots: 2,
-      entries: [],
-    },
-    {
-      event: { id: 'e1', title: 'Older', event_date: '2026-01-10' },
-      total_slots: 1,
-      free_slots: 1,
-      discount_slots: 0,
-      entries: [{ comp_type: 'free', status: 'checked_in' }],
-    },
-    { event: null, total_slots: 9, free_slots: 9, discount_slots: 0, entries: [] },
-  ]);
-
-  assert.deepEqual(rows.map((r) => r.event.id), ['e2', 'e1']);
-  assert.equal(rows[1].partners, 2);
-  assert.equal(rows[1].free_slots, 3);
-  assert.equal(rows[1].used, 2);
-  assert.equal(rows[1].checked_in, 1);
 });

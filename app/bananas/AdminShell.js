@@ -8,6 +8,7 @@ import {
   adminTabBadges,
   tabForPath,
   tileForPath,
+  crumbForPath,
   DEFAULT_ADMIN_TAB,
   resolveAdminTab,
   isShellExempt,
@@ -197,6 +198,10 @@ export default function AdminShell({
     : resolveAdminTab(pathTab || DEFAULT_ADMIN_TAB, { isOwner });
 
   const tile = isDashboardRoot ? null : tileForPath(pathname);
+  // The breadcrumb is not tile-only: Guest List and Artist Pay are opened from
+  // an event row rather than a tile, and without a trail there is no marked way
+  // back to Events from either of them.
+  const crumb = isDashboardRoot ? null : crumbForPath(pathname);
   const section = groups.flatMap((g) => g.tabs).find((t) => t.id === activeTab);
 
   // Nothing here belongs to a section, so leave the page exactly as it would
@@ -228,11 +233,11 @@ export default function AdminShell({
       />
 
       <div className="mt-6 lg:mt-0 min-w-0">
-        {tile && section && (
+        {crumb && section && (
           <SectionTrail
             sectionLabel={section.label}
             sectionTabId={section.id}
-            pageTitle={tile.title}
+            pageTitle={crumb.title}
           />
         )}
 

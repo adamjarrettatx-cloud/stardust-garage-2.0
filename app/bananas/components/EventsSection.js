@@ -105,7 +105,25 @@ export default function EventsSection({ upcoming, past }) {
                 </div>
                 <div className="text-[12px] mt-1" style={{ color: 'var(--auth-faint)' }}>/events/{event.slug}</div>
               </div>
-              <div className="flex gap-2 flex-shrink-0">
+              {/* Guest List and Artist Pay are per-event work, so they open
+                  scoped to this event rather than to an all-events summary you
+                  then have to search. They used to be People tiles, which is
+                  exactly the trip this removes. */}
+              <div className="flex flex-wrap gap-2 justify-end flex-shrink-0">
+                <Link
+                  href={`/bananas/guest-list/${event.id}`}
+                  className="auth-theme-border-button px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
+                  title={`Guest list for ${event.title}`}
+                >
+                  GUEST LIST
+                </Link>
+                <Link
+                  href={`/bananas/pay-requests?event=${event.id}`}
+                  className="auth-theme-border-button px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
+                  title={`Artist pay for ${event.title}`}
+                >
+                  ARTIST PAY
+                </Link>
                 <Link
                   href={`/bananas/events/${event.id}`}
                   className="auth-theme-border-button px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"

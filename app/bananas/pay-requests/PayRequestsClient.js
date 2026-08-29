@@ -121,7 +121,7 @@ function RequestRow({ req, onApprove, onReject, busy }) {
   );
 }
 
-function NineNineNineTab({ requests }) {
+function NineNineNineTab({ requests, scoped }) {
   const year = new Date().getFullYear();
   const totals = useMemo(() => cumulativePayByContact(requests, { year }), [requests, year]);
   // W9 status is per-contact, not per-request, so pull it off the first
@@ -139,6 +139,7 @@ function NineNineNineTab({ requests }) {
       <p className="text-[12px] mb-5" style={{ color: 'var(--auth-muted)' }}>
         Cumulative pay per 1099 contractor for {year}, from paid requests only. Every total below will read $0 until
         Phase 4 connects Mercury payouts — that&rsquo;s expected, not a bug.
+        {scoped ? ' These totals stay year-wide across every event, because that is what a 1099 reports.' : ''}
       </p>
       {totals.length === 0 ? (
         <p className="text-[13px]" style={{ color: 'var(--auth-muted)' }}>
@@ -181,7 +182,11 @@ function NineNineNineTab({ requests }) {
   );
 }
 
-export default function PayRequestsClient() {
+// `eventId` scopes the review queue to one event (set from ?event= by the
+// server page). The 1099 tab deliberately ignores it: a 1099 is a year-wide
+// per-contractor total, so filtering it to one night would report a number that
+// is wrong for the only purpose it has.
+export default function PayRequestsClient({ eventId = null, eventTitle = null, eventMissing = false }) {
   const [requests, setRequests] = useState(null);
   const [loadError, setLoadError] = useState('');
   const [busyId, setBusyId] = useState(null);
@@ -202,7 +207,14 @@ export default function PayRequestsClient() {
     load();
   }, [load]);
 
-  const pending = (requests || []).filter((r) => r.status === 'pending_review');
+  // One fetch, then filtered here rather than in the API: the 1099 tab needs the
+  // unfiltered set on the same page load.
+  const inScope = useMemo(
+    () => (eventId ? (requests || []).filter((r) => r.event_id === eventId) : requests || []),
+    [requests, eventId]
+  );
+  const pending = inScope.filter((r) => r.status === 'pending_review');
+  const reviewed = inScope.filter((r) => r.status !== 'pending_review');
 
   const handleApprove = async (id) => {
     setBusyId(id);
@@ -236,6 +248,38 @@ export default function PayRequestsClient() {
 
   return (
     <section className="rounded-[12px] border p-5" style={cardStyle}>
+      {eventMissing && (
+        <p className="text-[13px] mb-4" style={{ color: 'var(--auth-danger)' }}>
+          That event no longer exists, so there is nothing to scope to.{' '}
+          <Link href="/bananas/pay-requests" className="underline">
+            Show every pay request
+          </Link>
+          .
+        </p>
+      )}
+
+      {eventId && !eventMissing && (
+        <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+          <span
+            className="text-[11px] font-semibold tracking-[0.12em] px-3 py-1.5 rounded-full"
+            style={{
+              color: 'var(--auth-accent)',
+              background: 'var(--auth-card-bg-alt)',
+              border: '1px solid var(--auth-card-border)',
+            }}
+          >
+            THIS EVENT ONLY
+          </span>
+          <Link
+            href="/bananas/pay-requests"
+            className="text-[11px] font-semibold tracking-[0.12em] transition-colors hover:underline"
+            style={{ color: 'var(--auth-muted)' }}
+          >
+            SHOW EVERY EVENT
+          </Link>
+        </div>
+      )}
+
       <UnderlineTabs
         tabs={[
           { id: 'review', label: 'Review & Pay', count: pending.length },
@@ -268,7 +312,9 @@ export default function PayRequestsClient() {
           )}
           {pending.length === 0 ? (
             <p className="text-[13px]" style={{ color: 'var(--auth-muted)' }}>
-              Nothing waiting on review right now.
+              {eventId
+                ? `Nothing waiting on review for ${eventTitle || 'this event'}.`
+                : 'Nothing waiting on review right now.'}
             </p>
           ) : (
             <div className="space-y-3">
@@ -280,13 +326,11 @@ export default function PayRequestsClient() {
 
           <details className="mt-8 group">
             <summary className="cursor-pointer list-none text-[12px] font-semibold tracking-[0.14em] py-3 select-none" style={{ color: 'var(--auth-muted)' }}>
-              REVIEWED REQUESTS ({(requests || []).filter((r) => r.status !== 'pending_review').length})
+              REVIEWED REQUESTS ({reviewed.length})
               <span className="ml-2 inline-block transition-transform group-open:rotate-90">›</span>
             </summary>
             <div className="space-y-2 mt-3">
-              {(requests || [])
-                .filter((r) => r.status !== 'pending_review')
-                .map((r) => (
+              {reviewed.map((r) => (
                   <div key={r.id} className="rounded-[10px] border p-3 flex items-center justify-between gap-3 flex-wrap" style={altCardStyle}>
                     <div className="text-[13px]">
                       <span style={{ color: 'var(--auth-text-strong)', fontWeight: 600 }}>{r.contact?.display_name}</span>{' '}
@@ -309,7 +353,9 @@ export default function PayRequestsClient() {
         </div>
       )}
 
-      {requests !== null && tab === '1099' && <NineNineNineTab requests={requests} />}
+      {requests !== null && tab === '1099' && (
+        <NineNineNineTab requests={requests} scoped={Boolean(eventId)} />
+      )}
     </section>
   );
 }
