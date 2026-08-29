@@ -10,6 +10,7 @@ import {
   tileForPath,
   DEFAULT_ADMIN_TAB,
   resolveAdminTab,
+  isShellExempt,
 } from '@/lib/admin-tabs';
 import AdminDashboardClient from './AdminDashboardClient';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
@@ -200,7 +201,10 @@ export default function AdminShell({
 
   // Nothing here belongs to a section, so leave the page exactly as it would
   // render on its own rather than framing an unrelated screen in admin chrome.
-  if (tileRequired && !tile) return children;
+  // isShellExempt covers the inverse case: a route that does own a tile but
+  // still supplies its own header and page container, so wrapping it would
+  // double both.
+  if (tileRequired && (!tile || isShellExempt(pathname))) return children;
 
   return (
     <AdminShellProvider>

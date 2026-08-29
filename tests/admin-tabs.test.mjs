@@ -17,6 +17,7 @@ import {
   allAdminTiles,
   adminTabBadge,
   tabForPath,
+  isShellExempt,
   tileForPath,
 } from '../lib/admin-tabs.js';
 
@@ -511,9 +512,37 @@ test('the team layout only wraps routes that belong to a section', () => {
   // /team/documents, the trial-pass tools and /team/login have no tile, so the
   // shell must leave them alone rather than framing them in admin chrome.
   assert.match(TEAM_LAYOUT, /tileRequired/);
-  assert.match(SHELL, /if \(tileRequired && !tile\) return children/);
-  for (const p of ['/team/documents', '/team/trial-pass/manual', '/team/login']) {
+  assert.match(SHELL, /if \(tileRequired && \(!tile \|\| isShellExempt\(pathname\)\)\) return children/);
+  for (const p of ['/team/documents', '/team/login']) {
     assert.equal(tabForPath(p), null, `${p} should not resolve to a section`);
+  }
+});
+
+test('the trial pass pages own a tile but stay outside the shell', () => {
+  // They gained tiles in #115 while the shell learned to wrap tiled /team
+  // routes in #116. Both are fine alone; together they put an unthemed page
+  // inside the shell. Until the hardcoded dark styling is ported to the theme
+  // tokens, these open standalone.
+  for (const p of ['/team/trial-pass/analytics', '/team/trial-pass/manual']) {
+    assert.equal(tabForPath(p), 'memberships', `${p} should still own a tile`);
+    assert.equal(isShellExempt(p), true, `${p} must not be wrapped in the shell`);
+  }
+  // The exemption is narrow — it must not swallow the three Team pages.
+  for (const p of ['/team/progress', '/team/calendar', '/team/chat']) {
+    assert.equal(isShellExempt(p), false, `${p} should render inside the shell`);
+  }
+});
+
+test('a shell-exempt page is the one place allowed its own header', () => {
+  // This is what the exemption exists to avoid doubling. If these pages ever
+  // stop rendering their own chrome, the exemption should be removed with it.
+  for (const rel of [
+    'app/team/trial-pass/analytics/page.js',
+    'app/team/trial-pass/manual/page.js',
+  ]) {
+    const src = read(rel);
+    assert.match(src, /AuthenticatedPageHeader/, `${rel} lost its own header`);
+    assert.match(src, /<main/, `${rel} lost its own page container`);
   }
 });
 
