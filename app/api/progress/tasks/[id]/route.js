@@ -13,7 +13,6 @@ const PRIORITY_VALUES = new Set(PRIORITIES.map((p) => p.value));
 const EDITABLE = new Set([
   'title', 'department', 'description', 'assignee_id', 'status', 'priority',
   'due_date', 'update_cadence_days', 'next_update_due', 'percent_complete',
-  'archived',
 ]);
 
 // GET /api/progress/tasks/:id — task detail with its update thread and activity
@@ -57,7 +56,7 @@ export async function GET(request, { params }) {
 }
 
 // PATCH /api/progress/tasks/:id — edit / assign / reprioritise / set dates /
-// set cadence / update status / archive / complete. Admin (GM) only. RLS admin
+// set cadence / update status / complete. Admin (GM) only. RLS admin
 // update policy authorises; triggers write the activity log with the real actor.
 export async function PATCH(request, { params }) {
   const { unauthorized, reason } = await requireAdminMfa();
@@ -130,7 +129,7 @@ export async function PATCH(request, { params }) {
 }
 
 // DELETE /api/progress/tasks/:id — hard delete. OWNER ONLY. The normal
-// lifecycle end-state is archive (admins can do that via PATCH). Hard delete is
+// lifecycle end-state is 'done'. Hard delete is
 // a destructive, owner-only escape hatch, so it runs with the service-role
 // client (the tables have no RLS delete policy for anyone).
 export async function DELETE(request, { params }) {

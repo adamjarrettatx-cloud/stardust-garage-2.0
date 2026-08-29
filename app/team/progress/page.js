@@ -9,10 +9,9 @@ const OWNER_EMAIL = 'adam@sdgatx.com';
 
 // Unified Progress route — reachable by both admins and team members. Role
 // comes from the server-verified team_members table. Unlike Calendar, the
-// two roles need genuinely different queries (admin sees every task incl.
-// archived, with the full roster for the assignee dropdown; team members see
-// only their RLS-scoped, non-archived tasks) so the branching happens here,
-// not just in the client.
+// two roles need genuinely different queries (admins get the full roster for
+// the assignee dropdown; team members see only their RLS-scoped tasks) so the
+// branching happens here, not just in the client.
 export default async function TeamProgressPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -71,7 +70,6 @@ export default async function TeamProgressPage() {
   const { data: tasks } = await supabase
     .from('project_tasks')
     .select('*')
-    .eq('archived', false)
     .order('due_date', { ascending: true, nullsFirst: false });
 
   const { data: updateStamps } = await supabase

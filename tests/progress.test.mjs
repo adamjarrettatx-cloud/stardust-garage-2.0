@@ -2,8 +2,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   classifyTask,
-  completedRecently,
-  computeKpis,
   filterTasks,
   sortTasks,
   mapImportStatus,
@@ -18,9 +16,6 @@ import {
   priorityFromDueDate,
   parseQuickAddTask,
   detectStatusFromText,
-  startOfWeekMonday,
-  endOfWeekSunday,
-  completedThisWeek,
 } from '../lib/progress.js';
 
 const TODAY = '2026-07-23';
@@ -37,7 +32,6 @@ function task(overrides = {}) {
     last_update_at: null,
     created_at: TODAY,
     completed_at: null,
-    archived: false,
     assignee_id: null,
     updated_at: TODAY,
     ...overrides,
@@ -89,29 +83,6 @@ test('needsAttention is true for blocked tasks', () => {
   assert.equal(classifyTask(task({ status: 'blocked' }), TODAY).needsAttention, true);
 });
 
-test('completedRecently respects the window and requires done status', () => {
-  assert.equal(completedRecently(task({ status: 'done', completed_at: '2026-07-21' }), TODAY), true);
-  assert.equal(completedRecently(task({ status: 'done', completed_at: '2026-07-10' }), TODAY), false);
-  assert.equal(completedRecently(task({ status: 'in_progress', completed_at: '2026-07-21' }), TODAY), false);
-});
-
-test('computeKpis tallies each dimension independently', () => {
-  const tasks = [
-    task({ id: '1', due_date: '2026-07-10' }), // overdue
-    task({ id: '2', status: 'blocked' }), // blocked
-    task({ id: '3', next_update_due: '2026-07-01' }), // stale
-    task({ id: '4', due_date: '2026-07-24' }), // due soon
-    task({ id: '5', status: 'done', completed_at: '2026-07-22' }), // completed recently
-  ];
-  const kpis = computeKpis(tasks, TODAY);
-  assert.equal(kpis.total, 5);
-  assert.equal(kpis.overdue, 1);
-  assert.equal(kpis.blocked, 1);
-  assert.equal(kpis.stale, 1);
-  assert.equal(kpis.dueSoon, 1);
-  assert.equal(kpis.completedRecently, 1);
-});
-
 test('filterTasks applies department/status/priority/assignee/search', () => {
   const tasks = [
     task({ id: '1', department: 'marketing', status: 'blocked', priority: 'high', assignee_id: 'a', title: 'Launch flyer' }),
@@ -125,10 +96,11 @@ test('filterTasks applies department/status/priority/assignee/search', () => {
   assert.deepEqual(filterTasks(tasks, {}, 'FLYER').map((t) => t.id), ['1']);
 });
 
-test('filterTasks archived flag include/exclude', () => {
-  const tasks = [task({ id: '1', archived: false }), task({ id: '2', archived: true })];
-  assert.deepEqual(filterTasks(tasks, { archived: false }).map((t) => t.id), ['1']);
-  assert.deepEqual(filterTasks(tasks, { archived: true }).map((t) => t.id), ['2']);
+test('filterTasks ignores a stray archived filter key', () => {
+  // Archiving was removed entirely. A stale caller passing the old key must not
+  // silently filter everything out.
+  const tasks = [task({ id: '1' }), task({ id: '2' })];
+  assert.deepEqual(filterTasks(tasks, { archived: true }).map((t) => t.id), ['1', '2']);
 });
 
 test('sortTasks by priority desc puts urgent first, nulls handled for due_date', () => {
@@ -336,45 +308,19 @@ test('detectStatusFromText returns null when nothing recognizable is said', () =
 // "Done this week" business-week window (Monday through Sunday).
 // TODAY ('2026-07-23') is a Thursday -> week runs Jul 20 (Mon) - Jul 26 (Sun).
 // ---------------------------------------------------------------------------
-test('startOfWeekMonday/endOfWeekSunday bound the current business week', () => {
-  assert.equal(startOfWeekMonday(TODAY), '2026-07-20');
-  assert.equal(endOfWeekSunday(TODAY), '2026-07-26');
-  // Monday itself is the start of its own week.
-  assert.equal(startOfWeekMonday('2026-07-27'), '2026-07-27');
-  assert.equal(endOfWeekSunday('2026-07-27'), '2026-08-02');
-  // Sunday is the end of the week that started the prior Monday.
-  assert.equal(startOfWeekMonday('2026-07-26'), '2026-07-20');
-  assert.equal(endOfWeekSunday('2026-07-26'), '2026-07-26');
-});
-
-test('completedThisWeek resets every Monday and only counts done tasks in the Mon-Sun window', () => {
-  assert.equal(completedThisWeek(task({ status: 'done', completed_at: '2026-07-20' }), TODAY), true); // Monday
-  assert.equal(completedThisWeek(task({ status: 'done', completed_at: '2026-07-26' }), TODAY), true); // Sunday
-  assert.equal(completedThisWeek(task({ status: 'done', completed_at: '2026-07-19' }), TODAY), false); // prior Sunday
-  assert.equal(completedThisWeek(task({ status: 'done', completed_at: '2026-07-27' }), TODAY), false); // next Monday
-  assert.equal(completedThisWeek(task({ status: 'in_progress', completed_at: '2026-07-22' }), TODAY), false);
-  assert.equal(completedThisWeek(task({ status: 'done', completed_at: null }), TODAY), false);
-});
-
-test('computeKpis reports doneThisWeek using the business-week window', () => {
-  const tasks = [
-    task({ id: '1', status: 'done', completed_at: '2026-07-20' }), // this week (Monday)
-    task({ id: '2', status: 'done', completed_at: '2026-07-19' }), // last week
-    task({ id: '3', status: 'not_started' }),
-  ];
-  const kpis = computeKpis(tasks, TODAY);
-  assert.equal(kpis.total, 3);
-  assert.equal(kpis.doneThisWeek, 1);
-});
-
 test('normalizeDepartmentTags keeps valid slugs, dedupes, and reports invalid values', () => {
   assert.deepEqual(
     normalizeDepartmentTags(['marketing', 'legal']),
     { departments: ['marketing', 'legal'], invalid: [] }
   );
   assert.deepEqual(
-    normalizeDepartmentTags(['marketing', 'marketing', 'app']),
-    { departments: ['marketing', 'app'], invalid: [] }
+    normalizeDepartmentTags(['marketing', 'marketing', 'website']),
+    { departments: ['marketing', 'website'], invalid: [] }
+  );
+  // The retired slugs must now be rejected, not silently accepted.
+  assert.deepEqual(
+    normalizeDepartmentTags(['app', 'weekend_programming', 'weekday_programming']),
+    { departments: [], invalid: ['app', 'weekend_programming', 'weekday_programming'] }
   );
   assert.deepEqual(
     normalizeDepartmentTags(['marketing', 'Marketing', 'not_a_dept', 7, null]),
@@ -383,4 +329,18 @@ test('normalizeDepartmentTags keeps valid slugs, dedupes, and reports invalid va
   assert.deepEqual(normalizeDepartmentTags([]), { departments: [], invalid: [] });
   assert.deepEqual(normalizeDepartmentTags(undefined), { departments: [], invalid: [] });
   assert.deepEqual(normalizeDepartmentTags('marketing'), { departments: [], invalid: [] });
+});
+
+// The KPI cards were removed from the Tasks page, which left computeKpis and
+// the three helpers that existed only to feed it with no callers. They were
+// deleted. This guards the module surface so they don't drift back in unused.
+test('lib/progress.js exports no orphaned KPI helpers', async () => {
+  const mod = await import('../lib/progress.js');
+  for (const gone of ['computeKpis', 'completedRecently', 'completedThisWeek',
+    'startOfWeekMonday', 'endOfWeekSunday']) {
+    assert.equal(mod[gone], undefined, `${gone} was deleted as dead code`);
+  }
+  // classifyTask fed computeKpis too, but the task table still uses it.
+  assert.equal(typeof mod.classifyTask, 'function');
+  assert.equal(typeof mod.filterTasks, 'function');
 });

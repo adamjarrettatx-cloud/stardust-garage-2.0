@@ -77,12 +77,34 @@ test('selection does not depend on colour alone', () => {
   assert.match(TABS, /aria-selected=\{isActive\}/);
 });
 
-test('the tab strip stays usable when there are many tabs', () => {
-  // Contacts has ten. Wrapping onto a second row would put half the tabs below
-  // the bottom rule, breaking the line the underline reads against.
+test('the tab strip scrolls by default and only wraps when asked', () => {
+  // Default is a single scrolling row: the rule stays continuous for the
+  // underline to read against, and tabs never break mid-word.
   assert.match(TABS, /overflow-x-auto/);
   assert.match(TABS, /flex-shrink-0 whitespace-nowrap/);
-  assert.ok(!/flex-wrap/.test(TABS), 'the tab strip must not wrap');
+  // Wrapping is opt-in via `wrap`, for strips that genuinely do not fit. The
+  // Tasks department filter has twelve tabs and needs ~1204px against a ~1004px
+  // content column, so scrolling hid two of them completely.
+  assert.match(TABS, /wrap = false/);
+  assert.match(TABS, /wrap \? 'flex-wrap gap-x-7 gap-y-0' : 'gap-7 overflow-x-auto'/);
+});
+
+test('only the twelve-tab department strip opts into wrapping', () => {
+  const wrapping = ['app/team/progress/ProgressClient.js'];
+  const notWrapping = [
+    'app/bananas/components/SubmissionTabs.js',
+    'app/bananas/pay-requests/PayRequestsClient.js',
+    'app/bananas/contacts/ContactsList.js',
+  ];
+  for (const rel of wrapping) {
+    assert.match(read(rel), /\n\s+wrap\n/, `${rel} should opt into wrapping`);
+  }
+  for (const rel of notWrapping) {
+    // Match the JSX prop on its own line, not the word 'wrap' inside class
+    // names like flex-wrap elsewhere in the file.
+    const src = read(rel);
+    assert.ok(!/\n\s+wrap\n/.test(src), `${rel} fits on one row and should not wrap`);
+  }
 });
 
 test('a tab with no count renders no chip', () => {
