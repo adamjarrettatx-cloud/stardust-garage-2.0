@@ -75,7 +75,7 @@ test('every group listed in ADMIN_TAB_GROUPS is actually used', () => {
 
 test('non-owners do not see owner-only tabs', () => {
   const forStaff = visibleAdminTabs(false).map((t) => t.id);
-  assert.ok(forStaff.includes('team'));
+  assert.ok(forStaff.includes('tasks'));
   assert.ok(!forStaff.includes('analytics'), 'staff must not see Analytics');
   assert.ok(!forStaff.includes('settings'), 'staff must not see Settings');
 });
@@ -389,7 +389,7 @@ test('a route with no tile resolves to nothing rather than guessing', () => {
 
 // --- Events section ---------------------------------------------------------
 
-test('Events is its own section, directly under Team in OPERATIONS', () => {
+test('Events is its own section, directly under Tasks in OPERATIONS', () => {
   const events = adminTabById('events');
   assert.ok(events, 'the Events tab is missing');
   assert.equal(events.label, 'Events');
@@ -397,15 +397,15 @@ test('Events is its own section, directly under Team in OPERATIONS', () => {
   assert.equal(events.ownerOnly, false);
   const operations = ADMIN_TABS.filter((t) => t.group === 'OPERATIONS').map((t) => t.id);
   assert.equal(
-    operations[operations.indexOf('team') + 1],
+    operations[operations.indexOf('tasks') + 1],
     'events',
-    'Events must sit directly below Team'
+    'Events must sit directly below Tasks'
   );
 });
 
 test('the events list lives in the Events section, not below every tile grid', () => {
   // It used to render on the dashboard root unconditionally, so it followed you
-  // into Team, Rentals, Documents and everything else.
+  // into every other tile grid — Rentals, Documents and the rest.
   const panel = fs.readFileSync(path.join(REPO_ROOT, 'app/bananas/EventsTabPanel.js'), 'utf8');
   assert.match(panel, /activeTab !== 'events'/, 'the list must only render in the Events section');
   assert.match(PAGE, /EventsTabPanel/, 'the dashboard page must render the list through the panel');
@@ -443,8 +443,8 @@ test('section badges sum only the tiles in that section', () => {
   const counts = { applications: 3, pastDueMembers: 2, collaborations: 5, unreadChat: 1 };
   assert.equal(adminTabBadge('memberships', counts), 5);
   assert.equal(adminTabBadge('people', counts), 5);
-  // Unread chat moved off the Team tile and onto the Chat section with it.
-  assert.equal(adminTabBadge('team', counts), 0);
+  // Unread chat moved off the old Team tile and onto the Chat section with it.
+  assert.equal(adminTabBadge('tasks', counts), 0);
   assert.equal(adminTabBadge('chat', counts), 1);
   // A section whose tiles carry no counts stays silent rather than showing 0.
   assert.equal(adminTabBadge('documents', counts), 0);
@@ -592,7 +592,7 @@ test('the trial pass pages own a tile but stay outside the shell', () => {
     assert.equal(tabForPath(p), 'memberships', `${p} should still own a tile`);
     assert.equal(isShellExempt(p), true, `${p} must not be wrapped in the shell`);
   }
-  // The exemption is narrow — it must not swallow the Team pages.
+  // The exemption is narrow — it must not swallow the shared /team pages.
   for (const p of ['/team/progress', '/team/chat']) {
     assert.equal(isShellExempt(p), false, `${p} should render inside the shell`);
   }
@@ -611,11 +611,55 @@ test('a shell-exempt page is the one place allowed its own header', () => {
   }
 });
 
-test('Tasks is what is left in the Team section', () => {
-  // The calendar moved to Events and Chat became a section of its own, so Team
-  // is now the work itself rather than a bucket of loosely related pages.
-  assert.deepEqual(ADMIN_TILES.team.map((t) => t.href), ['/team/progress']);
-  assert.equal(tabForPath('/team/progress'), 'team');
+// --- Tasks section ----------------------------------------------------------
+
+test('Tasks is its own section at the top of OPERATIONS', () => {
+  const tasks = adminTabById('tasks');
+  assert.ok(tasks, 'the Tasks tab is missing');
+  assert.equal(tasks.label, 'Tasks');
+  assert.equal(tasks.group, 'OPERATIONS');
+  assert.equal(tasks.ownerOnly, false);
+  const operations = ADMIN_TABS.filter((t) => t.group === 'OPERATIONS').map((t) => t.id);
+  assert.equal(operations[0], 'tasks', 'Tasks must be the first OPERATIONS section');
+});
+
+test('the Tasks section links straight to the tasks page', () => {
+  // One destination behind the section, so a tile grid holding a single tile
+  // would only add a click between the sidebar and the work.
+  assert.equal(adminTabHref(adminTabById('tasks')), '/team/progress');
+  assert.deepEqual(ADMIN_TILES.tasks, [], 'a Tasks tile would mean two ways into one page');
+  assert.ok(
+    !allAdminTiles().some((t) => t.href === '/team/progress'),
+    'Tasks is a section now, so nothing should still tile to it'
+  );
+});
+
+test('the tasks page keeps the Tasks section highlighted', () => {
+  assert.equal(tabForPath('/team/progress'), 'tasks');
+  assert.equal(tabForPath('/team/progress/'), 'tasks');
+  assert.equal(isShellExempt('/team/progress'), false);
+});
+
+test('the tasks page shows no breadcrumb, because it is the section', () => {
+  assert.equal(crumbForPath('/team/progress'), null);
+});
+
+test('the Team section is gone entirely', () => {
+  // Its four tiles were rehoused one by one — the calendar to Events, Chat and
+  // Tasks to sections of their own, Team Members to Settings — which left an
+  // empty heading in the sidebar. Nothing should bring it back.
+  assert.equal(adminTabById('team'), null, 'the Team tab is back in the sidebar');
+  assert.ok(!ADMIN_TABS.some((t) => t.id === 'team' || t.label === 'Team'));
+  assert.equal(ADMIN_TILES.team, undefined, 'the Team tile set is back');
+  assert.equal(adminTilesFor('team').length, 0);
+  // A stale ?tab=team link must land somewhere real rather than on an empty
+  // section heading.
+  assert.equal(resolveAdminTab('team', { isOwner: true }), DEFAULT_ADMIN_TAB);
+  assert.equal(resolveRootAdminTab('team', { isOwner: false }), DEFAULT_ADMIN_TAB);
+  assert.ok(
+    !/tab=team\b/.test(SHELL) && !/tab=team\b/.test(CLIENT) && !/tab=team\b/.test(PAGE),
+    'something still links to ?tab=team'
+  );
 });
 
 // --- Chat section -----------------------------------------------------------
@@ -634,9 +678,7 @@ test('Chat is its own section, directly under Events in OPERATIONS', () => {
   );
 });
 
-test('Chat is no longer a tile in the Team section', () => {
-  const hrefs = ADMIN_TILES.team.map((t) => t.href);
-  assert.ok(!hrefs.includes('/team/chat'), 'Team Chat is a tile again as well as a section');
+test('Chat is reached from the sidebar, never from a tile', () => {
   assert.ok(
     !allAdminTiles().some((t) => t.href === '/team/chat'),
     'a chat tile would mean two ways into one page'
@@ -647,8 +689,9 @@ test('the Chat section links straight to the chat page', () => {
   // One destination behind the section, so a tile grid holding a single tile
   // would only add a click between the sidebar and the messages.
   assert.equal(adminTabHref(adminTabById('chat')), '/team/chat');
-  // Every other section still opens its tile grid on the dashboard root.
-  for (const tab of ADMIN_TABS.filter((t) => t.id !== 'chat')) {
+  // Every section that is not a link section still opens its tile grid on the
+  // dashboard root.
+  for (const tab of ADMIN_TABS.filter((t) => !t.href)) {
     assert.equal(adminTabHref(tab), `/bananas?tab=${tab.id}`);
   }
   assert.match(SHELL, /href=\{adminTabHref\(tab\)\}/, 'the sidebar must use the section href');
@@ -670,6 +713,10 @@ test('a link section can never become the dashboard root panel', () => {
   // a section heading over an empty grid.
   assert.equal(resolveAdminTab('chat', { isOwner: true }), 'chat');
   assert.equal(resolveRootAdminTab('chat', { isOwner: true }), DEFAULT_ADMIN_TAB);
+  assert.equal(resolveAdminTab('tasks', { isOwner: true }), 'tasks');
+  assert.equal(resolveRootAdminTab('tasks', { isOwner: true }), DEFAULT_ADMIN_TAB);
+  // And the default itself must never be a link section, or the fallback loops.
+  assert.ok(!adminTabById(DEFAULT_ADMIN_TAB)?.href, 'the default section has no panel to show');
   // Ordinary sections are unaffected.
   assert.equal(resolveRootAdminTab('people', { isOwner: false }), 'people');
   assert.equal(resolveRootAdminTab('analytics', { isOwner: false }), DEFAULT_ADMIN_TAB);
@@ -682,10 +729,9 @@ test('the calendar belongs to Events, not Team', () => {
   // programming calendar as a staffing surface. It is now the Events Calendar
   // rendered at the top of the Events section, so no tile points at it and the
   // old path resolves to Events rather than Team.
-  assert.equal(
-    ADMIN_TILES.team.some((t) => t.href === '/team/calendar'),
-    false,
-    'the calendar is back to being a Team tile'
+  assert.ok(
+    !allAdminTiles().some((t) => t.href === '/team/calendar'),
+    'the calendar is a tile again'
   );
   assert.equal(tileForPath('/team/calendar'), null);
   assert.equal(tabForPath('/team/calendar'), 'events');
