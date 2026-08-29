@@ -146,10 +146,16 @@ test('tabs removed by owner decision are not reintroduced', () => {
 
 // --- Client/definition agreement -------------------------------------------
 
-test('every defined tab has tiles', () => {
-  // A tab with no tiles would render a heading over an empty grid.
+test('every defined tab has tiles unless it renders its own content', () => {
+  // A tab with no tiles would render a heading over an empty grid — unless it
+  // is list-backed (Events), where the section IS the content and the empty
+  // tile set is deliberate.
   for (const tab of ADMIN_TABS) {
     const tiles = adminTilesFor(tab.id);
+    if (tab.rendersOwnContent) {
+      assert.equal(tiles.length, 0, `${tab.id} renders its own content, so it should have no tiles`);
+      continue;
+    }
     assert.ok(tiles.length > 0, `no tiles defined for the "${tab.id}" tab`);
   }
   // And no orphan tile groups for tabs that no longer exist.
@@ -368,10 +374,61 @@ test('the dashboard root highlights no section by pathname alone', () => {
 });
 
 test('a route with no tile resolves to nothing rather than guessing', () => {
-  assert.equal(tabForPath('/bananas/events/new'), null);
   assert.equal(tabForPath('/bananas/financial-calendar'), null);
   assert.equal(tabForPath(''), null);
   assert.equal(tabForPath(null), null);
+});
+
+// --- Events section ---------------------------------------------------------
+
+test('Events is its own section, directly under Team in OPERATIONS', () => {
+  const events = adminTabById('events');
+  assert.ok(events, 'the Events tab is missing');
+  assert.equal(events.label, 'Events');
+  assert.equal(events.group, 'OPERATIONS');
+  assert.equal(events.ownerOnly, false);
+  const operations = ADMIN_TABS.filter((t) => t.group === 'OPERATIONS').map((t) => t.id);
+  assert.equal(
+    operations[operations.indexOf('team') + 1],
+    'events',
+    'Events must sit directly below Team'
+  );
+});
+
+test('the events list lives in the Events section, not below every tile grid', () => {
+  // It used to render on the dashboard root unconditionally, so it followed you
+  // into Team, Rentals, Documents and everything else.
+  const panel = fs.readFileSync(path.join(REPO_ROOT, 'app/bananas/EventsTabPanel.js'), 'utf8');
+  assert.match(panel, /activeTab !== 'events'/, 'the list must only render in the Events section');
+  assert.match(PAGE, /EventsTabPanel/, 'the dashboard page must render the list through the panel');
+  assert.ok(
+    !/<EventsSection/.test(PAGE),
+    'the dashboard page renders the events list unconditionally again'
+  );
+});
+
+test('every route under an event resolves back to the Events section', () => {
+  // Events is list-backed, so there is no tile to map these routes home.
+  assert.equal(tabForPath('/bananas/events'), 'events');
+  assert.equal(tabForPath('/bananas/events/new'), 'events');
+  assert.equal(tabForPath('/bananas/events/abc-123'), 'events');
+  assert.equal(tabForPath('/bananas/events/abc-123/financials'), 'events');
+  assert.equal(tabForPath('/bananas/events/'), 'events');
+});
+
+test('leaving an event returns you to the Events section', () => {
+  for (const rel of [
+    'app/bananas/components/EventForm.js',
+    'app/bananas/components/TtEventCreator.js',
+    'app/bananas/events/new/NewEventChooser.js',
+  ]) {
+    const src = fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8');
+    assert.ok(
+      !/="\/bananas"/.test(src),
+      `${rel} still sends you to the dashboard default instead of ?tab=events`
+    );
+    assert.match(src, /\/bananas\?tab=events/, `${rel} lost its route back to Events`);
+  }
 });
 
 test('section badges sum only the tiles in that section', () => {

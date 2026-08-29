@@ -21,7 +21,7 @@ export default function NewEventChooser() {
   return (
     <div className="max-w-[700px]">
       <AuthenticatedPageHeader
-        backHref="/bananas"
+        backHref="/bananas?tab=events"
         backLabel="← BACK TO ADMIN"
         title="New Event"
         description="How do you want to create this event?"

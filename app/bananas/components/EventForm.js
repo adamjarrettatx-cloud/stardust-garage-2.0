@@ -225,7 +225,7 @@ export default function EventForm({
       }
     }
 
-    router.push('/bananas');
+    router.push('/bananas?tab=events');
     router.refresh();
   };
 
@@ -284,7 +284,7 @@ export default function EventForm({
   return (
     <div className="max-w-[700px]">
       <AuthenticatedPageHeader
-        backHref="/bananas"
+        backHref="/bananas?tab=events"
         backLabel="← BACK TO ADMIN"
         title={isEditing ? 'Edit Event' : 'New Event'}
         titleClassName="text-[36px] font-extrabold -tracking-[0.02em] leading-[1.1]"
@@ -604,7 +604,7 @@ export default function EventForm({
             {saving ? 'SAVING...' : isEditing ? 'SAVE CHANGES' : 'CREATE EVENT'}
           </button>
           <Link
-            href="/bananas"
+            href="/bananas?tab=events"
             className="px-8 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5 flex items-center"
             style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
           >
