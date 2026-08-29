@@ -4,8 +4,8 @@ import { createClient } from '@/lib/supabase/server';
 import { adminPageGate } from '@/lib/auth-helpers';
 import EventForm from '../../components/EventForm';
 import PublishEventButton from '../../components/PublishEventButton';
-import GuestListPanel from './GuestListPanel';
 import ArtistLineupPanel from './ArtistLineupPanel';
+import GuestListPanel from '../../components/GuestListPanel';
 
 export const revalidate = 0;
 
@@ -58,7 +58,13 @@ export default async function EditEventPage({ params }) {
       footerPanels={(
         <>
           <ArtistLineupPanel eventId={event.id} />
-          <GuestListPanel eventId={event.id} />
+          {/* Also a full screen of its own at /bananas/guest-list/<id>, which is
+              where the Events row's GUEST LIST button goes. Same component in
+              both places, so allocations can be sorted out mid-event-edit
+              without the two views drifting apart. */}
+          <div className="mt-8">
+            <GuestListPanel eventId={event.id} />
+          </div>
         </>
       )}
     />

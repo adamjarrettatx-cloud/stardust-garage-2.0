@@ -1,16 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { adminFetch } from '@/lib/admin-fetch';
 import {
   compTypeLabel,
   entryStatusLabel,
   grantNotificationNotice,
-  GUEST_LIST_ANCHOR,
+  summarizeGrants,
   validateGrantSlots,
 } from '@/lib/guestlist-helpers';
-import ContactSelect from '../../components/ContactSelect';
+import ContactSelect from './ContactSelect';
 
 const labelClass = 'block text-[11px] font-semibold tracking-[0.14em] mb-2';
 const labelStyle = { color: 'var(--auth-muted)' };
@@ -170,14 +170,56 @@ function GrantForm({ form, setForm, usage = null, busy, error, onSubmit, onCance
   );
 }
 
+// One number per column, matching the roll-up the read-only page used to show
+// above the grants. It's rendered from the panel's own live grant list, so it
+// can't drift out of step with the rows underneath after a grant is edited -
+// which is exactly what a server-rendered strip above a client panel would do.
+function Totals({ grants }) {
+  const totals = summarizeGrants(grants);
+  const cells = [
+    ['HOSTS', totals.partners, null],
+    [
+      'SLOTS ALLOCATED',
+      totals.free_slots + totals.discount_slots,
+      `${totals.free_slots} free \u00b7 ${totals.discount_slots} discounted`,
+    ],
+    ['USED', totals.used, `${totals.used_free} free \u00b7 ${totals.used_discount} discounted`],
+    ['CHECKED IN', totals.checked_in, null],
+  ];
+
+  return (
+    <div
+      className="rounded-[10px] border p-4 mb-5 grid grid-cols-2 sm:grid-cols-4 gap-4"
+      style={{ background: 'var(--auth-card-bg-alt)', borderColor: 'var(--auth-card-border)' }}
+    >
+      {cells.map(([label, value, hint]) => (
+        <div key={label}>
+          <div
+            className="text-[10px] font-semibold tracking-[0.14em] mb-1"
+            style={{ color: 'var(--auth-muted)' }}
+          >
+            {label}
+          </div>
+          <div className="text-[18px] font-bold" style={{ color: 'var(--auth-text-strong)' }}>
+            {value}
+          </div>
+          {hint && (
+            <div className="text-[11px] mt-0.5" style={{ color: 'var(--auth-muted)' }}>
+              {hint}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Per-event guest list allocation. Every write goes through
 // /api/admin/events/:id/guestlist so validation and the guestlist_audit_log row
 // happen server-side; each response hands back the refreshed grant list, so this
 // component never has to patch its own state guess into place.
 export default function GuestListPanel({ eventId }) {
   const [grants, setGrants] = useState(null);
-  const panelRef = useRef(null);
-  const scrolledToAnchor = useRef(false);
   const [loadError, setLoadError] = useState('');
   const [addForm, setAddForm] = useState(null);
   const [addContactId, setAddContactId] = useState(null);
@@ -185,7 +227,10 @@ export default function GuestListPanel({ eventId }) {
   const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
   const [rowError, setRowError] = useState({});
-  const [expanded, setExpanded] = useState({});
+  // Guest names show by default: this panel is the whole guest list screen, so
+  // hiding the names behind a toggle would bury the thing the page is named for.
+  // The map only records grants the admin has deliberately collapsed.
+  const [collapsed, setCollapsed] = useState({});
   // Whether the last save emailed the partner. Worth stating outright: the admin
   // otherwise has no way to know an email went out, or why one didn't.
   const [notice, setNotice] = useState(null);
@@ -214,20 +259,6 @@ export default function GuestListPanel({ eventId }) {
   useEffect(() => {
     load();
   }, [load]);
-
-  // Arriving from a guest list page's EDIT ALLOCATION link, this panel is far
-  // below the fold of a long event form. The browser's own hash scroll fires
-  // before the grants come back, and the panel grows by however many rows load,
-  // so it lands short of the heading. Scroll ourselves once the first load has
-  // settled, and only once, so a later refresh doesn't yank the page while the
-  // admin is typing in the form above.
-  const listSettled = grants !== null || Boolean(loadError);
-  useEffect(() => {
-    if (!listSettled || scrolledToAnchor.current) return;
-    if (window.location.hash !== `#${GUEST_LIST_ANCHOR}`) return;
-    scrolledToAnchor.current = true;
-    panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [listSettled]);
 
   const openAdd = () => {
     setAddContactId(null);
@@ -327,9 +358,7 @@ export default function GuestListPanel({ eventId }) {
 
   return (
     <section
-      ref={panelRef}
-      id={GUEST_LIST_ANCHOR}
-      className="rounded-[12px] border p-5 mt-8 scroll-mt-6"
+      className="rounded-[12px] border p-5"
       style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}
     >
       <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
@@ -353,6 +382,8 @@ export default function GuestListPanel({ eventId }) {
       <p className="text-[12px] mb-5" style={{ color: 'var(--auth-muted)' }}>
         Free and discounted door spots a partner can spend on named guests for this event.
       </p>
+
+      {grants?.length > 0 && <Totals grants={grants} />}
 
       {addForm && (
         <div
@@ -487,11 +518,11 @@ export default function GuestListPanel({ eventId }) {
                   {entries.length > 0 && (
                     <button
                       type="button"
-                      onClick={() => setExpanded((prev) => ({ ...prev, [grant.id]: !prev[grant.id] }))}
+                      onClick={() => setCollapsed((prev) => ({ ...prev, [grant.id]: !prev[grant.id] }))}
                       className="text-[11px] underline"
                       style={{ color: 'var(--auth-muted)' }}
                     >
-                      {expanded[grant.id] ? 'Hide' : 'Show'} {entries.length} guest
+                      {collapsed[grant.id] ? 'Show' : 'Hide'} {entries.length} guest
                       {entries.length === 1 ? '' : 's'}
                     </button>
                   )}
@@ -508,7 +539,7 @@ export default function GuestListPanel({ eventId }) {
                 </p>
               )}
 
-              {expanded[grant.id] && entries.length > 0 && (
+              {!collapsed[grant.id] && entries.length > 0 && (
                 <ul
                   className="mt-3 pt-3 border-t space-y-1"
                   style={{ borderColor: 'var(--auth-row-border)' }}
@@ -522,6 +553,20 @@ export default function GuestListPanel({ eventId }) {
                         {' · '}
                         {entryStatusLabel(entry.status)}
                       </span>
+                      {entry.signature_profile_id && (
+                        <>
+                          {' · '}
+                          <a
+                            href={`/api/admin/guest-signature/${entry.signature_profile_id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-semibold hover:underline"
+                            style={{ color: 'var(--auth-accent)' }}
+                          >
+                            SIGNATURE ON FILE
+                          </a>
+                        </>
+                      )}
                     </li>
                   ))}
                 </ul>
