@@ -96,7 +96,7 @@ export async function POST(request) {
 
   const admin = createAdminClient();
 
-  const { data: pass, error: passError } = await admin
+  let { data: pass, error: passError } = await admin
     .from('trial_passes')
     .select('id, full_name, email, status, issued_at, expires_at, extended_until, applied_at, converted_at, activated_at, signup_expires_at')
     .eq('qr_token_hash', hashPassToken(passToken))
