@@ -7,10 +7,11 @@ import {
   visibleAdminTabGroups,
   adminTabBadges,
   tabForPath,
-  tileForPath,
   crumbForPath,
   DEFAULT_ADMIN_TAB,
   resolveAdminTab,
+  resolveRootAdminTab,
+  adminTabHref,
   isShellExempt,
 } from '@/lib/admin-tabs';
 import AdminDashboardClient from './AdminDashboardClient';
@@ -54,13 +55,17 @@ function Sidebar({ groups, activeTab, badges, isDashboardRoot, onSelect }) {
             // queries in the layout just to swap out a tile grid. Anywhere else
             // it stays a real link, so we genuinely navigate back to the
             // dashboard and land on the right section.
+            //
+            // A section with a page of its own (Chat) is always a real
+            // navigation — there is no tile grid to swap in place.
+            const isLinkSection = Boolean(tab.href);
             return (
               <Link
                 key={tab.id}
-                href={`/bananas?tab=${tab.id}`}
+                href={adminTabHref(tab)}
                 aria-current={isActive ? 'page' : undefined}
                 onClick={
-                  isDashboardRoot
+                  isDashboardRoot && !isLinkSection
                     ? (event) => {
                         event.preventDefault();
                         onSelect(tab.id);
@@ -147,10 +152,9 @@ function SectionTrail({ sectionLabel, sectionTabId, pageTitle }) {
 // Shell
 // ---------------------------------------------------------------------------
 // `tileRequired` is set by the /team layout. Those routes are shared with
-// non-admin team members and include pages with no tile at all (the SOP
-// library, the trial-pass tools, the login screen), so the shell must only
-// take over when the pathname actually belongs to a section. Under /bananas it
-// always applies.
+// non-admin team members and include pages that belong to no section at all
+// (the SOP library, the login screen), so the shell must only take over when
+// the pathname actually belongs to a section. Under /bananas it always applies.
 export default function AdminShell({
   userEmail,
   isOwner,
@@ -168,19 +172,19 @@ export default function AdminShell({
   // Which section the tile grid is showing while we are on the dashboard root.
   // Seeded from ?tab= so a deep link such as /bananas?tab=people opens People.
   const [rootTab, setRootTab] = useState(() =>
-    resolveAdminTab(searchParams?.get('tab'), { isOwner })
+    resolveRootAdminTab(searchParams?.get('tab'), { isOwner })
   );
 
   // If ?tab= changes underneath us - a link from elsewhere in the app, or
   // browser back/forward - follow it.
   const queryTab = searchParams?.get('tab');
   useEffect(() => {
-    setRootTab(resolveAdminTab(queryTab, { isOwner }));
+    setRootTab(resolveRootAdminTab(queryTab, { isOwner }));
   }, [queryTab, isOwner]);
 
   const selectRootTab = useCallback(
     (id) => {
-      const next = resolveAdminTab(id, { isOwner });
+      const next = resolveRootAdminTab(id, { isOwner });
       setRootTab(next);
       const url = new URL(window.location.href);
       url.searchParams.set('tab', next);
@@ -197,7 +201,6 @@ export default function AdminShell({
     ? rootTab
     : resolveAdminTab(pathTab || DEFAULT_ADMIN_TAB, { isOwner });
 
-  const tile = isDashboardRoot ? null : tileForPath(pathname);
   // The breadcrumb is not tile-only: Guest List and Artist Pay are opened from
   // an event row rather than a tile, and without a trail there is no marked way
   // back to Events from either of them.
@@ -209,7 +212,9 @@ export default function AdminShell({
   // isShellExempt covers the inverse case: a route that does own a tile but
   // still supplies its own header and page container, so wrapping it would
   // double both.
-  if (tileRequired && (!tile || isShellExempt(pathname))) return children;
+  // Section membership, not tile ownership, is the test: Chat is a section with
+  // a page of its own and no tile, and it still belongs inside the shell.
+  if (tileRequired && (!pathTab || isShellExempt(pathname))) return children;
 
   return (
     <AdminShellProvider>

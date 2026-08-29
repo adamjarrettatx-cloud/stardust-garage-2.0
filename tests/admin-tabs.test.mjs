@@ -10,6 +10,8 @@ import {
   visibleAdminTabs,
   visibleAdminTabGroups,
   resolveAdminTab,
+  resolveRootAdminTab,
+  adminTabHref,
   adminTabById,
   ADMIN_TILES,
   ADMIN_TILE_ACTIONS,
@@ -19,6 +21,7 @@ import {
   tabForPath,
   isShellExempt,
   tileForPath,
+  crumbForPath,
 } from '../lib/admin-tabs.js';
 
 const REPO_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
@@ -219,7 +222,7 @@ test('restriction markers use a defined label', () => {
 
 test('the shell reads the section from the URL', () => {
   assert.match(SHELL, /useSearchParams/, 'the shell must read ?tab= from the URL');
-  assert.match(SHELL, /resolveAdminTab\(searchParams\?\.get\('tab'\)/);
+  assert.match(SHELL, /resolveRootAdminTab\(searchParams\?\.get\('tab'\)/);
 });
 
 test('selecting a section writes it to the URL', () => {
@@ -440,7 +443,9 @@ test('section badges sum only the tiles in that section', () => {
   const counts = { applications: 3, pastDueMembers: 2, collaborations: 5, unreadChat: 1 };
   assert.equal(adminTabBadge('memberships', counts), 5);
   assert.equal(adminTabBadge('people', counts), 5);
-  assert.equal(adminTabBadge('team', counts), 1);
+  // Unread chat moved off the Team tile and onto the Chat section with it.
+  assert.equal(adminTabBadge('team', counts), 0);
+  assert.equal(adminTabBadge('chat', counts), 1);
   // A section whose tiles carry no counts stays silent rather than showing 0.
   assert.equal(adminTabBadge('documents', counts), 0);
   assert.equal(adminTabBadge('unknown-section', counts), 0);
@@ -569,7 +574,10 @@ test('the team layout only wraps routes that belong to a section', () => {
   // /team/documents, the trial-pass tools and /team/login have no tile, so the
   // shell must leave them alone rather than framing them in admin chrome.
   assert.match(TEAM_LAYOUT, /tileRequired/);
-  assert.match(SHELL, /if \(tileRequired && \(!tile \|\| isShellExempt\(pathname\)\)\) return children/);
+  assert.match(
+    SHELL,
+    /if \(tileRequired && \(!pathTab \|\| isShellExempt\(pathname\)\)\) return children/
+  );
   for (const p of ['/team/documents', '/team/login']) {
     assert.equal(tabForPath(p), null, `${p} should not resolve to a section`);
   }
@@ -603,10 +611,67 @@ test('a shell-exempt page is the one place allowed its own header', () => {
   }
 });
 
-test('the three team tiles do resolve to the Team section', () => {
-  for (const p of ['/team/progress', '/team/calendar', '/team/chat']) {
+test('the team tiles do resolve to the Team section', () => {
+  for (const p of ['/team/progress', '/team/calendar']) {
     assert.equal(tabForPath(p), 'team', `${p} should sit in the Team section`);
   }
+});
+
+// --- Chat section -----------------------------------------------------------
+
+test('Chat is its own section, directly under Events in OPERATIONS', () => {
+  const chat = adminTabById('chat');
+  assert.ok(chat, 'the Chat tab is missing');
+  assert.equal(chat.label, 'Chat', 'the section is called Chat, not Team Chat');
+  assert.equal(chat.group, 'OPERATIONS');
+  assert.equal(chat.ownerOnly, false);
+  const operations = ADMIN_TABS.filter((t) => t.group === 'OPERATIONS').map((t) => t.id);
+  assert.equal(
+    operations[operations.indexOf('events') + 1],
+    'chat',
+    'Chat must sit directly below Events'
+  );
+});
+
+test('Chat is no longer a tile in the Team section', () => {
+  const hrefs = ADMIN_TILES.team.map((t) => t.href);
+  assert.ok(!hrefs.includes('/team/chat'), 'Team Chat is a tile again as well as a section');
+  assert.ok(
+    !allAdminTiles().some((t) => t.href === '/team/chat'),
+    'a chat tile would mean two ways into one page'
+  );
+});
+
+test('the Chat section links straight to the chat page', () => {
+  // One destination behind the section, so a tile grid holding a single tile
+  // would only add a click between the sidebar and the messages.
+  assert.equal(adminTabHref(adminTabById('chat')), '/team/chat');
+  // Every other section still opens its tile grid on the dashboard root.
+  for (const tab of ADMIN_TABS.filter((t) => t.id !== 'chat')) {
+    assert.equal(adminTabHref(tab), `/bananas?tab=${tab.id}`);
+  }
+  assert.match(SHELL, /href=\{adminTabHref\(tab\)\}/, 'the sidebar must use the section href');
+});
+
+test('the chat page keeps the Chat section highlighted', () => {
+  assert.equal(tabForPath('/team/chat'), 'chat');
+  assert.equal(tabForPath('/team/chat/'), 'chat');
+  // And it renders inside the shell rather than standalone.
+  assert.equal(isShellExempt('/team/chat'), false);
+});
+
+test('the chat page shows no breadcrumb, because it is the section', () => {
+  assert.equal(crumbForPath('/team/chat'), null);
+});
+
+test('a link section can never become the dashboard root panel', () => {
+  // ?tab=chat has no tile grid to show, so it must fall back rather than print
+  // a section heading over an empty grid.
+  assert.equal(resolveAdminTab('chat', { isOwner: true }), 'chat');
+  assert.equal(resolveRootAdminTab('chat', { isOwner: true }), DEFAULT_ADMIN_TAB);
+  // Ordinary sections are unaffected.
+  assert.equal(resolveRootAdminTab('people', { isOwner: false }), 'people');
+  assert.equal(resolveRootAdminTab('analytics', { isOwner: false }), DEFAULT_ADMIN_TAB);
 });
 
 test('sidebar counts are defined once and shared by both layouts', () => {
@@ -633,6 +698,20 @@ test('every count key a tile refers to is actually produced', () => {
       COUNTS,
       new RegExp(`\\n\\s*${key}:`),
       `tile count "${key}" is never produced by fetchAdminCounts`
+    );
+  }
+});
+
+test('every count key a list-backed section refers to is actually produced', () => {
+  // Events and Chat have no tiles to carry a count, so they name theirs on the
+  // tab with `countKeys`. Those need the same guarantee.
+  const keys = ADMIN_TABS.flatMap((tab) => tab.countKeys || []);
+  assert.ok(keys.length > 0, 'no sections declare their own counts');
+  for (const key of keys) {
+    assert.match(
+      COUNTS,
+      new RegExp(`\\n\\s*${key}:`),
+      `section count "${key}" is never produced by fetchAdminCounts`
     );
   }
 });

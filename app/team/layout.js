@@ -8,19 +8,19 @@ export const revalidate = 0;
 // ---------------------------------------------------------------------------
 // Team layout
 // ---------------------------------------------------------------------------
-// Tasks, Team Calendar and Team Chat all appear as tiles in the admin Team
-// section, but they live under /team because non-admin team members use the
-// same three pages. So the admin shell is applied conditionally rather than
-// unconditionally:
+// Tasks and Team Calendar are tiles in the admin Team section and Chat is a
+// section of its own, but all three live under /team because non-admin team
+// members use the same pages. So the admin shell is applied conditionally
+// rather than unconditionally:
 //
-//   admin, on a route that has a tile  -> wrap in the shell, sidebar and all
-//   anyone else, or any other route    -> render the page exactly as before
+//   admin, on a route in an admin section -> wrap in the shell, sidebar and all
+//   anyone else, or any other route       -> render the page exactly as before
 //
 // The second case matters in three ways. A non-admin team member must never see
 // the admin sidebar — it lists Memberships, Analytics and Settings, none of
 // which they can open. /team/login must stay reachable with no session at all,
-// so this layout deliberately never redirects. And /team/documents and the
-// trial-pass tools have no tile, so `tileRequired` leaves them untouched.
+// so this layout deliberately never redirects. And /team/documents belongs to
+// no section, so `tileRequired` leaves it untouched.
 //
 // This is presentation only. Every page underneath keeps its own auth check and
 // its own redirect; a layout does not re-run on client-side navigation between
