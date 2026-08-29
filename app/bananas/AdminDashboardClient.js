@@ -180,7 +180,12 @@ export default function AdminDashboardClient({ isOwner, counts, activeTab }) {
 
   return (
     <div id={`admin-panel-${activeTab}`}>
-      {section && (
+      {/* A tile grid needs a heading to say what the tiles are for. Sections
+          that render their own content do not: Events opens on the calendar
+          and the events list, both of which announce themselves, under a
+          sidebar entry already reading "Events" — so the heading and its
+          description were a third label for the same thing. */}
+      {section && !section.rendersOwnContent && (
         <>
           <h2
             className="text-[23px] font-bold -tracking-[0.02em] mb-[4px]"
