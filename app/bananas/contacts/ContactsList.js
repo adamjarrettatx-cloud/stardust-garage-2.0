@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { CONTACT_TYPE_OPTIONS, CONTACT_STATUS_OPTIONS } from '@/lib/contact-helpers';
+import UnderlineTabs from '../components/UnderlineTabs';
 
 // Mirrors initials()/Avatar in app/bananas/members/page.js, themed off the auth
 // vars so it tracks the light/dark toggle.
@@ -107,27 +108,13 @@ export default function ContactsList({ contacts }) {
         </Link>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-6" role="group" aria-label="Filter by relationship type">
-        {TYPE_TABS.map((tab) => {
-          const on = typeFilter === tab.value;
-          return (
-            <button
-              key={tab.value || 'all'}
-              type="button"
-              onClick={() => setTypeFilter(tab.value)}
-              aria-pressed={on}
-              className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-all"
-              style={{
-                background: on ? 'var(--auth-text-strong)' : 'var(--auth-card-bg)',
-                borderColor: on ? 'var(--auth-text-strong)' : 'var(--auth-card-border)',
-                color: on ? 'var(--auth-strong-surface-text)' : 'var(--auth-text)',
-              }}
-            >
-              {tab.label.toUpperCase()}
-            </button>
-          );
-        })}
-      </div>
+      <UnderlineTabs
+        tabs={TYPE_TABS.map((tab) => ({ id: tab.value, label: tab.label }))}
+        active={typeFilter}
+        onChange={setTypeFilter}
+        ariaLabel="Filter by relationship type"
+        className="mb-6"
+      />
 
       <p className="text-[12px] mb-4" style={{ color: 'var(--auth-faint)' }}>
         {visible.length} of {contacts.length} contacts
