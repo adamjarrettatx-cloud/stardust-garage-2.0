@@ -68,19 +68,24 @@ export default function SettingsForm({ initialSettings }) {
   };
 
   const inputStyle = {
-    background: '#141414',
-    borderColor: 'rgba(255,255,255,0.1)',
-    color: '#f5f5f5',
+    background: 'var(--auth-input-bg)',
+    borderColor: 'var(--auth-input-border)',
+    color: 'var(--auth-input-text)',
+  };
+
+  const cardStyle = {
+    background: 'var(--auth-card-bg)',
+    borderColor: 'var(--auth-card-border)',
   };
 
   const labelClass = 'block text-[12px] font-semibold tracking-[0.14em] mb-2';
-  const labelStyle = { color: '#8a8a8a' };
+  const labelStyle = { color: 'var(--auth-muted)' };
   const inputClass = 'w-full px-5 py-3.5 rounded-[10px] text-[14px] outline-none border transition-colors focus:border-white/30';
 
   const renderImageUploader = (label, value, setValue, loadingState, setLoadingState, aspectRatio = '4 / 5', helperText = null) => (
     <>
       {value && (
-        <div className="mb-4 rounded-[10px] overflow-hidden border" style={{ borderColor: 'rgba(255,255,255,0.1)', aspectRatio }}>
+        <div className="mb-4 rounded-[10px] overflow-hidden border" style={{ borderColor: 'var(--auth-card-border-strong)', aspectRatio }}>
           <img src={value} alt="Preview" className="w-full h-full object-cover" />
         </div>
       )}
@@ -93,10 +98,9 @@ export default function SettingsForm({ initialSettings }) {
           if (file) uploadFile(file, setLoadingState, setValue);
         }}
         disabled={loadingState}
-        className="text-[13px] file:mr-4 file:px-5 file:py-2.5 file:rounded-full file:border-0 file:text-[12px] file:font-semibold file:tracking-[0.12em] file:bg-white file:text-black file:cursor-pointer hover:file:bg-gray-200"
-        style={{ color: '#8a8a8a' }}
+        className="auth-theme-file-input text-[13px] file:mr-4 file:px-5 file:py-2.5 file:rounded-full file:border-0 file:text-[12px] file:font-semibold file:tracking-[0.12em] file:cursor-pointer"
       />
-      {loadingState && <p className="text-[13px] mt-2" style={{ color: '#8a8a8a' }}>Uploading...</p>}
+      {loadingState && <p className="text-[13px] mt-2" style={{ color: 'var(--auth-muted)' }}>Uploading...</p>}
       <div className="mt-4">
         <input
           type="text"
@@ -108,7 +112,7 @@ export default function SettingsForm({ initialSettings }) {
         />
       </div>
       {helperText && (
-        <p className="text-[11px] mt-3" style={{ color: '#555' }}>{helperText}</p>
+        <p className="text-[11px] mt-3" style={{ color: 'var(--auth-faint)' }}>{helperText}</p>
       )}
     </>
   );
@@ -116,16 +120,13 @@ export default function SettingsForm({ initialSettings }) {
   return (
     <form onSubmit={handleSave} className="space-y-10">
       {/* LOGO */}
-      <section
-        className="rounded-[14px] p-8 border"
-        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
-      >
+      <section className="rounded-[14px] p-8 border" style={cardStyle}>
         <h2 className="text-[18px] font-bold mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           Logo
         </h2>
 
         {logoUrl && (
-          <div className="mb-4 p-6 rounded-[10px] flex items-center justify-center" style={{ background: '#0a0a0a', border: '1px dashed rgba(255,255,255,0.1)' }}>
+          <div className="mb-4 p-6 rounded-[10px] flex items-center justify-center" style={{ background: 'var(--auth-card-bg-alt)', border: '1px dashed var(--auth-card-border-strong)' }}>
             <img src={logoUrl} alt="Logo preview" className="h-12 w-auto object-contain" />
           </div>
         )}
@@ -138,10 +139,9 @@ export default function SettingsForm({ initialSettings }) {
             if (file) uploadFile(file, setUploadingLogo, setLogoUrl);
           }}
           disabled={uploadingLogo}
-          className="text-[13px] file:mr-4 file:px-5 file:py-2.5 file:rounded-full file:border-0 file:text-[12px] file:font-semibold file:tracking-[0.12em] file:bg-white file:text-black file:cursor-pointer hover:file:bg-gray-200"
-          style={{ color: '#8a8a8a' }}
+          className="auth-theme-file-input text-[13px] file:mr-4 file:px-5 file:py-2.5 file:rounded-full file:border-0 file:text-[12px] file:font-semibold file:tracking-[0.12em] file:cursor-pointer"
         />
-        {uploadingLogo && <p className="text-[13px] mt-2" style={{ color: '#8a8a8a' }}>Uploading...</p>}
+        {uploadingLogo && <p className="text-[13px] mt-2" style={{ color: 'var(--auth-muted)' }}>Uploading...</p>}
 
         <div className="mt-4">
           <input
@@ -158,27 +158,26 @@ export default function SettingsForm({ initialSettings }) {
           <button
             type="button"
             onClick={() => setLogoUrl('')}
-            className="mt-3 text-[12px] font-semibold tracking-[0.12em] hover:text-red-400 transition-colors"
-            style={{ color: '#8a8a8a' }}
+            className="mt-3 text-[12px] font-semibold tracking-[0.12em] transition-colors"
+            style={{ color: 'var(--auth-muted)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--auth-danger)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--auth-muted)'; }}
           >
             Remove logo (fall back to text)
           </button>
         )}
 
-        <p className="text-[11px] mt-4" style={{ color: '#555' }}>
+        <p className="text-[11px] mt-4" style={{ color: 'var(--auth-faint)' }}>
           Tip: use a transparent PNG or SVG. It displays at 55px height in the nav.
         </p>
       </section>
 
       {/* SPLASH PAGE */}
-      <section
-        className="rounded-[14px] p-8 border"
-        style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.05)' }}
-      >
+      <section className="rounded-[14px] p-8 border" style={cardStyle}>
         <h2 className="text-[18px] font-bold mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           Splash Page
         </h2>
-        <p className="text-[13px] mb-6" style={{ color: '#8a8a8a' }}>
+        <p className="text-[13px] mb-6" style={{ color: 'var(--auth-muted)' }}>
           The floating logo image shown on the splash entry page (the first thing visitors see).
         </p>
 
@@ -188,12 +187,18 @@ export default function SettingsForm({ initialSettings }) {
       </section>
 
       {error && (
-        <div className="text-[13px] text-red-400 p-3 rounded-[10px] border border-red-500/30 bg-red-500/10">
+        <div
+          className="text-[13px] p-3 rounded-[10px] border"
+          style={{ color: 'var(--auth-danger)', borderColor: 'var(--auth-danger-border)', background: 'var(--auth-danger-bg)' }}
+        >
           {error}
         </div>
       )}
       {message && (
-        <div className="text-[13px] text-green-400 p-3 rounded-[10px] border border-green-500/30 bg-green-500/10">
+        <div
+          className="text-[13px] p-3 rounded-[10px] border"
+          style={{ color: 'var(--auth-success)', borderColor: 'var(--auth-success-border)', background: 'var(--auth-success-bg)' }}
+        >
           {message}
         </div>
       )}
@@ -202,7 +207,7 @@ export default function SettingsForm({ initialSettings }) {
         type="submit"
         disabled={saving || uploadingLogo || uploadingSplashLogo}
         className="w-full py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
-        style={{ background: '#ffffff', color: '#0a0a0a' }}
+        style={{ background: 'var(--auth-text-strong)', color: 'var(--auth-strong-surface-text)' }}
       >
         {saving ? 'SAVING...' : 'SAVE SETTINGS'}
       </button>
