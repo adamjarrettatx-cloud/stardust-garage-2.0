@@ -81,10 +81,21 @@ test('Tasks has no CSV import', () => {
   const src = read('app/team/progress/ProgressClient.js');
   assert.ok(!/IMPORT CSV/.test(src), 'the CSV import button is back');
   assert.ok(!/ImportModal|showImport/.test(src), 'leftover CSV import wiring');
-  assert.ok(
-    !fs.existsSync(path.join(REPO_ROOT, 'app/bananas/progress/ImportModal.js')),
-    'ImportModal had no other consumer and should be gone'
-  );
+  // The whole chain went with it: the button was the only entry point to
+  // ImportModal, which was the only caller of /api/progress/import, which was
+  // the only consumer of lib/progress-csv.js. An authenticated endpoint that
+  // can bulk-create tasks with nothing pointing at it is surface with no
+  // upside.
+  for (const orphan of [
+    'app/bananas/progress/ImportModal.js',
+    'app/api/progress/import/route.js',
+    'lib/progress-csv.js',
+  ]) {
+    assert.ok(
+      !fs.existsSync(path.join(REPO_ROOT, orphan)),
+      `${orphan} had no remaining consumer and should be gone`
+    );
+  }
 });
 
 test('Tasks creates only through Quick Add', () => {
