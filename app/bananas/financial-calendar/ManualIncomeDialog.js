@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { adminFetch } from '@/lib/admin-fetch';
 import { MANUAL_CATEGORIES, DEFAULT_MANUAL_CATEGORY, parseAmountToCents } from '@/lib/manual-income';
 
-// Modal palettes, mirroring the Team Calendar TeamEventModal convention so the
+// Modal palettes, mirroring the Events Calendar TeamEventModal convention so the
 // dialog matches whichever theme the Financial Calendar page is in. Green is the
 // submit/link accent; it deepens on light so it reads on a white panel.
 const MODAL_THEMES = {

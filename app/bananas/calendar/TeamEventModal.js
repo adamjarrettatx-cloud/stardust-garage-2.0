@@ -310,7 +310,7 @@ export default function TeamEventModal({
             className="text-[22px] font-extrabold -tracking-[0.01em]"
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: m.textStrong }}
           >
-            {isEdit ? 'Edit Event' : 'Add Team Event'}
+            {isEdit ? 'Edit Event' : 'Add Calendar Event'}
           </h2>
           <button
             onClick={onClose}

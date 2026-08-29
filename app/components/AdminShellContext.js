@@ -5,7 +5,7 @@ import { createContext, useContext } from 'react';
 // ---------------------------------------------------------------------------
 // "Am I inside the admin shell?"
 // ---------------------------------------------------------------------------
-// The /team pages (Tasks, Team Calendar, Team Chat) are reachable two ways:
+// The /team pages (Tasks, Events Calendar, Team Chat) are reachable two ways:
 // from the admin sidebar, where the shell supplies the page container, the
 // header and a breadcrumb — and directly by a non-admin team member, who never
 // sees the admin sidebar at all and still needs the page's own chrome.

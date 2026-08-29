@@ -151,7 +151,7 @@ test('reference pages keep their own inline header, without a duplicate toggle',
   // Reachable by non-admin team members, who never see the shell, so these keep
   // a toggle — suppressed when the shell is present.
   const sometimesInsideShell = [
-    'app/team/calendar/CalendarClient.js',
+    'app/components/EventsCalendarClient.js',
     'app/team/chat/TeamChatClient.js',
     'app/team/progress/ProgressClient.js',
   ];
@@ -177,7 +177,7 @@ test('existing reference pages rely on the shared frame instead of rendering the
     'app/bananas/analytics/AnalyticsClient.js',
     'app/bananas/financial-calendar/FinancialCalendarClient.js',
     'app/bananas/financials/FinancialsClient.js',
-    'app/team/calendar/CalendarClient.js',
+    'app/components/EventsCalendarClient.js',
   ];
 
   for (const relativePath of inlineReferenceFiles) {

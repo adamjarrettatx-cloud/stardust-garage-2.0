@@ -73,7 +73,7 @@ export default function ProgressClient({
 // ---------------------------------------------------------------------------
 
 // Local, page-scoped light/dark palette — mirrors the pattern used by the
-// admin Team Calendar (app/team/calendar/CalendarClient.js). Dark values are
+// Events Calendar (app/components/EventsCalendarClient.js). Dark values are
 // the original hardcoded colors this page always used; light values are new.
 // No global theme system involved. Semantic colors (KPI accents, status
 // badges, priority badges) stay literal in both themes — they're tinted pills
