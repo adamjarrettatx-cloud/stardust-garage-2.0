@@ -147,3 +147,21 @@ test('trial_member never demotes an applicant or member', () => {
 test('TRIAL_MEMBER_STATUS constant is the string used across the schema', () => {
   strictEqual(TRIAL_MEMBER_STATUS, 'trial_member');
 });
+
+// Real DB schema shape: trial_pass_checkins has (checked_in_at, notes), not
+// (scanned_at, reason). Prod page went blank the first deploy because the
+// select() specified nonexistent columns. This test locks in that the
+// pure compute layer accepts the actual production shape.
+test('accepts DB-native checkin shape (checked_in_at + notes)', () => {
+  const out = computeAnalytics({
+    passes: [
+      { id: 'a', status: 'active', signup_source: 'q', issued_at: dayAgo(5), expires_at: dayAgo(-25) },
+    ],
+    checkins: [
+      { trial_pass_id: 'a', result: 'denied', notes: 'pass expired', checked_in_at: dayAgo(1) },
+      { trial_pass_id: 'a', result: 'allowed', notes: null, checked_in_at: dayAgo(2) },
+    ],
+  });
+  strictEqual(out.funnel.checkedIn, 1);
+  strictEqual(out.denialReasons[0].reason, 'pass expired');
+});
