@@ -205,6 +205,37 @@ test('the client no longer hardcodes its starting tab', () => {
   assert.match(CLIENT, /resolveAdminTab\(initialTab/);
 });
 
+// --- Legibility -------------------------------------------------------------
+
+test('no text in the dashboard is set below the 10.5px legibility floor', () => {
+  // Owner feedback 2026-08-29: the first pass of this layout read too small.
+  // Everything was raised a step. This guards the floor so a later tweak cannot
+  // quietly shrink it back — the only sizes allowed near the bottom are all-caps
+  // micro-labels, which read larger than their nominal size.
+  const sizes = [...CLIENT.matchAll(/text-\[([\d.]+)px\]/g)].map((m) => Number(m[1]));
+  assert.ok(sizes.length > 0, 'no explicit text sizes found — did the markup change?');
+  for (const size of sizes) {
+    assert.ok(size >= 10.5, `found ${size}px text, below the 10.5px floor`);
+  }
+});
+
+test('the type scale keeps a readable hierarchy', () => {
+  // Section heading > tile title > tile subtitle. If these collapse into each
+  // other the panel stops being scannable.
+  const size = (re) => {
+    const m = CLIENT.match(re);
+    assert.ok(m, `could not locate type size for ${re}`);
+    return Number(m[1]);
+  };
+  const heading = size(/text-\[([\d.]+)px\] font-bold -tracking-\[0\.02em\] mb-\[4px\]/);
+  const tileTitle = size(/text-\[([\d.]+)px\] font-bold -tracking-\[0\.015em\]"/);
+  const tileSub = size(/text-\[([\d.]+)px\] mt-\[6px\]/);
+  assert.ok(heading > tileTitle, `heading ${heading}px must exceed tile title ${tileTitle}px`);
+  assert.ok(tileTitle > tileSub, `tile title ${tileTitle}px must exceed subtitle ${tileSub}px`);
+  // Body copy should stay in comfortable reading range.
+  assert.ok(tileSub >= 13, `tile subtitle ${tileSub}px is too small for body copy`);
+});
+
 // --- Owner-only pages still gate themselves --------------------------------
 
 test('owner-only tabs point at pages that enforce access server-side', () => {
