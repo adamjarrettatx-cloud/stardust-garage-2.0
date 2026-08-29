@@ -261,19 +261,23 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
   const inShell = useInAdminShell();
   const Frame = inShell ? 'div' : 'main';
 
-  // As a section of the Events tab the calendar is one block on a page that
-  // continues below it, so it takes a section heading rather than a page title
-  // and closes with a rule that separates it from the events list.
+  // As a section of the Events tab the calendar carries no header of its own.
+  // The tab already says "Events" and describes itself one line above, so a
+  // second "Events Calendar" title, a second one-line description and an add
+  // button sitting a few pixels from the list's "+ NEW EVENT" were all
+  // duplicates. The section opens straight into the legend and the grid, and
+  // closes with a rule that separates it from the list. Adding still works the
+  // way it always has: double-click a day, or click one and use the day panel.
   const isSection = variant === 'section';
-  const Heading = isSection ? 'h2' : 'h1';
 
   return (
     <Frame
       className={inShell ? 'transition-colors duration-150' : 'px-6 py-12 transition-colors duration-150'}
       style={{ color: t.text }}
     >
-      {/* Header */}
-      <div className={`flex flex-wrap items-center justify-between gap-4 ${isSection ? 'mb-6' : 'mb-8'}`}>
+      {/* Header — page variant only; see isSection above. */}
+      {!isSection && (
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
         <div>
           {isAdmin && !inShell && (
             <Link
@@ -284,13 +288,13 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
               ← BACK TO ADMIN
             </Link>
           )}
-          <Heading
-            className={`font-extrabold -tracking-[0.02em] leading-[1.15] ${isSection ? 'text-[23px]' : inShell ? 'text-[30px]' : 'text-[36px]'}`}
+          <h1
+            className={`font-extrabold -tracking-[0.02em] leading-[1.15] ${inShell ? 'text-[30px]' : 'text-[36px]'}`}
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.textStrong }}
           >
             Events Calendar
-          </Heading>
-          <p className={`${isSection ? 'text-[14.5px]' : 'text-[14px]'} mt-1`} style={{ color: t.muted }}>
+          </h1>
+          <p className="text-[14px] mt-1" style={{ color: t.muted }}>
             {isAdmin
               ? 'Everything on the books · click a day to view · double-click to add'
               : `Welcome, ${currentUserName} · click a day to view · double-click to add`}
@@ -356,6 +360,7 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
           </button>
         </div>
       </div>
+      )}
 
       {/* Legend */}
       <div className="flex flex-wrap gap-3 mb-6">
