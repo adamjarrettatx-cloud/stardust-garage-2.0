@@ -30,13 +30,15 @@ export default function AdminMemberActions({ memberId }) {
     }
   }
 
+  // Themed off the auth vars: the old hard-coded #f5f5f5 label on a white-ish
+  // border was invisible once the admin panel gained light mode.
   return (
     <button
       type="button"
       onClick={handleCancel}
       disabled={working}
       className="px-3 py-1.5 rounded-full text-[10px] font-semibold tracking-[0.12em] border transition-colors hover:bg-red-500/10 hover:border-red-500/40 disabled:opacity-50"
-      style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
+      style={{ borderColor: 'var(--auth-ghost-border)', color: 'var(--auth-ghost-text)' }}
     >
       CANCEL SUBSCRIPTION
     </button>
