@@ -4,13 +4,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  DEPARTMENTS, STATUSES, PRIORITIES,
-  classifyTask, computeKpis, filterTasks, persistDepartmentFilter,
+  DEPARTMENTS, PRIORITIES,
+  classifyTask, filterTasks, persistDepartmentFilter,
   readPersistedDepartment, sortTasks, toDateString, parseQuickAddTask,
 } from '@/lib/progress';
 import {
   StatusBadge, PriorityBadge, DeptChip, AttentionFlags, formatDate,
 } from '@/app/bananas/progress/ui';
+import UnderlineTabs from '@/app/bananas/components/UnderlineTabs';
 import TaskDrawer from '@/app/bananas/progress/TaskDrawer';
 import TaskFormModal from '@/app/bananas/progress/TaskFormModal';
 import AuthenticatedThemeToggleControl from '@/app/components/AuthenticatedThemeToggleControl';
@@ -120,57 +121,22 @@ const ADMIN_THEMES = {
   },
 };
 
-const KPI_DEFS = [
-  { key: 'total', label: 'Total tasks', color: '#3b82f6' },
-  { key: 'overdue', label: 'Overdue', color: '#ef4444' },
-  { key: 'doneThisWeek', label: 'Done this week', color: '#10b981' },
-];
-
+// Department filter strip. Uses the shared UnderlineTabs so this row matches
+// the seven other in-page filters in the admin panel instead of being the last
+// remaining set of filled pills.
 function DepartmentTabs({ value, onChange }) {
   return (
-    <div
-      className="flex gap-2 overflow-x-auto pb-1 md:flex-wrap"
-      role="tablist"
-      aria-label="Department filter"
-      data-testid="progress-department-tabs"
-    >
-      <DepartmentTab
-        slug=""
-        label="All"
-        active={value === ''}
-        onSelect={() => onChange('')}
-      />
-      {DEPARTMENTS.map((d) => (
-        <DepartmentTab
-          key={d.slug}
-          slug={d.slug}
-          label={d.label}
-          active={value === d.slug}
-          onSelect={() => onChange(d.slug)}
-        />
-      ))}
-    </div>
-  );
-}
-
-function DepartmentTab({ slug, label, active, onSelect }) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      data-testid={`progress-department-tab-${slug || 'all'}`}
-      onClick={onSelect}
-      className="whitespace-nowrap rounded-full px-4 py-2 text-[12px] font-semibold tracking-[0.08em] transition-colors"
-      style={{
-        background: active ? 'var(--auth-accent)' : 'var(--auth-ghost-bg)',
-        color: active ? 'var(--auth-accent-text)' : 'var(--auth-ghost-text)',
-        border: `1px solid ${active ? 'var(--auth-accent)' : 'var(--auth-ghost-border)'}`,
-        minHeight: '40px',
-      }}
-    >
-      {label}
-    </button>
+    <UnderlineTabs
+      tabs={[{ id: '', label: 'All' }, ...DEPARTMENTS.map((d) => ({ id: d.slug, label: d.label }))]}
+      active={value}
+      onChange={onChange}
+      ariaLabel="Department filter"
+      testId="progress-department-tabs"
+      // Twelve tabs do not fit the content column beside the sidebar, so this
+      // strip wraps to a second row rather than hiding Management and Legal
+      // behind a horizontal scroll.
+      wrap
+    />
   );
 }
 
@@ -208,10 +174,10 @@ function AdminProgressView({ initialTasks, assignees, isOwner, currentTeamMember
   const { theme, toggleTheme } = useAuthenticatedTheme();
   const t = ADMIN_THEMES[theme];
 
-  const [filters, setFilters] = useState({
-    department: '', status: '', priority: '', assigneeId: '', archived: false,
-  });
-  const [search, setSearch] = useState('');
+  // Only the department tab strip filters this page now; the search box and the
+  // status/priority/assignee selects were removed. `archived: false` is no
+  // longer toggleable and is kept so filterTasks() keeps hiding archived tasks.
+  const [filters, setFilters] = useState({ department: '', archived: false });
   const [sortKey, setSortKey] = useState('priority');
   const [sortDir, setSortDir] = useState('desc');
   const [drawerTask, setDrawerTask] = useState(null);
@@ -223,16 +189,10 @@ function AdminProgressView({ initialTasks, assignees, isOwner, currentTeamMember
   const [quickAdding, setQuickAdding] = useState(false);
   const [quickAddMsg, setQuickAddMsg] = useState(null); // { text, isError }
 
-  const activeTasks = useMemo(
-    () => initialTasks.filter((t) => !t.archived),
-    [initialTasks],
-  );
-  const kpis = useMemo(() => computeKpis(activeTasks, todayStr), [activeTasks, todayStr]);
-
   const visible = useMemo(() => {
-    const filtered = filterTasks(initialTasks, filters, search);
+    const filtered = filterTasks(initialTasks, filters);
     return sortTasks(filtered, sortKey, sortDir, { assignees, todayStr });
-  }, [initialTasks, filters, search, sortKey, sortDir, assignees, todayStr]);
+  }, [initialTasks, filters, sortKey, sortDir, assignees, todayStr]);
 
   // Click a column header to sort by it. First click on an inactive column
   // uses that column's natural default direction (dates ascend, everything
@@ -401,67 +361,20 @@ function AdminProgressView({ initialTasks, assignees, isOwner, currentTeamMember
         )}
       </form>
 
-      {/* KPI summary */}
-      <div className="flex flex-wrap gap-3 mb-8">
-        {KPI_DEFS.map((k) => (
-          <div key={k.key} className="rounded-[14px] p-4 w-[140px]" style={{ background: t.cardBg, border: `1px solid ${t.cardBorder}` }}>
-            <div className="text-[28px] font-extrabold leading-none" style={{ color: k.color, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-              {kpis[k.key]}
-            </div>
-            <div className="text-[11px] font-semibold tracking-[0.1em] mt-1.5" style={{ color: t.muted }}>
-              {k.label.toUpperCase()}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search deliverables…"
-          className="flex-1 min-w-[180px] rounded-full px-4 text-[13px]" style={selectStyle} aria-label="Search" />
-        <select value={filters.status} onChange={(e) => setFilter('status', e.target.value)} className="rounded-full px-4 text-[13px]" style={selectStyle} aria-label="Status filter">
-          <option value="">All statuses</option>
-          {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-        </select>
-        <select value={filters.priority} onChange={(e) => setFilter('priority', e.target.value)} className="rounded-full px-4 text-[13px]" style={selectStyle} aria-label="Priority filter">
-          <option value="">All priorities</option>
-          {PRIORITIES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-        </select>
-        <select value={filters.assigneeId} onChange={(e) => setFilter('assigneeId', e.target.value)} className="rounded-full px-4 text-[13px]" style={selectStyle} aria-label="Assignee filter">
-          <option value="">All assignees</option>
-          {assignees.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
-        </select>
-        <select value={`${sortKey}:${sortDir}`} onChange={(e) => { const [k, d] = e.target.value.split(':'); setSortKey(k); setSortDir(d); }}
-          className="rounded-full px-4 text-[13px]" style={selectStyle} aria-label="Sort">
-          <option value="priority:desc">Priority ↓</option>
-          <option value="due_date:asc">Due date ↑</option>
-          <option value="updated_at:desc">Recently updated</option>
-          <option value="department:asc">Department A–Z</option>
-          <option value="title:asc">Title A–Z</option>
-        </select>
-        <button
-          onClick={() => setFilter('archived', !filters.archived)}
-          className="rounded-full px-4 text-[12px] font-semibold tracking-[0.08em]"
-          style={{ ...selectStyle, color: filters.archived ? '#ffb84d' : t.muted, cursor: 'pointer' }}>
-          {filters.archived ? 'ARCHIVED' : 'ACTIVE'}
-        </button>
-      </div>
-      <div className="mb-6">
-        <DepartmentTabs
-          value={filters.department}
-          onChange={(nextDepartment) => {
-            setFilter('department', nextDepartment);
-            if (typeof window !== 'undefined') {
-              persistDepartmentFilter(window.localStorage, currentTeamMemberId, nextDepartment);
-            }
-          }}
-        />
-      </div>
+      <DepartmentTabs
+        value={filters.department}
+        onChange={(nextDepartment) => {
+          setFilter('department', nextDepartment);
+          if (typeof window !== 'undefined') {
+            persistDepartmentFilter(window.localStorage, currentTeamMemberId, nextDepartment);
+          }
+        }}
+      />
 
       {/* List */}
       {visible.length === 0 ? (
         <div className="rounded-[14px] p-12 text-center" style={{ background: t.cardBg, border: `1px solid ${t.cardBorder}` }}>
-          <p className="text-[15px]" style={{ color: t.muted }}>No tasks match. Create one or adjust your filters.</p>
+          <p className="text-[15px]" style={{ color: t.muted }}>No tasks in this department yet. Add one with Quick add above.</p>
         </div>
       ) : (
         <>

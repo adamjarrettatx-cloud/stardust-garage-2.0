@@ -373,8 +373,13 @@ test('normalizeDepartmentTags keeps valid slugs, dedupes, and reports invalid va
     { departments: ['marketing', 'legal'], invalid: [] }
   );
   assert.deepEqual(
-    normalizeDepartmentTags(['marketing', 'marketing', 'app']),
-    { departments: ['marketing', 'app'], invalid: [] }
+    normalizeDepartmentTags(['marketing', 'marketing', 'website']),
+    { departments: ['marketing', 'website'], invalid: [] }
+  );
+  // The retired slugs must now be rejected, not silently accepted.
+  assert.deepEqual(
+    normalizeDepartmentTags(['app', 'weekend_programming', 'weekday_programming']),
+    { departments: [], invalid: ['app', 'weekend_programming', 'weekday_programming'] }
   );
   assert.deepEqual(
     normalizeDepartmentTags(['marketing', 'Marketing', 'not_a_dept', 7, null]),

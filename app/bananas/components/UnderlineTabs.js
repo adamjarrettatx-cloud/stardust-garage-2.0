@@ -33,6 +33,19 @@ export default function UnderlineTabs({
   onChange,
   ariaLabel = 'Filter',
   className = '',
+  // Optional. When set, the strip gets `data-testid={testId}` and each tab gets
+  // `data-testid={testId}-tab-<id>` ('all' for the empty id), so a caller that
+  // had hand-rolled test hooks on its old pills does not lose them.
+  testId,
+  // Opt in to a second row instead of horizontal scrolling. Only for strips with
+  // too many tabs to fit: the Tasks department filter has twelve, which needs
+  // 1204px against the ~1004px content column inside the sidebar, so scrolling
+  // hid Management and Legal entirely and cut 'Awareness' mid-word. Wrapping
+  // puts the container rule under the last row only, which leaves the active
+  // underline on an upper row reading as a standalone marker — acceptable, and
+  // far better than filters the user cannot see. Strips that fit (six or fewer)
+  // stay on the default single scrolling row.
+  wrap = false,
 }) {
   return (
     <div
@@ -42,8 +55,11 @@ export default function UnderlineTabs({
       // break in a continuous line rather than a floating dash. overflow-x
       // keeps six status tabs usable on a narrow window instead of wrapping
       // into a second row that would sit below the rule.
-      className={`flex items-stretch gap-7 mb-8 overflow-x-auto border-b ${className}`}
+      className={`flex items-stretch mb-8 border-b ${
+        wrap ? 'flex-wrap gap-x-7 gap-y-0' : 'gap-7 overflow-x-auto'
+      } ${className}`}
       style={{ borderColor: 'var(--auth-card-border)' }}
+      data-testid={testId}
     >
       {tabs.map((tab) => {
         const isActive = tab.id === active;
@@ -60,6 +76,7 @@ export default function UnderlineTabs({
             type="button"
             role="tab"
             aria-selected={isActive}
+            data-testid={testId ? `${testId}-tab-${tab.id || 'all'}` : undefined}
             onClick={() => onChange(tab.id)}
             // -mb-px pulls the 2px underline over the container's 1px rule so
             // they occupy the same line instead of stacking.
