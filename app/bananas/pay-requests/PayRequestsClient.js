@@ -5,44 +5,11 @@ import Link from 'next/link';
 import { adminFetch } from '@/lib/admin-fetch';
 import { formatSlotRange } from '@/lib/booking-helpers';
 import { formatMoney, cumulativePayByContact, payRequestStatusLabel } from '@/lib/pay-request-helpers';
+import UnderlineTabs from '../components/UnderlineTabs';
 
 const cardStyle = { background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' };
 const altCardStyle = { background: 'var(--auth-card-bg-alt)', borderColor: 'var(--auth-card-border)' };
 
-function TabBar({ tabs, active, onChange }) {
-  return (
-    <div className="flex gap-2 mb-8 flex-wrap" role="tablist">
-      {tabs.map((tab) => {
-        const isActive = tab.id === active;
-        return (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            aria-selected={isActive}
-            onClick={() => onChange(tab.id)}
-            className="px-5 py-2.5 rounded-[14px] text-[11px] font-semibold tracking-[0.12em] transition-colors"
-            style={
-              isActive
-                ? { background: 'var(--auth-accent)', color: 'var(--auth-accent-text)', border: '1px solid var(--auth-accent)' }
-                : { background: 'var(--auth-ghost-bg)', color: 'var(--auth-ghost-text)', border: '1px solid var(--auth-ghost-border)' }
-            }
-          >
-            {tab.label.toUpperCase()}
-            {tab.badge > 0 && (
-              <span
-                className="ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-none"
-                style={{ background: isActive ? 'rgba(0,0,0,0.25)' : 'var(--auth-accent)', color: 'var(--auth-accent-text)' }}
-              >
-                {tab.badge > 99 ? '99+' : tab.badge}
-              </span>
-            )}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 // One pending request: contact, event, slot, amount, and the two review
 // actions. Reject opens an inline reason field rather than a browser
@@ -269,13 +236,16 @@ export default function PayRequestsClient() {
 
   return (
     <section className="rounded-[12px] border p-5" style={cardStyle}>
-      <TabBar
+      <UnderlineTabs
         tabs={[
-          { id: 'review', label: 'Review & Pay', badge: pending.length },
-          { id: '1099', label: '1099 Tracking', badge: 0 },
+          { id: 'review', label: 'Review & Pay', count: pending.length },
+          // No count: 1099 Tracking is a different view of the same data, not
+          // a bucket that happens to be empty, so a "0" chip would mislead.
+          { id: '1099', label: '1099 Tracking' },
         ]}
         active={tab}
         onChange={setTab}
+        ariaLabel="Filter pay requests"
       />
 
       {loadError && (
