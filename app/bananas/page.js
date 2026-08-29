@@ -6,6 +6,7 @@ import EventsSection from './components/EventsSection';
 import AdminDashboardClient from './AdminDashboardClient';
 import { getTodayInAustin } from '@/lib/studio-helpers';
 import { totalUnreadCount } from '@/lib/chat';
+import { resolveAdminTab } from '@/lib/admin-tabs';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 
 export const revalidate = 0;
@@ -13,9 +14,12 @@ export const revalidate = 0;
 // The owner email that gets full access to all tabs.
 const OWNER_EMAIL = 'adam@sdgatx.com';
 
-export default async function AdminDashboard() {
+export default async function AdminDashboard({ searchParams }) {
   const { user, redirect: gate } = await adminPageGate();
   if (gate) redirect(gate);
+
+  // Next 15 hands searchParams over as a promise.
+  const params = (await searchParams) || {};
 
   const supabase = await createClient();
 
@@ -58,6 +62,12 @@ export default async function AdminDashboard() {
 
   const isOwner = user?.email === OWNER_EMAIL;
 
+  // Resolve the section from the URL on the server so a deep link such as
+  // /bananas?tab=people renders People on first paint instead of flashing the
+  // default Team tab. resolveAdminTab also falls back to the default for an
+  // unknown tab id, or an owner-only tab requested by a non-owner.
+  const initialTab = resolveAdminTab(params.tab, { isOwner });
+
   const counts = {
     applications: applicationsCount?.count || 0,
     venueInquiries: venueInquiriesCount?.count || 0,
@@ -82,7 +92,7 @@ export default async function AdminDashboard() {
         <LogoutButton />
       </AuthenticatedPageHeader>
 
-      <AdminDashboardClient isOwner={isOwner} counts={counts} />
+      <AdminDashboardClient isOwner={isOwner} counts={counts} initialTab={initialTab} />
 
       <h2
         className="text-[18px] font-bold tracking-[0.12em] mb-5 mt-14"
