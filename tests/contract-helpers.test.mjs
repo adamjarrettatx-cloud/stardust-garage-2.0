@@ -213,3 +213,39 @@ test('buildContractPatch rejects a malformed linkage id', () => {
   const res = buildContractPatch({ contact_id: 'not-a-uuid' });
   assert.equal(res.ok, false);
 });
+
+// Regression: the from-template route once passed the whole { ok, value }
+// envelope from normalizeContractDateTime straight into the timestamp column,
+// which Postgres rejected with `invalid input syntax for type timestamp with
+// time zone: "{\"ok\":true,\"value\":..."}` and swallowed as the generic
+// “Document created but contract record failed” error. Guard the source of
+// every caller so the envelope is either unwrapped to .value or its .ok flag
+// is inspected before use — never spread or handed to the DB verbatim.
+test('every normalizeContractDateTime caller unwraps the { ok, value } envelope', async () => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const url = await import('node:url');
+  const repoRoot = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), '..');
+  const callers = [
+    'app/api/admin/documents/from-template/route.js',
+    'app/api/admin/events/[id]/pos-import/route.js',
+  ];
+  for (const rel of callers) {
+    const src = fs.readFileSync(path.join(repoRoot, rel), 'utf8');
+    const calls = [...src.matchAll(/normalizeContractDateTime\(([^)]*)\)/g)];
+    assert.ok(calls.length > 0, `expected ${rel} to call normalizeContractDateTime`);
+    for (const m of calls) {
+      const idx = m.index ?? 0;
+      // Look at the surrounding 400 chars for an .ok check or .value unwrap
+      // on the returned parse envelope. This catches naive `const x =
+      // normalizeContractDateTime(...)` -> x-into-DB patterns.
+      const window = src.slice(Math.max(0, idx - 80), idx + 400);
+      const hasOkCheck = /\.ok\b/.test(window);
+      const hasValueUnwrap = /\.value\b/.test(window);
+      assert.ok(
+        hasOkCheck && hasValueUnwrap,
+        `${rel} calls normalizeContractDateTime without unwrapping the { ok, value } envelope near: ${m[0]}`,
+      );
+    }
+  }
+});

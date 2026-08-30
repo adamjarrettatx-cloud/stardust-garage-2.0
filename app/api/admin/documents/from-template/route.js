@@ -159,8 +159,14 @@ export async function POST(request) {
     ? organizerLegalName(organizer)
     : String(body.counterparty || '').trim() || null;
 
-  const effectiveDate = normalizeContractDateTime(body.effective_date);
-  const expirationDate = normalizeContractDateTime(body.expiration_date);
+  // normalizeContractDateTime returns { ok, value } — reject bad input up front,
+  // then unwrap to the ISO string (or null) the columns expect.
+  const effParse = normalizeContractDateTime(body.effective_date);
+  if (!effParse.ok) return NextResponse.json({ error: 'invalid effective_date' }, { status: 400 });
+  const expParse = normalizeContractDateTime(body.expiration_date);
+  if (!expParse.ok) return NextResponse.json({ error: 'invalid expiration_date' }, { status: 400 });
+  const effectiveDate = effParse.value;
+  const expirationDate = expParse.value;
 
   // 1) New document row (always a contract).
   const { data: doc, error: docErr } = await admin
