@@ -583,31 +583,43 @@ test('the team layout only wraps routes that belong to a section', () => {
   }
 });
 
-test('the trial pass pages own a tile but stay outside the shell', () => {
-  // They gained tiles in #115 while the shell learned to wrap tiled /team
-  // routes in #116. Both are fine alone; together they put an unthemed page
-  // inside the shell. Until the hardcoded dark styling is ported to the theme
-  // tokens, these open standalone.
+test('the trial pass pages render inside the shell like every other admin route', () => {
+  // They gained tiles in #115 and the shell learned to wrap tiled /team
+  // routes in #116, but the pages themselves shipped with hardcoded dark
+  // chrome (a second AuthenticatedPageHeader and a <main> with #0a0a0a),
+  // so they were temporarily shell-exempt. Once ported to the theme tokens
+  // they belong inside the shell like Applications, Members and every
+  // other Memberships surface — the sidebar stays, the header stays, and
+  // "click back out of it" is a real crumb rather than a hunt for the
+  // browser back button.
   for (const p of ['/team/trial-pass/analytics', '/team/trial-pass/manual']) {
-    assert.equal(tabForPath(p), 'memberships', `${p} should still own a tile`);
-    assert.equal(isShellExempt(p), true, `${p} must not be wrapped in the shell`);
-  }
-  // The exemption is narrow — it must not swallow the shared /team pages.
-  for (const p of ['/team/progress', '/team/chat']) {
-    assert.equal(isShellExempt(p), false, `${p} should render inside the shell`);
+    assert.equal(tabForPath(p), 'memberships', `${p} should own a tile`);
+    assert.equal(isShellExempt(p), false, `${p} must render inside the shell`);
   }
 });
 
-test('a shell-exempt page is the one place allowed its own header', () => {
-  // This is what the exemption exists to avoid doubling. If these pages ever
-  // stop rendering their own chrome, the exemption should be removed with it.
+test('SHELL_EXEMPT_PREFIXES is empty and its helper still exists', () => {
+  // No route needs the escape hatch today. Keep the list and the helper for
+  // the next page that needs a temporary standalone period between gaining
+  // a tile and being ported onto the theme tokens.
+  const src = read('lib/admin-tabs.js');
+  assert.match(src, /SHELL_EXEMPT_PREFIXES = \[\]/);
+  assert.equal(isShellExempt('/team/trial-pass/analytics'), false);
+  assert.equal(isShellExempt('/team/trial-pass/manual'), false);
+  assert.equal(isShellExempt('/anywhere/else'), false);
+});
+
+test('a page rendered inside the shell must not render its own <main>', () => {
+  // The shell's own <main> wraps everything; a nested <main> is invalid HTML
+  // and was exactly what put the trial pass pages under a stacked header
+  // before this cleanup.
   for (const rel of [
     'app/team/trial-pass/analytics/page.js',
     'app/team/trial-pass/manual/page.js',
   ]) {
     const src = read(rel);
-    assert.match(src, /AuthenticatedPageHeader/, `${rel} lost its own header`);
-    assert.match(src, /<main/, `${rel} lost its own page container`);
+    assert.doesNotMatch(src, /<main\b/, `${rel} must not render its own <main> inside the shell`);
+    assert.match(src, /AuthenticatedPageHeader/, `${rel} should still use AuthenticatedPageHeader for its title`);
   }
 });
 
