@@ -127,18 +127,6 @@ export default function EventContractsPanel({ eventId }) {
                   >
                     {organizer.display_label || organizer.display_name}
                   </Link>
-                  {!organizer.is_event_organizer && (
-                    <span
-                      className="text-[10px] font-semibold tracking-[0.14em] px-2.5 py-1 rounded-full"
-                      style={{
-                        color: 'var(--auth-warn)',
-                        background: 'var(--auth-warn-bg)',
-                        border: '1px solid var(--auth-warn-border)',
-                      }}
-                    >
-                      NOT TAGGED EVENT ORGANIZER
-                    </span>
-                  )}
                 </div>
                 <div className="text-[12px] mt-1.5" style={{ color: 'var(--auth-muted)' }}>
                   {organizer.signer_email
@@ -156,12 +144,12 @@ export default function EventContractsPanel({ eventId }) {
               </>
             ) : data.event?.is_sdg_only ? (
               <p className="text-[13px]" style={{ color: 'var(--auth-muted)' }}>
-                This is an SDG-only event — there is no outside organizer, so nothing to sign.
+                This is an SDG-only event — there is no organizer, so nothing to sign.
               </p>
             ) : (
               <p className="text-[13px]" style={{ color: 'var(--auth-warn)' }}>
-                No Event Organizer linked. Set “Who is this event with?” above and save before
-                creating a contract.
+                No Event Organizer linked. Set the Event Organizer above and save before creating a
+                contract.
               </p>
             )}
           </div>

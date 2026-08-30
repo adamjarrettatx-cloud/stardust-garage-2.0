@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { CONTACT_REQUIRED_MESSAGE } from '@/lib/contact-helpers';
+import { CONTACT_REQUIRED_MESSAGE, ensureContactTaggedEventOrganizer } from '@/lib/contact-helpers';
 import {
   createEventSeries,
   createEventOccurrence,
@@ -146,6 +146,12 @@ export async function POST(request) {
     }
 
     const eventId = draftEvent.id;
+
+    // Tag the linked contact as event_organizer so the Contracts panel and
+    // Master Agreement lookup treat it as one. Idempotent, non-fatal.
+    if (draftEvent.contact_id) {
+      await ensureContactTaggedEventOrganizer(supabase, draftEvent.contact_id);
+    }
 
     // If TicketTailor isn't configured, there is no series to wait on. Publish
     // the local event directly so the admin isn't blocked, and say so. (This is

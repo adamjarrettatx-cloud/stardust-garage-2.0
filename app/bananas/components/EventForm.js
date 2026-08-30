@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import TtLinkPanel from './TtLinkPanel';
 import EventContactFields from './EventContactFields';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
-import { CONTACT_REQUIRED_MESSAGE } from '@/lib/contact-helpers';
+import { CONTACT_REQUIRED_MESSAGE, ensureContactTaggedEventOrganizer } from '@/lib/contact-helpers';
 
 const CATEGORY_OPTIONS = [
   { value: 'workshop', label: 'Workshop' },
@@ -203,6 +203,12 @@ export default function EventForm({
       setError('Save failed: ' + saveError.message);
       setSaving(false);
       return;
+    }
+
+    // Tag the linked contact as event_organizer so the Contracts panel and
+    // Master Agreement lookup treat it as one. Idempotent, non-fatal.
+    if (payload.contact_id) {
+      await ensureContactTaggedEventOrganizer(supabase, payload.contact_id);
     }
 
     // Auto-trigger discount code generation for qualifying events that have a
