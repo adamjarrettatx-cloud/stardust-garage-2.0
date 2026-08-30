@@ -24,38 +24,27 @@ export const metadata = {
 // Any team member on shift (team_members.role in team/admin) may use it.
 // The row records created_by, so a run of manual signups traced to the
 // same team member is visible to Adam in the admin trial list.
+//
+// Rendered inside the admin shell (see app/team/layout.js): this page
+// contributes just its content — the shell owns the outer header, sidebar,
+// breadcrumb and page container. Hardcoded dark chrome would double up.
 export default async function ManualTrialPassPage() {
   const { user, unauthorized } = await requireTeam();
   if (unauthorized) redirect('/login');
 
   return (
     <>
-      <AuthenticatedPageHeader />
-      <main className="min-h-screen px-5 py-12 md:py-16" style={{ background: '#0a0a0a' }}>
-        <div className="max-w-[520px] mx-auto">
-          <div className="mb-8">
-            <div
-              className="inline-block text-[10px] font-semibold tracking-[0.2em] px-3.5 py-1.5 rounded-full mb-4"
-              style={{ color: '#ffb84d', border: '1px solid rgba(255,184,77,0.35)' }}
-            >
-              FRONT DESK OVERRIDE
-            </div>
-            <h1
-              className="text-[28px] md:text-[34px] font-extrabold -tracking-[0.02em] leading-[1.15] mb-3"
-              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#ffffff' }}
-            >
-              Create a Trial Pass
-            </h1>
-            <p className="text-[14px] leading-[1.6]" style={{ color: 'rgba(255,255,255,0.65)' }}>
-              For guests who can&apos;t receive the SMS verification — dead phone, foreign number,
-              landline. This creates a Trial SDG Pass without the code step and records that you
-              did it.
-            </p>
-          </div>
+      <AuthenticatedPageHeader
+        title="Create a Trial Pass"
+        description="For guests who can’t receive the SMS verification — dead phone, foreign number, landline. This creates a Trial SDG Pass without the code step and records that you did it."
+        eyebrow="FRONT DESK OVERRIDE"
+        titleClassName="text-[30px] font-extrabold -tracking-[0.02em] leading-[1.15]"
+        className="mb-8"
+      />
 
-          <ManualTrialPassForm createdByEmail={user?.email || null} />
-        </div>
-      </main>
+      <div className="max-w-[520px]">
+        <ManualTrialPassForm createdByEmail={user?.email || null} />
+      </div>
     </>
   );
 }
