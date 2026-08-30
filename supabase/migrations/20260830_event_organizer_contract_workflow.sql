@@ -146,11 +146,20 @@ create index if not exists documents_contact_id_idx on public.documents(contact_
 -- The audit table still has insert+select policies only, so admins can never
 -- rewrite history. This only adds permitted action values.
 -- ---------------------------------------------------------------------------
+-- The action check has been widened by other migrations between the time this
+-- file was written and the time it ran (the ledger_* actions in particular).
+-- The redefinition here preserves EVERY previously-allowed action verbatim and
+-- only ADDS the five new contract actions; narrowing it would fail with a
+-- CHECK violation against real audit rows. Keep this list a superset of every
+-- production value if this migration is ever re-derived from schema.
 alter table public.document_audit_log drop constraint if exists document_audit_log_action_check;
 alter table public.document_audit_log add constraint document_audit_log_action_check
   check (action in (
     'upload','view','download','update_metadata','delete','restore','new_version',
     'contract_create','contract_status_change','contract_send','contract_signed','contract_void',
+    -- pre-existing ledger actions from later migrations, kept verbatim
+    'ledger_tickettailor_sync','ledger_spoton_upload','ledger_spoton_confirm',
+    'ledger_quickbooks_connect','ledger_quickbooks_sync','ledger_quickbooks_disconnect',
     -- added by this migration
     'contract_resend','contract_viewed','contract_field_change','contract_notify','contract_archive'
   ));
