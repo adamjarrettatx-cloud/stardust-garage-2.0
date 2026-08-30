@@ -9,6 +9,10 @@ import {
   WEBHOOK_STATUS_RECHECK,
 } from '@/lib/signnow';
 import { canTransitionContract, isTerminalContractStatus } from '@/lib/contract-helpers';
+import { buildContractNotification, recordContractNotification, markNotificationEmailed } from '@/lib/contract-notify';
+import { sendContractCompleted } from '@/lib/email';
+import { defaultSignerName, defaultSignerEmail } from '@/lib/event-organizer';
+import { resolveSiteUrl } from '@/lib/site-url';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -91,7 +95,7 @@ export async function POST(request) {
   const admin = createAdminClient();
   const { data: contract } = await admin
     .from('document_contracts')
-    .select('document_id, status, external_envelope_id, completed_at')
+    .select('id, document_id, contact_id, status, external_envelope_id, completed_at')
     .eq('external_envelope_id', envelopeId)
     .maybeSingle();
 
@@ -162,6 +166,59 @@ export async function POST(request) {
     } catch (err) {
       console.error('[signnow.webhook] archive failed', err);
       archived = { ok: false, reason: 'archive_error' };
+    }
+  }
+
+  // 3) Tell the counterparty it's done. Only on the transition INTO signed
+  //    (`changed`), so a replayed or duplicate SignNow event can't email the
+  //    organizer twice. Best-effort throughout: a failure here must not make us
+  //    return 5xx, because SignNow would then retry the whole event and we'd
+  //    re-run the archive.
+  if (contract.status === 'signed' && changed && contract.contact_id) {
+    try {
+      const [{ data: organizer }, { data: docRow }] = await Promise.all([
+        admin
+          .from('contacts')
+          .select('id, display_name, legal_name, email, status, default_signer_name, default_signer_email')
+          .eq('id', contract.contact_id)
+          .maybeSingle(),
+        admin.from('documents').select('title').eq('id', documentId).maybeSingle(),
+      ]);
+
+      if (organizer) {
+        const payload = buildContractNotification({
+          kind: 'signature_completed',
+          contractId: contract.id,
+          documentId,
+          contactId: contract.contact_id,
+          documentTitle: docRow?.title || 'Contract',
+          organizer,
+        });
+        const notificationId = await recordContractNotification({ admin, payload, createdBy: null });
+
+        const toEmail = defaultSignerEmail(organizer);
+        if (toEmail) {
+          const sent = await sendContractCompleted({
+            email: toEmail,
+            fullName: defaultSignerName(organizer),
+            documentTitle: docRow?.title || 'Contract',
+            // Authenticated portal address only — never a signing link or a
+            // storage URL, both of which would be a way around our own gates.
+            portalUrl: `${resolveSiteUrl(request)}/portal/contracts`,
+          });
+          if (sent && notificationId) {
+            await markNotificationEmailed({ admin, notificationId });
+          }
+        }
+
+        await audit({
+          admin, action: 'contract_notify', documentId,
+          actorId: null, actorEmail: 'signnow-webhook', request,
+          details: { kind: 'signature_completed', contact_id: contract.contact_id, emailed: Boolean(toEmail) },
+        });
+      }
+    } catch (err) {
+      console.error('[signnow.webhook] completion notify failed', err);
     }
   }
 

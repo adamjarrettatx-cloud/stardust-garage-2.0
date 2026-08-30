@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { adminFetch } from '@/lib/admin-fetch';
 import { DOCUMENTS_THEMES as THEMES } from '@/lib/admin-theme';
 import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
+import { TEMPLATE_KINDS, templateKindLabel } from '@/lib/event-organizer';
 
 export default function TemplatesClient({ categories }) {
   const { theme } = useAuthenticatedTheme();
@@ -17,7 +18,13 @@ export default function TemplatesClient({ categories }) {
   const [notice, setNotice] = useState(null);
   const [showInactive, setShowInactive] = useState(false);
 
-  const [form, setForm] = useState({ title: '', description: '', category: 'contracts' });
+  const [form, setForm] = useState({
+    title: '',
+    description: '',
+    category: 'contracts',
+    kind: 'other',
+    requires_master: false,
+  });
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
 
@@ -48,10 +55,14 @@ export default function TemplatesClient({ categories }) {
       fd.append('title', form.title);
       fd.append('description', form.description);
       fd.append('category', form.category);
+      fd.append('kind', form.kind);
+      // requires_master is only meaningful for event agreements; the API rejects
+      // the combination otherwise, so don't send a stale true from a kind switch.
+      fd.append('requires_master', String(form.kind === 'event' && form.requires_master));
       fd.append('file', file);
       const json = await adminFetch('/api/admin/templates', { method: 'POST', body: fd });
       setNotice(`Template “${json.template.title}” uploaded. Open it to place fields.`);
-      setForm({ title: '', description: '', category: 'contracts' });
+      setForm({ title: '', description: '', category: 'contracts', kind: 'other', requires_master: false });
       setFile(null);
       e.target.reset?.();
       load();
@@ -110,6 +121,23 @@ export default function TemplatesClient({ categories }) {
         </div>
         <input placeholder="Description (optional)" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
           className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none mb-3" style={inputStyle} />
+        {/* KIND — what role this template plays in the profile-first flow. Only
+            'event' templates can be created from an event's Contracts panel with a
+            Master Agreement reference. */}
+        <div className="grid grid-cols-2 gap-3 mb-3 items-center">
+          <select value={form.kind}
+            onChange={(e) => setForm({ ...form, kind: e.target.value, requires_master: e.target.value === 'event' ? form.requires_master : false })}
+            className="px-3 py-2.5 text-[14px] rounded-[10px] outline-none cursor-pointer" style={inputStyle}>
+            {TEMPLATE_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
+          </select>
+          {form.kind === 'event' && (
+            <label className="flex items-center gap-2 text-[13px]" style={{ color: t.mutedStrong }}>
+              <input type="checkbox" checked={form.requires_master}
+                onChange={(e) => setForm({ ...form, requires_master: e.target.checked })} />
+              Requires a signed Master Agreement
+            </label>
+          )}
+        </div>
         <div className="flex items-center justify-between gap-3">
           <input type="file" accept="application/pdf" onChange={(e) => setFile(e.target.files?.[0] || null)}
             className="text-[13px]" style={{ color: t.mutedStrong }} />
@@ -148,7 +176,7 @@ export default function TemplatesClient({ categories }) {
                   {!tpl.is_active && <span className="text-[10px] px-1.5 py-0.5 rounded-[4px]" style={{ background: t.chipBg, color: t.muted }}>INACTIVE</span>}
                 </div>
                 <div className="text-[11px]" style={{ color: t.muted }}>
-                  {tpl.category} · {tpl.page_count || '?'} page{tpl.page_count === 1 ? '' : 's'} · {tpl.field_count} field{tpl.field_count === 1 ? '' : 's'} · {tpl.filename}
+                  {templateKindLabel(tpl.kind)} · {tpl.category} · {tpl.page_count || '?'} page{tpl.page_count === 1 ? '' : 's'} · {tpl.field_count} field{tpl.field_count === 1 ? '' : 's'}{tpl.requires_master ? ' · needs Master Agreement' : ''} · {tpl.filename}
                 </div>
               </div>
               <Link href={`/bananas/documents/templates/${tpl.id}`}

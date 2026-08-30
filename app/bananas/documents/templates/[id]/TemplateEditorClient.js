@@ -6,6 +6,7 @@ import FieldEditor from '../../FieldEditor';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import { DOCUMENTS_THEMES as THEMES } from '@/lib/admin-theme';
 import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
+import { TEMPLATE_KINDS } from '@/lib/event-organizer';
 
 export default function TemplateEditorClient({ templateId, categories }) {
   const { theme } = useAuthenticatedTheme();
@@ -17,7 +18,13 @@ export default function TemplateEditorClient({ templateId, categories }) {
   const [notice, setNotice] = useState(null);
   const [savingFields, setSavingFields] = useState(false);
   const [savingMeta, setSavingMeta] = useState(false);
-  const [meta, setMeta] = useState({ title: '', description: '', category: 'contracts' });
+  const [meta, setMeta] = useState({
+    title: '',
+    description: '',
+    category: 'contracts',
+    kind: 'other',
+    requires_master: false,
+  });
 
   useEffect(() => {
     (async () => {
@@ -28,6 +35,8 @@ export default function TemplateEditorClient({ templateId, categories }) {
           title: json.template.title || '',
           description: json.template.description || '',
           category: json.template.category || 'contracts',
+          kind: json.template.kind || 'other',
+          requires_master: json.template.requires_master === true,
         });
       } catch (err) {
         setError(err.message);
@@ -61,7 +70,9 @@ export default function TemplateEditorClient({ templateId, categories }) {
       const json = await adminFetch(`/api/admin/templates/${templateId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(meta),
+        // requires_master is only valid on event templates; normalize here so the
+        // UI can never submit a pair the API has to reject.
+        body: JSON.stringify({ ...meta, requires_master: meta.kind === 'event' && meta.requires_master }),
       });
       setTemplate(json.template);
       setNotice('Template details saved.');
@@ -105,6 +116,22 @@ export default function TemplateEditorClient({ templateId, categories }) {
         </div>
         <input placeholder="Description" value={meta.description} onChange={(e) => setMeta({ ...meta, description: e.target.value })}
           className="w-full px-3 py-2.5 text-[14px] rounded-[10px] outline-none mb-3" style={inputStyle} />
+        {/* KIND — master vs per-event agreement. Event templates may additionally
+            require a signed Master Agreement to exist for the organizer. */}
+        <div className="grid grid-cols-2 gap-3 mb-3 items-center">
+          <select value={meta.kind}
+            onChange={(e) => setMeta({ ...meta, kind: e.target.value, requires_master: e.target.value === 'event' ? meta.requires_master : false })}
+            className="px-3 py-2.5 text-[14px] rounded-[10px] outline-none cursor-pointer" style={inputStyle}>
+            {TEMPLATE_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
+          </select>
+          {meta.kind === 'event' && (
+            <label className="flex items-center gap-2 text-[13px]" style={{ color: t.mutedStrong }}>
+              <input type="checkbox" checked={meta.requires_master}
+                onChange={(e) => setMeta({ ...meta, requires_master: e.target.checked })} />
+              Requires a signed Master Agreement
+            </label>
+          )}
+        </div>
         <div className="flex justify-end">
           <button onClick={saveMeta} disabled={savingMeta}
             className="px-4 py-2 text-[13px] rounded-[10px]" style={{ border: `1px solid ${t.ghostBorder}`, color: t.ghostText, opacity: savingMeta ? 0.6 : 1 }}>

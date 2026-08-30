@@ -51,6 +51,10 @@ export default function ContactSelect({
       contacts.filter((c) => {
         if (c.id === value) return true;
         if (excludeIds.includes(c.id)) return false;
+        // Archived counterparties stay on file for signed contracts and history,
+        // but must not be attachable to anything new. The current selection is
+        // exempted above so an existing link never silently loses its value.
+        if (c.status === 'archived') return false;
         if (contactTypeIn && !(c.contact_type || []).some((t) => contactTypeIn.includes(t))) return false;
         return true;
       }),
@@ -110,6 +114,12 @@ export default function ContactSelect({
         ))}
       </select>
 
+      {selected?.status === 'archived' && (
+        <p className="text-[11px] mt-2" style={{ color: '#ffb84d' }}>
+          This contact is ARCHIVED. It is kept for history but should not be attached to anything
+          new — pick an active contact instead.
+        </p>
+      )}
       {selected?.status === 'do_not_book' && (
         <p className="text-[11px] mt-2" style={{ color: '#ff8080' }}>
           This contact is flagged DO NOT BOOK. Check with Adam before going ahead.

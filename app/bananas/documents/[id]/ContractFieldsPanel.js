@@ -115,7 +115,11 @@ export default function ContractFieldsPanel({ documentId, initialContract }) {
                   <input type="checkbox" checked={values[f.id] === true || values[f.id] === 'true'}
                     onChange={(e) => setValue(f.id, e.target.checked)} />
                 ) : (
-                  <input value={values[f.id] ?? ''} onChange={(e) => setValue(f.id, e.target.value)}
+                  /* A 'date' field gets a real date picker so an executed
+                     agreement can't end up saying "next Friday". The stored value
+                     stays a plain string, which is what gets baked into the PDF. */
+                  <input type={f.type === 'date' ? 'date' : 'text'}
+                    value={values[f.id] ?? ''} onChange={(e) => setValue(f.id, e.target.value)}
                     className="px-3 py-2 text-[13px] rounded-[8px] outline-none" style={inputStyle} />
                 )}
               </div>

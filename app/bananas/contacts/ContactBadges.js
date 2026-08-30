@@ -18,6 +18,12 @@ const STATUS_STYLES = {
     color: '#ff8080',
     border: '1px solid rgba(239,68,68,0.4)',
   },
+  // Retired, but kept on file for signed contracts and history.
+  archived: {
+    background: 'rgba(255,184,77,0.10)',
+    color: '#ffb84d',
+    border: '1px solid rgba(255,184,77,0.35)',
+  },
 };
 
 export function ContactStatusBadge({ status }) {

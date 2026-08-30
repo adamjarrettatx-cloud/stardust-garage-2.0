@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getCurrentPartner } from '@/lib/auth-helpers';
-import { portalName } from '@/lib/role-label';
+import { portalName, canSignContracts } from '@/lib/role-label';
+import { createClient } from '@/lib/supabase/server';
 import PortalNav from './PortalNav';
 
 export const revalidate = 0;
@@ -31,9 +32,25 @@ export default async function PartnerPortalLayout({ children }) {
   // finish the job rather than refusing.
   if (!isActivePartner) redirect('/portal/activate');
 
+  // Does this partner have any contract to look at? Only asked when the nav
+  // wouldn't already show the tab for their type, so the common case costs
+  // nothing. partner_contracts() is the same SECURITY DEFINER read the page uses:
+  // it returns only this partner's non-draft contracts and only safe columns.
+  let hasContracts = false;
+  if (!canSignContracts(partner?.contact_type)) {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc('partner_contracts');
+    if (error) {
+      // A missing/failed RPC must not blank the whole portal shell — worst case
+      // the tab is hidden for a type that doesn't normally have it.
+      console.error('[portal layout] partner_contracts failed', error);
+    }
+    hasContracts = (data || []).length > 0;
+  }
+
   return (
     <div className="min-h-screen">
-      <PortalNav contactType={partner?.contact_type} />
+      <PortalNav contactType={partner?.contact_type} hasContracts={hasContracts} />
       {children}
     </div>
   );
