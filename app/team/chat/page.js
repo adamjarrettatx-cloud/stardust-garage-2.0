@@ -31,6 +31,11 @@ export default async function TeamChatPage() {
       // delete a group channel. Computed on the server from the team_members row
       // rather than anything the browser could set.
       canModerate={canModerateChat({ role: teamMember.role, email: user.email })}
+      // Decides where a #event link in a message points. Admins reach the
+      // dashboard page; everyone else can only be sent to the public
+      // /events/[slug] page, because /bananas/* is admin-gated by middleware and
+      // linking a non-admin there would bounce them. See lib/linked-event-link.js.
+      isAdmin={teamMember.role === 'admin'}
     />
   );
 }
