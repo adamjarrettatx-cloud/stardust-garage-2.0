@@ -344,7 +344,7 @@ function RecentTable({ rows }) {
                     {r.checkinCount}
                   </td>
                   <td className="px-4 py-3.5 text-right" style={{ color: 'var(--auth-text)' }}>
-                    {r.status === 'active' ? `${r.daysLeft}d` : '\u2014'}
+                    {r.status === 'active' ? `${r.daysLeft}d` : '—'}
                   </td>
                   <td className="px-6 py-3.5 text-right" style={{ color: 'var(--auth-muted)' }}>
                     {new Date(r.issuedAt).toLocaleDateString('en-US', {
@@ -371,7 +371,7 @@ export default function AnalyticsDashboard({ data }) {
         <KpiCard
           label="Passes issued"
           value={totals.all}
-          sub={`${totals.last7} in last 7d \u00b7 ${totals.last30} in last 30d`}
+          sub={`${totals.last7} in last 7d · ${totals.last30} in last 30d`}
         />
         <KpiCard
           label="Ready to use"
@@ -416,7 +416,7 @@ export default function AnalyticsDashboard({ data }) {
           title="Door denial reasons"
           rows={denialReasons}
           formatKey={formatDenialReason}
-          emptyText="No denials yet \u2014 every scan has been let in."
+          emptyText="No denials yet — every scan has been let in."
         />
       </div>
 
