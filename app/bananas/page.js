@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import EventsTabPanel from './EventsTabPanel';
 import { getTodayInAustin } from '@/lib/studio-helpers';
 import { loadEventsCalendarData } from '@/lib/events-calendar-data';
+import { adminPageGate, OWNER_EMAIL } from '@/lib/auth-helpers';
 
 export const revalidate = 0;
 
@@ -17,9 +18,17 @@ export const revalidate = 0;
 // shared loader the standalone /team/calendar page uses, so the two surfaces
 // can never drift apart.
 //
-// The admin gate runs in the layout; no need to repeat it.
+// The admin gate runs in the layout, but we still call it here to read the
+// viewer identity: EventsTabPanel needs `isOwner` to decide whether a
+// `?tab=analytics` URL really is Analytics (owner) or falls back to Events
+// (non-owner). Without this prop the panel used the resolver's default
+// non-owner path and the events calendar bled through under owner-only
+// sections. Cheap: the gate itself only reads the current session.
 export default async function AdminDashboard() {
-  const supabase = await createClient();
+  const [supabase, { user }] = await Promise.all([
+    createClient(),
+    adminPageGate(),
+  ]);
 
   const [{ data: events }, calendar] = await Promise.all([
     supabase.from('events').select('*').order('event_date', { ascending: true }),
@@ -27,12 +36,14 @@ export default async function AdminDashboard() {
   ]);
 
   const today = getTodayInAustin();
+  const isOwner = user?.email === OWNER_EMAIL;
 
   return (
     <EventsTabPanel
       upcoming={(events || []).filter((e) => e.event_date >= today)}
       past={(events || []).filter((e) => e.event_date < today).reverse()}
       calendar={calendar}
+      isOwner={isOwner}
     />
   );
 }

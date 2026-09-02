@@ -914,6 +914,32 @@ test('a section that renders its own content gets no heading block', () => {
   }
 });
 
+test('EventsTabPanel resolves the active section with the viewer\u2019s isOwner', () => {
+  // Analytics is owner-only. Without isOwner, `resolveAdminTab('analytics')`
+  // silently falls back to the default \u2014 Events \u2014 and the calendar
+  // renders under every owner-only section for the actual owner. The panel
+  // has to receive isOwner from the server page and pass it through, matching
+  // what AdminShell does for the tile grid.
+  const src = read('app/bananas/EventsTabPanel.js');
+  assert.match(src, /function EventsTabPanel\(\{[^}]*\bisOwner\b[^}]*\}\)/,
+    'EventsTabPanel dropped its isOwner prop');
+  assert.match(src, /resolveRootAdminTab\([\s\S]*?\{\s*isOwner\s*\}/,
+    'EventsTabPanel is not passing isOwner into the tab resolver');
+
+  const page = read('app/bananas/page.js');
+  assert.match(page, /isOwner\s*=\s*user\?\.email === OWNER_EMAIL/,
+    'page.js no longer derives isOwner from the session');
+  assert.match(page, /<EventsTabPanel[\s\S]*?isOwner=\{isOwner\}[\s\S]*?\/>/,
+    'page.js is not forwarding isOwner to EventsTabPanel');
+
+  // The resolver itself: an owner on ?tab=analytics stays on analytics, and
+  // the events section only wins when the URL actually asks for it.
+  assert.equal(resolveRootAdminTab('analytics', { isOwner: true }), 'analytics');
+  assert.equal(resolveRootAdminTab('settings', { isOwner: true }), 'settings');
+  assert.equal(resolveRootAdminTab('events', { isOwner: true }), 'events');
+  assert.equal(resolveRootAdminTab(undefined, { isOwner: true }), DEFAULT_ADMIN_TAB);
+});
+
 test('Team Chat renders its own title only outside the admin shell', () => {
   const src = read('app/team/chat/TeamChatClient.js');
   const gate = src.indexOf('{!inShell && (');
