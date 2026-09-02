@@ -1,7 +1,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { resolveAdminTab } from '@/lib/admin-tabs';
+import { resolveRootAdminTab } from '@/lib/admin-tabs';
 import EventsCalendarClient from '@/app/components/EventsCalendarClient';
 import EventsSection from './components/EventsSection';
 
@@ -25,9 +25,16 @@ import EventsSection from './components/EventsSection';
 // ?tab=, so the check has to happen on the client — the server can read the
 // query param but not a later in-page section switch, which the shell does
 // with pushState rather than a navigation.
-export default function EventsTabPanel({ upcoming, past, calendar }) {
+//
+// `isOwner` has to come in as a prop, not be inferred here: owner-only sections
+// (Analytics, Settings) resolve back to the default — Events — when the
+// resolver thinks the viewer is not an owner, and without this the calendar
+// bled through under Analytics for the actual owner. `resolveRootAdminTab`
+// mirrors what AdminShell does for the dashboard root, so the two agree on
+// which section is showing.
+export default function EventsTabPanel({ upcoming, past, calendar, isOwner }) {
   const searchParams = useSearchParams();
-  const activeTab = resolveAdminTab(searchParams?.get('tab'));
+  const activeTab = resolveRootAdminTab(searchParams?.get('tab'), { isOwner });
   if (activeTab !== 'events') return null;
 
   return (
