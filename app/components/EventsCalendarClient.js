@@ -161,7 +161,24 @@ function parseLocalDate(str) {
 // own, but everyone else's render dimmed and non-interactive. The isAdmin flag
 // is a UI convenience only — the dataset each role receives is already scoped
 // server-side (lib/events-calendar-data.js) and by RLS.
-export default function EventsCalendarClient({ publicEvents, teamEvents: initialTeamEvents, isAdmin, currentUserId, currentUserName, creatorNames = {}, chatUnreadCount = 0, variant = 'page' }) {
+
+// Contract-state stripe on public event tiles.
+// - 'signed'   → green    (a signed or partially-signed contract exists)
+// - 'progress' → yellow   (draft/sent/etc., nothing signed yet)
+// - 'missing'  → red      (no contract row for this event)
+// Internal micro-parties are excluded because they never have counterparties.
+const CONTRACT_STRIPE = {
+  signed:   '#22c55e',
+  progress: '#eab308',
+  missing:  '#dc2626',
+};
+const CONTRACT_STRIPE_LABEL = {
+  signed:   'Contract signed',
+  progress: 'Contract in progress',
+  missing:  'Contract missing',
+};
+
+export default function EventsCalendarClient({ publicEvents, teamEvents: initialTeamEvents, publicEventContractStatus = {}, isAdmin, currentUserId, currentUserName, creatorNames = {}, chatUnreadCount = 0, variant = 'page' }) {
   const router = useRouter();
   const supabase = createClient();
   const today = new Date();
@@ -491,6 +508,17 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
                     {pub.slice(0, 2).map(evt => {
                       const st = eventStyle(evt, theme);
                       const internal = evt.visibility === 'internal';
+                      // Contract stripe applies only to public events; internal
+                      // micro-parties never have counterparties, so no stripe.
+                      // Non-admins receive an empty publicEventContractStatus map
+                      // (RLS-scoped server-side), which correctly short-circuits
+                      // to no stripe rather than "everything looks missing".
+                      const hasContractData = Object.keys(publicEventContractStatus).length > 0;
+                      const contractState = !internal && hasContractData
+                        ? (publicEventContractStatus[evt.id] || 'missing')
+                        : null;
+                      const stripeColor = contractState ? CONTRACT_STRIPE[contractState] : null;
+                      const stripeLabel = contractState ? CONTRACT_STRIPE_LABEL[contractState] : null;
                       return (
                         <div
                           key={`pub-${evt.id}`}
@@ -502,10 +530,25 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
                             e.stopPropagation();
                             if (isCurrentMonth) handleDayClick(cellDate);
                           }}
-                          className="text-[11px] font-semibold px-1.5 py-1 rounded cursor-pointer"
+                          className="text-[11px] font-semibold pl-2 pr-1.5 py-1 rounded cursor-pointer relative overflow-hidden"
                           style={{ background: st.bg, color: st.color, border: `1px solid ${st.border}` }}
-                          title={internal ? `${evt.title} (internal micro party)` : evt.title}
+                          title={internal
+                            ? `${evt.title} (internal micro party)`
+                            : `${evt.title} \u2014 ${stripeLabel}`}
                         >
+                          {stripeColor && (
+                            <span
+                              aria-hidden="true"
+                              style={{
+                                position: 'absolute',
+                                left: 0,
+                                top: 0,
+                                bottom: 0,
+                                width: 3,
+                                background: stripeColor,
+                              }}
+                            />
+                          )}
                           <div className="truncate">{internal ? '🔒' : '★'} {evt.title}</div>
                           {evt.event_time && (
                             <div className="text-[10px] font-normal opacity-90 truncate">{evt.event_time}</div>
@@ -605,13 +648,32 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
                   {selectedEvents.pub.map(evt => {
                     const st = eventStyle(evt, theme);
                     const internal = evt.visibility === 'internal';
+                    const hasContractData = Object.keys(publicEventContractStatus).length > 0;
+                    const contractState = !internal && hasContractData
+                      ? (publicEventContractStatus[evt.id] || 'missing')
+                      : null;
+                    const contractColor = contractState ? CONTRACT_STRIPE[contractState] : null;
+                    const contractLabel = contractState ? CONTRACT_STRIPE_LABEL[contractState] : null;
                     return (
                       <div
                         key={evt.id}
-                        className="rounded-[8px] p-3"
+                        className="rounded-[8px] p-3 relative overflow-hidden"
                         style={{ background: st.bg, border: `1px solid ${st.border}` }}
                       >
-                        <div className="flex items-center gap-2">
+                        {contractColor && (
+                          <span
+                            aria-hidden="true"
+                            style={{
+                              position: 'absolute',
+                              left: 0,
+                              top: 0,
+                              bottom: 0,
+                              width: 3,
+                              background: contractColor,
+                            }}
+                          />
+                        )}
+                        <div className="flex items-center gap-2 flex-wrap">
                           <div className="text-[14px] font-bold" style={{ color: st.color }}>{evt.title}</div>
                           {internal && (
                             <span
@@ -619,6 +681,16 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
                               style={{ background: st.color, color: theme === 'light' ? '#fff' : '#0a0a0a' }}
                             >
                               Internal
+                            </span>
+                          )}
+                          {contractColor && (
+                            <span
+                              className="text-[10px] font-semibold tracking-[0.05em] px-1.5 py-0.5 rounded-full inline-flex items-center gap-1"
+                              style={{ background: `${contractColor}22`, color: contractColor, border: `1px solid ${contractColor}55` }}
+                              title={contractLabel}
+                            >
+                              <span style={{ width: 6, height: 6, borderRadius: 999, background: contractColor, display: 'inline-block' }} />
+                              {contractLabel}
                             </span>
                           )}
                         </div>
@@ -721,7 +793,7 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
       {/* Legend and the monthly scorecard read as a summary of the grid rather
           than a preamble to it, so they follow it. */}
       {/* Legend */}
-      <div className="flex flex-wrap gap-3 mt-8 mb-5">
+      <div className="flex flex-wrap gap-3 mt-8 mb-2">
         <span className="flex items-center gap-1.5 text-[12px] font-semibold tracking-[0.1em]" style={{ color: t.muted }}>
           LEGEND:
         </span>
@@ -738,6 +810,23 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
           </span>
         )}
       </div>
+      {/* Contract stripe key — the coloured left-edge stripe on each public
+          event tile shows whether that event has a signed contract yet.
+          Only rendered when the current viewer actually receives contract
+          data (admins), matching the stripe visibility on the tiles. */}
+      {Object.keys(publicEventContractStatus).length > 0 && (
+        <div className="flex flex-wrap gap-3 mb-5">
+          <span className="flex items-center gap-1.5 text-[12px] font-semibold tracking-[0.1em]" style={{ color: t.muted }}>
+            CONTRACT:
+          </span>
+          {['signed', 'progress', 'missing'].map((key) => (
+            <span key={key} className="flex items-center gap-1.5 text-[12px]">
+              <span style={{ display: 'inline-block', width: 3, height: 14, borderRadius: 1, background: CONTRACT_STRIPE[key] }} />
+              <span style={{ color: t.mutedStrong }}>{CONTRACT_STRIPE_LABEL[key]}</span>
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Monthly Scorecard — visible to the whole team, tracks who's creating events */}
       <div
