@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { linkedEventHref } from '@/lib/linked-event-link';
 
@@ -109,7 +110,21 @@ export default function TeamEventModal({
 }) {
   const isEdit = mode === 'edit';
   const supabase = createClient();
+  const router = useRouter();
   const m = MODAL_THEMES[theme] || MODAL_THEMES.dark;
+
+  // Create-only: the user first picks whether this is a Public (ticketed,
+  // website-published) or Internal (team-calendar only) event. Public routes
+  // out to /bananas/events/new where the full TicketTailor form lives. Edit
+  // mode is always internal; public events are edited from their own page.
+  const [visibility, setVisibility] = useState('internal');
+  const initialDateInput =
+    event?.event_date || toDateInput(defaultDate) || '';
+  const goToPublicCreator = () => {
+    const qs = initialDateInput ? `?date=${initialDateInput}` : '';
+    onClose();
+    router.push(`/bananas/events/new${qs}`);
+  };
 
   const [title, setTitle] = useState(event?.title || '');
   const [eventDate, setEventDate] = useState(
@@ -310,7 +325,7 @@ export default function TeamEventModal({
             className="text-[22px] font-extrabold -tracking-[0.01em]"
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: m.textStrong }}
           >
-            {isEdit ? 'Edit Event' : 'Add Calendar Event'}
+            {isEdit ? 'Edit Event' : 'Add Event'}
           </h2>
           <button
             onClick={onClose}
@@ -323,6 +338,70 @@ export default function TeamEventModal({
           </button>
         </div>
 
+        {/* Visibility toggle — create mode only. Determines whether this is
+            an internal team-calendar entry or a full public/ticketed event.
+            Public routes to the TicketTailor creator with the clicked day
+            pre-filled; Internal keeps the lightweight in-modal form. */}
+        {!isEdit && (
+          <div className="mb-5">
+            <label className={labelClass} style={labelStyle}>EVENT TYPE</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setVisibility('internal')}
+                className="py-2.5 px-3 rounded-[10px] border text-[13px] font-semibold transition-all"
+                style={{
+                  background: visibility === 'internal' ? m.textStrong : m.swatchBg,
+                  borderColor: visibility === 'internal' ? m.textStrong : m.swatchBorder,
+                  color: visibility === 'internal' ? m.panelBg : m.mutedStrong,
+                }}
+              >
+                Internal
+              </button>
+              <button
+                type="button"
+                onClick={() => setVisibility('public')}
+                className="py-2.5 px-3 rounded-[10px] border text-[13px] font-semibold transition-all"
+                style={{
+                  background: visibility === 'public' ? m.textStrong : m.swatchBg,
+                  borderColor: visibility === 'public' ? m.textStrong : m.swatchBorder,
+                  color: visibility === 'public' ? m.panelBg : m.mutedStrong,
+                }}
+              >
+                Public
+              </button>
+            </div>
+            <p className="mt-2 text-[11px] leading-snug" style={{ color: m.muted }}>
+              {visibility === 'internal'
+                ? 'Team-only calendar entry. Not published to the website.'
+                : 'Ticketed event. Publishes to the website and creates a TicketTailor series.'}
+            </p>
+          </div>
+        )}
+
+        {/* Public branch: send the user to the full public-event creator with
+            the clicked day pre-filled. The heavy TicketTailor form (image,
+            ticket types, contact, description) lives there. */}
+        {!isEdit && visibility === 'public' ? (
+          <div className="space-y-4">
+            <button
+              type="button"
+              onClick={goToPublicCreator}
+              className="w-full py-3 rounded-full text-[13px] font-semibold tracking-[0.14em] transition-all"
+              style={{ background: m.saveBg, color: m.saveText }}
+            >
+              CONTINUE TO PUBLIC EVENT CREATOR →
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full py-2.5 rounded-full text-[12px] font-semibold tracking-[0.12em] border transition-colors"
+              style={{ borderColor: m.cancelBorder, color: m.text, background: 'transparent' }}
+            >
+              CANCEL
+            </button>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Title */}
           <div>
@@ -660,6 +739,7 @@ export default function TeamEventModal({
             </div>
           )}
         </form>
+        )}
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { adminFetch } from '@/lib/admin-fetch';
 import EventContactFields from './EventContactFields';
@@ -64,10 +64,19 @@ function emptyTicketType() {
 // /api/admin/events/create-with-tt — the API key is never seen by the browser.
 export default function TtEventCreator() {
   const router = useRouter();
+  // The calendar day-click modal routes here with ?date=YYYY-MM-DD when the
+  // user picks 'Public' after clicking a day — pre-fill the date field so
+  // they don't have to type it again. We validate the shape to avoid trusting
+  // arbitrary query-string input.
+  const searchParams = useSearchParams();
+  const prefillDate = (() => {
+    const raw = searchParams?.get('date') || '';
+    return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : '';
+  })();
 
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
-  const [eventDate, setEventDate] = useState('');
+  const [eventDate, setEventDate] = useState(prefillDate);
   const [eventTime, setEventTime] = useState('');
   const [eventEndTime, setEventEndTime] = useState('');
   const [description, setDescription] = useState('');
