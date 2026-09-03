@@ -38,7 +38,7 @@ const THEMES = {
 
 // Category dot colors, matching both original pages.
 const CATEGORY_COLOR = {
-  workshop: '#ec4899',
+  workshop: '#eab308',
   yoga: '#10b981',
   yoga_residency: '#14b8a6',
   evening_music_residency: '#a855f7',
