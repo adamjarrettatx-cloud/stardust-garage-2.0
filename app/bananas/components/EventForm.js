@@ -23,11 +23,10 @@ const CATEGORY_OPTIONS = [
   { value: 'trial_resident_party', label: 'Trial Resident Party' },
   { value: 'sdg_party', label: 'SDG Party' },
   { value: 'workshop', label: 'Workshop' },
-  { value: 'maintenance', label: 'Maintenance' },
 ];
 
 // Categories that generate member ticket codes (i.e. ticketed public events).
-// Purely-internal categories (internal / team_meeting / maintenance) are
+// Purely-internal categories (internal / team_meeting) are
 // intentionally excluded. Legacy 'party' is still qualifying so historical
 // events keep working.
 const QUALIFYING_CATEGORIES = [
