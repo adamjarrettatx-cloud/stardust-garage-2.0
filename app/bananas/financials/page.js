@@ -3,7 +3,6 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { ownerPageGate } from '@/lib/auth-helpers';
 import { buildFinancialOverview } from '@/lib/financial-overview';
 import { normalizeTransaction } from '@/lib/financial-ledger';
-import { buildAllSalesSeries, earliestWindowStartIso, fetchAllOrderPages } from '@/lib/ticket-sales-timeseries';
 import FinancialsClient from './FinancialsClient';
 
 export const revalidate = 0;
@@ -74,31 +73,6 @@ export default async function FinancialsPage() {
     .limit(5000);
   if (!manualRes.error && manualRes.data) manual = manualRes.data;
 
-  // Per-order TicketTailor rows for the sales-over-time chart. Bounded to the
-  // widest default chart window rather than reading the whole table, and read
-  // in pages: PostgREST caps a single response at the project's max-rows
-  // setting, so one request would silently return only part of the window.
-  const windowStartIso = earliestWindowStartIso();
-  const orders = await fetchAllOrderPages({
-    fetchPage: async ({ from, to }) => {
-      const res = await supabase
-        .from('ticket_order_attribution')
-        .select('total_paid_cents, status, created_at, tt_created_at:raw_payload->>created_at')
-        .gte('created_at', windowStartIso)
-        .order('created_at', { ascending: true })
-        .order('tt_order_id', { ascending: true })
-        .range(from, to);
-
-      if (res.error) {
-        console.error('[financials] ticket_order_attribution read failed:', res.error.message);
-        return [];
-      }
-      return res.data || [];
-    },
-  });
-
-  const salesSeries = buildAllSalesSeries({ orders });
-
   // SpotOn point-of-sale ledger rows (public.financial_transactions,
   // source='spoton_csv'), imported from the Cash Flow page's CSV importer.
   // These carry revenue that lands on ANY calendar day — including plain
@@ -133,7 +107,6 @@ export default async function FinancialsPage() {
       entries={entries}
       performanceRows={performanceRows}
       totals={totals}
-      salesSeries={salesSeries}
       posTransactions={posTransactions}
       todayIso={new Date().toISOString()}
     />

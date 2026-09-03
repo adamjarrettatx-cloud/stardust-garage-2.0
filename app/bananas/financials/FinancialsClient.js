@@ -19,8 +19,6 @@ import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvid
 import { ANALYTICS_THEMES, FINANCIAL_THEMES } from '@/lib/admin-theme';
 import RefreshMetricsButton from '@/app/bananas/analytics/RefreshMetricsButton';
 import RowRefreshButton from '@/app/bananas/analytics/RowRefreshButton';
-import BackfillTTOrdersButton from '@/app/bananas/analytics/BackfillTTOrdersButton';
-import TicketTailorSalesChart from '@/app/bananas/analytics/TicketTailorSalesChart';
 import TotalSalesChart from '@/app/bananas/financials/TotalSalesChart';
 import ManualIncomeDialog from '@/app/bananas/financial-calendar/ManualIncomeDialog';
 import RevenueTrendChart from '@/app/bananas/financials/RevenueTrendChart';
@@ -102,7 +100,7 @@ const GRANULARITIES = [
   { id: 'month', label: 'Month' },
 ];
 
-export default function FinancialsClient({ entries, performanceRows, totals, salesSeries, todayIso, posTransactions = [] }) {
+export default function FinancialsClient({ entries, performanceRows, totals, todayIso, posTransactions = [] }) {
   const router = useRouter();
   const today = useMemo(() => new Date(todayIso), [todayIso]);
   // Only `theme` is read here: the toggle control lives in the admin shell
@@ -264,8 +262,6 @@ export default function FinancialsClient({ entries, performanceRows, totals, sal
 
       <TotalSalesChart dailyRevenue={dailyRevenue} todayIso={todayIso} t={t} />
 
-      <TicketTailorSalesChart series={salesSeries} t={t} />
-
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex flex-wrap items-center gap-3">
           <RefreshMetricsButton />
@@ -290,51 +286,7 @@ export default function FinancialsClient({ entries, performanceRows, totals, sal
         </p>
       )}
 
-      <div className="mb-8">
-        <BackfillTTOrdersButton t={t} />
-      </div>
-
-      {/* Portfolio summary cards — always meaningful, regardless of TT sync state. */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6" data-testid="fin-portfolio-summary">
-        {[
-          { label: 'Events', value: totals.events },
-          { label: 'TT-linked events', value: totals.ttLinked },
-          { label: 'Manual entries', value: totals.manualEntries },
-        ].map((c) => (
-          <div key={c.label} className="rounded-[14px] border p-5" style={{ background: t.cardBg, borderColor: t.cardBorder }}>
-            <div className="text-[10px] font-semibold tracking-[0.14em] uppercase mb-1.5" style={{ color: t.muted }}>{c.label}</div>
-            <div className="text-[28px] font-extrabold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.textStrong }}>{c.value}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Revenue cards — the unified accounting total across TT-linked, TT-only, and manual income. */}
-      {totals.revenueEntries > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-10" data-testid="fin-revenue-summary">
-          {[
-            { label: 'Gross income', value: centsToUsd(totals.grossCents) },
-            { label: 'Fees', value: centsToUsd(totals.feesCents) },
-            { label: 'Net income', value: centsToUsd(totals.netCents) },
-          ].map((c) => (
-            <div key={c.label} className="rounded-[14px] border p-5" style={{ background: t.revCardBg, borderColor: t.revCardBorder }}>
-              <div className="text-[10px] font-semibold tracking-[0.14em] uppercase mb-1.5" style={{ color: t.rev }}>{c.label}</div>
-              <div className="text-[24px] font-extrabold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.textStrong }}>{c.value}</div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-[14px] border p-5 mb-10" style={{ background: t.warnCardBg, borderColor: t.warnCardBorder }}>
-          <div className="text-[10px] font-semibold tracking-[0.14em] uppercase mb-2" style={{ color: t.warn }}>
-            No income recorded yet
-          </div>
-          <p className="text-[13px]" style={{ color: t.mutedStrong }}>
-            Gross, fees, net, and tickets-sold totals appear here once a TicketTailor series is linked and
-            refreshed, once a TT-only event is discovered, or once manual income is added. Events without a TT
-            series, or environments without <code className="mx-1" style={{ color: t.textStrong }}>TICKETTAILOR_API_KEY</code>,
-            are recorded as &ldquo;not configured&rdquo; rather than guessed.
-          </p>
-        </div>
-      )}
+      <div className="mb-10" />
 
       {/* Tabs */}
       <div className="flex items-center gap-2 mb-6 border-b" style={{ borderColor: t.tableBorder }}>
