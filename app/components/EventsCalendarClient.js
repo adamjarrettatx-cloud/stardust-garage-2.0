@@ -473,8 +473,15 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
                       return (
                         <div
                           key={`pub-${evt.id}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-[11px] font-semibold px-1.5 py-1 rounded"
+                          onClick={(e) => {
+                            // Clicking a public-event tile should open the
+                            // day-detail side panel (same as clicking the
+                            // cell), which is where the event's full info
+                            // and admin edit link live.
+                            e.stopPropagation();
+                            if (isCurrentMonth) handleDayClick(cellDate);
+                          }}
+                          className="text-[11px] font-semibold px-1.5 py-1 rounded cursor-pointer"
                           style={{ background: st.bg, color: st.color, border: `1px solid ${st.border}` }}
                           title={internal ? `${evt.title} (internal micro party)` : evt.title}
                         >
