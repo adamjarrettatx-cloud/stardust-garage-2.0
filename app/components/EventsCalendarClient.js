@@ -26,12 +26,13 @@ const CATEGORIES = {
   yoga_residency:            { label: 'Yoga Residency',            color: '#14b8a6', darkColor: '#0f766e', text: '#fff' },
   evening_music_residency:   { label: 'Evening Music Residency',   color: '#a855f7', darkColor: '#7e22ce', text: '#fff' },
   day_party:                 { label: 'Day Party',                 color: '#f59e0b', darkColor: '#92400e', text: '#000' },
+  workshop:                  { label: 'Workshop',                  color: '#ec4899', darkColor: '#be185d', text: '#fff' },
   maintenance:               { label: 'Maintenance',               color: '#6b7280', darkColor: '#374151', text: '#fff' },
 };
 
 // Neutral fallback used when an event has an unknown or removed category (e.g.
-// legacy 'micro_party', 'workshop', or 'other' values that no longer exist in
-// the legend). Keeps rendering safe until the event is re-tagged.
+// legacy 'micro_party' or 'other' values that no longer exist in the legend).
+// Keeps rendering safe until the event is re-tagged.
 const FALLBACK_CATEGORY = {
   label: 'Uncategorized',
   color: '#9ca3af',
