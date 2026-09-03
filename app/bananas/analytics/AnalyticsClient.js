@@ -12,7 +12,7 @@ import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvid
 // Keep legacy keys (workshop, yoga, party, other) so historical events keep
 // their existing analytics colors. New keys use the calendar-legend palette.
 const CATEGORY_COLOR = {
-  workshop: '#ec4899',
+  workshop: '#eab308',
   yoga: '#10b981',
   yoga_residency: '#14b8a6',
   evening_music_residency: '#a855f7',
