@@ -20,13 +20,23 @@ const MONTHS = [
 // light backgrounds, and the text color used on a fully-filled chip (e.g. the
 // category picker in the modal).
 const CATEGORIES = {
-  internal:      { label: 'Internal',      color: '#3b82f6', darkColor: '#1d4ed8', text: '#fff' },
-  team_meeting:  { label: 'Team Meeting',  color: '#8b5cf6', darkColor: '#6d28d9', text: '#fff' },
-  yoga:          { label: 'Yoga',          color: '#10b981', darkColor: '#047857', text: '#fff' },
-  micro_party:   { label: 'Micro Party',   color: '#f59e0b', darkColor: '#92400e', text: '#000' },
-  workshop:      { label: 'Workshop',      color: '#ec4899', darkColor: '#be185d', text: '#fff' },
-  maintenance:   { label: 'Maintenance',   color: '#6b7280', darkColor: '#374151', text: '#fff' },
-  other:         { label: 'Other',         color: '#f97316', darkColor: '#9a3412', text: '#fff' },
+  internal:                  { label: 'Internal',                  color: '#3b82f6', darkColor: '#1d4ed8', text: '#fff' },
+  team_meeting:              { label: 'Team Meeting',              color: '#8b5cf6', darkColor: '#6d28d9', text: '#fff' },
+  yoga:                      { label: 'Yoga',                      color: '#10b981', darkColor: '#047857', text: '#fff' },
+  yoga_residency:            { label: 'Yoga Residency',            color: '#14b8a6', darkColor: '#0f766e', text: '#fff' },
+  evening_music_residency:   { label: 'Evening Music Residency',   color: '#a855f7', darkColor: '#7e22ce', text: '#fff' },
+  day_party:                 { label: 'Day Party',                 color: '#f59e0b', darkColor: '#92400e', text: '#000' },
+  maintenance:               { label: 'Maintenance',               color: '#6b7280', darkColor: '#374151', text: '#fff' },
+};
+
+// Neutral fallback used when an event has an unknown or removed category (e.g.
+// legacy 'micro_party', 'workshop', or 'other' values that no longer exist in
+// the legend). Keeps rendering safe until the event is re-tagged.
+const FALLBACK_CATEGORY = {
+  label: 'Uncategorized',
+  color: '#9ca3af',
+  darkColor: '#4b5563',
+  text: '#fff',
 };
 
 // PUBLIC / INTERNAL micro-party marker styles, per theme. Light-mode text
@@ -475,7 +485,7 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
                       );
                     })}
                     {team.slice(0, 3 - Math.min(pub.length, 2)).map(evt => {
-                      const cat = CATEGORIES[evt.category] || CATEGORIES.other;
+                      const cat = CATEGORIES[evt.category] || FALLBACK_CATEGORY;
                       const chipColor = catTextColor(cat, theme);
                       const mine = canEdit(evt);
                       const linked = getLinkedEvent(evt);
@@ -605,7 +615,7 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
                 <div className="text-[11px] font-semibold tracking-[0.12em] mb-2" style={{ color: t.muted }}>INTERNAL EVENTS</div>
                 <div className="space-y-2">
                   {selectedEvents.team.map(evt => {
-                    const cat = CATEGORIES[evt.category] || CATEGORIES.other;
+                    const cat = CATEGORIES[evt.category] || FALLBACK_CATEGORY;
                     const chipColor = catTextColor(cat, theme);
                     const mine = canEdit(evt);
                     const linked = getLinkedEvent(evt);
@@ -685,14 +695,6 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
       <div className="flex flex-wrap gap-3 mt-8 mb-5">
         <span className="flex items-center gap-1.5 text-[12px] font-semibold tracking-[0.1em]" style={{ color: t.muted }}>
           LEGEND:
-        </span>
-        <span className="flex items-center gap-1.5 text-[12px]">
-          <span className="w-2.5 h-2.5 rounded-sm" style={{ background: PUBLIC_STYLE.dark.color, border: `1px solid ${PUBLIC_STYLE.dark.border}` }} />
-          <span style={{ color: t.mutedStrong }}>Public Event</span>
-        </span>
-        <span className="flex items-center gap-1.5 text-[12px]">
-          <span className="w-2.5 h-2.5 rounded-sm" style={{ background: INTERNAL_STYLE.dark.color, border: `1px solid ${INTERNAL_STYLE.dark.border}` }} />
-          <span style={{ color: t.mutedStrong }}>Micro Party (Internal)</span>
         </span>
         {Object.entries(CATEGORIES).map(([key, cat]) => (
           <span key={key} className="flex items-center gap-1.5 text-[12px]">
