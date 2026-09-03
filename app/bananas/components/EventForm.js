@@ -9,18 +9,41 @@ import EventContactFields from './EventContactFields';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import { CONTACT_REQUIRED_MESSAGE, ensureContactTaggedEventOrganizer } from '@/lib/contact-helpers';
 
+// Mirrors the calendar legend in app/components/EventsCalendarClient.js so the
+// edit page and the internal calendar share one taxonomy. Legacy values
+// (workshop, party, other, micro_party) are still accepted from historical
+// records but no longer offered as new choices.
 const CATEGORY_OPTIONS = [
-  { value: 'workshop', label: 'Workshop' },
+  { value: 'internal', label: 'Internal' },
+  { value: 'team_meeting', label: 'Team Meeting' },
   { value: 'yoga', label: 'Yoga' },
-  { value: 'party', label: 'Party (Dance / Music)' },
-  { value: 'other', label: 'Other' },
+  { value: 'yoga_residency', label: 'Yoga Residency' },
+  { value: 'evening_music_residency', label: 'Evening Music Residency' },
+  { value: 'day_party', label: 'Day Party' },
+  { value: 'workshop', label: 'Workshop' },
+  { value: 'maintenance', label: 'Maintenance' },
 ];
 
-const QUALIFYING_CATEGORIES = ['workshop', 'yoga', 'party'];
+// Categories that generate member ticket codes (i.e. ticketed public events).
+// Purely-internal categories (internal / team_meeting / maintenance) are
+// intentionally excluded. Legacy 'party' is still qualifying so historical
+// events keep working.
+const QUALIFYING_CATEGORIES = [
+  'workshop',
+  'yoga',
+  'yoga_residency',
+  'evening_music_residency',
+  'day_party',
+  'party',
+];
 
 const CATEGORY_DISCOUNT_DEFAULTS = {
   workshop: 60,
   yoga: 40,
+  yoga_residency: 40,
+  evening_music_residency: 60,
+  day_party: 60,
+  // Legacy fallbacks for historical events.
   party: 60,
   other: 50,
 };
@@ -62,7 +85,9 @@ export default function EventForm({
   // team calendar and admin dashboard but never publicly). Defaults to public.
   const [isInternal, setIsInternal] = useState(event?.visibility === 'internal');
   const [ticketUrl, setTicketUrl] = useState(event?.ticket_url || '');
-  const [category, setCategory] = useState(event?.category || 'other');
+  // New events default to Day Party, which is the most common ticketed event
+  // type. Legacy events keep whatever category was saved on the row.
+  const [category, setCategory] = useState(event?.category || 'day_party');
   const [memberDiscountPercent, setMemberDiscountPercent] = useState(
     event?.member_discount_percent != null ? String(event.member_discount_percent) : ''
   );

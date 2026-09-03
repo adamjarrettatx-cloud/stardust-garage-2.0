@@ -9,18 +9,37 @@ import EventContactFields from './EventContactFields';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import { CONTACT_REQUIRED_MESSAGE } from '@/lib/contact-helpers';
 
+// Mirrors the calendar legend in app/components/EventsCalendarClient.js so the
+// TicketTailor creator and the internal calendar share one taxonomy.
 const CATEGORY_OPTIONS = [
-  { value: 'workshop', label: 'Workshop' },
+  { value: 'internal', label: 'Internal' },
+  { value: 'team_meeting', label: 'Team Meeting' },
   { value: 'yoga', label: 'Yoga' },
-  { value: 'party', label: 'Party (Dance / Music)' },
-  { value: 'other', label: 'Other' },
+  { value: 'yoga_residency', label: 'Yoga Residency' },
+  { value: 'evening_music_residency', label: 'Evening Music Residency' },
+  { value: 'day_party', label: 'Day Party' },
+  { value: 'workshop', label: 'Workshop' },
+  { value: 'maintenance', label: 'Maintenance' },
 ];
 
-const QUALIFYING_CATEGORIES = ['workshop', 'yoga', 'party'];
+// Categories that generate member ticket codes. Purely-internal categories
+// (internal / team_meeting / maintenance) are intentionally excluded.
+const QUALIFYING_CATEGORIES = [
+  'workshop',
+  'yoga',
+  'yoga_residency',
+  'evening_music_residency',
+  'day_party',
+  'party',
+];
 
 const CATEGORY_DISCOUNT_DEFAULTS = {
   workshop: 60,
   yoga: 40,
+  yoga_residency: 40,
+  evening_music_residency: 60,
+  day_party: 60,
+  // Legacy fallback for historical events.
   party: 60,
   other: 50,
 };
@@ -53,9 +72,9 @@ export default function TtEventCreator() {
   const [eventEndTime, setEventEndTime] = useState('');
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
-  const [category, setCategory] = useState('party');
+  const [category, setCategory] = useState('day_party');
   const [memberDiscountPercent, setMemberDiscountPercent] = useState(
-    String(CATEGORY_DISCOUNT_DEFAULTS.party),
+    String(CATEGORY_DISCOUNT_DEFAULTS.day_party),
   );
   const [ticketTypes, setTicketTypes] = useState([emptyTicketType()]);
   // Defaults to "has an outside partner" so the team opts into SDG-only rather
