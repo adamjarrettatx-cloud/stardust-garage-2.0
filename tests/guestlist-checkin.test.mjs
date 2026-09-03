@@ -115,41 +115,70 @@ test('matchModeFor picks the flow the kiosk should show', () => {
   assert.equal(matchModeFor([{ id: 'a' }, { id: 'b' }], { id: 'linked' }), 'linked');
 });
 
-test('validateGuestIntake requires a real phone, a real email and a signature', () => {
-  assert.equal(validateGuestIntake({ phone: '512', email: 'a@b.co', signature: SIGNATURE }).valid, false);
-  assert.equal(validateGuestIntake({ phone: '5125551234', email: 'nope', signature: SIGNATURE }).valid, false);
-  assert.equal(validateGuestIntake({ phone: '5125551234', email: 'a@b', signature: SIGNATURE }).valid, false);
-  assert.equal(validateGuestIntake({ phone: '5125551234', email: 'a@b.co' }).valid, false);
+test('validateGuestIntake requires a real phone and a real email; signature is optional', () => {
+  assert.equal(validateGuestIntake({ phone: '512', email: 'a@b.co' }).valid, false);
+  assert.equal(validateGuestIntake({ phone: '5125551234', email: 'nope' }).valid, false);
+  assert.equal(validateGuestIntake({ phone: '5125551234', email: 'a@b' }).valid, false);
   assert.equal(validateGuestIntake(null).valid, false);
+  // 2026-09: signature is no longer required at the door. The trial-pass
+  // intake carries the release for everyone going forward, and the guest-list
+  // flow serves the residual partner-added-guest case where we just need
+  // phone + email to build a profile.
+  assert.equal(validateGuestIntake({ phone: '5125551234', email: 'a@b.co' }).valid, true);
 });
 
-// The signature replaced a staff-ticked checkbox. A tablet running a stale
-// bundle that still sends the old flag and no drawing has to be refused,
-// otherwise it would quietly go on recording consent nobody can evidence.
+// A signature IS still accepted when supplied (a future partner-side handoff
+// or a re-enabled opt-in flow might pass one), but a malformed data URL is
+// still rejected so we do not file garbage into storage.
+test('validateGuestIntake still rejects a malformed signature when one is supplied', () => {
+  const result = validateGuestIntake({
+    phone: '5125551234',
+    email: 'a@b.co',
+    signature: 'not-a-data-url',
+  });
+  assert.equal(result.valid, false);
+});
+
 test('validateGuestIntake will not accept the old marketing_consent flag as consent', () => {
+  // A stale kiosk sending marketing_consent:true with no signature must not
+  // silently produce a consented profile. Since signature is now optional, the
+  // intake IS valid, but the marketing_consent flag from the client is
+  // ignored: the server always derives consent from whether a signature was
+  // actually captured.
   const result = validateGuestIntake({
     phone: '5125551234',
     email: 'a@b.co',
     marketing_consent: true,
   });
-  assert.equal(result.valid, false);
-  assert.match(result.error, /sign/i);
+  assert.equal(result.valid, true);
+  assert.equal(result.data.marketing_consent, false);
+  assert.equal(result.data.signature, null);
 });
 
-test('validateGuestIntake normalizes what gets written to guest_profiles', () => {
+test('validateGuestIntake normalizes phone + email; no-signature is the default path', () => {
   const { valid, data } = validateGuestIntake({
     phone: ' (512) 555-1234 ',
     email: '  Jane.Doe@Example.COM ',
-    signature: SIGNATURE,
   });
   assert.equal(valid, true);
   assert.deepEqual(data, {
     phone: '(512) 555-1234',
     email: 'jane.doe@example.com',
-    // Derived from the signature, never taken from the client.
-    marketing_consent: true,
+    // No signature = no evidenced consent, so marketing_consent is false.
+    marketing_consent: false,
+    signature: null,
+  });
+});
+
+test('validateGuestIntake keeps the signature path working when one is supplied', () => {
+  const { valid, data } = validateGuestIntake({
+    phone: '5125551234',
+    email: 'a@b.co',
     signature: SIGNATURE,
   });
+  assert.equal(valid, true);
+  assert.equal(data.marketing_consent, true);
+  assert.equal(data.signature, SIGNATURE);
 });
 
 const ROSTER = [
