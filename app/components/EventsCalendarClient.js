@@ -101,9 +101,29 @@ const THEMES = {
   },
 };
 
+// Public event tiles use their assigned category color (with a translucent
+// fill so the tile still reads as a chip on both light and dark backgrounds).
+// Internal micro-parties keep the amber INTERNAL_STYLE regardless of category
+// so they stay visually distinct from public events. Anything without a known
+// category falls back to the amber PUBLIC_STYLE.
 function eventStyle(evt, theme) {
-  const map = evt?.visibility === 'internal' ? INTERNAL_STYLE : PUBLIC_STYLE;
-  return map[theme];
+  if (evt?.visibility === 'internal') {
+    return INTERNAL_STYLE[theme];
+  }
+  const cat = evt?.category ? CATEGORIES[evt.category] : null;
+  if (!cat) {
+    return PUBLIC_STYLE[theme];
+  }
+  // Alpha values chosen to match the internal-team-event chip translucency
+  // used elsewhere on the calendar (see the team-event chip render for
+  // comparison).
+  const bgAlpha = theme === 'light' ? '22' : '2e';
+  const borderAlpha = theme === 'light' ? '66' : '80';
+  return {
+    color: theme === 'light' ? cat.darkColor : cat.color,
+    bg: `${cat.color}${bgAlpha}`,
+    border: `${cat.color}${borderAlpha}`,
+  };
 }
 
 function catTextColor(cat, theme) {
