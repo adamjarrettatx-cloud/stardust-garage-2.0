@@ -38,7 +38,17 @@ const THEMES = {
 
 // Category dot colors, matching both original pages.
 const CATEGORY_COLOR = {
-  workshop: '#ffb84d', yoga: '#4ade80', party: '#f472b6', other: '#8a8a8a',
+  workshop: '#ec4899',
+  yoga: '#10b981',
+  yoga_residency: '#14b8a6',
+  evening_music_residency: '#a855f7',
+  day_party: '#f59e0b',
+  internal: '#3b82f6',
+  team_meeting: '#8b5cf6',
+  maintenance: '#6b7280',
+  // Legacy fallbacks for historical events.
+  party: '#f472b6',
+  other: '#8a8a8a',
 };
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];

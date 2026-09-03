@@ -9,8 +9,20 @@ import BackfillTTOrdersButton from './BackfillTTOrdersButton';
 import TicketTailorSalesChart from './TicketTailorSalesChart';
 import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
 
+// Keep legacy keys (workshop, yoga, party, other) so historical events keep
+// their existing analytics colors. New keys use the calendar-legend palette.
 const CATEGORY_COLOR = {
-  workshop: '#ffb84d', yoga: '#4ade80', party: '#f472b6', other: '#8a8a8a',
+  workshop: '#ec4899',
+  yoga: '#10b981',
+  yoga_residency: '#14b8a6',
+  evening_music_residency: '#a855f7',
+  day_party: '#f59e0b',
+  internal: '#3b82f6',
+  team_meeting: '#8b5cf6',
+  maintenance: '#6b7280',
+  // Legacy fallbacks for historical events.
+  party: '#f472b6',
+  other: '#8a8a8a',
 };
 
 function fmtDate(s) {
