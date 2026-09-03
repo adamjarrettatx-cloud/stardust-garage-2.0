@@ -213,48 +213,67 @@ async function resolveGuestProfile({ admin, entry, grant, body }) {
   return { profile: created, created: true, warning };
 }
 
-// File the signature and put the guest on the Sign Ups list.
+// Put the guest on the Sign Ups list, and if a signature was captured (2026-09:
+// no longer required at the door — the trial-pass intake carries the release
+// for everyone going forward) file it too.
 //
-// Runs after the profile exists because the signature is stored under the
-// profile's id. Never returns an error that aborts the check-in: the guest is
-// standing at the door and a storage hiccup is not their problem. What it
-// returns instead is a `warning` the kiosk shows the attendant, so a failure is
-// visible at the door rather than discovered months later by whoever went
-// looking for the consent record.
+// Runs after the profile exists so the signature (when present) is stored
+// under the profile's id. Never returns an error that aborts the check-in:
+// the guest is standing at the door and a storage hiccup is not their problem.
+// What it returns instead is a `warning` the door shows the attendant, so a
+// failure is visible at the door rather than discovered months later by
+// whoever went looking for the consent record.
 async function recordGuestConsent({ admin, profile, intake }) {
-  const signature = parseSignatureDataUrl(intake.signature);
-  const storagePath = guestSignatureStoragePath(profile.id, randomUUID());
+  // ---- Signature (optional) ----
+  //
+  // intake.signature is null in the new default path. validateGuestIntake
+  // already set marketing_consent accordingly, so no field needs walking back
+  // here. When a signature IS supplied (a partner-side handoff, or a manual
+  // opt-in flow re-enabled later), the storage upload and profile-link path
+  // is unchanged.
+  if (intake.signature) {
+    const signature = parseSignatureDataUrl(intake.signature);
+    const storagePath = guestSignatureStoragePath(profile.id, randomUUID());
 
-  const { error: uploadError } = await admin.storage
-    .from(GUEST_SIGNATURE_BUCKET)
-    .upload(storagePath, Buffer.from(signature.base64, 'base64'), {
-      contentType: GUEST_SIGNATURE_CONTENT_TYPE,
-      upsert: false,
-    });
+    const { error: uploadError } = await admin.storage
+      .from(GUEST_SIGNATURE_BUCKET)
+      .upload(storagePath, Buffer.from(signature.base64, 'base64'), {
+        contentType: GUEST_SIGNATURE_CONTENT_TYPE,
+        upsert: false,
+      });
 
-  if (uploadError) {
-    console.error('[door.guestlist.operation.signature]', uploadError);
-    // Consent we cannot evidence is not consent. Walk marketing_consent back to
-    // false and skip the Sign Ups row, so nothing downstream texts someone on
-    // the strength of an opt-in we failed to keep.
-    await admin.from('guest_profiles').update({ marketing_consent: false }).eq('id', profile.id);
-    return { warning: 'Their signature could not be saved, so they were NOT added to the list.' };
+    if (uploadError) {
+      console.error('[door.guestlist.operation.signature]', uploadError);
+      // Consent we cannot evidence is not consent. Walk marketing_consent back
+      // to false and skip the Sign Ups row, so nothing downstream texts
+      // someone on the strength of an opt-in we failed to keep.
+      await admin.from('guest_profiles').update({ marketing_consent: false }).eq('id', profile.id);
+      return { warning: 'Their signature could not be saved, so they were NOT added to the list.' };
+    }
+
+    const { error: profileError } = await admin
+      .from('guest_profiles')
+      .update({ signature_path: storagePath, signature_captured_at: new Date().toISOString() })
+      .eq('id', profile.id);
+
+    if (profileError) {
+      console.error('[door.guestlist.operation.signature-link]', profileError);
+    }
   }
 
-  const { error: profileError } = await admin
-    .from('guest_profiles')
-    .update({ signature_path: storagePath, signature_captured_at: new Date().toISOString() })
-    .eq('id', profile.id);
-
-  if (profileError) {
-    console.error('[door.guestlist.operation.signature-link]', profileError);
-  }
-
+  // ---- Sign Ups list ----
+  //
   // The same table the homepage "Stay in the loop" form writes to, so door
   // guests show up in the existing Sign Ups admin page and its CSV export
   // rather than in a second list nobody remembers to check. Email is the
   // contact of record because that is what Mailchimp keys on; the phone rides
   // along in its own column.
+  //
+  // We insert the row whether or not there is a signature — the guest exists,
+  // they came in the door, staff needs to see them in the list. The
+  // `marketing_consent` flag on guest_profiles is the source of truth for
+  // whether we may contact them, and it is already correct: true only when
+  // there was a signed record above, false otherwise.
   const { error: signupError } = await admin.from('signups').insert({
     contact: intake.email,
     contact_type: 'email',
