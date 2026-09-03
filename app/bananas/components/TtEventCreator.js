@@ -21,11 +21,10 @@ const CATEGORY_OPTIONS = [
   { value: 'trial_resident_party', label: 'Trial Resident Party' },
   { value: 'sdg_party', label: 'SDG Party' },
   { value: 'workshop', label: 'Workshop' },
-  { value: 'maintenance', label: 'Maintenance' },
 ];
 
 // Categories that generate member ticket codes. Purely-internal categories
-// (internal / team_meeting / maintenance) are intentionally excluded.
+// (internal / team_meeting) are intentionally excluded.
 const QUALIFYING_CATEGORIES = [
   'workshop',
   'yoga',
