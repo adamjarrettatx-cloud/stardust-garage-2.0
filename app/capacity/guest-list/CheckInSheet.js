@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { validateGuestIntake } from '@/lib/guestlist-checkin';
-import SignaturePad from './SignaturePad';
 
 // The check-in flow for one pending entry, as a bottom sheet so the roster stays
 // visible behind it and the controls sit under the thumbs holding the tablet.
@@ -11,8 +10,15 @@ import SignaturePad from './SignaturePad';
 //   confirm — one known guest with this name (or an already-linked profile):
 //             "Is this them, phone ending in ****1234?"
 //   pick    — several people share the name: choose, or declare a new guest.
-//   intake  — nobody with this name yet: phone + email + a signed consent,
-//             collected once, ever.
+//   intake  — nobody with this name yet: phone + email, collected once, ever.
+//
+// 2026-09: The signature step was removed. Going forward every walk-in is
+// expected to already be on a trial pass or full membership, so the release /
+// marketing consent is captured during trial-pass intake instead of at the
+// door. This flow keeps working for the residual case of a partner-added
+// guest we have never met before, it just no longer collects a signature and
+// (per lib/guestlist-checkin.js validateGuestIntake) marketing_consent is
+// false for the resulting guest_profiles row.
 export default function CheckInSheet({ entry, onClose, onCheckedIn, onConflict }) {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState(null);
@@ -20,7 +26,7 @@ export default function CheckInSheet({ entry, onClose, onCheckedIn, onConflict }
   const [confirmProfile, setConfirmProfile] = useState(null);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [intake, setIntake] = useState({ phone: '', email: '', signature: '' });
+  const [intake, setIntake] = useState({ phone: '', email: '' });
 
   useEffect(() => {
     let cancelled = false;
@@ -254,20 +260,6 @@ export default function CheckInSheet({ entry, onClose, onCheckedIn, onConflict }
                 placeholder="name@email.com"
               />
             </label>
-
-            <div
-              className="rounded-2xl px-4 py-4 mb-4 border"
-              style={{ background: '#0e0e0e', borderColor: 'rgba(255,255,255,0.12)' }}
-            >
-              <p className="text-[14px] mb-3" style={{ color: '#cfcfcf' }}>
-                Your signature confirms it&apos;s OK to contact you by text and email at the
-                number and address above.
-              </p>
-              <SignaturePad
-                disabled={submitting}
-                onChange={(signature) => setIntake((p) => ({ ...p, signature }))}
-              />
-            </div>
 
             <BigButton color="#16a34a" disabled={submitting || !intakeCheck.valid} type="submit">
               Save &amp; check in
