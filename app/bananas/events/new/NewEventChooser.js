@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import EventForm from '../../components/EventForm';
 import TtEventCreator from '../../components/TtEventCreator';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
@@ -10,8 +11,15 @@ import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 //     TicketTailor event series (date/time occurrence + ticket types) in one go.
 //   - "manual": the existing form (website event only, link an existing TT
 //     series or external ticket URL by hand).
-export default function NewEventChooser() {
-  const [mode, setMode] = useState(null);
+//
+// When the calendar day-click modal routes here with ?date=YYYY-MM-DD the
+// user has already picked 'Public' from the modal — skip the chooser and
+// jump straight into the ticketed creator (with date pre-filled) so there's
+// only one create flow.
+function NewEventChooserInner() {
+  const searchParams = useSearchParams();
+  const cameFromCalendar = /^\d{4}-\d{2}-\d{2}$/.test(searchParams?.get('date') || '');
+  const [mode, setMode] = useState(cameFromCalendar ? 'ticketed' : null);
 
   if (mode === 'ticketed') return <TtEventCreator />;
   if (mode === 'manual') return <EventForm />;
@@ -61,5 +69,14 @@ export default function NewEventChooser() {
         </button>
       </div>
     </div>
+  );
+}
+
+export default function NewEventChooser() {
+  // useSearchParams requires a Suspense boundary in the App Router.
+  return (
+    <Suspense fallback={null}>
+      <NewEventChooserInner />
+    </Suspense>
   );
 }

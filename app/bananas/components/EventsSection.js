@@ -57,11 +57,16 @@ export default function EventsSection({ upcoming, past }) {
             </span>
           </button>
         </div>
+        {/* Creating an event happens from the events calendar day-click flow,
+            which handles both internal and public (ticketed) events. Direct
+            '+ New Event' entry point intentionally removed so there is only
+            one create path. */}
         <Link
-          href="/bananas/events/new"
-          className="auth-theme-solid-button px-6 py-2.5 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5"
+          href="/bananas/calendar"
+          className="text-[12px] font-semibold tracking-[0.14em] transition-colors"
+          style={{ color: 'var(--auth-muted)' }}
         >
-          + NEW EVENT
+          + NEW EVENT → CALENDAR
         </Link>
       </div>
 
@@ -69,7 +74,7 @@ export default function EventsSection({ upcoming, past }) {
       {events.length === 0 ? (
         <div className="rounded-[14px] p-10 text-center border" style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}>
           <p className="text-[13px]" style={{ color: 'var(--auth-muted)' }}>
-            {tab === 'upcoming' ? 'No upcoming events. Click "+ NEW EVENT" to create one.' : 'No past events yet.'}
+            {tab === 'upcoming' ? 'No upcoming events. Head to the calendar and click a day to add one.' : 'No past events yet.'}
           </p>
         </div>
       ) : (
