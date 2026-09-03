@@ -31,6 +31,7 @@ const CATEGORY_COLOR = {
   yoga_residency: '#14b8a6',
   evening_music_residency: '#a855f7',
   day_party: '#f59e0b',
+  trial_resident_party: '#e11d48',
   internal: '#3b82f6',
   team_meeting: '#8b5cf6',
   maintenance: '#6b7280',
