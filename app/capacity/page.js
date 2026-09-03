@@ -36,6 +36,7 @@ export default async function CapacityHub() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Tile href="/capacity/front-desk" eyebrow="LAPTOP · FRONT DESK" title="Front Desk" desc="Live capacity, guest list check-in, issue a trial pass" color="#c084fc" />
+        <Tile href="/capacity/scan" eyebrow="IPAD · SCAN" title="Scan Trial Pass" desc="Camera scanner for the Trial SDG Pass QR — auto-bumps capacity" color="#7CFC9B" />
         <Tile href="/capacity/front-door" eyebrow="JELLY2 · FRONT" title="Front Door" desc="Big green check-in button" color="#7CFC9B" />
         <Tile href="/capacity/exit-door" eyebrow="JELLY2 · EXIT" title="Exit Door" desc="Big red check-out button" color="#ff8a8a" />
         <Tile href="/capacity/guest-list" eyebrow="TABLET · GUEST LIST" title="Guest List" desc="Find a name, check them in, mark no-shows" color="#8ab4ff" />

@@ -12,6 +12,7 @@ import {
   addDays,
   buildPassUrl,
   canonicalizeEmail,
+  extractPassTokenFromScan,
   daysRemaining,
   daysSinceActivated,
   daysSinceIssued,
@@ -186,6 +187,69 @@ test('the pass URL fits the QR encoder we actually ship', () => {
 test('buildPassUrl tolerates a trailing slash on the site URL', () => {
   assert.equal(buildPassUrl('https://sdgatx.com/', 'abc'), 'https://sdgatx.com/pass/abc');
   assert.equal(buildPassUrl('https://sdgatx.com', null), null);
+});
+
+// The iPad scanner passes whatever the camera decoded to extractPassTokenFromScan
+// before it hits the network. The cheap filter here saves the server from every
+// unrelated QR (an Instagram link, a Wi-Fi password, a menu, a random guest
+// scanning a poster) and returns a clean token or null.
+test('extractPassTokenFromScan pulls the token out of a full pass URL', () => {
+  const token = generatePassToken();
+  const url = buildPassUrl('https://www.sdgatx.com', token);
+  assert.equal(extractPassTokenFromScan(url), token);
+});
+
+test('extractPassTokenFromScan accepts a bare token QR (staff-generated test QRs)', () => {
+  const token = generatePassToken();
+  assert.equal(extractPassTokenFromScan(token), token);
+  // whitespace from a picky scanner is trimmed rather than rejected.
+  assert.equal(extractPassTokenFromScan(`  ${token}  `), token);
+});
+
+test('extractPassTokenFromScan works across environments (dev/preview/prod)', () => {
+  const token = generatePassToken();
+  assert.equal(extractPassTokenFromScan(`http://localhost:3000/pass/${token}`), token);
+  assert.equal(extractPassTokenFromScan(`https://stardust-garage-2-0-abc.vercel.app/pass/${token}`), token);
+  // A trailing slash is tolerated because some QR generators add one.
+  assert.equal(extractPassTokenFromScan(`https://sdgatx.com/pass/${token}/`), token);
+});
+
+test('extractPassTokenFromScan URL-decodes tokens buildPassUrl percent-encoded', () => {
+  // buildPassUrl runs encodeURIComponent on the token so any future token format
+  // that includes reserved characters round-trips cleanly. Today's token alphabet
+  // is [A-Za-z0-9_-] so nothing gets encoded in practice, but this test locks in
+  // that if a token ever contained e.g. "%" the scanner would still recover it.
+  const raw = 'AbC-def_ghi012345XYZ';
+  const url = `https://sdgatx.com/pass/${encodeURIComponent(raw)}`;
+  assert.equal(extractPassTokenFromScan(url), raw);
+});
+
+test('extractPassTokenFromScan refuses anything that is not a well-formed pass', () => {
+  // Non-strings and empties.
+  assert.equal(extractPassTokenFromScan(null), null);
+  assert.equal(extractPassTokenFromScan(undefined), null);
+  assert.equal(extractPassTokenFromScan(''), null);
+  assert.equal(extractPassTokenFromScan('   '), null);
+  assert.equal(extractPassTokenFromScan(42), null);
+
+  // URLs that are not /pass/ URLs.
+  assert.equal(extractPassTokenFromScan('https://sdgatx.com'), null);
+  assert.equal(extractPassTokenFromScan('https://sdgatx.com/events'), null);
+  assert.equal(extractPassTokenFromScan('https://instagram.com/stardustgarageatx'), null);
+  // A URL that *contains* /pass/ in the middle must not be extracted from — the
+  // token has to be the last path segment.
+  assert.equal(extractPassTokenFromScan('https://sdgatx.com/pass/abc/def'), null);
+
+  // Bare strings that fail the token regex.
+  assert.equal(extractPassTokenFromScan('HELLO'), null);
+  assert.equal(extractPassTokenFromScan('too-short'), null);
+  assert.equal(extractPassTokenFromScan('a'.repeat(65)), null);
+  assert.equal(extractPassTokenFromScan('has spaces in it xxxxxxx'), null);
+  assert.equal(extractPassTokenFromScan('contains!illegal!chars!!!!'), null);
+
+  // Garbage that superficially looks URL-shaped.
+  assert.equal(extractPassTokenFromScan('not a url'), null);
+  assert.equal(extractPassTokenFromScan('http://'), null);
 });
 
 // --- Intake validation ------------------------------------------------------
