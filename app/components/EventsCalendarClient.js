@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -162,27 +162,25 @@ function parseLocalDate(str) {
 // is a UI convenience only — the dataset each role receives is already scoped
 // server-side (lib/events-calendar-data.js) and by RLS.
 
-// Contract-state stripe on public event tiles.
-// - 'signed'   → green    (a signed or partially-signed contract exists)
-// - 'progress' → yellow   (draft/sent/etc., nothing signed yet)
-// - 'missing'  → red      (no contract row for this event)
-// Internal micro-parties are excluded because they never have counterparties.
-const CONTRACT_STRIPE = {
-  signed:   '#22c55e',
-  progress: '#eab308',
-  missing:  '#dc2626',
-};
-const CONTRACT_STRIPE_LABEL = {
-  signed:   'Contract signed',
-  progress: 'Contract in progress',
-  missing:  'Contract missing',
-};
+// Contract-signed stripe on public event tiles. Binary: if an event has a
+// signed + uploaded contract, a solid black stripe runs down the left edge.
+// No stripe means no signed contract yet. Internal micro-parties are excluded
+// because they never have counterparties.
+const CONTRACT_STRIPE_COLOR = { light: '#0a0a0a', dark: '#ffffff' };
+const CONTRACT_STRIPE_LABEL = 'Signed contract on file';
 
-export default function EventsCalendarClient({ publicEvents, teamEvents: initialTeamEvents, publicEventContractStatus = {}, isAdmin, currentUserId, currentUserName, creatorNames = {}, chatUnreadCount = 0, variant = 'page' }) {
+export default function EventsCalendarClient({ publicEvents, teamEvents: initialTeamEvents, publicEventsWithSignedContract = [], isAdmin, currentUserId, currentUserName, creatorNames = {}, chatUnreadCount = 0, variant = 'page' }) {
   const router = useRouter();
   const supabase = createClient();
   const today = new Date();
   const { theme, toggleTheme } = useAuthenticatedTheme();
+  // Set membership check per render (public event ids that have a signed +
+  // uploaded contract). Server sends the array; Set gives us O(1) lookups
+  // across the potentially many tile renders on a busy month.
+  const signedContractSet = useMemo(
+    () => new Set(publicEventsWithSignedContract || []),
+    [publicEventsWithSignedContract]
+  );
 
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth()); // 0-indexed
@@ -510,15 +508,11 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
                       const internal = evt.visibility === 'internal';
                       // Contract stripe applies only to public events; internal
                       // micro-parties never have counterparties, so no stripe.
-                      // Non-admins receive an empty publicEventContractStatus map
-                      // (RLS-scoped server-side), which correctly short-circuits
-                      // to no stripe rather than "everything looks missing".
-                      const hasContractData = Object.keys(publicEventContractStatus).length > 0;
-                      const contractState = !internal && hasContractData
-                        ? (publicEventContractStatus[evt.id] || 'missing')
-                        : null;
-                      const stripeColor = contractState ? CONTRACT_STRIPE[contractState] : null;
-                      const stripeLabel = contractState ? CONTRACT_STRIPE_LABEL[contractState] : null;
+                      // Non-admins receive an empty list (RLS-scoped server-side)
+                      // and therefore see no stripes at all — contract status is
+                      // admin business.
+                      const hasSignedContract = !internal && signedContractSet.has(evt.id);
+                      const stripeColor = hasSignedContract ? CONTRACT_STRIPE_COLOR[theme] : null;
                       return (
                         <div
                           key={`pub-${evt.id}`}
@@ -534,7 +528,9 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
                           style={{ background: st.bg, color: st.color, border: `1px solid ${st.border}` }}
                           title={internal
                             ? `${evt.title} (internal micro party)`
-                            : `${evt.title} \u2014 ${stripeLabel}`}
+                            : hasSignedContract
+                              ? `${evt.title} \u2014 ${CONTRACT_STRIPE_LABEL}`
+                              : evt.title}
                         >
                           {stripeColor && (
                             <span
@@ -648,12 +644,8 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
                   {selectedEvents.pub.map(evt => {
                     const st = eventStyle(evt, theme);
                     const internal = evt.visibility === 'internal';
-                    const hasContractData = Object.keys(publicEventContractStatus).length > 0;
-                    const contractState = !internal && hasContractData
-                      ? (publicEventContractStatus[evt.id] || 'missing')
-                      : null;
-                    const contractColor = contractState ? CONTRACT_STRIPE[contractState] : null;
-                    const contractLabel = contractState ? CONTRACT_STRIPE_LABEL[contractState] : null;
+                    const hasSignedContract = !internal && signedContractSet.has(evt.id);
+                    const contractColor = hasSignedContract ? CONTRACT_STRIPE_COLOR[theme] : null;
                     return (
                       <div
                         key={evt.id}
@@ -686,11 +678,11 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
                           {contractColor && (
                             <span
                               className="text-[10px] font-semibold tracking-[0.05em] px-1.5 py-0.5 rounded-full inline-flex items-center gap-1"
-                              style={{ background: `${contractColor}22`, color: contractColor, border: `1px solid ${contractColor}55` }}
-                              title={contractLabel}
+                              style={{ background: `${contractColor}18`, color: contractColor, border: `1px solid ${contractColor}55` }}
+                              title={CONTRACT_STRIPE_LABEL}
                             >
                               <span style={{ width: 6, height: 6, borderRadius: 999, background: contractColor, display: 'inline-block' }} />
-                              {contractLabel}
+                              {CONTRACT_STRIPE_LABEL}
                             </span>
                           )}
                         </div>
@@ -810,21 +802,19 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
           </span>
         )}
       </div>
-      {/* Contract stripe key — the coloured left-edge stripe on each public
-          event tile shows whether that event has a signed contract yet.
-          Only rendered when the current viewer actually receives contract
-          data (admins), matching the stripe visibility on the tiles. */}
-      {Object.keys(publicEventContractStatus).length > 0 && (
+      {/* Contract stripe key — the black left-edge stripe on a public event
+          tile means a signed contract is on file. No stripe means no signed
+          contract yet. Only rendered for admins (contract status is admin
+          business; non-admins receive an empty list server-side). */}
+      {isAdmin && (
         <div className="flex flex-wrap gap-3 mb-5">
           <span className="flex items-center gap-1.5 text-[12px] font-semibold tracking-[0.1em]" style={{ color: t.muted }}>
             CONTRACT:
           </span>
-          {['signed', 'progress', 'missing'].map((key) => (
-            <span key={key} className="flex items-center gap-1.5 text-[12px]">
-              <span style={{ display: 'inline-block', width: 3, height: 14, borderRadius: 1, background: CONTRACT_STRIPE[key] }} />
-              <span style={{ color: t.mutedStrong }}>{CONTRACT_STRIPE_LABEL[key]}</span>
-            </span>
-          ))}
+          <span className="flex items-center gap-1.5 text-[12px]">
+            <span style={{ display: 'inline-block', width: 3, height: 14, borderRadius: 1, background: CONTRACT_STRIPE_COLOR[theme] }} />
+            <span style={{ color: t.mutedStrong }}>{CONTRACT_STRIPE_LABEL}</span>
+          </span>
         </div>
       )}
 
