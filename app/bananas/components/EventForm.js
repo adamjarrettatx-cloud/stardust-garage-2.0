@@ -21,6 +21,7 @@ const CATEGORY_OPTIONS = [
   { value: 'evening_music_residency', label: 'Evening Music Residency' },
   { value: 'day_party', label: 'Day Party' },
   { value: 'trial_resident_party', label: 'Trial Resident Party' },
+  { value: 'sdg_party', label: 'SDG Party' },
   { value: 'workshop', label: 'Workshop' },
   { value: 'maintenance', label: 'Maintenance' },
 ];
@@ -36,6 +37,7 @@ const QUALIFYING_CATEGORIES = [
   'evening_music_residency',
   'day_party',
   'trial_resident_party',
+  'sdg_party',
   'party',
 ];
 
@@ -46,6 +48,7 @@ const CATEGORY_DISCOUNT_DEFAULTS = {
   evening_music_residency: 60,
   day_party: 60,
   trial_resident_party: 60,
+  sdg_party: 60,
   // Legacy fallbacks for historical events.
   party: 60,
   other: 50,

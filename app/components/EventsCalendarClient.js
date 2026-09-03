@@ -27,6 +27,7 @@ const CATEGORIES = {
   evening_music_residency:   { label: 'Evening Music Residency',   color: '#a855f7', darkColor: '#7e22ce', text: '#fff' },
   day_party:                 { label: 'Day Party',                 color: '#f59e0b', darkColor: '#92400e', text: '#000' },
   trial_resident_party:      { label: 'Trial Resident Party',      color: '#e11d48', darkColor: '#9f1239', text: '#fff' },
+  sdg_party:                 { label: 'SDG Party',                 color: '#dc2626', darkColor: '#991b1b', text: '#fff' },
   workshop:                  { label: 'Workshop',                  color: '#ec4899', darkColor: '#be185d', text: '#fff' },
   maintenance:               { label: 'Maintenance',               color: '#6b7280', darkColor: '#374151', text: '#fff' },
 };
