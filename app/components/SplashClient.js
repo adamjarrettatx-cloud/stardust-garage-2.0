@@ -1,28 +1,22 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSound } from './SoundProvider';
 
 export default function SplashClient({ logoUrl }) {
-  const [soundOn, setSoundOn] = useState(false);
+  const { soundOn, toggleSound } = useSound();
   const [mounted, setMounted] = useState(false);
-  const audioRef = useRef(null);
 
   useEffect(() => { setMounted(true); }, []);
 
-  const toggleSound = () => {
-    if (!audioRef.current) return;
-    if (soundOn) {
-      audioRef.current.pause();
-      setSoundOn(false);
-    } else {
-      audioRef.current.play().then(() => setSoundOn(true)).catch(() => { setSoundOn(false); });
-    }
-  };
-
   return (
     <main className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-12 md:pt-20 pb-16">
-      <audio ref={audioRef} loop preload="auto" src="https://iwgfelvbebqbaotkylsw.supabase.co/storage/v1/object/public/site-assets/sdg-bg-track.mp3" />
+      {/*
+        The background audio element itself lives in <SoundProvider> at the
+        root of the app so it survives navigation from splash → /home without
+        restarting. This page only renders the visible toggle.
+      */}
 
       <div className="flex flex-col items-center -mt-12 md:-mt-20">
         <div className="flex flex-col items-center mb-8 md:mb-10">

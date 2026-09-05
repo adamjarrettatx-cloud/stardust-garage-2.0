@@ -5,6 +5,8 @@ import NavbarVisibility from './components/NavbarVisibility';
 import CosmosBackground from './components/CosmosBackground';
 import AuthenticatedRouteShell from './components/AuthenticatedRouteShell';
 import MailchimpAttribution from './components/MailchimpAttribution';
+import SoundProvider from './components/SoundProvider';
+import GlobalSoundToggle from './components/GlobalSoundToggle';
 
 export const metadata = {
   title: 'Stardust Garage',
@@ -45,15 +47,18 @@ export default function RootLayout({ children }) {
           <MailchimpAttribution />
         </Suspense>
         <CosmosBackground />
-        <AuthenticatedRouteShell
-          navbar={(
-            <NavbarVisibility>
-              <Navbar />
-            </NavbarVisibility>
-          )}
-        >
-          {children}
-        </AuthenticatedRouteShell>
+        <SoundProvider>
+          <AuthenticatedRouteShell
+            navbar={(
+              <NavbarVisibility>
+                <Navbar />
+              </NavbarVisibility>
+            )}
+          >
+            {children}
+          </AuthenticatedRouteShell>
+          <GlobalSoundToggle />
+        </SoundProvider>
       </body>
     </html>
   );
