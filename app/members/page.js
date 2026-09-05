@@ -86,7 +86,7 @@ export default function MembersPage() {
             Three ways to belong.
           </h1>
           <p className="text-[15px] leading-[1.65]" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            Pick the tier that fits how you actually use the room — weekends only, weekdays only, or both. Every membership is application-based and accepted on a rolling basis.
+            Apply for the tier that fits how you want to spend your time with us. Every membership is application-based and accepted on a rolling basis.
           </p>
         </div>
 
