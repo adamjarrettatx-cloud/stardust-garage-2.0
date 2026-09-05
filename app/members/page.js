@@ -115,6 +115,60 @@ export default function MembersPage() {
             </div>
           ))}
         </div>
+
+        {/* Trial Pass placeholder — highlighted gold band under the three tiles.
+            Disabled/greyed-out on purpose until the /pass flow is wired up here;
+            existing at /pass. See TODO below when ready to go live. */}
+        <div
+          aria-disabled="true"
+          className="relative mt-8 rounded-[18px] p-7 md:p-8 border flex flex-col md:flex-row md:items-center gap-6 md:gap-8"
+          style={{
+            background: 'linear-gradient(180deg, rgba(201,168,107,0.06), rgba(255,255,255,0.015))',
+            borderColor: 'rgba(201,168,107,0.55)',
+            boxShadow: '0 0 0 1px rgba(201,168,107,0.12), 0 30px 60px -30px rgba(201,168,107,0.20)',
+            cursor: 'not-allowed',
+            opacity: 0.75,
+          }}
+        >
+          <div
+            className="absolute -top-2.5 left-7 text-[10px] font-semibold tracking-[0.28em] px-2.5 py-1 rounded-full"
+            style={{ background: '#c9a86b', color: '#1a1408' }}
+          >
+            COMING SOON
+          </div>
+
+          <div className="flex-1">
+            <div className="text-[10px] font-semibold tracking-[0.28em] mb-2" style={{ color: 'rgba(201,168,107,0.85)' }}>
+              FIRST VISIT, ON US
+            </div>
+            <h3 className="text-[22px] font-bold -tracking-[0.01em] mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              The 30-Day Trial Pass
+            </h3>
+            <p className="text-[14px] leading-[1.55] max-w-[560px]" style={{ color: 'rgba(255,255,255,0.65)' }}>
+              One free first visit — thirty days to decide if we&rsquo;re home. Your window starts the night you walk in, not the day you sign up.
+            </p>
+          </div>
+
+          <div className="flex-shrink-0 w-full md:w-auto">
+            {/* TODO(trial-pass): swap this <button disabled> for
+                  <Link href="/pass">CLAIM MY PASS</Link>
+                when Adam gives the go-ahead. Route already exists in production. */}
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              className="w-full md:w-auto md:min-w-[200px] px-8 py-3.5 rounded-full text-[12px] font-semibold tracking-[0.28em] text-center"
+              style={{
+                background: 'transparent',
+                color: 'rgba(255,255,255,0.55)',
+                border: '1px solid rgba(201,168,107,0.45)',
+                cursor: 'not-allowed',
+              }}
+            >
+              COMING SOON
+            </button>
+          </div>
+        </div>
       </section>
 
       {/* THE SPACE — moved BELOW the tiles as supporting proof */}
