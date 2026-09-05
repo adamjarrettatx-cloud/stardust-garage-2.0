@@ -113,13 +113,13 @@ export default function MembersPage() {
 
           <div className="flex-1">
             <div className="text-[10px] font-semibold tracking-[0.28em] mb-2" style={{ color: 'rgba(201,168,107,0.85)' }}>
-              FIRST VISIT, ON US
+              TRY US BEFORE YOU JOIN
             </div>
             <h3 className="text-[22px] font-bold -tracking-[0.01em] mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
               The 30-Day Trial Pass
             </h3>
             <p className="text-[14px] leading-[1.55] max-w-[560px]" style={{ color: 'rgba(255,255,255,0.65)' }}>
-              One free first visit — thirty days to decide if we&rsquo;re home. Your window starts the night you walk in, not the day you sign up.
+              One first visit, thirty days to decide if we&rsquo;re home. Your window starts the night you walk in, not the day you sign up.
             </p>
           </div>
 
