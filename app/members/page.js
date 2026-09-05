@@ -90,38 +90,12 @@ export default function MembersPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {plans.map((plan) => (
-            <div key={plan.slug} className="relative rounded-[18px] p-9 md:p-10 border flex flex-col" style={{ background: '#141418', borderColor: 'rgba(255,255,255,0.06)', color: '#f5f5f5' }}>
-              <div className="text-[10px] font-semibold tracking-[0.28em] mb-3" style={{ color: 'rgba(255,255,255,0.5)' }}>{plan.kicker}</div>
-              <h3 className="text-[22px] font-bold -tracking-[0.01em] mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{plan.name}</h3>
-              <p className="text-[14px] leading-[1.55] mb-7" style={{ color: 'rgba(255,255,255,0.6)' }}>{plan.tagline}</p>
-
-              <div className="flex items-baseline gap-2 mb-8">
-                <span className="text-[36px] md:text-[44px] font-extrabold -tracking-[0.02em] leading-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{plan.price}</span>
-                <span className="text-[13px]" style={{ color: 'rgba(255,255,255,0.5)' }}>{plan.period}</span>
-              </div>
-
-              <ul className="list-none mb-9 flex-1 space-y-2.5">
-                {plan.benefits.map((benefit) => (
-                  <li key={benefit} className="flex items-start gap-3 text-[14px] leading-[1.55]">
-                    <CheckIcon />
-                    <span>{benefit}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <Link href={`/members/apply/${plan.slug}`} className="w-full py-3.5 rounded-full text-[12px] font-semibold tracking-[0.2em] transition-all hover:-translate-y-0.5 text-center" style={{ background: '#f5f5f0', color: '#0a0a0a' }}>APPLY</Link>
-            </div>
-          ))}
-        </div>
-
-        {/* Trial Pass placeholder — highlighted gold band under the three tiles.
+        {/* Trial Pass placeholder — highlighted gold band above the three tiles.
             Disabled/greyed-out on purpose until the /pass flow is wired up here;
             existing at /pass. See TODO below when ready to go live. */}
         <div
           aria-disabled="true"
-          className="relative mt-8 rounded-[18px] p-7 md:p-8 border flex flex-col md:flex-row md:items-center gap-6 md:gap-8"
+          className="relative mb-8 rounded-[18px] p-7 md:p-8 border flex flex-col md:flex-row md:items-center gap-6 md:gap-8"
           style={{
             background: 'linear-gradient(180deg, rgba(201,168,107,0.06), rgba(255,255,255,0.015))',
             borderColor: 'rgba(201,168,107,0.55)',
@@ -168,6 +142,32 @@ export default function MembersPage() {
               COMING SOON
             </button>
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {plans.map((plan) => (
+            <div key={plan.slug} className="relative rounded-[18px] p-9 md:p-10 border flex flex-col" style={{ background: '#141418', borderColor: 'rgba(255,255,255,0.06)', color: '#f5f5f5' }}>
+              <div className="text-[10px] font-semibold tracking-[0.28em] mb-3" style={{ color: 'rgba(255,255,255,0.5)' }}>{plan.kicker}</div>
+              <h3 className="text-[22px] font-bold -tracking-[0.01em] mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{plan.name}</h3>
+              <p className="text-[14px] leading-[1.55] mb-7" style={{ color: 'rgba(255,255,255,0.6)' }}>{plan.tagline}</p>
+
+              <div className="flex items-baseline gap-2 mb-8">
+                <span className="text-[36px] md:text-[44px] font-extrabold -tracking-[0.02em] leading-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{plan.price}</span>
+                <span className="text-[13px]" style={{ color: 'rgba(255,255,255,0.5)' }}>{plan.period}</span>
+              </div>
+
+              <ul className="list-none mb-9 flex-1 space-y-2.5">
+                {plan.benefits.map((benefit) => (
+                  <li key={benefit} className="flex items-start gap-3 text-[14px] leading-[1.55]">
+                    <CheckIcon />
+                    <span>{benefit}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <Link href={`/members/apply/${plan.slug}`} className="w-full py-3.5 rounded-full text-[12px] font-semibold tracking-[0.2em] transition-all hover:-translate-y-0.5 text-center" style={{ background: '#f5f5f0', color: '#0a0a0a' }}>APPLY</Link>
+            </div>
+          ))}
         </div>
       </section>
 
