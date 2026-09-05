@@ -32,7 +32,13 @@ import EventsSection from './components/EventsSection';
 // bled through under Analytics for the actual owner. `resolveRootAdminTab`
 // mirrors what AdminShell does for the dashboard root, so the two agree on
 // which section is showing.
-export default function EventsTabPanel({ upcoming, past, calendar, isOwner }) {
+export default function EventsTabPanel({
+  upcoming,
+  past,
+  calendar,
+  isOwner,
+  metricsByEvent,
+}) {
   const searchParams = useSearchParams();
   const activeTab = resolveRootAdminTab(searchParams?.get('tab'), { isOwner });
   if (activeTab !== 'events') return null;
@@ -40,7 +46,7 @@ export default function EventsTabPanel({ upcoming, past, calendar, isOwner }) {
   return (
     <>
       {calendar && <EventsCalendarClient variant="section" {...calendar} />}
-      <EventsSection upcoming={upcoming} past={past} />
+      <EventsSection upcoming={upcoming} past={past} metricsByEvent={metricsByEvent} />
     </>
   );
 }

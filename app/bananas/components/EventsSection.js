@@ -3,13 +3,19 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import DeleteEventButton from './DeleteEventButton';
+import EventTicketSalesLive from './EventTicketSalesLive';
 
 function formatDate(dateString) {
   const date = new Date(dateString + 'T00:00:00');
   return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-export default function EventsSection({ upcoming, past }) {
+// `metricsByEvent` is a plain map of event.id -> cached TicketTailor metrics
+// row from public.event_ticket_metrics. It comes from the server component
+// (app/bananas/page.js) so the initial render already has the number — the
+// live refresh button under the number re-pulls TicketTailor for just that
+// event and updates in place without leaving the list.
+export default function EventsSection({ upcoming, past, metricsByEvent = {} }) {
   const [tab, setTab] = useState('upcoming');
   const events = tab === 'upcoming' ? upcoming : past;
 
@@ -110,17 +116,23 @@ export default function EventsSection({ upcoming, past }) {
                 </div>
                 <div className="text-[12px] mt-1" style={{ color: 'var(--auth-faint)' }}>/events/{event.slug}</div>
               </div>
-              {/* Guest List and Artist Pay are per-event work, so they open
-                  scoped to this event rather than to an all-events summary you
-                  then have to search. They used to be People tiles, which is
-                  exactly the trip this removes.
-
-                  Four buttons is a lot for one row, so the two long labels
-                  shorten below 640px instead of wrapping the row onto a second
-                  line. Both halves are always in the markup - only one is
-                  displayed - so the label never depends on a JS width guess and
-                  the full wording stays available to search and screen readers.
-                  The title attribute keeps the event name on hover either way. */}
+              {/* Live ticket sales for the event sit where the per-event pay
+                  button used to be, so the owner can read the number at a
+                  glance without opening Ticket Tailor or a separate analytics
+                  screen. The pay-request queue moved to its own MONEY sidebar
+                  tab (see lib/admin-tabs.js) so a per-event button here would
+                  only duplicate a destination that is already one click from
+                  anywhere. Guest List stays on the row because it is per-event
+                  work with no equivalent global page. The long label shortens
+                  below 640px instead of wrapping the row onto a second line;
+                  both halves ship in the markup so the label never depends on
+                  a JS width guess and the full wording stays available to
+                  search and screen readers. */}
+              <EventTicketSalesLive
+                eventId={event.id}
+                hasTicketTailor={Boolean(event.tt_event_series_id)}
+                initialMetrics={metricsByEvent[event.id] || null}
+              />
               <div className="flex flex-wrap gap-2 justify-end flex-shrink-0">
                 <Link
                   href={`/bananas/guest-list/${event.id}`}
@@ -129,14 +141,6 @@ export default function EventsSection({ upcoming, past }) {
                 >
                   <span className="sm:hidden">GUESTS</span>
                   <span className="hidden sm:inline">GUEST LIST</span>
-                </Link>
-                <Link
-                  href={`/bananas/pay-requests?event=${event.id}`}
-                  className="auth-theme-border-button px-3 sm:px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
-                  title={`Artist pay for ${event.title}`}
-                >
-                  <span className="sm:hidden">PAY</span>
-                  <span className="hidden sm:inline">ARTIST PAY</span>
                 </Link>
                 <Link
                   href={`/bananas/events/${event.id}`}

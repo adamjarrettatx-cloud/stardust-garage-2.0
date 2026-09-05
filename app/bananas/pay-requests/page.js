@@ -23,13 +23,13 @@ function formatEventDate(dateString) {
 // client-side through adminFetch, same split as ArtistLineupPanel: this file
 // is only the server-side auth gate + page chrome.
 //
-// ?event=<id> scopes the review queue to one event. That is how this page is
-// normally reached — from the ARTIST PAY button on the event's row in the
-// Events list — so the header names the event instead of making you scan a
-// mixed queue for it. The event title is resolved here rather than read off a
-// request row so the page can still say which event it is showing when that
-// event has no requests yet. Without the param the page behaves as before and
-// shows every request.
+// ?event=<id> scopes the review queue to one event. Artist Pay now has its
+// own MONEY sidebar tab that opens the full queue, so the normal entry point
+// is the unscoped list; the scoped variant is kept for existing deep links
+// (older shared URLs, notifications) and for the "THIS EVENT ONLY" toggle in
+// the client. The event title is resolved here rather than read off a request
+// row so the page can still say which event it is showing when that event has
+// no requests yet.
 export default async function PayRequestsPage({ searchParams }) {
   const { redirect: gate } = await adminPageGate();
   if (gate) redirect(gate);
@@ -52,8 +52,12 @@ export default async function PayRequestsPage({ searchParams }) {
   return (
     <>
       <AuthenticatedPageHeader
-        backHref={event ? `/bananas?tab=events` : null}
-        backLabel={event ? '← BACK TO EVENTS' : null}
+        // A scoped view exists to narrow the queue to one event's requests;
+        // the way back out of that filter is the unscoped Artist Pay page,
+        // which is where the sidebar tab points. The unscoped page has no
+        // back link because Artist Pay is a top-level MONEY section now.
+        backHref={event ? `/bananas/pay-requests` : null}
+        backLabel={event ? '← SHOW EVERY EVENT' : null}
         title="Artist Pay"
         description={
           event
