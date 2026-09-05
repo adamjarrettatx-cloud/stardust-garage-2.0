@@ -21,11 +21,15 @@
 // If `return_to` is missing (direct hit, or a future web sign-in), we
 // fall back to the marketing home; a future web-app codebase can extend
 // this page to set a Supabase cookie session in that case.
+//
+// Suspense wrapper: useSearchParams triggers a client-side-render bailout
+// during static export in Next 15, which fails the build unless the
+// consumer is wrapped in <Suspense>. We wrap the inner component below.
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-export default function AuthCallbackPage() {
+function AuthCallbackInner() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState('Completing sign-in...');
   const [manualLink, setManualLink] = useState(null);
@@ -55,6 +59,35 @@ export default function AuthCallbackPage() {
   }, [searchParams]);
 
   return (
+    <div style={{ textAlign: 'center', maxWidth: 420 }}>
+      <div style={{ fontSize: 14, letterSpacing: 2, color: '#d9c48c', marginBottom: 16 }}>
+        STARDUST GARAGE
+      </div>
+      <div style={{ fontSize: 20, fontWeight: 500 }}>{status}</div>
+      {manualLink && (
+        <div style={{ marginTop: 24 }}>
+          <a
+            href={manualLink}
+            style={{
+              display: 'inline-block',
+              padding: '12px 24px',
+              background: '#d9c48c',
+              color: '#0a0a0a',
+              textDecoration: 'none',
+              borderRadius: 999,
+              fontWeight: 600,
+            }}
+          >
+            Open in app
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
     <main
       style={{
         minHeight: '100vh',
@@ -67,30 +100,9 @@ export default function AuthCallbackPage() {
         padding: 24,
       }}
     >
-      <div style={{ textAlign: 'center', maxWidth: 420 }}>
-        <div style={{ fontSize: 14, letterSpacing: 2, color: '#d9c48c', marginBottom: 16 }}>
-          STARDUST GARAGE
-        </div>
-        <div style={{ fontSize: 20, fontWeight: 500 }}>{status}</div>
-        {manualLink && (
-          <div style={{ marginTop: 24 }}>
-            <a
-              href={manualLink}
-              style={{
-                display: 'inline-block',
-                padding: '12px 24px',
-                background: '#d9c48c',
-                color: '#0a0a0a',
-                textDecoration: 'none',
-                borderRadius: 999,
-                fontWeight: 600,
-              }}
-            >
-              Open in app
-            </a>
-          </div>
-        )}
-      </div>
+      <Suspense fallback={<div style={{ color: '#f5f5f5' }}>Completing sign-in...</div>}>
+        <AuthCallbackInner />
+      </Suspense>
     </main>
   );
 }
