@@ -116,10 +116,11 @@ export default function ApplicationsList({ applications }) {
                     style={{
                       background: a.plan === 'cowork-party' ? 'var(--auth-accent)' : 'var(--auth-card-bg-alt)',
                       color: a.plan === 'cowork-party' ? 'var(--auth-accent-text)' : 'var(--auth-text)',
+                      // 'cowork-party' renders as "EXPERIENCE"; new 'weekender' plan gets its own label.
                       border: '1px solid var(--auth-card-border-strong)',
                     }}
                   >
-                    {a.plan === 'cowork-party' ? 'COWORK + PARTY' : 'COWORK'}
+                    {a.plan === 'cowork-party' ? 'EXPERIENCE' : a.plan === 'weekender' ? 'WEEKENDER' : 'COWORK'}
                   </div>
                   <div className="text-[11px]" style={{ color: 'var(--auth-faint)' }}>
                     {formatDate(a.created_at)}

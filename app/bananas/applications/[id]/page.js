@@ -63,7 +63,7 @@ export default async function ApplicationDetail({ params }) {
         subtitle={app.preferred_name ? `goes by ${app.preferred_name}` : null}
         submittedLabel={`Submitted ${formatDate(app.created_at)}`}
         badges={[
-          <Pill key="plan">{app.plan === 'cowork-party' ? 'COWORK + PARTY' : 'COWORK'}</Pill>,
+          <Pill key="plan">{app.plan === 'cowork-party' ? 'EXPERIENCE' : app.plan === 'weekender' ? 'WEEKENDER' : 'COWORK'}</Pill>,
           <SubmissionStatusBadge key="status" status={app.status || 'new'} />,
         ]}
         contactRow={

@@ -2,25 +2,46 @@ import Link from 'next/link';
 
 const plans = [
   {
+    name: 'The Weekender',
+    slug: 'weekender',
+    price: '$48',
+    period: '/ month',
+    featured: false,
+    kicker: 'FOR THE WEEKEND CROWD',
+    tagline: 'Your ticket to every Music & Party night \u2014 for less.',
+    benefits: [
+      '25% off Music & Party tickets, every weekend',
+      'Priority access when shows sell out',
+      'Members-only pre-sale windows',
+      'Cancel anytime',
+    ],
+  },
+  {
     name: 'Cowork',
     slug: 'cowork',
     price: '$155',
     period: '/ month',
     featured: false,
+    kicker: 'FOR THE WORKDAY',
     tagline: 'For people who do their best work somewhere that isn\u2019t home and isn\u2019t a coffee shop.',
     benefits: [
       'Cowork access, 8AM \u2013 6PM, Mon\u2013Fri',
+      'Gigabit fiber, refreshments, curated room',
       '3 guest passes per month',
       'A community of artists, builders, and culturally aligned people',
     ],
   },
   {
-    name: 'IYKYK (Cowork + Party)',
+    // NOTE: slug stays 'cowork-party' \u2014 renaming would ripple through Stripe,
+    // activation, applications, and existing member records. Only the display
+    // name changes from "IYKYK" to "Experience".
+    name: 'Experience',
     slug: 'cowork-party',
     price: '$225',
     period: '/ month',
-    featured: true,
-    tagline: 'For people who want their workdays here \u2014 and their weekends, too.',
+    featured: false,
+    kicker: 'WORKDAYS + WEEKENDS',
+    tagline: 'The full Stardust Garage \u2014 every hour it\u2019s open.',
     benefits: [
       'Everything in Cowork',
       '60% off SDG event tickets',
@@ -50,23 +71,62 @@ function FeatureIcon({ name }) {
   return null;
 }
 
-function CheckIcon({ dark = false }) {
-  return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={dark ? '#0a0a0a' : '#f5f5f5'} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 4 }}><polyline points="20 6 9 17 4 12" /></svg>);
+function CheckIcon() {
+  return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f5f5f5" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 4 }}><polyline points="20 6 9 17 4 12" /></svg>);
 }
 
 export default function MembersPage() {
   return (
     <main style={{ viewTransitionName: 'portal-members' }}>
-      {/* THE SPACE */}
-      <section id="space" className="max-w-[1100px] mx-auto px-6 pt-20 pb-20 md:pt-28 md:pb-28 scroll-mt-24">
-        <div className="mb-12 max-w-[640px]">
+      {/* JOIN \u2014 tiles now lead the page */}
+      <section id="join" className="max-w-[1100px] mx-auto px-6 pt-20 pb-16 md:pt-28 md:pb-20 scroll-mt-24">
+        <div className="mb-12 max-w-[720px]">
           <div className="text-[11px] font-semibold tracking-[0.28em] mb-3" style={{ color: 'rgba(255,255,255,0.5)' }}>MEMBERSHIP</div>
           <h1 className="text-[28px] md:text-[40px] font-extrabold -tracking-[0.02em] leading-[1.05] mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Built for focus.<br />
-            <span style={{ color: 'rgba(255,255,255,0.5)' }}>Designed for community.</span>
+            Three ways to belong.
           </h1>
           <p className="text-[15px] leading-[1.65]" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            We optimized for the things that actually make a workday good — the internet, the people, the room.
+            Pick the tier that fits how you actually use the room \u2014 weekends only, weekdays only, or both. Every membership is application-based and accepted on a rolling basis.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {plans.map((plan) => (
+            <div key={plan.slug} className="relative rounded-[18px] p-9 md:p-10 border flex flex-col" style={{ background: '#141418', borderColor: 'rgba(255,255,255,0.06)', color: '#f5f5f5' }}>
+              <div className="text-[10px] font-semibold tracking-[0.28em] mb-3" style={{ color: 'rgba(255,255,255,0.5)' }}>{plan.kicker}</div>
+              <h3 className="text-[22px] font-bold -tracking-[0.01em] mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{plan.name}</h3>
+              <p className="text-[14px] leading-[1.55] mb-7" style={{ color: 'rgba(255,255,255,0.6)' }}>{plan.tagline}</p>
+
+              <div className="flex items-baseline gap-2 mb-8">
+                <span className="text-[36px] md:text-[44px] font-extrabold -tracking-[0.02em] leading-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{plan.price}</span>
+                <span className="text-[13px]" style={{ color: 'rgba(255,255,255,0.5)' }}>{plan.period}</span>
+              </div>
+
+              <ul className="list-none mb-9 flex-1 space-y-2.5">
+                {plan.benefits.map((benefit) => (
+                  <li key={benefit} className="flex items-start gap-3 text-[14px] leading-[1.55]">
+                    <CheckIcon />
+                    <span>{benefit}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <Link href={`/members/apply/${plan.slug}`} className="w-full py-3.5 rounded-full text-[12px] font-semibold tracking-[0.2em] transition-all hover:-translate-y-0.5 text-center" style={{ background: '#f5f5f0', color: '#0a0a0a' }}>APPLY</Link>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* THE SPACE \u2014 moved BELOW the tiles as supporting proof */}
+      <section id="space" className="max-w-[1100px] mx-auto px-6 pb-20 md:pb-28 scroll-mt-24">
+        <div className="mb-12 max-w-[640px]">
+          <div className="text-[11px] font-semibold tracking-[0.28em] mb-3" style={{ color: 'rgba(255,255,255,0.5)' }}>WHAT&rsquo;S IN THE ROOM</div>
+          <h2 className="text-[28px] md:text-[40px] font-extrabold -tracking-[0.02em] leading-[1.05] mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            Built for focus.<br />
+            <span style={{ color: 'rgba(255,255,255,0.5)' }}>Designed for community.</span>
+          </h2>
+          <p className="text-[15px] leading-[1.65]" style={{ color: 'rgba(255,255,255,0.6)' }}>
+            We optimized for the things that actually make a workday good \u2014 the internet, the people, the room.
           </p>
         </div>
 
@@ -79,45 +139,6 @@ export default function MembersPage() {
             </div>
           ))}
         </div>
-      </section>
-
-      {/* JOIN */}
-      <section id="join" className="max-w-[1100px] mx-auto px-6 pb-20 md:pb-28 scroll-mt-24">
-        <div className="mb-12 max-w-[640px]">
-          <div className="text-[11px] font-semibold tracking-[0.28em] mb-3" style={{ color: 'rgba(255,255,255,0.5)' }}>JOIN</div>
-          <h2 className="text-[28px] md:text-[40px] font-extrabold -tracking-[0.02em] leading-[1.05] mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Two ways in.</h2>
-          <p className="text-[15px] leading-[1.65]" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            One is a workday membership. The other adds a discount on every show we throw — for the people who want their nights here too.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {plans.map((plan) => {
-            const isFeatured = plan.featured;
-            return (
-              <div key={plan.slug} className="relative rounded-[18px] p-9 md:p-10 border flex flex-col" style={{ background: isFeatured ? '#f5f5f0' : '#141418', borderColor: isFeatured ? '#f5f5f0' : 'rgba(255,255,255,0.06)', color: isFeatured ? '#0a0a0a' : '#f5f5f5' }}>
-                <h3 className="text-[22px] font-bold -tracking-[0.01em] mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{plan.name}</h3>
-                <p className="text-[14px] leading-[1.55] mb-7" style={{ color: isFeatured ? '#555' : 'rgba(255,255,255,0.6)' }}>{plan.tagline}</p>
-
-                <div className="flex items-baseline gap-2 mb-8">
-                  <span className="text-[36px] md:text-[44px] font-extrabold -tracking-[0.02em] leading-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{plan.price}</span>
-                  <span className="text-[13px]" style={{ color: isFeatured ? '#666' : 'rgba(255,255,255,0.5)' }}>{plan.period}</span>
-                </div>
-
-                <ul className="list-none mb-9 flex-1 space-y-2.5">
-                  {plan.benefits.map((benefit) => (
-                    <li key={benefit} className="flex items-start gap-3 text-[14px] leading-[1.55]">
-                      <CheckIcon dark={isFeatured} />
-                      <span>{benefit}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <Link href={`/members/apply/${plan.slug}`} className="w-full py-3.5 rounded-full text-[12px] font-semibold tracking-[0.2em] transition-all hover:-translate-y-0.5 text-center" style={{ background: isFeatured ? '#0a0a0a' : '#f5f5f0', color: isFeatured ? '#f5f5f0' : '#0a0a0a' }}>APPLY</Link>
-              </div>
-            );
-          })}
-        </div>
 
         {/* Lockers add-on */}
         <div className="mt-5 rounded-[18px] p-8 md:p-9 border flex flex-col md:flex-row md:items-center gap-7" style={{ background: '#141418', borderColor: 'rgba(255,255,255,0.06)' }}>
@@ -127,7 +148,7 @@ export default function MembersPage() {
             <p className="text-[12.5px]" style={{ color: 'rgba(255,255,255,0.5)' }}>Requires membership</p>
           </div>
           <ul className="list-none flex-1 space-y-2">
-            <li className="flex items-start gap-3 text-[14px] leading-[1.55]"><CheckIcon /><span>Two sizes — small and large</span></li>
+            <li className="flex items-start gap-3 text-[14px] leading-[1.55]"><CheckIcon /><span>Two sizes \u2014 small and large</span></li>
             <li className="flex items-start gap-3 text-[14px] leading-[1.55]"><CheckIcon /><span>Combination lock and built-in fast charger</span></li>
           </ul>
         </div>
