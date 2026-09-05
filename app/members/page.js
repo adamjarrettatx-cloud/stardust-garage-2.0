@@ -8,7 +8,7 @@ const plans = [
     period: '/ month',
     featured: false,
     kicker: 'FOR THE WEEKEND CROWD',
-    tagline: 'Your ticket to every Music & Party night \u2014 for less.',
+    tagline: 'Your ticket to every Music & Party night — for less.',
     benefits: [
       '25% off Music & Party tickets, every weekend',
       'Priority access when shows sell out',
@@ -23,16 +23,16 @@ const plans = [
     period: '/ month',
     featured: false,
     kicker: 'FOR THE WORKDAY',
-    tagline: 'For people who do their best work somewhere that isn\u2019t home and isn\u2019t a coffee shop.',
+    tagline: 'For people who do their best work somewhere that isn’t home and isn’t a coffee shop.',
     benefits: [
-      'Cowork access, 8AM \u2013 6PM, Mon\u2013Fri',
+      'Cowork access, 8AM – 6PM, Mon–Fri',
       'Gigabit fiber, refreshments, curated room',
       '3 guest passes per month',
       'A community of artists, builders, and culturally aligned people',
     ],
   },
   {
-    // NOTE: slug stays 'cowork-party' \u2014 renaming would ripple through Stripe,
+    // NOTE: slug stays 'cowork-party' — renaming would ripple through Stripe,
     // activation, applications, and existing member records. Only the display
     // name changes from "IYKYK" to "Experience".
     name: 'Experience',
@@ -41,7 +41,7 @@ const plans = [
     period: '/ month',
     featured: false,
     kicker: 'WORKDAYS + WEEKENDS',
-    tagline: 'The full Stardust Garage \u2014 every hour it\u2019s open.',
+    tagline: 'The full Stardust Garage — every hour it’s open.',
     benefits: [
       'Everything in Cowork',
       '60% off SDG event tickets',
@@ -56,7 +56,7 @@ const features = [
   { icon: 'users', title: 'A Curated Room', desc: 'Members and approved guests only. We keep the room small on purpose.' },
   { icon: 'home', title: 'Cozy By Design', desc: 'Warm lighting, soft surfaces, plants. Closer to a living room than an office.' },
   { icon: 'lock', title: 'Private Lockers', desc: 'Two sizes. Combination lock and a fast charger inside. Add-on for any membership.' },
-  { icon: 'calendar', title: 'No Surprises', desc: 'Cowork runs Mon\u2013Fri, business hours. Shows are weekends, after-hours.' },
+  { icon: 'calendar', title: 'No Surprises', desc: 'Cowork runs Mon–Fri, business hours. Shows are weekends, after-hours.' },
 ];
 
 function FeatureIcon({ name }) {
@@ -78,7 +78,7 @@ function CheckIcon() {
 export default function MembersPage() {
   return (
     <main style={{ viewTransitionName: 'portal-members' }}>
-      {/* JOIN \u2014 tiles now lead the page */}
+      {/* JOIN — tiles now lead the page */}
       <section id="join" className="max-w-[1100px] mx-auto px-6 pt-20 pb-16 md:pt-28 md:pb-20 scroll-mt-24">
         <div className="mb-12 max-w-[720px]">
           <div className="text-[11px] font-semibold tracking-[0.28em] mb-3" style={{ color: 'rgba(255,255,255,0.5)' }}>MEMBERSHIP</div>
@@ -86,7 +86,7 @@ export default function MembersPage() {
             Three ways to belong.
           </h1>
           <p className="text-[15px] leading-[1.65]" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            Pick the tier that fits how you actually use the room \u2014 weekends only, weekdays only, or both. Every membership is application-based and accepted on a rolling basis.
+            Pick the tier that fits how you actually use the room — weekends only, weekdays only, or both. Every membership is application-based and accepted on a rolling basis.
           </p>
         </div>
 
@@ -117,7 +117,7 @@ export default function MembersPage() {
         </div>
       </section>
 
-      {/* THE SPACE \u2014 moved BELOW the tiles as supporting proof */}
+      {/* THE SPACE — moved BELOW the tiles as supporting proof */}
       <section id="space" className="max-w-[1100px] mx-auto px-6 pb-20 md:pb-28 scroll-mt-24">
         <div className="mb-12 max-w-[640px]">
           <div className="text-[11px] font-semibold tracking-[0.28em] mb-3" style={{ color: 'rgba(255,255,255,0.5)' }}>WHAT&rsquo;S IN THE ROOM</div>
@@ -126,7 +126,7 @@ export default function MembersPage() {
             <span style={{ color: 'rgba(255,255,255,0.5)' }}>Designed for community.</span>
           </h2>
           <p className="text-[15px] leading-[1.65]" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            We optimized for the things that actually make a workday good \u2014 the internet, the people, the room.
+            We optimized for the things that actually make a workday good — the internet, the people, the room.
           </p>
         </div>
 
@@ -148,7 +148,7 @@ export default function MembersPage() {
             <p className="text-[12.5px]" style={{ color: 'rgba(255,255,255,0.5)' }}>Requires membership</p>
           </div>
           <ul className="list-none flex-1 space-y-2">
-            <li className="flex items-start gap-3 text-[14px] leading-[1.55]"><CheckIcon /><span>Two sizes \u2014 small and large</span></li>
+            <li className="flex items-start gap-3 text-[14px] leading-[1.55]"><CheckIcon /><span>Two sizes — small and large</span></li>
             <li className="flex items-start gap-3 text-[14px] leading-[1.55]"><CheckIcon /><span>Combination lock and built-in fast charger</span></li>
           </ul>
         </div>
