@@ -71,6 +71,20 @@ export async function POST(request) {
     return NextResponse.json({ error: issued.error, field: issued.field }, { status: issued.status || 500 });
   }
 
+  // Stamp the trial pass with this auth user's id so the mobile app can
+  // detect trial membership via a direct user_id lookup on trial_passes
+  // (no email/phone joining required). Non-critical — the pass is already
+  // minted — but log if it fails so we can catch drift.
+  if (issued.pass?.id) {
+    const { error: stampError } = await admin
+      .from('trial_passes')
+      .update({ user_id: user.id })
+      .eq('id', issued.pass.id);
+    if (stampError) {
+      console.error('[free-account.redeem-trial.stamp]', stampError);
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     pass: issued.pass,
