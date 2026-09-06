@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import ProductEditor from './ProductEditor';
 
 function money(cents, currency = 'usd') {
   if (typeof cents !== 'number') return '';
@@ -126,8 +127,7 @@ export default function AdminTicketsClient({ eventId }) {
 
       {tab === 'products' && (
         <section>
-          <p style={{ color: '#666' }}>Use the API directly for product/tier CRUD in this PR — an inline editor lands with the follow-up UI polish PR.</p>
-          <pre style={{ background: '#f6f6f6', padding: 10, overflow: 'auto' }}>{JSON.stringify(products, null, 2)}</pre>
+          <ProductEditor eventId={eventId} products={products} onReload={load} />
         </section>
       )}
 
