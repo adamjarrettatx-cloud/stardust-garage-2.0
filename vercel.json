@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/trial-pass-reminders",
       "schedule": "15 15 * * *"
+    },
+    {
+      "path": "/api/cron/sweep-ticket-holds",
+      "schedule": "*/5 * * * *"
     }
   ]
 }
