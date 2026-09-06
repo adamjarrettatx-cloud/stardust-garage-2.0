@@ -8,6 +8,7 @@ import {
   getDiscountPercent,
 } from '@/lib/discountCodeUtils';
 import { membershipPaymentFailedPush, membershipPushForTransition, sendPush } from '@/lib/push';
+import { isTicketFlowEvent, handleTicketFlowEvent } from '@/lib/tickets/webhook-handlers';
 
 // POST /api/stripe/webhook
 //
@@ -155,6 +156,55 @@ export async function POST(request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY,
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
+
+    // ---- Persistent idempotency: return success on replays --------------
+    // Recording the event id up front means a duplicate delivery (Stripe
+    // often re-sends within seconds after a slow ACK) short-circuits before
+    // any fulfillment code runs.
+    const { data: ingestExisting } = await supabaseAdmin
+      .from('stripe_event_ingest')
+      .select('stripe_event_id, processed_at, outcome')
+      .eq('stripe_event_id', event.id)
+      .maybeSingle();
+    if (ingestExisting?.processed_at) {
+      return NextResponse.json({ received: true, replay: true });
+    }
+    if (!ingestExisting) {
+      await supabaseAdmin
+        .from('stripe_event_ingest')
+        .insert({ stripe_event_id: event.id, event_type: event.type })
+        .then(() => {}, () => {}); // race with concurrent delivery — safe to ignore
+    }
+
+    // ---- Dispatch: internal ticketing flow first ------------------------
+    // Ticket + save-payment-method events carry checkout_kind in metadata;
+    // everything else falls through to the existing subscription handler.
+    if (isTicketFlowEvent(event)) {
+      let ticketResult = { handled: false };
+      try {
+        ticketResult = await handleTicketFlowEvent({
+          stripeEvent: event,
+          supabaseAdmin,
+          request,
+        });
+      } catch (err) {
+        console.error('[webhook] ticket flow error:', err);
+        await supabaseAdmin
+          .from('stripe_event_ingest')
+          .update({ processed_at: new Date().toISOString(), outcome: 'error', error_detail: String(err?.message || err) })
+          .eq('stripe_event_id', event.id);
+        return NextResponse.json({ error: 'Ticket webhook failed' }, { status: 500 });
+      }
+      await supabaseAdmin
+        .from('stripe_event_ingest')
+        .update({ processed_at: new Date().toISOString(), outcome: ticketResult.error ? 'error' : 'ok' })
+        .eq('stripe_event_id', event.id);
+      const response = NextResponse.json({ received: true });
+      for (const fn of ticketResult.followups || []) {
+        Promise.resolve().then(fn).catch((err) => console.error('[webhook] followup failed:', err));
+      }
+      return response;
+    }
 
     // Helper to find member profile by Stripe customer ID
     async function findProfileByCustomer(customerId) {
@@ -314,6 +364,10 @@ export async function POST(request) {
         console.error('Auto discount code error:', err)
       );
     }
+    await supabaseAdmin
+      .from('stripe_event_ingest')
+      .update({ processed_at: new Date().toISOString(), outcome: 'ok' })
+      .eq('stripe_event_id', event.id);
     return response;
   } catch (err) {
     console.error('Webhook error:', err);

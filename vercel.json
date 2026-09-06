@@ -15,6 +15,14 @@
     {
       "path": "/api/cron/trial-pass-reminders",
       "schedule": "15 15 * * *"
+    },
+    {
+      "path": "/api/cron/sweep-ticket-holds",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/hydrate-ticket-fees",
+      "schedule": "12 6 * * *"
     }
   ]
 }
