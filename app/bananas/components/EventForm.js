@@ -270,247 +270,279 @@ export default function EventForm({
     color: 'var(--auth-input-text)',
   };
 
-  const labelClass = 'block text-[12px] font-semibold tracking-[0.14em] mb-2';
+  const cardStyle = {
+    background: 'var(--auth-card-bg)',
+    borderColor: 'var(--auth-card-border)',
+  };
+
+  const labelClass = 'block text-[11px] font-semibold tracking-[0.14em] mb-1.5';
   const labelStyle = { color: 'var(--auth-muted)' };
-  const inputClass = 'w-full px-5 py-3.5 rounded-[10px] text-[14px] outline-none border transition-colors focus:border-white/30';
+  const inputClass = 'w-full px-4 py-2.5 rounded-[8px] text-[14px] outline-none border transition-colors focus:border-white/30';
+  const helperStyle = { color: 'var(--auth-muted)', opacity: 0.75 };
+  const sectionTitle = 'text-[11px] font-semibold tracking-[0.16em] uppercase mb-4';
+
+  // Segmented control (visibility / event type). Compact, pill-style —
+  // replaces the old two big cards that ate a huge amount of vertical space.
+  function Segmented({ value, options, onChange }) {
+    return (
+      <div
+        className="inline-flex rounded-full p-1 border"
+        style={{ background: 'var(--auth-input-bg)', borderColor: 'var(--auth-input-border)' }}
+      >
+        {options.map((opt) => {
+          const active = value === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onChange(opt.value)}
+              className="px-4 py-1.5 rounded-full text-[12px] font-semibold tracking-[0.08em] transition-all"
+              style={{
+                background: active ? 'var(--auth-text-strong)' : 'transparent',
+                color: active ? 'var(--auth-strong-surface-text)' : 'var(--auth-muted)',
+              }}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-[700px]">
+    <div className="max-w-[960px]">
       <AuthenticatedPageHeader
         backHref="/bananas?tab=events"
         backLabel="← BACK TO ADMIN"
         title={isEditing ? 'Edit Event' : 'New Event'}
-        titleClassName="text-[36px] font-extrabold -tracking-[0.02em] leading-[1.1]"
-        className="mb-10"
+        titleClassName="text-[32px] font-extrabold -tracking-[0.02em] leading-[1.1]"
+        className="mb-6"
       >
         {headerActions}
       </AuthenticatedPageHeader>
 
       {statusPanel}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label className={labelClass} style={labelStyle}>TITLE</label>
-          <input
-            type="text"
-            value={title}
-            onChange={handleTitleChange}
-            required
-            className={inputClass}
-            style={inputStyle}
-          />
-        </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* IDENTITY HERO — profile-style header with square thumbnail + title/slug. */}
+        <section className="rounded-[14px] border p-5" style={cardStyle}>
+          <div className="flex gap-5 items-start">
+            {/* Thumbnail: click to upload. Hidden file input covers the whole tile. */}
+            <label
+              className="relative shrink-0 rounded-[12px] overflow-hidden border cursor-pointer group"
+              style={{
+                width: 112,
+                height: 112,
+                borderColor: 'var(--auth-card-border)',
+                background: 'var(--auth-input-bg)',
+              }}
+              title="Click to upload event image"
+            >
+              {imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={imageUrl} alt="Event" className="w-full h-full object-cover" />
+              ) : (
+                <div
+                  className="w-full h-full flex flex-col items-center justify-center gap-1 text-center px-2"
+                  style={{ color: 'var(--auth-muted)' }}
+                >
+                  <span className="text-[22px] leading-none">+</span>
+                  <span className="text-[10px] font-semibold tracking-[0.1em]">ADD IMAGE</span>
+                </div>
+              )}
+              <div
+                className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                style={{ background: 'rgba(0,0,0,0.55)' }}
+              >
+                <span className="text-[10px] font-semibold tracking-[0.12em] text-white">
+                  {imageUrl ? 'REPLACE' : 'UPLOAD'}
+                </span>
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                disabled={uploading}
+                className="sr-only"
+              />
+            </label>
 
-        <div>
-          <label className={labelClass} style={labelStyle}>URL SLUG</label>
-          <input
-            type="text"
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            required
-            placeholder="auto-generated-from-title"
-            className={inputClass}
-            style={inputStyle}
-          />
-          <p className="text-[11px] mt-2" style={{ color: '#555' }}>
-            This becomes the URL: /events/{slug || 'your-slug'}
+            <div className="flex-1 min-w-0 space-y-3">
+              <div>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={handleTitleChange}
+                  required
+                  placeholder="Event title"
+                  className="w-full bg-transparent border-0 border-b outline-none text-[22px] font-bold pb-2 focus:border-white/40 transition-colors"
+                  style={{
+                    borderColor: 'var(--auth-card-border)',
+                    color: 'var(--auth-text)',
+                  }}
+                />
+              </div>
+              <div className="flex items-center gap-2 flex-wrap text-[12px]" style={helperStyle}>
+                <span>sdgatx.com/events/</span>
+                <input
+                  type="text"
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value)}
+                  required
+                  placeholder="url-slug"
+                  className="flex-1 min-w-[140px] px-2 py-1 rounded-[6px] text-[12px] outline-none border focus:border-white/30"
+                  style={inputStyle}
+                />
+                {uploading && <span className="text-[11px]">Uploading image…</span>}
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <input
+                  type="text"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="… or paste an image URL"
+                  className="flex-1 min-w-[220px] px-3 py-1.5 rounded-[6px] text-[12px] outline-none border focus:border-white/30"
+                  style={inputStyle}
+                />
+                {imageUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setImageUrl('')}
+                    className="text-[11px] font-semibold tracking-[0.1em] px-3 py-1.5 rounded-full border transition-colors hover:bg-white/5"
+                    style={{ borderColor: 'var(--auth-card-border)', color: 'var(--auth-muted)' }}
+                  >
+                    CLEAR
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* WHEN + WHAT — date, time, category on one compact card. */}
+        <section className="rounded-[14px] border p-5" style={cardStyle}>
+          <h3 className={sectionTitle} style={labelStyle}>When · What</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className={labelClass} style={labelStyle}>Date</label>
+              <input
+                type="date"
+                value={eventDate}
+                onChange={(e) => setEventDate(e.target.value)}
+                required
+                className={inputClass}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label className={labelClass} style={labelStyle}>Time</label>
+              <input
+                type="text"
+                value={eventTime}
+                onChange={(e) => setEventTime(e.target.value)}
+                placeholder="e.g. 10:00 PM"
+                className={inputClass}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label className={labelClass} style={labelStyle}>Category</label>
+              <select
+                value={category}
+                onChange={handleCategoryChange}
+                className={inputClass}
+                style={inputStyle}
+              >
+                {CATEGORY_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <p className="text-[11px] mt-3" style={helperStyle}>
+            Member discounts (Weekender / Experience) are configured on the Ticketing panel below.
           </p>
-        </div>
+        </section>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className={labelClass} style={labelStyle}>DATE</label>
-            <input
-              type="date"
-              value={eventDate}
-              onChange={(e) => setEventDate(e.target.value)}
-              required
-              className={inputClass}
-              style={inputStyle}
-            />
-          </div>
-          <div>
-            <label className={labelClass} style={labelStyle}>TIME</label>
-            <input
-              type="text"
-              value={eventTime}
-              onChange={(e) => setEventTime(e.target.value)}
-              placeholder="e.g. 10:00 PM"
-              className={inputClass}
-              style={inputStyle}
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className={labelClass} style={labelStyle}>DESCRIPTION</label>
+        {/* DESCRIPTION */}
+        <section className="rounded-[14px] border p-5" style={cardStyle}>
+          <h3 className={sectionTitle} style={labelStyle}>Description</h3>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            rows={6}
+            rows={4}
+            placeholder="What is this event? Who's it for?"
             className={inputClass + ' resize-y'}
             style={inputStyle}
           />
-        </div>
+        </section>
 
-        {/* CATEGORY */}
-        <div>
-          <label className={labelClass} style={labelStyle}>CATEGORY</label>
-          <select
-            value={category}
-            onChange={handleCategoryChange}
-            className={inputClass}
-            style={inputStyle}
-          >
-            {CATEGORY_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <p className="text-[11px] mt-2" style={{ color: '#555' }}>
-            Member discounts (Weekender / Experience) are configured on the Ticketing panel below.
-          </p>
-        </div>
-
-        {/* LEGACY TICKETTAILOR EVENT SERIES
-            We no longer sell tickets through TicketTailor for new events. Two
-            legacy events (ubiyu 9/18, Groove Therapy 9/19) still have a linked
-            TT series and must keep working — render the link panel only for
-            those. New events never see this panel and never link a series. */}
-        {isEditing && ttEventSeriesId ? (
-          <TtLinkPanel eventId={event.id} initialSeriesId={ttEventSeriesId} metrics={metrics} />
-        ) : null}
-
-        {/* CONTACT / SDG-ONLY — required unless the event is fully internal */}
-        <EventContactFields
-          isSdgOnly={isSdgOnly}
-          onSdgOnlyChange={setIsSdgOnly}
-          contactId={contactId}
-          onContactIdChange={setContactId}
-        />
-
-        {/* VISIBILITY TOGGLE — public vs internal micro party */}
-        <div>
-          <label className={labelClass} style={labelStyle}>VISIBILITY</label>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setIsInternal(false)}
-              className="py-4 px-5 rounded-[10px] border text-left transition-all"
-              style={{
-                background: !isInternal ? 'var(--auth-text-strong)' : 'var(--auth-card-bg)',
-                borderColor: !isInternal ? 'var(--auth-text-strong)' : 'var(--auth-card-border)',
-                color: !isInternal ? 'var(--auth-strong-surface-text)' : 'var(--auth-text)',
-              }}
-            >
-              <div className="text-[14px] font-bold mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                Public
-              </div>
-              <div className="text-[12px]" style={{ color: !isInternal ? 'var(--auth-faint)' : 'var(--auth-muted)' }}>
-                Shown on the public events page
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsInternal(true)}
-              className="py-4 px-5 rounded-[10px] border text-left transition-all"
-              style={{
-                background: isInternal ? 'var(--auth-accent)' : 'var(--auth-card-bg)',
-                borderColor: isInternal ? 'var(--auth-accent)' : 'var(--auth-card-border)',
-                color: isInternal ? 'var(--auth-accent-text)' : 'var(--auth-text)',
-              }}
-            >
-              <div className="text-[14px] font-bold mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                Internal (hidden)
-              </div>
-              <div className="text-[12px]" style={{ color: isInternal ? 'var(--auth-accent-text)' : 'var(--auth-muted)' }}>
-                Hidden from public · team calendar only
-              </div>
-            </button>
+        {/* SETTINGS — visibility + event type, side-by-side segmented controls. */}
+        <section className="rounded-[14px] border p-5" style={cardStyle}>
+          <h3 className={sectionTitle} style={labelStyle}>Settings</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div>
+              <label className={labelClass} style={labelStyle}>Visibility</label>
+              <Segmented
+                value={isInternal ? 'internal' : 'public'}
+                onChange={(v) => setIsInternal(v === 'internal')}
+                options={[
+                  { value: 'public', label: 'Public' },
+                  { value: 'internal', label: 'Internal' },
+                ]}
+              />
+              <p className="text-[11px] mt-2" style={helperStyle}>
+                {isInternal
+                  ? 'Hidden from the public events page — team calendar only.'
+                  : 'Shown on the public events page and member surfaces.'}
+              </p>
+            </div>
+            <div>
+              <label className={labelClass} style={labelStyle}>Event Type</label>
+              <Segmented
+                value={eventType}
+                onChange={setEventType}
+                options={[
+                  { value: 'public', label: 'Ticketed' },
+                  { value: 'private', label: 'Private Rental' },
+                ]}
+              />
+              <p className="text-[11px] mt-2" style={helperStyle}>
+                {eventType === 'private'
+                  ? 'Venue rental — no ticket sales for this event.'
+                  : 'Sells tickets through the internal checkout below.'}
+              </p>
+            </div>
           </div>
           {isInternal && (
-            <p className="text-[11px] mt-2" style={{ color: '#f59e0b' }}>
+            <p className="text-[11px] mt-4" style={{ color: '#f59e0b' }}>
               Internal event: never appears on the public events page or member surfaces. It still
               supports contracts, SignNow, financials, and POS imports, and shows on the team calendar.
             </p>
           )}
-        </div>
+        </section>
 
-        {/* EVENT TYPE TOGGLE */}
-        <div>
-          <label className={labelClass} style={labelStyle}>EVENT TYPE</label>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setEventType('public')}
-              className="py-4 px-5 rounded-[10px] border text-left transition-all"
-              style={{
-                background: eventType === 'public' ? 'var(--auth-text-strong)' : 'var(--auth-card-bg)',
-                borderColor: eventType === 'public' ? 'var(--auth-text-strong)' : 'var(--auth-card-border)',
-                color: eventType === 'public' ? 'var(--auth-strong-surface-text)' : 'var(--auth-text)',
-              }}
-            >
-              <div className="text-[14px] font-bold mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                Public Event
-              </div>
-              <div className="text-[12px]" style={{ color: eventType === 'public' ? 'var(--auth-faint)' : 'var(--auth-muted)' }}>
-                Sell tickets via link
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => setEventType('private')}
-              className="py-4 px-5 rounded-[10px] border text-left transition-all"
-              style={{
-                background: eventType === 'private' ? 'var(--auth-text-strong)' : 'var(--auth-card-bg)',
-                borderColor: eventType === 'private' ? 'var(--auth-text-strong)' : 'var(--auth-card-border)',
-                color: eventType === 'private' ? 'var(--auth-strong-surface-text)' : 'var(--auth-text)',
-              }}
-            >
-              <div className="text-[14px] font-bold mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                Private Event
-              </div>
-              <div className="text-[12px]" style={{ color: eventType === 'private' ? 'var(--auth-faint)' : 'var(--auth-muted)' }}>
-                Venue rental, no tickets
-              </div>
-            </button>
-          </div>
-        </div>
+        {/* CONTACT / SDG-ONLY — required unless the event is fully internal. */}
+        <section className="rounded-[14px] border p-5" style={cardStyle}>
+          <h3 className={sectionTitle} style={labelStyle}>Organizer</h3>
+          <EventContactFields
+            isSdgOnly={isSdgOnly}
+            onSdgOnlyChange={setIsSdgOnly}
+            contactId={contactId}
+            onContactIdChange={setContactId}
+          />
+        </section>
 
-        {/* TICKET URL field removed: tickets now sell through our internal
-            checkout via the Ticketing panel below. The `ticketUrl` state
-            still holds any existing event.ticket_url so save() preserves it
-            for the two legacy TicketTailor events. */}
-
-        <div>
-          <label className={labelClass} style={labelStyle}>IMAGE</label>
-          {imageUrl && (
-            <div className="mb-3 rounded-[10px] overflow-hidden border" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={imageUrl} alt="Event preview" className="w-full h-auto max-h-[300px] object-cover" />
-            </div>
-          )}
-          <div className="flex flex-col gap-3">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              disabled={uploading}
-              className="text-[13px] file:mr-4 file:px-5 file:py-2.5 file:rounded-full file:border-0 file:text-[12px] file:font-semibold file:tracking-[0.12em] file:bg-white file:text-black file:cursor-pointer hover:file:bg-gray-200"
-              style={{ color: '#8a8a8a' }}
-            />
-            {uploading && <p className="text-[13px]" style={{ color: '#8a8a8a' }}>Uploading...</p>}
-            <input
-              type="text"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="Or paste an image URL"
-              className={inputClass}
-              style={inputStyle}
-            />
-          </div>
-        </div>
+        {/* LEGACY TICKETTAILOR EVENT SERIES — only rendered for the two legacy
+            events that still have a linked series. New events never see this. */}
+        {isEditing && ttEventSeriesId ? (
+          <section className="rounded-[14px] border p-5" style={cardStyle}>
+            <TtLinkPanel eventId={event.id} initialSeriesId={ttEventSeriesId} metrics={metrics} />
+          </section>
+        ) : null}
 
         {error && (
           <div className="text-[13px] text-red-400 p-3 rounded-[10px] border border-red-500/30 bg-red-500/10">
@@ -518,45 +550,51 @@ export default function EventForm({
           </div>
         )}
 
-        <div className="flex gap-3 pt-4">
+        {/* Sticky action bar so save/cancel is always in reach on long pages. */}
+        <div
+          className="sticky bottom-4 z-10 rounded-full border px-4 py-3 flex items-center gap-3 backdrop-blur"
+          style={{
+            background: 'rgba(10, 10, 10, 0.85)',
+            borderColor: 'var(--auth-card-border)',
+          }}
+        >
           <button
             type="submit"
             disabled={saving || uploading}
-            className="flex-1 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
+            className="flex-1 py-3 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
             style={{ background: '#ffffff', color: '#0a0a0a' }}
           >
-            {saving ? 'SAVING...' : isEditing ? 'SAVE CHANGES' : 'CREATE EVENT'}
+            {saving ? 'SAVING…' : isEditing ? 'SAVE CHANGES' : 'CREATE EVENT'}
           </button>
+          {canGenerateCodes && (
+            <button
+              type="button"
+              onClick={handleGenerateCodes}
+              disabled={generating}
+              className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50 whitespace-nowrap"
+              style={{
+                border: '1px solid #ffb84d',
+                color: '#ffb84d',
+                background: 'transparent',
+              }}
+              title="Generate member ticket codes for this event"
+            >
+              {generating ? 'GENERATING…' : 'MEMBER CODES'}
+            </button>
+          )}
           <Link
             href="/bananas?tab=events"
-            className="px-8 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5 flex items-center"
+            className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5"
             style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
           >
             CANCEL
           </Link>
         </div>
 
-        {canGenerateCodes && (
-          <div className="flex flex-col gap-2 pt-2">
-            <button
-              type="button"
-              onClick={handleGenerateCodes}
-              disabled={generating}
-              className="self-start px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
-              style={{
-                border: '1px solid #ffb84d',
-                color: '#ffb84d',
-                background: 'transparent',
-              }}
-            >
-              {generating ? 'GENERATING...' : 'GENERATE MEMBER CODES'}
-            </button>
-            {generateMessage && (
-              <p className="text-[13px]" style={{ color: '#ffb84d' }}>
-                {generateMessage}
-              </p>
-            )}
-          </div>
+        {generateMessage && (
+          <p className="text-[12px] text-right" style={{ color: '#ffb84d' }}>
+            {generateMessage}
+          </p>
         )}
       </form>
 
