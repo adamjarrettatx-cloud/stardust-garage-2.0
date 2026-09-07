@@ -5,6 +5,7 @@ import { isInternalTicketingEnabled } from '@/lib/feature-flags';
 import { rateLimit } from '@/lib/rate-limit';
 import { sendTicketConfirmation } from '@/lib/email';
 import { renderTicketQrSvg } from '@/lib/tickets/qr';
+import { fetchEventForEmail } from '@/lib/tickets/fetch-event-for-email';
 
 // POST /api/wallet/resend-tickets  Body: { order_id }
 // Re-sends the ticket email for one of the caller's own orders. Guarded by
@@ -35,7 +36,7 @@ export async function POST(request) {
   const emailLc = (user.email || '').toLowerCase();
   const { data: order } = await supabaseAdmin
     .from('orders')
-    .select('id, event_id, buyer_email, status, user_id')
+    .select('id, event_id, buyer_email, status, user_id, created_at')
     .eq('id', orderId)
     .maybeSingle();
   if (!order) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -43,8 +44,8 @@ export async function POST(request) {
   if (!owns) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   if (order.status !== 'paid') return NextResponse.json({ error: 'Order not paid' }, { status: 400 });
 
-  const [event, tickets, items] = await Promise.all([
-    supabaseAdmin.from('events').select('id, title, event_date, start_time').eq('id', order.event_id).maybeSingle(),
+  const [eventCtx, tickets, items] = await Promise.all([
+    fetchEventForEmail({ supabaseAdmin, eventId: order.event_id, request }),
     supabaseAdmin.from('tickets').select('id, ticket_code, order_item_id').eq('order_id', order.id),
     supabaseAdmin.from('order_items').select('id, product_name_snapshot, tier_name_snapshot').eq('order_id', order.id),
   ]);
@@ -61,9 +62,13 @@ export async function POST(request) {
   await sendTicketConfirmation({
     to: order.buyer_email,
     orderId: order.id,
-    eventTitle: event.data?.title || 'Stardust Garage',
-    eventWhen: event.data?.event_date ? `${event.data.event_date}${event.data.start_time ? ` at ${event.data.start_time}` : ''}` : null,
+    orderDate: order.created_at,
+    eventTitle: eventCtx.eventTitle,
+    eventWhen: eventCtx.eventWhen,
+    eventFlyerUrl: eventCtx.eventFlyerUrl,
+    venueAddress: eventCtx.venueAddress,
     ticketRows,
+    orderUrl: eventCtx.orderUrlBase,
   });
 
   await supabaseAdmin.from('ticket_audit_log').insert({
