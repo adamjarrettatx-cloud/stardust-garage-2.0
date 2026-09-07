@@ -5,7 +5,6 @@ import { adminPageGate } from '@/lib/auth-helpers';
 import EventForm from '../../components/EventForm';
 import PublishEventButton from '../../components/PublishEventButton';
 import ArtistLineupPanel from './ArtistLineupPanel';
-import GuestListPanel from '../../components/GuestListPanel';
 import EventContractsPanel from './EventContractsPanel';
 import TicketingPanel from './TicketingPanel';
 import { organizerDisplayLabel } from '@/lib/event-organizer';
@@ -100,13 +99,10 @@ export default async function EditEventPage({ params }) {
             initialMemberDiscountPercentIykyk={event.member_discount_percent_iykyk ?? null}
           />
           <EventContractsPanel eventId={event.id} />
-          {/* Also a full screen of its own at /bananas/guest-list/<id>, which is
-              where the Events row's GUEST LIST button goes. Same component in
-              both places, so allocations can be sorted out mid-event-edit
-              without the two views drifting apart. */}
-          <div className="mt-8">
-            <GuestListPanel eventId={event.id} />
-          </div>
+          {/* Guest list allocation lives on its own page at
+              /bananas/guest-list/<id> — reachable from the Events row's
+              GUEST LIST button. Kept off the edit page so this screen stays
+              focused on the event details / ticketing / contracts triad. */}
         </>
       )}
     />
