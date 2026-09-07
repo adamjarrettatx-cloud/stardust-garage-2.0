@@ -62,7 +62,7 @@ export async function GET(request) {
     productIds.length
       ? supabaseAdmin
           .from('ticket_price_tiers')
-          .select('id, product_id, name, price_cents, currency, starts_at, ends_at, display_order, is_active, status, access_codes, booking_fee_cents_override')
+          .select('id, product_id, name, price_cents, currency, starts_at, ends_at, display_order, is_active, status, access_codes, booking_fee_cents_override, quantity, sold_count, reserved_count')
           .in('product_id', productIds)
       : Promise.resolve({ data: [] }),
     productIds.length
@@ -112,6 +112,7 @@ export async function GET(request) {
 
     return {
       product_id: p.id,
+      kind: p.kind || 'tickets',
       name: p.name,
       description: p.description,
       member_only: p.member_only,
@@ -133,15 +134,23 @@ export async function GET(request) {
       // future tiers). Hidden and locked access-code tiers are filtered out.
       tiers: revealed
         .filter((t) => t.visible)
-        .map((t) => ({
-          id: t.id,
-          name: t.name,
-          price_cents: t.price_cents,
-          currency: t.currency,
-          status: t.status || 'active',
-          buyable: t.buyable,
-          reveal_gated: t.reveal_gated,
-        })),
+        .map((t) => {
+          const qty = typeof t.quantity === 'number' ? t.quantity : null;
+          const remainingTier = qty === null
+            ? null
+            : Math.max(0, qty - (t.sold_count || 0) - (t.reserved_count || 0));
+          return {
+            id: t.id,
+            name: t.name,
+            price_cents: t.price_cents,
+            currency: t.currency,
+            status: t.status || 'active',
+            buyable: t.buyable && (remainingTier === null || remainingTier > 0),
+            reveal_gated: t.reveal_gated,
+            quantity: qty,
+            remaining: remainingTier,
+          };
+        }),
     };
   });
 

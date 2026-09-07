@@ -179,6 +179,12 @@ export async function POST(request) {
         t.booking_fee_cents_override === '' || t.booking_fee_cents_override === null || t.booking_fee_cents_override === undefined
           ? null
           : Number(t.booking_fee_cents_override),
+      // Per-tier quantity. null = unlimited; any finite value caps sales for
+      // this tier and flips it to sold-out when reached.
+      quantity:
+        t.quantity === '' || t.quantity === null || t.quantity === undefined
+          ? null
+          : Math.max(0, Number(t.quantity)),
     };
     if (t.id) {
       await supabaseAdmin.from('ticket_price_tiers').update(tierRow).eq('id', t.id);

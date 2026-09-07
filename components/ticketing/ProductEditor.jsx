@@ -81,6 +81,7 @@ function blankProduct(eventId) {
         status: 'active',
         access_codes: [],
         booking_fee_cents_override: null,
+        quantity: null,
       },
     ],
   };
@@ -96,6 +97,7 @@ function toEditShape(p) {
     capacity: p.capacity ?? null,
     tiers: (p.tiers || []).map((t) => ({
       ...t,
+      quantity: typeof t.quantity === 'number' ? t.quantity : null,
       access_codes: Array.isArray(t.access_codes) ? t.access_codes : [],
     })),
   };
@@ -133,7 +135,7 @@ function TierRow({ tier, onChange, onDelete, canDelete, eventFeeDefault }) {
       style={{
         display: 'grid',
         gap: 8,
-        gridTemplateColumns: 'minmax(140px, 1.4fr) 100px 170px 170px 150px 110px 32px',
+        gridTemplateColumns: 'minmax(140px, 1.4fr) 90px 90px 170px 170px 150px 100px 32px',
         alignItems: 'center',
         padding: '10px 12px',
         borderBottom: `1px solid ${T.borderSoft}`,
@@ -160,6 +162,19 @@ function TierRow({ tier, onChange, onDelete, canDelete, eventFeeDefault }) {
         }}
         style={inputStyle()}
         title="Price ($)"
+      />
+      <input
+        type="number"
+        min="0"
+        step="1"
+        value={tier.quantity ?? ''}
+        onChange={(e) => onChange({
+          ...tier,
+          quantity: e.target.value === '' ? null : Math.max(0, parseInt(e.target.value, 10) || 0),
+        })}
+        placeholder="∞"
+        style={inputStyle()}
+        title="Quantity available at this tier. Blank = unlimited."
       />
       <input
         type="datetime-local"
@@ -270,6 +285,7 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
           is_active: true, display_order: p.tiers.length,
           status: 'active', access_codes: [],
           booking_fee_cents_override: null,
+          quantity: null,
         },
       ],
     });
@@ -290,14 +306,18 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
       // Hardcoded default: always reveal the next tier at ≤ 10 remaining.
       // Next-tier visibility is controlled per-tier via status='hidden'.
       tier_reveal_threshold: 10,
-      capacity:
-        p.capacity === '' || p.capacity === null || p.capacity === undefined
-          ? null
-          : Number(p.capacity),
+      // Product-level capacity is no longer used — stock is per tier now.
+      // Pass null so the API leaves the per-product ticket_inventory row
+      // unlimited (existing rows are left untouched).
+      capacity: null,
       tiers: p.tiers.map((t, i) => ({
         ...t,
         display_order: i,
         access_codes: t.status === 'access_code' ? (t.access_codes || []) : null,
+        quantity:
+          t.quantity === '' || t.quantity === null || t.quantity === undefined
+            ? null
+            : Math.max(0, Number(t.quantity)),
       })),
     };
     onSave(payload);
@@ -328,16 +348,6 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
         </label>
 
         <label>
-          <div style={fieldLabelStyle()}>Total capacity (blank = unlimited)</div>
-          <input
-            type="number"
-            min="0"
-            value={p.capacity ?? ''}
-            onChange={(e) => setP({ ...p, capacity: e.target.value === '' ? null : parseInt(e.target.value, 10) })}
-            style={inputStyle()}
-          />
-        </label>
-        <label>
           <div style={fieldLabelStyle()}>Sort order</div>
           <input
             type="number"
@@ -363,14 +373,14 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
 
       <h4 style={{ ...sectionHeaderStyle(), marginTop: 24, marginBottom: 4, fontSize: 12 }}>Price tiers</h4>
       <p style={sectionSubStyle()}>
-        Add a tier for each price phase (e.g. Early Bird → Phase 1 → Phase 2 → General Admission). Each tier is a price window — leave start/end blank for open-ended. The tier name is what buyers see. Booking fee override is per ticket in dollars — blank uses the event default.
+        Add a tier for each price phase (e.g. Early Bird → Phase 1 → Phase 2 → General Admission). Set a Qty for each tier to cap how many tickets sell at that price — leave blank for unlimited. Each tier is a price window; leave start/end blank for open-ended. The tier name is what buyers see. Booking fee override is per ticket in dollars — blank uses the event default.
       </p>
 
       <div style={{ border: `1px solid ${T.border}`, borderRadius: 12, overflow: 'hidden', background: T.cardBg }}>
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'minmax(140px, 1.4fr) 100px 170px 170px 150px 110px 32px',
+            gridTemplateColumns: 'minmax(140px, 1.4fr) 90px 90px 170px 170px 150px 100px 32px',
             gap: 8,
             fontSize: 11,
             color: T.muted,
@@ -385,6 +395,7 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
         >
           <span>Tier name</span>
           <span>Price $</span>
+          <span>Qty</span>
           <span>Starts</span>
           <span>Ends</span>
           <span>Status</span>
@@ -612,8 +623,24 @@ export default function ProductEditor({ eventId, products, onReload, eventFeeDef
                   ) : null}
                 </td>
                 <td style={tdStyle({ align: 'right' })}>
-                  <div style={{ fontWeight: 600 }}>{typeof p.capacity === 'number' ? p.capacity : '∞'}</div>
-                  <div style={{ fontSize: 12, color: T.muted }}>{p.sold_count || 0} sold · {p.reserved_count || 0} held</div>
+                  {(() => {
+                    const tiersForRollup = p.tiers || [];
+                    const cappedTiers = tiersForRollup.filter((t) => typeof t.quantity === 'number');
+                    const anyUnlimited = tiersForRollup.some((t) => typeof t.quantity !== 'number');
+                    const totalCap = cappedTiers.reduce((s, t) => s + (t.quantity || 0), 0);
+                    const totalSold = tiersForRollup.reduce((s, t) => s + (t.sold_count || 0), 0);
+                    const totalReserved = tiersForRollup.reduce((s, t) => s + (t.reserved_count || 0), 0);
+                    return (
+                      <>
+                        <div style={{ fontWeight: 600 }}>
+                          {anyUnlimited ? '∞' : totalCap}
+                        </div>
+                        <div style={{ fontSize: 12, color: T.muted }}>
+                          {totalSold} sold · {totalReserved} held
+                        </div>
+                      </>
+                    );
+                  })()}
                 </td>
                 <td style={tdStyle()}>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
