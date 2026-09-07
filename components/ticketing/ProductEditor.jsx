@@ -62,6 +62,9 @@ function blankProduct(eventId) {
     capacity: null,
     display_order: 0,
     is_active: true,
+    // Fixed at 10: reveal the next tier when the current one has ≤ 10 left.
+    // Manually 'hidden' tiers never appear regardless of this threshold, which
+    // is why the field is no longer editable in the admin UI.
     tier_reveal_threshold: 10,
     tiers: [
       {
@@ -84,7 +87,9 @@ function toEditShape(p) {
   return {
     ...p,
     description: p.description || '',
-    tier_reveal_threshold: p.tier_reveal_threshold ?? null,
+    // Always 10 — the field is no longer editable but the DB column stays
+    // so pricing/availability logic keeps working unchanged.
+    tier_reveal_threshold: 10,
     capacity: p.capacity ?? null,
     tiers: (p.tiers || []).map((t) => ({
       ...t,
@@ -274,10 +279,9 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
       ...p,
       name: p.name.trim(),
       description: p.description?.trim() || null,
-      tier_reveal_threshold:
-        p.tier_reveal_threshold === '' || p.tier_reveal_threshold === null || p.tier_reveal_threshold === undefined
-          ? null
-          : Number(p.tier_reveal_threshold),
+      // Hardcoded default: always reveal the next tier at ≤ 10 remaining.
+      // Next-tier visibility is controlled per-tier via status='hidden'.
+      tier_reveal_threshold: 10,
       capacity:
         p.capacity === '' || p.capacity === null || p.capacity === undefined
           ? null
@@ -343,17 +347,6 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
             value={p.capacity ?? ''}
             onChange={(e) => setP({ ...p, capacity: e.target.value === '' ? null : parseInt(e.target.value, 10) })}
             style={inputStyle()}
-          />
-        </label>
-        <label>
-          <div style={fieldLabelStyle()}>Reveal next tier when current has ≤ (blank = show all)</div>
-          <input
-            type="number"
-            min="0"
-            value={p.tier_reveal_threshold ?? ''}
-            onChange={(e) => setP({ ...p, tier_reveal_threshold: e.target.value === '' ? null : parseInt(e.target.value, 10) })}
-            style={inputStyle()}
-            placeholder="10"
           />
         </label>
         <label>
@@ -640,9 +633,7 @@ export default function ProductEditor({ eventId, products, onReload, eventFeeDef
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {p.is_active === false && <span style={statusPill({ tone: 'danger' })}>Inactive</span>}
                     {p.member_only && <span style={statusPill({ tone: 'accent' })}>Members</span>}
-                    {typeof p.tier_reveal_threshold === 'number' && (
-                      <span style={statusPill({ tone: 'muted' })}>reveal ≤ {p.tier_reveal_threshold}</span>
-                    )}
+
                   </div>
                 </td>
                 <td style={tdStyle({ align: 'right' })}>
