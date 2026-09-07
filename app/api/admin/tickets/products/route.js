@@ -88,8 +88,11 @@ export async function POST(request) {
     id, event_id, name, description = null,
     kind = 'tickets',
     member_only = false,
+    // Admin UI has removed the min/max inputs — platform now hard-defaults to
+    // 1–20. Kept as accepted body fields so any external caller or older client
+    // can still pass them (clamped by check constraints in the DB).
     min_per_order = 1,
-    max_per_order = 10,
+    max_per_order = 20,
     capacity = null,
     display_order = 0,
     is_active = true,

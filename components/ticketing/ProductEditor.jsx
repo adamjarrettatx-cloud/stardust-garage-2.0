@@ -60,8 +60,11 @@ function blankProduct(eventId) {
     description: '',
     kind: 'tickets',
     member_only: false,
+    // Locked platform defaults — no admin UI. Every buyer can grab 1–20 in one
+    // order. If we ever want per-product overrides, they'd move back into the UI
+    // as an advanced toggle; today keeping them constant beats the confusion.
     min_per_order: 1,
-    max_per_order: 10,
+    max_per_order: 20,
     capacity: null,
     display_order: 0,
     is_active: true,
@@ -401,27 +404,7 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
 
   return (
     <div style={{ ...cardStyle({ padding: 20 }), marginBottom: 20 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.6fr', gap: 14 }}>
-        <label>
-          <div style={fieldLabelStyle()}>Min per order</div>
-          <input
-            type="number"
-            min="1"
-            value={p.min_per_order}
-            onChange={(e) => setP({ ...p, min_per_order: parseInt(e.target.value, 10) || 1 })}
-            style={inputStyle()}
-          />
-        </label>
-        <label>
-          <div style={fieldLabelStyle()}>Max per order</div>
-          <input
-            type="number"
-            min="1"
-            value={p.max_per_order}
-            onChange={(e) => setP({ ...p, max_per_order: parseInt(e.target.value, 10) || 1 })}
-            style={inputStyle()}
-          />
-        </label>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14 }}>
         <label>
           <div style={fieldLabelStyle()}>Ticket sales end at</div>
           <input
@@ -433,17 +416,46 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
           />
         </label>
 
-        <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 20, marginTop: 4 }}>
-          <CheckboxRow
-            checked={!!p.member_only}
-            onChange={(v) => setP({ ...p, member_only: v })}
-            label="Members only"
-          />
-          <CheckboxRow
-            checked={p.is_active !== false}
-            onChange={(v) => setP({ ...p, is_active: v })}
-            label="Product active"
-          />
+        {/* Audience: mutually-exclusive Public vs Members Only.
+            Public (default) = anyone can buy. Members Only = restricted to
+            active members via member_only. is_active stays true from this UI
+            — fully retiring a product happens via the row-level delete/archive
+            action, not by unchecking a box that overlapped with 'members only'. */}
+        <div>
+          <div style={fieldLabelStyle()}>Audience</div>
+          <div
+            role="radiogroup"
+            aria-label="Audience"
+            style={{ display: 'inline-flex', border: `1px solid ${T.border}`, borderRadius: 999, overflow: 'hidden' }}
+          >
+            {[
+              { value: 'public', label: 'Public' },
+              { value: 'members', label: 'Members Only' },
+            ].map((opt) => {
+              const selected = (p.member_only ? 'members' : 'public') === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => setP({ ...p, member_only: opt.value === 'members', is_active: true })}
+                  style={{
+                    padding: '6px 14px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    letterSpacing: '0.06em',
+                    cursor: 'pointer',
+                    background: selected ? T.strongText : 'transparent',
+                    color: selected ? 'var(--auth-strong-surface-text, #fff)' : T.text,
+                    border: 'none',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 

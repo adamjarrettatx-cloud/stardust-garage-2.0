@@ -8,7 +8,6 @@ import {
   pillClass,
   primaryPillStyle,
   ghostPillStyle,
-  CheckboxRow,
   sectionHeaderStyle,
   sectionSubStyle,
   statusPill,
@@ -49,7 +48,9 @@ function blankSpace(eventId) {
     kind: 'private_space',
     name: '',
     description: '',
-    member_only: false,
+    // Private-space rentals are members-only by policy — no admin UI
+    // toggle. is_active also stays true from this row (retire via delete).
+    member_only: true,
     is_active: true,
     // Rentals are almost always 1 or 2 units. Default to 1.
     capacity: 1,
@@ -180,18 +181,6 @@ function SpaceForm({ eventId, initial, onSave, onCancel, saving }) {
           />
         </label>
 
-        <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 20, marginTop: 4 }}>
-          <CheckboxRow
-            checked={!!s.member_only}
-            onChange={(v) => setS({ ...s, member_only: v })}
-            label="Members only"
-          />
-          <CheckboxRow
-            checked={s.is_active !== false}
-            onChange={(v) => setS({ ...s, is_active: v })}
-            label="Space active"
-          />
-        </div>
       </div>
 
       <div
@@ -213,12 +202,12 @@ function SpaceForm({ eventId, initial, onSave, onCancel, saving }) {
           {nameValid
             ? <strong style={{ color: T.strongText }}>{s.name}</strong>
             : <em style={{ color: T.faint }}>(name required)</em>}
-          {s.member_only ? <span style={{ color: T.muted }}> \u00b7 members only</span> : ''}
+          <span style={{ color: T.muted }}> · members only</span>
         </div>
         <div style={{ marginTop: 4 }}>
           Price:{' '}
           <strong style={{ color: T.strongText }}>{money(tier.price_cents)}</strong>
-          {' \u00b7 '}
+          {' · '}
           <span style={{ color: T.muted }}>{s.capacity || 1} available</span>
         </div>
       </div>
@@ -282,8 +271,8 @@ function SpaceCard({ p, onEdit, onDelete, saving }) {
             {money(price ?? 0)}
           </div>
           <div style={{ fontSize: 12, color: T.muted, marginTop: 4 }}>
-            {typeof p.capacity === 'number' ? p.capacity : '\u221e'} total
-            {' \u00b7 '}
+            {typeof p.capacity === 'number' ? p.capacity : '∞'} total
+            {' · '}
             {p.sold_count || 0} sold
           </div>
         </div>
