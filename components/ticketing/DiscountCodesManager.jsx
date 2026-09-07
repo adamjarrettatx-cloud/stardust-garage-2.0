@@ -55,14 +55,43 @@ function blank(eventId) {
   };
 }
 
+// Money-typed discount codes (`amount`, `target_total`) store cents in the DB,
+// but the admin form takes and displays dollars — Adam kept typing raw cents
+// into the input by mistake. Percent codes store 0-100 as-is.
+function isMoneyType(t) {
+  return t === 'amount' || t === 'target_total';
+}
+function centsToDollarsInput(cents) {
+  if (cents === '' || cents === null || cents === undefined) return '';
+  const n = Number(cents);
+  if (!Number.isFinite(n)) return '';
+  return (n / 100).toFixed(2).replace(/\.00$/, '');
+}
+function dollarsInputToCents(dollars) {
+  const n = Number(dollars);
+  if (!Number.isFinite(n)) return NaN;
+  return Math.round(n * 100);
+}
+
 function CodeForm({ eventId, initial, onSave, onCancel, saving, products }) {
-  const [c, setC] = useState(() => initial || blank(eventId));
+  // State keeps `discount_value` in the unit the input displays (dollars for
+  // money types, 0-100 for percent) so the field UX stays natural. We convert
+  // to canonical cents only at submit.
+  const [c, setC] = useState(() => {
+    const base = initial ? { ...initial } : blank(eventId);
+    if (isMoneyType(base.discount_type)) {
+      base.discount_value = centsToDollarsInput(base.discount_value);
+    }
+    return base;
+  });
 
   function submit() {
     const payload = {
       ...c,
       code: c.code.trim().toUpperCase(),
-      discount_value: Number(c.discount_value),
+      discount_value: isMoneyType(c.discount_type)
+        ? dollarsInputToCents(c.discount_value)
+        : Number(c.discount_value),
       max_redemptions:
         c.max_redemptions === '' || c.max_redemptions === null || c.max_redemptions === undefined
           ? null
@@ -72,27 +101,45 @@ function CodeForm({ eventId, initial, onSave, onCancel, saving, products }) {
     onSave(payload);
   }
 
+  // Switching type between money and percent needs to reset/convert the value
+  // so we never send percent-scale numbers as dollars (or vice versa).
+  function changeType(next) {
+    setC((prev) => {
+      const wasMoney = isMoneyType(prev.discount_type);
+      const nowMoney = isMoneyType(next);
+      let nextValue = prev.discount_value;
+      if (wasMoney && !nowMoney) {
+        nextValue = 10; // sensible percent default
+      } else if (!wasMoney && nowMoney) {
+        nextValue = ''; // force fresh dollar entry
+      }
+      return { ...prev, discount_type: next, discount_value: nextValue };
+    });
+  }
+
+  const parsedValue = isMoneyType(c.discount_type)
+    ? dollarsInputToCents(c.discount_value)
+    : Number(c.discount_value);
   const valid =
     c.code.trim().length >= 2 &&
     ['percent', 'amount', 'target_total'].includes(c.discount_type) &&
-    Number.isFinite(Number(c.discount_value)) &&
-    Number(c.discount_value) >= 0 &&
-    (c.discount_type !== 'percent' || Number(c.discount_value) <= 100) &&
+    Number.isFinite(parsedValue) &&
+    parsedValue >= 0 &&
+    (c.discount_type !== 'percent' || parsedValue <= 100) &&
     (c.applies_to !== 'specific' || (c.product_ids && c.product_ids.length));
 
-  // Per-type UI helpers so the value input is self-explanatory. Cents are the
-  // canonical stored unit for amount + target_total; percent stores 0-100.
+  // Per-type UI helpers so the value input is self-explanatory.
   const valueLabel =
     c.discount_type === 'percent'
       ? 'Value (0-100)'
       : c.discount_type === 'target_total'
-      ? 'Exact price buyer pays (cents)'
-      : 'Value (cents)';
+      ? 'Exact price buyer pays ($)'
+      : 'Value ($)';
   const valueHint =
     c.discount_type === 'target_total'
       ? 'Back-solves booking fee + 8.25% Texas sales tax so the buyer\u2019s final total is exactly this amount.'
       : c.discount_type === 'amount'
-      ? 'Flat cents off the subtotal (e.g. 500 = $5.00).'
+      ? 'Flat dollars off the subtotal (e.g. 5 = $5.00).'
       : 'Percent off the subtotal.';
 
   return (
@@ -112,11 +159,11 @@ function CodeForm({ eventId, initial, onSave, onCancel, saving, products }) {
           <div style={fieldLabelStyle()}>Type</div>
           <select
             value={c.discount_type}
-            onChange={(e) => setC({ ...c, discount_type: e.target.value })}
+            onChange={(e) => changeType(e.target.value)}
             style={inputStyle()}
           >
             <option value="percent">Percent off</option>
-            <option value="amount">$ off (cents)</option>
+            <option value="amount">$ off</option>
             <option value="target_total">Target total ($ after tax + fee)</option>
           </select>
         </label>
@@ -126,6 +173,7 @@ function CodeForm({ eventId, initial, onSave, onCancel, saving, products }) {
             type="number"
             min="0"
             max={c.discount_type === 'percent' ? 100 : undefined}
+            step={isMoneyType(c.discount_type) ? '0.01' : '1'}
             value={c.discount_value ?? ''}
             onChange={(e) => setC({ ...c, discount_value: e.target.value })}
             style={inputStyle()}
