@@ -209,13 +209,13 @@ export default function InternalTicketModal({
                   cursor: 'pointer',
                 }}
               >
-                \u00D7
+                {'\u00D7'}
               </button>
             </div>
 
             {checkingAuth ? (
               <div style={{ padding: '32px 0', textAlign: 'center', color: '#8a8a8a', fontSize: 13 }}>
-                Loading\u2026
+                {'Loading\u2026'}
               </div>
             ) : step === 'gate' ? (
               <AccountGate
