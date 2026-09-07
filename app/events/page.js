@@ -101,8 +101,18 @@ function EventCard({ event }) {
         )}
 
         <div className="flex items-center gap-2 mt-auto">
-          {event.ticket_url ? (
+          {event.ticketing_mode === 'internal' ? (
+            // Internal (first-party) ticketing lives on the event detail page,
+            // which mounts <InternalTicketModal>. Route buyers there rather
+            // than duplicating the modal on every list card.
+            <Link href={`/events/${event.slug}`} className="flex-1 text-center px-4 py-2.5 rounded-full text-[10px] font-semibold tracking-[0.16em] transition-all hover:bg-gray-200" style={{ background: '#ffffff', color: '#0a0a0a' }}>BUY TICKETS</Link>
+          ) : event.ticket_url ? (
             <a href={event.ticket_url} target="_blank" rel="noopener noreferrer" className="flex-1 text-center px-4 py-2.5 rounded-full text-[10px] font-semibold tracking-[0.16em] transition-all hover:bg-gray-200" style={{ background: '#ffffff', color: '#0a0a0a' }}>BUY TICKETS</a>
+          ) : event.ticketing_mode === 'none' ? (
+            // Free entry — mirror what the detail page does. Non-interactive
+            // badge because there's nothing to click; DETAILS is still one tap
+            // away for a full description.
+            <span className="flex-1 text-center px-4 py-2.5 rounded-full text-[10px] font-semibold tracking-[0.16em] border" style={{ borderColor: 'rgba(255,255,255,0.3)', color: '#f5f5f5' }}>FREE EVENT</span>
           ) : (
             <span className="flex-1 text-center px-4 py-2.5 rounded-full text-[10px] font-semibold tracking-[0.16em] border" style={{ borderColor: 'rgba(255,255,255,0.2)', color: '#a0a0a0' }}>PRIVATE</span>
           )}
