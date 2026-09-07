@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import ProductEditor from './ProductEditor';
+import ProductEditor from '@/components/ticketing/ProductEditor';
 
 function money(cents, currency = 'usd') {
   if (typeof cents !== 'number') return '';
