@@ -28,10 +28,15 @@ function formatMoney(cents, currency = 'usd') {
 // the checkout CTA is disabled + relabeled so the admin can't accidentally
 // try to buy from a draft. (The /api/tickets/hold route is also strict and
 // would reject a draft server-side — this is just a UX safety on top.)
-export default function InternalTicketPurchase({ eventId, isMember = false, buyerEmailPrefill = '', preview = false }) {
+// The `isMember` prop is retained for the members-only badge / gating
+// logic even though buyer email is no longer read from the widget — the
+// InternalTicketModal AccountGate authenticates the buyer before this
+// widget mounts, so `/api/tickets/hold` derives buyer email from the
+// authenticated identity (see app/api/tickets/hold/route.js). Asking
+// for it again in the modal was redundant and confusing.
+export default function InternalTicketPurchase({ eventId, isMember = false, preview = false }) {
   const [state, setState] = useState({ loading: true, event: null, products: [], taxRateBps: 0, error: null });
   const [quantities, setQuantities] = useState({});
-  const [email, setEmail] = useState(buyerEmailPrefill);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
 
@@ -196,10 +201,12 @@ export default function InternalTicketPurchase({ eventId, isMember = false, buye
     }
 
     try {
+      // Buyer email is no longer sent from the client — the hold route
+      // resolves it from the authenticated session (which the AccountGate
+      // step in InternalTicketModal guarantees exists by this point).
       const body = {
         event_id: eventId,
         selections,
-        ...(isMember ? {} : { buyer_email: email }),
       };
       if (appliedAccessCodes.length) body.access_codes = appliedAccessCodes;
       if (discount?.code) body.discount_code = discount.code;
@@ -545,23 +552,11 @@ export default function InternalTicketPurchase({ eventId, isMember = false, buye
         )}
       </details>
 
-      {/* EMAIL FOR TICKETS — only shown for anonymous buyers once they've picked
-          at least one ticket, matching the previous UX. */}
-      {!isMember && totalQty > 0 && (
-        <div style={{ marginTop: 16 }}>
-          <label style={{ display: 'block', fontSize: 12, color: MUTED, marginBottom: 6, letterSpacing: '0.06em' }}>
-            EMAIL FOR TICKETS
-          </label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            style={inputStyle}
-          />
-        </div>
-      )}
+      {/* The old "EMAIL FOR TICKETS" field lived here for anonymous buyers.
+          The AccountGate in InternalTicketModal now signs the buyer in
+          before this widget renders, and /api/tickets/hold pulls the
+          buyer's email off the authenticated session, so asking for it a
+          second time was redundant. Removed. */}
 
       {/* TOTALS */}
       <div style={{ marginTop: 20, fontSize: 13, color: TEXT }}>

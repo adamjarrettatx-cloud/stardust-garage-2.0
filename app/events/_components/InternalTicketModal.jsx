@@ -46,7 +46,6 @@ export default function InternalTicketModal({
   eventTitle,
   preview = false,
   isMember = false,
-  buyerEmailPrefill = '',
   triggerLabel = 'BUY TICKETS',
 }) {
   const [open, setOpen] = useState(false);
@@ -229,7 +228,6 @@ export default function InternalTicketModal({
                 eventId={eventId}
                 preview={preview}
                 isMember={isMember}
-                buyerEmailPrefill={buyerEmailPrefill}
               />
             )}
           </div>
