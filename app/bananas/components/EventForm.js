@@ -340,6 +340,10 @@ export default function EventForm({
         title={isEditing ? 'Edit Event' : 'New Event'}
         titleClassName="text-[32px] font-extrabold -tracking-[0.02em] leading-[1.1]"
         className="mb-6"
+        // This form lives inside the admin shell (/bananas), which already
+        // renders a theme toggle at the very top of the page. Suppress the
+        // per-page one so we don't stack two identical switches.
+        showThemeToggle={false}
       >
         {headerActions}
       </AuthenticatedPageHeader>
