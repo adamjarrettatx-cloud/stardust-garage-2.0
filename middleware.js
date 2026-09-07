@@ -17,8 +17,17 @@ export async function middleware(request) {
   // on team_members at all. Called "partner" internally (see partner_profiles);
   // "portal" is the user-facing name.
   const isPartnerRoute = pathname === '/portal' || pathname.startsWith('/portal/');
+  // /account/* (Stardust-account surface for ticket buyers) is auth-gated by
+  // its own layout, but middleware still needs to run here so that
+  // @supabase/ssr can REFRESH the session cookies. Server Components can't
+  // call Set-Cookie (lib/supabase/server.js's setAll silently swallows the
+  // error), so if the middleware doesn't touch cookies for this path, a
+  // rotated access token during the SSR render never reaches the browser and
+  // the next request looks logged-out — which bounces the visitor to /login
+  // out of the blue. See the setAll comment in lib/supabase/server.js.
+  const isAccountRoute = pathname === '/account' || pathname.startsWith('/account/');
 
-  if (!isAdminRoute && !isTeamRoute && !isMemberRoute && !isCapacityRoute && !isPartnerRoute) {
+  if (!isAdminRoute && !isTeamRoute && !isMemberRoute && !isCapacityRoute && !isPartnerRoute && !isAccountRoute) {
     return NextResponse.next();
   }
 
@@ -98,6 +107,16 @@ export async function middleware(request) {
   );
 
   const { data: { user } } = await supabase.auth.getUser();
+
+  // /account/* is gated by its own layout redirect; middleware runs here
+  // ONLY to give @supabase/ssr a request in which it is legal to write
+  // refreshed session cookies. We deliberately do NOT do our own bounce for
+  // this path — an unauthenticated visitor is fine here (the layout will
+  // redirect them, with a proper `next=` for the specific subpath), and role
+  // checks below (admin/team/partner) are meaningless for ticket buyers.
+  if (isAccountRoute) {
+    return supabaseResponse;
+  }
 
   // Not logged in -> bounce to the unified login, with a next= param so the
   // login page can send them back to where they were headed after sign-in.
