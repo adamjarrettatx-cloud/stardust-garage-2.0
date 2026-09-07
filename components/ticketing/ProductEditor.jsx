@@ -69,11 +69,19 @@ function blankProduct(eventId) {
     // Manually 'hidden' tiers never appear regardless of this threshold, which
     // is why the field is no longer editable in the admin UI.
     tier_reveal_threshold: 10,
+    // Event-wide ticket-sales cutoff. Enforced by lib/tickets/pricing.js
+    // (canBuyProduct). Blank = no cutoff — sales run until event ends.
+    sales_start_at: null,
+    sales_end_at: null,
     tiers: [
       {
         id: null,
         name: 'General',
         price_cents: 2000,
+        // Per-tier windows are no longer editable in the admin — we advance
+        // tiers by display_order + sold-out, and use the product-level
+        // sales_end_at as the master cutoff. Left in the shape for the API
+        // and pricing.js which still accept them.
         starts_at: null,
         ends_at: null,
         is_active: true,
@@ -95,6 +103,8 @@ function toEditShape(p) {
     // so pricing/availability logic keeps working unchanged.
     tier_reveal_threshold: 10,
     capacity: p.capacity ?? null,
+    sales_start_at: p.sales_start_at || null,
+    sales_end_at: p.sales_end_at || null,
     tiers: (p.tiers || []).map((t) => ({
       ...t,
       quantity: typeof t.quantity === 'number' ? t.quantity : null,
@@ -127,8 +137,12 @@ const STATUS_OPTIONS = [
 
 // ---- tier row ----
 // Grid columns (kept in sync with the header row below):
-//   24px drag handle | tier name | price | qty | starts | ends | status | fee | 32px delete
-const TIER_GRID = '24px minmax(140px, 1.4fr) 90px 90px 170px 170px 150px 100px 32px';
+//   24px drag handle | tier name | price | qty | status | fee | 32px delete
+//
+// Per-tier Starts/Ends columns were removed in favor of a single event-level
+// 'Ticket sales end at' field on the product form. Tiers advance in the order
+// listed (drag to reorder) and by sold-out, not by scheduled windows.
+const TIER_GRID = '24px minmax(160px, 1.6fr) 100px 90px minmax(140px, 1fr) 100px 32px';
 
 function TierRow({
   tier,
@@ -215,20 +229,6 @@ function TierRow({
         placeholder="∞"
         style={inputStyle()}
         title="Quantity available at this tier. Blank = unlimited."
-      />
-      <input
-        type="datetime-local"
-        value={isoToLocalInput(tier.starts_at)}
-        onChange={(e) => onChange({ ...tier, starts_at: localInputToIso(e.target.value) })}
-        title="Starts"
-        style={inputStyle()}
-      />
-      <input
-        type="datetime-local"
-        value={isoToLocalInput(tier.ends_at)}
-        onChange={(e) => onChange({ ...tier, ends_at: localInputToIso(e.target.value) })}
-        title="Ends"
-        style={inputStyle()}
       />
       <select
         value={status}
@@ -401,7 +401,7 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
 
   return (
     <div style={{ ...cardStyle({ padding: 20 }), marginBottom: 20 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.6fr', gap: 14 }}>
         <label>
           <div style={fieldLabelStyle()}>Min per order</div>
           <input
@@ -422,6 +422,16 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
             style={inputStyle()}
           />
         </label>
+        <label>
+          <div style={fieldLabelStyle()}>Ticket sales end at</div>
+          <input
+            type="datetime-local"
+            value={isoToLocalInput(p.sales_end_at)}
+            onChange={(e) => setP({ ...p, sales_end_at: localInputToIso(e.target.value) })}
+            style={inputStyle()}
+            title="When online ticket sales close. Blank = sales run until the event ends."
+          />
+        </label>
 
         <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 20, marginTop: 4 }}>
           <CheckboxRow
@@ -439,7 +449,7 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
 
       <h4 style={{ ...sectionHeaderStyle(), marginTop: 24, marginBottom: 4, fontSize: 12 }}>Price tiers</h4>
       <p style={sectionSubStyle()}>
-        Tiers show in the order listed below — first row is the first tier buyers see. Drag the ⋮⋮ handle to reorder. Set a Qty for each tier to cap how many tickets sell at that price (blank = unlimited). Each tier is a price window; leave start/end blank for open-ended. The tier name is what buyers see. Booking fee override is per ticket in dollars — blank uses the event default.
+        Tiers show in the order listed below — first row is the first tier buyers see. Drag the ⋮⋮ handle to reorder. Set a Qty for each tier to cap how many tickets sell at that price (blank = unlimited); once a tier sells out, the next one takes over. The tier name is what buyers see. Booking fee override is per ticket in dollars — blank uses the event default.
       </p>
 
       <div style={{ border: `1px solid ${T.border}`, borderRadius: 12, overflow: 'hidden', background: T.cardBg }}>
@@ -463,8 +473,6 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
           <span>Tier name</span>
           <span>Price $</span>
           <span>Qty</span>
-          <span>Starts</span>
-          <span>Ends</span>
           <span>Status</span>
           <span>Fee $</span>
           <span />

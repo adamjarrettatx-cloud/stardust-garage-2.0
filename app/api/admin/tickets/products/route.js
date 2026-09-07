@@ -94,6 +94,8 @@ export async function POST(request) {
     display_order = 0,
     is_active = true,
     tier_reveal_threshold = null,
+    sales_start_at = null,
+    sales_end_at = null,
     tiers = [],
   } = body || {};
   if (!event_id || !name) return NextResponse.json({ error: 'Missing event_id or name' }, { status: 400 });
@@ -115,6 +117,8 @@ export async function POST(request) {
     display_order,
     is_active,
     tier_reveal_threshold,
+    sales_start_at: sales_start_at || null,
+    sales_end_at: sales_end_at || null,
   };
   let productResult;
   if (id) {
