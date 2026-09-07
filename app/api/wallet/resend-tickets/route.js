@@ -4,7 +4,7 @@ import { getRequestUser } from '@/lib/auth-helpers';
 import { isInternalTicketingEnabled } from '@/lib/feature-flags';
 import { rateLimit } from '@/lib/rate-limit';
 import { sendTicketConfirmation } from '@/lib/email';
-import { renderTicketQrSvg } from '@/lib/tickets/qr';
+import { renderTicketQrPngBuffer } from '@/lib/tickets/qr';
 import { fetchEventForEmail } from '@/lib/tickets/fetch-event-for-email';
 
 // POST /api/wallet/resend-tickets  Body: { order_id }
@@ -51,13 +51,17 @@ export async function POST(request) {
   ]);
 
   const itemById = new Map((items.data || []).map((i) => [i.id, i]));
-  const ticketRows = (tickets.data || []).map((t) => ({
-    ticketCode: t.ticket_code,
-    productName: itemById.get(t.order_item_id)?.product_name_snapshot || 'Ticket',
-    tierName: itemById.get(t.order_item_id)?.tier_name_snapshot || null,
-    qrSvg: renderTicketQrSvg({ ticketCode: t.ticket_code, request }),
-    viewUrl: null,
-  }));
+  // Generate PNG QRs in parallel so we don't serialize ~50ms per ticket
+  // on multi-ticket orders. Attached inline via CID inside sendTicketConfirmation.
+  const ticketRows = await Promise.all(
+    (tickets.data || []).map(async (t) => ({
+      ticketCode: t.ticket_code,
+      productName: itemById.get(t.order_item_id)?.product_name_snapshot || 'Ticket',
+      tierName: itemById.get(t.order_item_id)?.tier_name_snapshot || null,
+      qrPngBuffer: await renderTicketQrPngBuffer({ ticketCode: t.ticket_code, request }),
+      viewUrl: null,
+    })),
+  );
 
   await sendTicketConfirmation({
     to: order.buyer_email,

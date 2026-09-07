@@ -22,7 +22,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { renderTicketQrSvg, renderTicketQrDataUri, buildTicketQrUrl } from '../lib/tickets/qr.js';
+import { renderTicketQrSvg, renderTicketQrDataUri, buildTicketQrUrl, renderTicketQrPngBuffer } from '../lib/tickets/qr.js';
 import QRCode from 'qrcode';
 
 const env = { NEXT_PUBLIC_SITE_URL: 'https://www.sdgatx.com' };
@@ -85,4 +85,16 @@ test('buildTicketQrUrl encodes /t/scan with the ticket code as ?t=', () => {
   assert.strictEqual(parsed.hostname, 'www.sdgatx.com');
   assert.strictEqual(parsed.pathname, '/t/scan');
   assert.strictEqual(parsed.searchParams.get('t'), ticketCode);
+});
+
+test('renderTicketQrPngBuffer produces a valid PNG buffer', async () => {
+  const buf = await renderTicketQrPngBuffer({
+    ticketCode: 'SDGA-5MDG-45S2-F10Y-2VFR-TCT9-VVVP',
+    env: { NEXT_PUBLIC_SITE_URL: 'https://www.sdgatx.com' },
+  });
+  assert.ok(Buffer.isBuffer(buf), 'must return a Buffer');
+  assert.ok(buf.length > 200, 'PNG must be non-trivial');
+  // PNG magic number: 89 50 4E 47 0D 0A 1A 0A
+  const header = buf.slice(0, 8).toString('hex');
+  assert.equal(header, '89504e470d0a1a0a', 'buffer must start with the PNG magic number');
 });
