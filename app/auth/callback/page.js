@@ -20,15 +20,13 @@
 //
 //   2. WEB ACCOUNT-GATE FLOW \u2014 URL query contains ?code=... and ?next=...
 //      This is the PKCE code-flow return from a browser-initiated Google
-//      sign-in (see app/components/AccountGate.jsx). We exchange the code for
-//      a session in the browser client (writes the Supabase cookies) and
-//      then navigate to `next`, which is the page the user was on when they
-//      clicked "Continue with Google" \u2014 with ?signup=complete appended so
-//      InternalTicketModal can reopen the modal in the checkout step.
+//      sign-in (see app/components/AccountGate.jsx). Middleware rewrites
+//      these to /api/auth/callback so the code exchange runs server-side
+//      where the PKCE verifier cookie is reliably readable. This client
+//      page therefore never sees case (2) in normal operation.
 //
-// Discriminator: if there is a `code` query param, we're in case (2). If
-// there's a URL fragment with tokens, we're in case (1). If neither, we
-// fall back to the marketing home.
+// Discriminator: URL fragment with tokens \u2192 case (1). Otherwise fall back
+// to the marketing home.
 //
 // Suspense wrapper: useSearchParams triggers a client-side-render bailout
 // during static export in Next 15, which fails the build unless the consumer
@@ -36,7 +34,6 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 
 // Only allow relative same-origin paths as `next` to prevent open-redirect
 // abuse (a crafted ?next=https://evil.example.com would otherwise send an
@@ -57,31 +54,12 @@ function AuthCallbackInner() {
 
   useEffect(() => {
     const fragment = typeof window !== 'undefined' ? window.location.hash.slice(1) : '';
-    const code = searchParams.get('code');
     const returnTo = searchParams.get('return_to');
     const next = searchParams.get('next');
 
-    // Case 2 \u2014 web PKCE code exchange. Must be tried BEFORE the fragment
-    // handoff because both can coexist in edge cases.
-    if (code && !returnTo) {
-      (async () => {
-        try {
-          const supabase = createClient();
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) {
-            setStatus(`Sign-in failed: ${error.message}`);
-            return;
-          }
-          setStatus('Signed in. Redirecting\u2026');
-          window.location.href = safeNextPath(next);
-        } catch (err) {
-          setStatus(`Sign-in failed: ${String(err?.message || err)}`);
-        }
-      })();
-      return;
-    }
-
     // Case 1 \u2014 mobile-app fragment handoff.
+    // (The PKCE web case is handled by middleware\u2192/api/auth/callback and
+    // never reaches this page.)
     if (fragment && returnTo) {
       const deepLink = `${decodeURIComponent(returnTo)}#${fragment}`;
       setStatus('Returning to app\u2026');

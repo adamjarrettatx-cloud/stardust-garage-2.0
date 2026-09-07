@@ -3,7 +3,18 @@ import { NextResponse } from 'next/server';
 import { teamDocumentPath } from '@/lib/document-access';
 
 export async function middleware(request) {
-  const { pathname } = request.nextUrl;
+  const { pathname, searchParams } = request.nextUrl;
+
+  // OAuth PKCE rewrite: when Supabase Auth returns to /auth/callback with a
+  // ?code=..., forward the request to the server-side handler at
+  // /api/auth/callback so the exchange runs where the verifier cookie is
+  // reliably readable. Mobile fragment handoff (no ?code, tokens in the URL
+  // fragment) is untouched and falls through to app/auth/callback/page.js.
+  if (pathname === '/auth/callback' && searchParams.get('code')) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/api/auth/callback';
+    return NextResponse.rewrite(url);
+  }
 
   const isAdminRoute  = pathname.startsWith('/bananas');
   const isTeamRoute   = pathname === '/team' || pathname.startsWith('/team/');
