@@ -231,7 +231,10 @@ export default function InternalTicketPurchase({ eventId, isMember = false, buye
   // whether it's mounted inside a Tailwind tree with the site's CSS vars
   // available. Adam previewed this on production drafts before shipping.
   // -------------------------------------------------------------------------
-  const SURFACE = '#111111';
+  // `SURFACE` was the dark card that used to hold the whole product ladder.
+  // The ladder now lives inside per-category white cards (see ROW_SURFACE
+  // below) so this token is retired — the modal shell itself is the only
+  // dark surface now.
   const HAIRLINE = 'rgba(255,255,255,0.10)';
   const HAIRLINE_STRONG = 'rgba(255,255,255,0.18)';
   const TEXT = '#f5f5f5';
@@ -239,6 +242,18 @@ export default function InternalTicketPurchase({ eventId, isMember = false, buye
   const GOLD = '#ffb84d';
   const GREEN = '#5ec27b';
   const DANGER = '#ff6b6b';
+
+  // Light-surface tokens for the product ladder rows. The modal shell stays
+  // dark (matches the event page), but the actual ticket rows sit on a white
+  // card so the options themselves pop and are easy to read — Adam's ask on
+  // the first live pass at the modal. Dark text + hairline separators keep
+  // the card feeling premium rather than clinical white.
+  const ROW_SURFACE = '#ffffff';
+  const ROW_HAIRLINE = 'rgba(0,0,0,0.08)';
+  const ROW_HAIRLINE_STRONG = 'rgba(0,0,0,0.14)';
+  const ROW_TEXT = '#0a0a0a';
+  const ROW_MUTED = '#5a5a5a';
+  const ROW_FAINT = '#8a8a8a';
 
   const inputStyle = {
     width: '100%',
@@ -312,103 +327,145 @@ export default function InternalTicketPurchase({ eventId, isMember = false, buye
     );
   }
 
-  return (
-    <form onSubmit={onCheckout} style={{ color: TEXT }}>
-      {/* PRODUCT LADDER */}
+  // Split the product list into ticket-kind products and private-space
+  // rentals so we can render them under distinct headers instead of one
+  // undifferentiated list. Availability preserves display_order inside each
+  // group. If a venue ever adds a new `kind`, it falls into the tickets
+  // bucket by default rather than disappearing.
+  const ticketProducts = state.products.filter((p) => (p.kind || 'tickets') !== 'private_space');
+  const spaceProducts = state.products.filter((p) => p.kind === 'private_space');
+
+  // Product-row renderer factored out so the two category groups render
+  // identically apart from their contents. `startIdx` is only used for the
+  // borderTop rule so the first row in a group has no top divider.
+  function renderProductRow(p, indexInGroup) {
+    const soldOut = p.availability === 'sold_out' || p.price?.tier_status === 'sold_out';
+    const disabled = !p.on_sale || soldOut || (p.member_only && !isMember);
+    const max = Math.min(p.max_per_order || 10, p.availability === 'limited' ? 10 : 20);
+    const qty = Number(quantities[p.product_id] || 0);
+    return (
       <div
+        key={p.product_id}
         style={{
-          background: SURFACE,
-          border: `1px solid ${HAIRLINE}`,
-          borderRadius: 14,
-          overflow: 'hidden',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 12,
+          padding: '16px 18px',
+          borderTop: indexInGroup === 0 ? 'none' : `1px solid ${ROW_HAIRLINE}`,
+          opacity: disabled ? 0.55 : 1,
         }}
       >
-        {state.products.map((p, idx) => {
-          const soldOut = p.availability === 'sold_out' || p.price?.tier_status === 'sold_out';
-          const disabled = !p.on_sale || soldOut || (p.member_only && !isMember);
-          const max = Math.min(p.max_per_order || 10, p.availability === 'limited' ? 10 : 20);
-          const qty = Number(quantities[p.product_id] || 0);
-          return (
-            <div
-              key={p.product_id}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: 12,
-                padding: '16px 18px',
-                borderTop: idx === 0 ? 'none' : `1px solid ${HAIRLINE}`,
-                opacity: disabled ? 0.5 : 1,
-              }}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontWeight: 700, fontSize: 15 }}>{p.name}</span>
-                  {p.member_only && (
-                    <span
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 800,
-                        letterSpacing: '0.1em',
-                        padding: '3px 8px',
-                        borderRadius: 999,
-                        background: GOLD,
-                        color: '#0a0a0a',
-                      }}
-                    >
-                      MEMBERS ONLY
-                    </span>
-                  )}
-                </div>
-                <div style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>
-                  {p.price ? formatMoney(p.price.cents, p.price.currency) : '—'}
-                  {p.price?.tier_name ? ` · ${p.price.tier_name}` : ''}
-                  {soldOut && ' · Sold out'}
-                  {!soldOut && p.availability === 'limited' && ' · Limited'}
-                  {!p.on_sale && !soldOut && ' · Not on sale'}
-                  {p.price?.booking_fee_cents
-                    ? ` · +${formatMoney(p.price.booking_fee_cents)} fee`
-                    : ''}
-                </div>
-                {p.description && (
-                  <div style={{ fontSize: 12, color: MUTED, marginTop: 6, opacity: 0.8 }}>
-                    {p.description}
-                  </div>
-                )}
-                {p.tiers && p.tiers.length > 1 && (
-                  <div style={{ fontSize: 11, color: MUTED, marginTop: 6, opacity: 0.7 }}>
-                    Coming next:{' '}
-                    {p.tiers
-                      .filter((t) => !t.buyable)
-                      .slice(0, 2)
-                      .map((t) => `${t.name} ${formatMoney(t.price_cents, t.currency)}`)
-                      .join(' · ')}
-                  </div>
-                )}
-              </div>
-              <input
-                type="number"
-                min={0}
-                max={max}
-                value={qty}
-                disabled={disabled}
-                onChange={(e) => setQuantities({ ...quantities, [p.product_id]: e.target.value })}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 700, fontSize: 15, color: ROW_TEXT }}>{p.name}</span>
+            {p.member_only && (
+              <span
                 style={{
-                  width: 60,
-                  padding: '8px 6px',
-                  background: 'rgba(255,255,255,0.04)',
-                  color: TEXT,
-                  border: `1px solid ${HAIRLINE_STRONG}`,
-                  borderRadius: 8,
-                  fontSize: 14,
-                  textAlign: 'center',
-                  outline: 'none',
+                  fontSize: 10,
+                  fontWeight: 800,
+                  letterSpacing: '0.1em',
+                  padding: '3px 8px',
+                  borderRadius: 999,
+                  background: GOLD,
+                  color: '#0a0a0a',
                 }}
-              />
+              >
+                MEMBERS ONLY
+              </span>
+            )}
+          </div>
+          <div style={{ fontSize: 13, color: ROW_MUTED, marginTop: 4 }}>
+            {p.price ? formatMoney(p.price.cents, p.price.currency) : '—'}
+            {p.price?.tier_name ? ` · ${p.price.tier_name}` : ''}
+            {soldOut && ' · Sold out'}
+            {!soldOut && p.availability === 'limited' && ' · Limited'}
+            {!p.on_sale && !soldOut && ' · Not on sale'}
+            {p.price?.booking_fee_cents
+              ? ` · +${formatMoney(p.price.booking_fee_cents)} fee`
+              : ''}
+          </div>
+          {p.description && (
+            <div style={{ fontSize: 12, color: ROW_MUTED, marginTop: 6, opacity: 0.85 }}>
+              {p.description}
             </div>
-          );
-        })}
+          )}
+          {p.tiers && p.tiers.length > 1 && (
+            <div style={{ fontSize: 11, color: ROW_FAINT, marginTop: 6 }}>
+              Coming next:{' '}
+              {p.tiers
+                .filter((t) => !t.buyable)
+                .slice(0, 2)
+                .map((t) => `${t.name} ${formatMoney(t.price_cents, t.currency)}`)
+                .join(' · ')}
+            </div>
+          )}
+        </div>
+        <input
+          type="number"
+          min={0}
+          max={max}
+          value={qty}
+          disabled={disabled}
+          onChange={(e) => setQuantities({ ...quantities, [p.product_id]: e.target.value })}
+          style={{
+            width: 60,
+            padding: '8px 6px',
+            background: '#ffffff',
+            color: ROW_TEXT,
+            border: `1px solid ${ROW_HAIRLINE_STRONG}`,
+            borderRadius: 8,
+            fontSize: 14,
+            textAlign: 'center',
+            outline: 'none',
+          }}
+        />
       </div>
+    );
+  }
+
+  // Section wrapper: category label (dark shell text) + the white ticket
+  // card underneath. Hidden entirely when a category has zero products so
+  // ticket-only events don't get an empty "Private Space Rentals" header.
+  function renderProductGroup(title, products) {
+    if (!products.length) return null;
+    return (
+      <div style={{ marginBottom: 14 }}>
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 800,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            color: MUTED,
+            marginBottom: 8,
+            paddingLeft: 2,
+          }}
+        >
+          {title}
+        </div>
+        <div
+          style={{
+            background: ROW_SURFACE,
+            border: `1px solid ${ROW_HAIRLINE_STRONG}`,
+            borderRadius: 14,
+            overflow: 'hidden',
+            boxShadow: '0 1px 0 rgba(255,255,255,0.03) inset',
+          }}
+        >
+          {products.map((p, i) => renderProductRow(p, i))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={onCheckout} style={{ color: TEXT }}>
+      {/* PRODUCT LADDER — split into two categories. Tickets always come
+          first; Private Space Rentals only render if the event actually
+          has any spaces configured. */}
+      {renderProductGroup('Tickets', ticketProducts)}
+      {renderProductGroup('Private Space Rentals', spaceProducts)}
 
       {/* ACCESS + DISCOUNT CODE PAIR — collapsed by default so the widget
           starts clean and doesn't push totals below the fold. */}
