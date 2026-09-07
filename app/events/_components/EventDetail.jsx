@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { memberDiscountCallout } from '@/lib/event-discount-display';
+import { formatEventTime } from '@/lib/events/format-event-time';
 import InternalTicketPurchase from './InternalTicketPurchase';
 
 // Shared render for a single event's public detail page. Used by both the
@@ -17,7 +18,11 @@ function formatEventDate(dateString) {
   });
 }
 
-export default function EventDetail({ event }) {
+// `preview`: when true, the ticket purchase widget is rendered in preview
+// mode — it hits /api/tickets/availability with ?preview=1 (admin-only) so
+// draft events still show their products, and the checkout button is
+// disabled so no purchase can accidentally start.
+export default function EventDetail({ event, preview = false }) {
   const discountCallout = memberDiscountCallout(event.member_discount_percent);
 
   return (
@@ -73,7 +78,7 @@ export default function EventDetail({ event }) {
             // handles access codes, discount codes, fees, quantities, and
             // the redirect to Stripe.
             <div className="order-1 mb-8">
-              <InternalTicketPurchase eventId={event.id} />
+              <InternalTicketPurchase eventId={event.id} preview={preview} />
             </div>
           ) : event.ticket_url ? (
             <a
@@ -129,7 +134,7 @@ export default function EventDetail({ event }) {
                 Time
               </div>
               <div className="text-sm leading-[1.6]" style={{ color: '#8a8a8a' }}>
-                {event.event_end_time ? `${event.event_time} – ${event.event_end_time}` : event.event_time}
+                {formatEventTime(event.event_time, event.event_end_time)}
               </div>
             </div>
           )}

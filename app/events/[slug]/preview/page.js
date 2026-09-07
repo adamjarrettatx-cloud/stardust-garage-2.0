@@ -77,7 +77,7 @@ export default async function EventPreviewPage({ params }) {
         </div>
       </div>
 
-      <EventDetail event={event} />
+      <EventDetail event={event} preview />
     </>
   );
 }
