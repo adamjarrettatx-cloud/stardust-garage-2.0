@@ -102,7 +102,16 @@ export async function GET(request) {
   const items = (products || []).map((p) => {
     const productTiers = tiersByProduct.get(p.id) || [];
     const invRow = invByProduct.get(p.id);
-    const remaining = invRow ? invRow.capacity - invRow.sold - invRow.reserved : null;
+    // Unlimited capacity is stored as NULL. JS arithmetic silently coerces
+    // NULL to 0, so `null - 0 - 0` evaluates to 0 and used to flip the
+    // product to 'sold_out' for every unlimited product. Only compute a
+    // numeric remaining when capacity is an actual number; otherwise leave
+    // it as null so the availability defaulting below treats the product
+    // as "available" (unlimited).
+    const capacity = invRow && typeof invRow.capacity === 'number' ? invRow.capacity : null;
+    const remaining = capacity !== null
+      ? capacity - (invRow.sold || 0) - (invRow.reserved || 0)
+      : null;
 
     const activeTier = selectActiveTier(productTiers, { now, unlockedCodes });
     const revealed = projectTiersForBuyer(productTiers, {
