@@ -12,6 +12,7 @@ import {
   sectionSubStyle,
   statusPill,
 } from './ticketingTheme.js';
+import MoneyInput from './MoneyInput.jsx';
 
 // Admin manager for "private space" rentals attached to an event.
 //
@@ -148,14 +149,16 @@ function SpaceForm({ eventId, initial, onSave, onCancel, saving }) {
         </label>
         <label>
           <div style={fieldLabelStyle()}>Price ($)</div>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={centsToDollarInput(tier.price_cents)}
-            onChange={(e) => setPriceDollars(e.target.value)}
+          {/* Uses MoneyInput so the mouse wheel can't nudge the value
+              while focused (the "scrolls by cents" bug on the events
+              admin edit page) and so mid-typing values aren't reformatted
+              on every keystroke. Stored as integer cents. */}
+          <MoneyInput
+            valueCents={tier.price_cents}
+            onChangeCents={(c) => setS({ ...s, tiers: [{ ...tier, price_cents: c ?? 0 }] })}
             style={inputStyle({ invalid: !priceValid })}
             placeholder="500.00"
+            title="Price ($)"
           />
         </label>
         <label>
