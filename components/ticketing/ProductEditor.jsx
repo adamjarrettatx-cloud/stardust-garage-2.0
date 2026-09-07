@@ -22,6 +22,7 @@ import {
   tdStyle,
   statusPill,
 } from './ticketingTheme.js';
+import MoneyInput from './MoneyInput.jsx';
 
 // Inline product + tier editor.
 //
@@ -215,17 +216,17 @@ function TierRow({
         placeholder="Early bird"
         style={inputStyle()}
       />
-      <input
-        type="number"
-        min="0"
-        step="0.01"
-        value={centsToDollarInput(tier.price_cents)}
-        onChange={(e) => {
-          const c = dollarInputToCents(e.target.value);
-          onChange({ ...tier, price_cents: c ?? 0 });
-        }}
+      {/* Dollar amount. Uses MoneyInput (type=text + local draft) so the
+          mouse wheel can't nudge the value while the field is focused and
+          so mid-typing values like "25" or "25." aren't reformatted to
+          "25.00" on every keystroke. Stored as integer cents; blank is
+          not allowed here — empty snaps back to 0. */}
+      <MoneyInput
+        valueCents={tier.price_cents}
+        onChangeCents={(c) => onChange({ ...tier, price_cents: c ?? 0 })}
         style={inputStyle()}
         title="Price ($)"
+        placeholder="0.00"
       />
       <input
         type="number"
@@ -250,12 +251,13 @@ function TierRow({
           <option key={o.value} value={o.value}>{o.label}</option>
         ))}
       </select>
-      <input
-        type="number"
-        min="0"
-        step="0.01"
-        value={centsToDollarInput(tier.booking_fee_cents_override)}
-        onChange={(e) => onChange({ ...tier, booking_fee_cents_override: dollarInputToCents(e.target.value) })}
+      {/* Booking fee override: blank means "use event default", so this
+          MoneyInput allows empty. Same reasons as the price field above
+          for switching away from type="number". */}
+      <MoneyInput
+        valueCents={tier.booking_fee_cents_override}
+        onChangeCents={(c) => onChange({ ...tier, booking_fee_cents_override: c })}
+        allowEmpty
         placeholder={feePlaceholder}
         title="Booking fee override ($). Blank = event default."
         style={inputStyle()}

@@ -169,6 +169,9 @@ function CodeForm({ eventId, initial, onSave, onCancel, saving, products }) {
         </label>
         <label>
           <div style={fieldLabelStyle()}>{valueLabel}</div>
+          {/* onWheel blur() defuses the desktop "focused number input
+              changes on scroll" trap that made this field creep by cents
+              or points while scrolling the events edit page. */}
           <input
             type="number"
             min="0"
@@ -176,6 +179,7 @@ function CodeForm({ eventId, initial, onSave, onCancel, saving, products }) {
             step={isMoneyType(c.discount_type) ? '0.01' : '1'}
             value={c.discount_value ?? ''}
             onChange={(e) => setC({ ...c, discount_value: e.target.value })}
+            onWheel={(e) => e.currentTarget.blur()}
             style={inputStyle()}
           />
           <div style={{ fontSize: 11, color: T.muted, marginTop: 4 }}>{valueHint}</div>
