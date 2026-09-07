@@ -12,7 +12,7 @@ import { adminFetch } from '@/lib/admin-fetch';
 //
 // The publish itself runs in /api/admin/events/:id/tt-publish (admin + MFA
 // gated). The TICKETTAILOR_API_KEY is never exposed to the browser.
-export default function PublishEventButton({ eventId, status, ttEventSeriesId }) {
+export default function PublishEventButton({ eventId, slug, status, ttEventSeriesId }) {
   const router = useRouter();
   const [publishing, setPublishing] = useState(false);
   const [msg, setMsg] = useState('');
@@ -69,17 +69,39 @@ export default function PublishEventButton({ eventId, status, ttEventSeriesId })
           </span>
         </div>
 
-        {isDraft && (
-          <button
-            type="button"
-            onClick={publish}
-            disabled={publishing}
-            className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-40"
-            style={{ background: 'var(--auth-success)', color: 'var(--auth-strong-surface-text)' }}
-          >
-            {publishing ? 'GOING LIVE…' : 'GO LIVE'}
-          </button>
-        )}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Preview opens the exact public event page in a new tab, gated to
+              admins by /events/[slug]/preview. Useful before GO LIVE to sanity
+              check the layout, and after publish as a quick "how does it look
+              live" shortcut. Slug is required — a brand-new event without one
+              yet can't be previewed. */}
+          {slug && (
+            <a
+              href={`/events/${slug}/preview`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 border"
+              style={{
+                color: 'var(--auth-accent)',
+                borderColor: 'var(--auth-card-border)',
+                background: 'transparent',
+              }}
+            >
+              PREVIEW
+            </a>
+          )}
+          {isDraft && (
+            <button
+              type="button"
+              onClick={publish}
+              disabled={publishing}
+              className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-40"
+              style={{ background: 'var(--auth-success)', color: 'var(--auth-strong-surface-text)' }}
+            >
+              {publishing ? 'GOING LIVE…' : 'GO LIVE'}
+            </button>
+          )}
+        </div>
       </div>
 
       <p className="text-[11px] mt-3" style={{ color: 'var(--auth-muted)' }}>
