@@ -101,6 +101,10 @@ export default function EventForm({
   const [ttEventSeriesId] = useState(event?.tt_event_series_id || '');
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Brief 'SAVED' pulse on the sticky bar after a successful edit save, so
+  // the admin gets visible confirmation now that we no longer redirect them
+  // to the events list on save. Cleared by a timer in handleSubmit.
+  const [saveOk, setSaveOk] = useState(false);
   const [error, setError] = useState('');
   const [generating, setGenerating] = useState(false);
   const [generateMessage, setGenerateMessage] = useState('');
@@ -224,6 +228,18 @@ export default function EventForm({
       }
     }
 
+    // Editing: stay on this screen so the admin can keep working (e.g. Ticketing
+    // panel, contract panel). Just refresh the server data and flash a brief
+    // 'Saved' hint on the save button via the setSaving cycle + saveOk flag.
+    // Creating: no id in the URL yet, so we DO route to the events list —
+    // that's the only way to hand off to the newly-created event's edit page.
+    if (isEditing) {
+      setSaving(false);
+      setSaveOk(true);
+      setTimeout(() => setSaveOk(false), 1800);
+      router.refresh();
+      return;
+    }
     router.push('/bananas?tab=events');
     router.refresh();
   };
@@ -598,7 +614,7 @@ export default function EventForm({
               color: 'var(--auth-strong-surface-text)',
             }}
           >
-            {saving ? 'SAVING…' : isEditing ? 'SAVE EVENT DETAILS' : 'CREATE EVENT'}
+            {saving ? 'SAVING…' : saveOk ? 'SAVED' : isEditing ? 'SAVE EVENT DETAILS' : 'CREATE EVENT'}
           </button>
         </div>
 
