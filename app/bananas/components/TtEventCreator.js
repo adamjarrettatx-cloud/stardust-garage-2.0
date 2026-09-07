@@ -58,15 +58,14 @@ function slugify(text) {
     .replace(/^-+|-+$/g, '');
 }
 
-function emptyTicketType() {
-  return { name: '', price: '', quantity: '', description: '' };
-}
-
-// New-event form that creates AND publishes the website event together with a
-// TicketTailor event series (date/time occurrence + ticket types), with one or
-// more ticket types. On success both sides are already live and it sends the
-// admin to the event editor. All TicketTailor work happens server-side in
-// /api/admin/events/create-with-tt — the API key is never seen by the browser.
+// New-event form that creates a website event shell in `internal` ticketing
+// mode. Products, tiers, booking fees, per-tier status, access codes, and
+// discount codes are all configured on the event editor's Ticketing panel
+// AFTER the shell is created — there is exactly one Ticketing UI in the app
+// (see components/ticketing/ProductEditor.jsx + DiscountCodesManager.jsx),
+// and it lives on `/bananas/events/[id]`. This page's job is only to name and
+// date the event, then hand off to that editor. No TicketTailor calls happen
+// here anymore.
 export default function TtEventCreator() {
   const router = useRouter();
   // The calendar day-click modal routes here with ?date=YYYY-MM-DD when the
@@ -90,7 +89,6 @@ export default function TtEventCreator() {
   const [memberDiscountPercent, setMemberDiscountPercent] = useState(
     String(CATEGORY_DISCOUNT_DEFAULTS.day_party),
   );
-  const [ticketTypes, setTicketTypes] = useState([emptyTicketType()]);
   // Defaults to "has an outside partner" so the team opts into SDG-only rather
   // than defaulting into the path that skips the contact requirement.
   const [isSdgOnly, setIsSdgOnly] = useState(false);
@@ -135,15 +133,6 @@ export default function TtEventCreator() {
     setUploading(false);
   };
 
-  const updateTicket = (index, field, value) => {
-    setTicketTypes((prev) => prev.map((t, i) => (i === index ? { ...t, [field]: value } : t)));
-  };
-
-  const addTicket = () => setTicketTypes((prev) => [...prev, emptyTicketType()]);
-
-  const removeTicket = (index) =>
-    setTicketTypes((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)));
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -171,12 +160,11 @@ export default function TtEventCreator() {
           : null,
       is_sdg_only: isSdgOnly,
       contact_id: isSdgOnly ? null : contactId,
-      ticket_types: ticketTypes.map((t) => ({
-        name: t.name.trim(),
-        price: t.price,
-        quantity: t.quantity,
-        description: t.description.trim() || null,
-      })),
+      // Internal-ticketing v2: no ticket types on create. The event editor's
+      // Ticketing panel (products + tiers + statuses + access codes + discount
+      // codes + booking fees) takes over from here.
+      ticketing_mode: 'internal',
+      ticket_types: [],
     };
 
     try {
@@ -219,7 +207,7 @@ export default function TtEventCreator() {
         backHref="/bananas?tab=events"
         backLabel="← BACK TO ADMIN"
         title="New Ticketed Event"
-        description="Creates and publishes a website event and a TicketTailor event series together — date, times and ticket types included. Both go live as soon as TicketTailor confirms the box office and returns a ticket link; if anything fails, the website event is kept as a hidden draft so the public page never shows an event you can’t buy tickets for."
+        description="Saves the event as a hidden draft and drops you into the event editor, where the Ticketing panel handles products, tiers, booking fees, access codes, and discount codes. The event stays hidden from the public until you publish it from the editor."
         titleClassName="text-[36px] font-extrabold -tracking-[0.02em] leading-[1.1]"
         className="mb-10"
       />
@@ -308,97 +296,21 @@ export default function TtEventCreator() {
           onContactIdChange={setContactId}
         />
 
-        {/* TICKET TYPES */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <label className={labelClass + ' mb-0'} style={labelStyle}>TICKET TYPES</label>
-            <button
-              type="button"
-              onClick={addTicket}
-              className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5"
-              style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
-            >
-              + ADD TICKET TYPE
-            </button>
+        {/* Ticket configuration happens on the event editor after this form is
+            saved. Removed the old inline ticket-types block so there is exactly
+            one Ticketing UI in the app. */}
+        <div
+          className="rounded-[12px] border p-4"
+          style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.08)' }}
+        >
+          <div className="text-[11px] font-semibold tracking-[0.14em] mb-2" style={{ color: '#8a8a8a' }}>
+            TICKETS
           </div>
-
-          <div className="space-y-4">
-            {ticketTypes.map((t, i) => (
-              <div
-                key={i}
-                className="rounded-[12px] border p-4"
-                style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.08)' }}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-[11px] font-semibold tracking-[0.14em]" style={{ color: '#8a8a8a' }}>
-                    TICKET {i + 1}
-                  </span>
-                  {ticketTypes.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeTicket(i)}
-                      className="text-[11px] font-semibold tracking-[0.12em] transition-opacity hover:opacity-70"
-                      style={{ color: '#ff8080' }}
-                    >
-                      REMOVE
-                    </button>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="sm:col-span-1">
-                    <label className="block text-[10px] font-semibold tracking-[0.12em] mb-1.5" style={{ color: '#8a8a8a' }}>NAME</label>
-                    <input
-                      type="text"
-                      value={t.name}
-                      onChange={(e) => updateTicket(i, 'name', e.target.value)}
-                      placeholder="General Admission"
-                      className={inputClass + ' py-2.5'}
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold tracking-[0.12em] mb-1.5" style={{ color: '#8a8a8a' }}>PRICE (USD)</label>
-                    <input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={t.price}
-                      onChange={(e) => updateTicket(i, 'price', e.target.value)}
-                      placeholder="0.00"
-                      className={inputClass + ' py-2.5'}
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold tracking-[0.12em] mb-1.5" style={{ color: '#8a8a8a' }}>CAPACITY</label>
-                    <input
-                      type="number"
-                      min={1}
-                      step={1}
-                      value={t.quantity}
-                      onChange={(e) => updateTicket(i, 'quantity', e.target.value)}
-                      placeholder="unlimited"
-                      className={inputClass + ' py-2.5'}
-                      style={inputStyle}
-                    />
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <label className="block text-[10px] font-semibold tracking-[0.12em] mb-1.5" style={{ color: '#8a8a8a' }}>DESCRIPTION (OPTIONAL)</label>
-                  <input
-                    type="text"
-                    value={t.description}
-                    onChange={(e) => updateTicket(i, 'description', e.target.value)}
-                    className={inputClass + ' py-2.5'}
-                    style={inputStyle}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="text-[11px] mt-2" style={{ color: '#555' }}>
-            Price in dollars (use 0 for free). Leave capacity blank for unlimited.
+          <p className="text-[13px] leading-[1.6]" style={{ color: '#c8c8c8' }}>
+            After you save this event you’ll land on the event editor, where the
+            <strong> Ticketing </strong> panel lets you configure products, price tiers, per‑tier status
+            (active / hidden / sold out / access code required), booking fees, tier reveal thresholds,
+            and discount codes.
           </p>
         </div>
 
@@ -454,7 +366,7 @@ export default function TtEventCreator() {
             className="flex-1 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
             style={{ background: '#ffffff', color: '#0a0a0a' }}
           >
-            {saving ? 'PUBLISHING…' : 'CREATE & PUBLISH'}
+            {saving ? 'SAVING…' : 'SAVE & CONFIGURE TICKETS'}
           </button>
           <Link
             href="/bananas?tab=events"

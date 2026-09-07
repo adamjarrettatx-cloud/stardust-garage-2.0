@@ -114,22 +114,34 @@ export async function POST(request) {
     // 1) Insert the local website event as a hidden DRAFT first. Nothing on
     // TicketTailor exists yet, so if this fails (e.g. a slug race that slipped
     // past the pre-check) we abort with nothing to clean up.
+    // Honor an explicit ticketing_mode from the caller so the new-event page
+    // can create the shell as an internal-ticketing event (v2 flow) without
+    // needing to touch the event again just to switch modes. Accepted values
+    // match the TicketingPanel enum. If omitted, leave the column at its DB
+    // default (null / legacy behavior).
+    const requestedMode = typeof body.ticketing_mode === 'string' ? body.ticketing_mode : null;
+    const allowedModes = new Set(['internal', 'external', 'none', 'tickettailor']);
+    const ticketingMode = requestedMode && allowedModes.has(requestedMode) ? requestedMode : null;
+
+    const insertRow = {
+      title: v.title,
+      slug: v.slug,
+      event_date: v.eventDate,
+      event_time: v.eventTime,
+      event_end_time: v.eventEndTime,
+      description: v.description,
+      image_url: v.imageUrl,
+      category: v.category,
+      member_discount_percent: v.memberDiscountPercent,
+      status: 'draft',
+      is_sdg_only: isSdgOnly,
+      contact_id: isSdgOnly ? null : contactId,
+    };
+    if (ticketingMode) insertRow.ticketing_mode = ticketingMode;
+
     const { data: draftEvent, error: insertError } = await supabase
       .from('events')
-      .insert({
-        title: v.title,
-        slug: v.slug,
-        event_date: v.eventDate,
-        event_time: v.eventTime,
-        event_end_time: v.eventEndTime,
-        description: v.description,
-        image_url: v.imageUrl,
-        category: v.category,
-        member_discount_percent: v.memberDiscountPercent,
-        status: 'draft',
-        is_sdg_only: isSdgOnly,
-        contact_id: isSdgOnly ? null : contactId,
-      })
+      .insert(insertRow)
       .select()
       .single();
     if (insertError) {
@@ -151,6 +163,27 @@ export async function POST(request) {
     // Master Agreement lookup treat it as one. Idempotent, non-fatal.
     if (draftEvent.contact_id) {
       await ensureContactTaggedEventOrganizer(supabase, draftEvent.contact_id);
+    }
+
+    // If the caller explicitly picked a non-TicketTailor mode (internal / external
+    // / none), skip every TicketTailor step. The event editor's Ticketing panel
+    // handles product/tier/fee/discount configuration for internal events, and
+    // external/none don't need a series at all. Leave the event as a hidden
+    // DRAFT here — the admin should review it on the editor before publishing,
+    // especially for internal events which need at least one product + tier.
+    if (ticketingMode && ticketingMode !== 'tickettailor') {
+      return NextResponse.json({
+        success: true,
+        event: draftEvent,
+        eventId,
+        tt_event_series_id: null,
+        ticket_url: null,
+        ticketTypesCreated: 0,
+        ttConfigured,
+        ttPublished: false,
+        ttNote: null,
+        status: 'draft',
+      });
     }
 
     // If TicketTailor isn't configured, there is no series to wait on. Publish
