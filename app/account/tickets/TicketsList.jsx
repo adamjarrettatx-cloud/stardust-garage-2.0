@@ -360,8 +360,26 @@ export default function TicketsList({ orders, venueAddress }) {
           color: '#8a8a8a',
         }}
       >
-        <div style={{ fontSize: 15, marginBottom: 6, color: '#e0e0e0' }}>No tickets yet.</div>
-        <div style={{ fontSize: 13 }}>Buy tickets to an upcoming show and they'll live here.</div>
+        <div style={{ fontSize: 15, marginBottom: 6, color: '#e0e0e0' }}>No tickets on this account yet.</div>
+        <div style={{ fontSize: 13, marginBottom: 16 }}>
+          {'Any tickets you buy will show up here. If you bought tickets with a different email or Google account, sign out (above) and back in with that one.'}
+        </div>
+        <a
+          href="/events"
+          style={{
+            display: 'inline-block',
+            padding: '10px 18px',
+            borderRadius: 999,
+            background: '#ffffff',
+            color: '#0a0a0a',
+            textDecoration: 'none',
+            fontSize: 12,
+            fontWeight: 600,
+            letterSpacing: '0.14em',
+          }}
+        >
+          BROWSE EVENTS
+        </a>
       </div>
     );
   }

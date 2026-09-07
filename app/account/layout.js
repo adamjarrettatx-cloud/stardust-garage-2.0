@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
+import SignOutButton from './SignOutButton';
 
 const TABS = [
   { href: '/account/tickets', label: 'Tickets' },
@@ -69,6 +70,21 @@ export default async function AccountLayout({ children }) {
           >
             {TABS.find((t) => pathname.startsWith(t.href))?.label || 'Account'}
           </h1>
+          {/* Signed-in-as strip. Prevents the \"why don't my tickets show up?\" *
+           * confusion when a user has multiple accounts (Google + password)   *
+           * and lands on /account/tickets under the wrong one. Making the     *
+           * signed-in email visible + one-click sign out means the mismatch   *
+           * is obvious instead of invisible.                                  */}
+          <div
+            className="mt-3 flex items-center justify-between gap-3 flex-wrap"
+            style={{ fontSize: 12, color: '#8a8a8a' }}
+          >
+            <div>
+              {'Signed in as '}
+              <span style={{ color: '#e0e0e0' }}>{user.email}</span>
+            </div>
+            <SignOutButton />
+          </div>
         </div>
 
         {/* Tab bar. Horizontal scroll on mobile so long labels never wrap
