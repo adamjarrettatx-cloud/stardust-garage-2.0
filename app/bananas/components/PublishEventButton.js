@@ -77,7 +77,7 @@ export default function PublishEventButton({ eventId, status, ttEventSeriesId })
             className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-40"
             style={{ background: 'var(--auth-success)', color: 'var(--auth-strong-surface-text)' }}
           >
-            {publishing ? 'PUBLISHING…' : 'PUBLISH WEBSITE'}
+            {publishing ? 'GOING LIVE…' : 'GO LIVE'}
           </button>
         )}
       </div>
@@ -86,8 +86,8 @@ export default function PublishEventButton({ eventId, status, ttEventSeriesId })
         {isDraft
           ? ttEventSeriesId
             // Legacy TicketTailor-linked event.
-            ? 'Publishing makes this event public and sets its linked ticket series to "published" so tickets go on sale.'
-            : 'Publishing makes this event public on the events page.'
+            ? 'This event is a draft. Going live puts it on the public events page and sets its linked ticket series on sale.'
+            : 'This event is a draft. Going live puts it on the public events page.'
           : 'This event is live on the public events page.'}
       </p>
 

@@ -550,45 +550,42 @@ export default function EventForm({
           </div>
         )}
 
-        {/* Sticky action bar so save/cancel is always in reach on long pages. */}
+        {/* Sticky action bar: right-aligned button group on a subtle blurred
+            strip. No black "container pill" — the buttons are the UI. */}
         <div
-          className="sticky bottom-4 z-10 rounded-full border px-4 py-3 flex items-center gap-3 backdrop-blur"
+          className="sticky bottom-4 z-10 flex items-center justify-end gap-2 py-2 px-2 rounded-[12px] backdrop-blur border"
           style={{
-            background: 'rgba(10, 10, 10, 0.85)',
-            borderColor: 'var(--auth-card-border)',
+            background: 'rgba(20, 20, 20, 0.55)',
+            borderColor: 'rgba(255,255,255,0.08)',
           }}
         >
-          <button
-            type="submit"
-            disabled={saving || uploading}
-            className="flex-1 py-3 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
-            style={{ background: '#ffffff', color: '#0a0a0a' }}
+          <Link
+            href="/bananas?tab=events"
+            className="px-4 py-2 rounded-[8px] text-[12px] font-semibold tracking-[0.12em] transition-colors hover:bg-white/5"
+            style={{ color: 'var(--auth-muted)' }}
           >
-            {saving ? 'SAVING…' : isEditing ? 'SAVE CHANGES' : 'CREATE EVENT'}
-          </button>
+            CANCEL
+          </Link>
           {canGenerateCodes && (
             <button
               type="button"
               onClick={handleGenerateCodes}
               disabled={generating}
-              className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50 whitespace-nowrap"
-              style={{
-                border: '1px solid #ffb84d',
-                color: '#ffb84d',
-                background: 'transparent',
-              }}
+              className="px-4 py-2 rounded-[8px] text-[12px] font-semibold tracking-[0.12em] transition-colors hover:bg-white/5 disabled:opacity-50 whitespace-nowrap"
+              style={{ color: '#ffb84d' }}
               title="Generate member ticket codes for this event"
             >
               {generating ? 'GENERATING…' : 'MEMBER CODES'}
             </button>
           )}
-          <Link
-            href="/bananas?tab=events"
-            className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5"
-            style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
+          <button
+            type="submit"
+            disabled={saving || uploading}
+            className="px-6 py-2.5 rounded-[8px] text-[12px] font-semibold tracking-[0.12em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
+            style={{ background: '#ffffff', color: '#0a0a0a' }}
           >
-            CANCEL
-          </Link>
+            {saving ? 'SAVING…' : isEditing ? 'SAVE CHANGES' : 'CREATE EVENT'}
+          </button>
         </div>
 
         {generateMessage && (
