@@ -130,7 +130,7 @@ function QrOverlay({ ticketCode, qrSvg, onClose }) {
             cursor: 'pointer',
           }}
         >
-          \u00D7
+          {'\u00D7'}
         </button>
         <div
           style={{ width: '100%', display: 'flex', justifyContent: 'center' }}
@@ -243,11 +243,11 @@ function OrderCard({ order, venueAddress }) {
                 <div style={{ minWidth: 0, color: '#e0e0e0' }}>
                   {item.product_name_snapshot}
                   {item.tier_name_snapshot && (
-                    <span style={{ color: '#8a8a8a' }}> \u00B7 {item.tier_name_snapshot}</span>
+                    <span style={{ color: '#8a8a8a' }}>{' \u00B7 '}{item.tier_name_snapshot}</span>
                   )}
                 </div>
                 <div style={{ flexShrink: 0, color: '#a0a0a0', fontFamily: 'monospace' }}>
-                  \u00D7{item.quantity}
+                  {'\u00D7'}{item.quantity}
                 </div>
               </li>
             ))}
@@ -315,7 +315,7 @@ function OrderCard({ order, venueAddress }) {
           flexWrap: 'wrap',
         }}>
           <div style={{ fontSize: 11, color: '#666' }}>
-            Order {order.id.slice(0, 8)} \u00B7 {formatOrderDate(order.created_at)}
+            Order {order.id.slice(0, 8)}{' \u00B7 '}{formatOrderDate(order.created_at)}
           </div>
           <button
             type="button"
