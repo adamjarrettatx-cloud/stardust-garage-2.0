@@ -4,7 +4,7 @@ import { requireAdmin } from '@/lib/auth-helpers';
 import { isInternalTicketingEnabled } from '@/lib/feature-flags';
 import { generateTicketCode } from '@/lib/tickets/codes';
 import { sendTicketConfirmation } from '@/lib/email';
-import { renderTicketQrSvg } from '@/lib/tickets/qr';
+import { renderTicketQrPngBuffer } from '@/lib/tickets/qr';
 import { fetchEventForEmail } from '@/lib/tickets/fetch-event-for-email';
 
 // POST /api/admin/tickets/comp
@@ -129,13 +129,15 @@ export async function POST(request) {
 
   if (send_email) {
     const eventCtx = await fetchEventForEmail({ supabaseAdmin, eventId: event_id, request });
-    const rows = ticketRows.map((t) => ({
-      ticketCode: t.ticket_code,
-      productName: product.name,
-      tierName: 'Comp',
-      qrSvg: renderTicketQrSvg({ ticketCode: t.ticket_code }),
-      viewUrl: null,
-    }));
+    const rows = await Promise.all(
+      ticketRows.map(async (t) => ({
+        ticketCode: t.ticket_code,
+        productName: product.name,
+        tierName: 'Comp',
+        qrPngBuffer: await renderTicketQrPngBuffer({ ticketCode: t.ticket_code }),
+        viewUrl: null,
+      })),
+    );
     try {
       await sendTicketConfirmation({
         to: buyer_email,

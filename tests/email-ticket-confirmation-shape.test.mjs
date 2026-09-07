@@ -41,9 +41,18 @@ const baseTicketRow = {
   ticketCode: 'SDG-ABC123',
   productName: 'General Admission',
   tierName: 'Early Bird',
-  qrSvg: '<svg data-role="qr"></svg>',
+  // A tiny 1x1 PNG buffer stands in for the QR bytes. sendTicketConfirmation
+  // only cares that qrPngBuffer is a Buffer; it doesn't inspect contents. This
+  // lets us assert the CID pipeline (attachments + <img src="cid:...">) without
+  // pulling the qrcode dep into a shape test.
+  qrPngBuffer: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13]),
   viewUrl: null,
 };
+
+function parseSentPayload(calls) {
+  assert.equal(calls.length, 1, 'expected exactly one outbound email');
+  return JSON.parse(calls[0].init.body);
+}
 
 test('sendTicketConfirmation renders the flyer <img> when eventFlyerUrl is provided', async () => {
   await withFetchCapture(async (calls) => {
@@ -67,6 +76,39 @@ test('sendTicketConfirmation renders the flyer <img> when eventFlyerUrl is provi
   });
 });
 
+test('sendTicketConfirmation attaches one PNG per ticket with a matching cid <img>', async () => {
+  await withFetchCapture(async (calls) => {
+    await sendTicketConfirmation({
+      to: 'buyer@example.com',
+      orderId: 'ord_qr',
+      eventTitle: 'QR Attachment Test',
+      eventWhen: null,
+      ticketRows: [
+        { ...baseTicketRow, ticketCode: 'SDGA-AAAA-1111' },
+        { ...baseTicketRow, ticketCode: 'SDGA-BBBB-2222' },
+      ],
+    });
+    const payload = parseSentPayload(calls);
+    assert.ok(Array.isArray(payload.attachments), 'payload must include an attachments array');
+    assert.equal(payload.attachments.length, 2, 'one attachment per ticket');
+    for (const att of payload.attachments) {
+      assert.equal(att.content_type, 'image/png');
+      assert.ok(att.filename.endsWith('.png'));
+      assert.ok(att.content_id, 'attachment needs a content_id');
+      assert.ok(/^[A-Za-z0-9+/=]+$/.test(att.content), 'content must be base64');
+      // The template must reference this CID via <img src="cid:...">
+      assert.ok(
+        payload.html.includes(`cid:${att.content_id}`),
+        `html should reference cid:${att.content_id}`,
+      );
+    }
+    // And the html must NOT contain the old inline-svg leak
+    assert.ok(!payload.html.includes('data:image/svg'), 'no data-URI SVG in email html');
+    assert.ok(!payload.html.includes('<svg'), 'no inline SVG in email html');
+    assert.ok(!payload.html.includes('null</div>'), 'no literal "null" strings in email html');
+  });
+});
+
 test('sendTicketConfirmation omits the flyer <img> when eventFlyerUrl is missing', async () => {
   await withFetchCapture(async (calls) => {
     await sendTicketConfirmation({
@@ -74,11 +116,12 @@ test('sendTicketConfirmation omits the flyer <img> when eventFlyerUrl is missing
       orderId: 'ord_2',
       eventTitle: 'Comp Ticket Test',
       eventWhen: null,
-      // no eventFlyerUrl, no venueAddress, no orderUrl, no orderDate
-      ticketRows: [baseTicketRow],
+      // no eventFlyerUrl, no venueAddress, no orderUrl, no orderDate;
+      // pass a row WITHOUT qrPngBuffer so no cid img renders either.
+      ticketRows: [{ ...baseTicketRow, qrPngBuffer: null }],
     });
     const html = parseSentHtml(calls);
-    assert.ok(!/<img\s+src=/.test(html), 'no flyer img should render when eventFlyerUrl is omitted');
+    assert.ok(!/<img\s+src=/.test(html), 'no img should render when both flyer and QR are omitted');
     assert.ok(!html.includes('VIEW IN YOUR ACCOUNT'), 'CTA button should NOT render without orderUrl');
     assert.ok(!/Ordered\s+/.test(html), 'no ordered date row when orderDate is omitted');
   });

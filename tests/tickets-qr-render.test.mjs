@@ -16,7 +16,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { renderTicketQrSvg, renderTicketQrDataUri, buildTicketQrUrl } from '../lib/tickets/qr.js';
+import { renderTicketQrSvg, renderTicketQrDataUri, buildTicketQrUrl, renderTicketQrPngBuffer } from '../lib/tickets/qr.js';
 
 test('renderTicketQrSvg returns a valid SVG string, not null', () => {
   const svg = renderTicketQrSvg({
@@ -58,4 +58,16 @@ test('buildTicketQrUrl encodes the scanner URL', () => {
     url,
     'https://www.sdgatx.com/t/scan?t=SDGA-5MDG-45S2-F10Y-2VFR-TCT9-VVVP',
   );
+});
+
+test('renderTicketQrPngBuffer produces a valid PNG buffer', async () => {
+  const buf = await renderTicketQrPngBuffer({
+    ticketCode: 'SDGA-5MDG-45S2-F10Y-2VFR-TCT9-VVVP',
+    env: { NEXT_PUBLIC_SITE_URL: 'https://www.sdgatx.com' },
+  });
+  assert.ok(Buffer.isBuffer(buf), 'must return a Buffer');
+  assert.ok(buf.length > 200, 'PNG must be non-trivial');
+  // PNG magic number: 89 50 4E 47 0D 0A 1A 0A
+  const header = buf.slice(0, 8).toString('hex');
+  assert.equal(header, '89504e470d0a1a0a', 'buffer must start with the PNG magic number');
 });

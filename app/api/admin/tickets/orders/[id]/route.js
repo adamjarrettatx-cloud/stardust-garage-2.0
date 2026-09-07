@@ -6,7 +6,7 @@ import { refundTicketOrder } from '@/lib/tickets/stripe';
 import { splitRefundTax } from '@/lib/tickets/pricing';
 import { sendTicketConfirmation } from '@/lib/email';
 import { fetchEventForEmail } from '@/lib/tickets/fetch-event-for-email';
-import { renderTicketQrSvg } from '@/lib/tickets/qr';
+import { renderTicketQrPngBuffer } from '@/lib/tickets/qr';
 
 // GET    /api/admin/tickets/orders/[id]  -> full order detail (items + tickets)
 // POST   /api/admin/tickets/orders/[id]  -> body: { action: 'refund'|'void_tickets'|'resend'|'comp_note', ... }
@@ -173,13 +173,15 @@ export async function POST(request, { params }) {
       supabaseAdmin.from('order_items').select('id, product_name_snapshot, tier_name_snapshot').eq('order_id', order.id),
     ]);
     const itemById = new Map((items.data || []).map((i) => [i.id, i]));
-    const ticketRows = (tickets.data || []).map((t) => ({
-      ticketCode: t.ticket_code,
-      productName: itemById.get(t.order_item_id)?.product_name_snapshot || 'Ticket',
-      tierName: itemById.get(t.order_item_id)?.tier_name_snapshot || null,
-      qrSvg: renderTicketQrSvg({ ticketCode: t.ticket_code }),
-      viewUrl: null,
-    }));
+    const ticketRows = await Promise.all(
+      (tickets.data || []).map(async (t) => ({
+        ticketCode: t.ticket_code,
+        productName: itemById.get(t.order_item_id)?.product_name_snapshot || 'Ticket',
+        tierName: itemById.get(t.order_item_id)?.tier_name_snapshot || null,
+        qrPngBuffer: await renderTicketQrPngBuffer({ ticketCode: t.ticket_code }),
+        viewUrl: null,
+      })),
+    );
 
     await sendTicketConfirmation({
       to: body.to_email || order.buyer_email,
