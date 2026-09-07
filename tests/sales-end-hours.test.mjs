@@ -35,6 +35,42 @@ test('resolveEventStartDate returns null for missing or unparseable inputs', () 
   assert.equal(resolveEventStartDate('not-a-date', '10:00 PM'), null);
 });
 
+// events.event_time is free text in production and almost always looks like a
+// range or has a trailing '- LATE' — the loose extractor must pull the start
+// out so the dropdown works on real events, not just perfectly-shaped values.
+test('resolveEventStartDate extracts the leading clock token from free-form ranges', () => {
+  const cases = [
+    ['10PM - LATE',      '2026-09-10T22:00:00.000Z'],
+    ['9 PM - 2 AM',      '2026-09-10T21:00:00.000Z'],
+    ['10 PM - 5 AM',     '2026-09-10T22:00:00.000Z'],
+    ['1 PM - 5 PM',      '2026-09-10T13:00:00.000Z'],
+    ['6:30PM',           '2026-09-10T18:30:00.000Z'],
+    ['5PM - 8PM',        '2026-09-10T17:00:00.000Z'],
+    ['10AM - 1PM',       '2026-09-10T10:00:00.000Z'],
+    ['10 pm to late',    '2026-09-10T22:00:00.000Z'],
+    ['3:45PM - 10PM',    '2026-09-10T15:45:00.000Z'],
+    ['7:30 PM - LATE',   '2026-09-10T19:30:00.000Z'],
+    ['10 PM - LATE',     '2026-09-10T22:00:00.000Z'],
+    ['10pm - LATE',      '2026-09-10T22:00:00.000Z'],
+  ];
+  for (const [input, expected] of cases) {
+    const d = resolveEventStartDate('2026-09-10', input);
+    assert.ok(d, `expected ${input} to parse`);
+    assert.equal(d.toISOString(), expected, `input: ${input}`);
+  }
+});
+
+test('resolveEventStartDate understands noon and midnight', () => {
+  assert.equal(
+    resolveEventStartDate('2026-09-10', 'noon').toISOString(),
+    '2026-09-10T12:00:00.000Z',
+  );
+  assert.equal(
+    resolveEventStartDate('2026-09-10', 'midnight').toISOString(),
+    '2026-09-10T00:00:00.000Z',
+  );
+});
+
 test('hoursAfterDoorsFromIso recovers the whole-hour offset for a saved cutoff', () => {
   const eventStart = new Date('2026-09-10T22:00:00.000Z');
   const twoHoursLater = new Date('2026-09-11T00:00:00.000Z').toISOString();
