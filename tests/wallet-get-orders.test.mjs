@@ -39,9 +39,12 @@ function makeMock({ orders = [], items = [], tickets = [], events = [] } = {}) {
   return { from: (t) => chain(t) };
 }
 
-test('exports the Stardust venue address as a constant', () => {
-  assert.ok(STARDUST_VENUE_ADDRESS.includes('Austin'), 'address should mention Austin');
-  assert.ok(STARDUST_VENUE_ADDRESS.length > 15, 'address should be a real address');
+test('venue address constant is intentionally null (address hidden)', () => {
+  // The venue address is deliberately not surfaced on public artifacts.
+  // Every consumer guards on truthiness so null wipes the address block
+  // cleanly. If a real address is ever added back, keep it in ONE place
+  // (lib/wallet/get-orders.js) and update this assertion.
+  assert.strictEqual(STARDUST_VENUE_ADDRESS, null, 'address must remain hidden until explicitly re-enabled');
 });
 
 test('returns an empty orders array when no user is provided', async () => {
