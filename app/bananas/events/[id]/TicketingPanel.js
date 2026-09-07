@@ -304,9 +304,11 @@ export default function TicketingPanel({
         )}
       </div>
 
-      {/* Per-membership discount percents. Shown for every ticketing mode
-          because they also drive the TicketTailor member-code generator that
-          still runs against legacy events. */}
+      {/* Per-membership discount percents. Hidden when this event is free —
+          there's no ticket price to discount — but shown for every other mode
+          (internal / external / legacy tickettailor) because they all drive
+          member-code generation. */}
+      {savedUiMode !== 'free' && (
       <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--auth-border, #333)' }}>
         <h3 style={{ margin: 0, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Member discounts</h3>
         <p style={{ margin: '4px 0 12px 0', fontSize: 12, opacity: 0.7 }}>
@@ -375,6 +377,7 @@ export default function TicketingPanel({
           <div style={{ color: '#f66', marginTop: 8, fontSize: 13 }}>{memberDiscountError}</div>
         )}
       </div>
+      )}
 
       {savedUiMode === 'default' && (
         <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--auth-border, #333)' }}>
