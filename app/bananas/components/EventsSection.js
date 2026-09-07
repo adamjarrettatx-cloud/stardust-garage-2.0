@@ -123,17 +123,30 @@ export default function EventsSection({ upcoming, past, metricsByEvent = {} }) {
                   tab (see lib/admin-tabs.js) so a per-event button here would
                   only duplicate a destination that is already one click from
                   anywhere. Guest List stays on the row because it is per-event
-                  work with no equivalent global page. The long label shortens
-                  below 640px instead of wrapping the row onto a second line;
-                  both halves ship in the markup so the label never depends on
-                  a JS width guess and the full wording stays available to
-                  search and screen readers. */}
+                  work with no equivalent global page. Contracts sits between
+                  the live sales number and Guest List so the row reads
+                  left-to-right in the order the owner needs it (money → docs
+                  → door); the link deep-links to the event edit page's
+                  #contracts section so a click lands directly on the Event
+                  Contracts panel — the staff starting point for creating and
+                  sending an agreement. The long label shortens below 640px
+                  instead of wrapping the row onto a second line; both halves
+                  ship in the markup so the label never depends on a JS width
+                  guess and the full wording stays available to search and
+                  screen readers. */}
               <EventTicketSalesLive
                 eventId={event.id}
                 hasTicketTailor={Boolean(event.tt_event_series_id)}
                 initialMetrics={metricsByEvent[event.id] || null}
               />
               <div className="flex flex-wrap gap-2 justify-end flex-shrink-0">
+                <Link
+                  href={`/bananas/events/${event.id}#contracts`}
+                  className="auth-theme-border-button px-3 sm:px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
+                  title={`Contracts for ${event.title}`}
+                >
+                  CONTRACTS
+                </Link>
                 <Link
                   href={`/bananas/guest-list/${event.id}`}
                   className="auth-theme-border-button px-3 sm:px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
