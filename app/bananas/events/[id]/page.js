@@ -8,7 +8,6 @@ import ArtistLineupPanel from './ArtistLineupPanel';
 import GuestListPanel from '../../components/GuestListPanel';
 import EventContractsPanel from './EventContractsPanel';
 import TicketingPanel from './TicketingPanel';
-import { isInternalTicketingEnabled } from '@/lib/feature-flags';
 import { organizerDisplayLabel } from '@/lib/event-organizer';
 
 export const revalidate = 0;
@@ -91,9 +90,12 @@ export default async function EditEventPage({ params }) {
       footerPanels={(
         <>
           <ArtistLineupPanel eventId={event.id} />
-          {isInternalTicketingEnabled() && (
-            <TicketingPanel eventId={event.id} initialMode={event.ticketing_mode} />
-          )}
+          <TicketingPanel
+            eventId={event.id}
+            initialMode={event.ticketing_mode}
+            initialTicketUrl={event.ticket_url}
+            initialTtSeriesId={event.tt_event_series_id}
+          />
           <EventContractsPanel eventId={event.id} />
           {/* Also a full screen of its own at /bananas/guest-list/<id>, which is
               where the Events row's GUEST LIST button goes. Same component in
