@@ -14,7 +14,7 @@ const UUID = /^[0-9a-f-]{36}$/i;
 async function loadBooking(admin, eventId, bookingId) {
   const { data } = await admin
     .from('event_bookings')
-    .select('id, event_id, contact_id, slot_start, slot_end, pay_type, hourly_rate_cents, flat_amount_cents, status, contact:contact_id ( display_name )')
+    .select('id, event_id, contact_id, slot_start, slot_end, hours_worked, pay_type, hourly_rate_cents, flat_amount_cents, status, contact:contact_id ( display_name )')
     .eq('id', bookingId)
     .eq('event_id', eventId)
     .maybeSingle();

@@ -9,7 +9,6 @@ import {
   bookingPayInProgress,
   formatBookingAmount,
   formatSlotRange,
-  toDatetimeLocalValue,
 } from '@/lib/booking-helpers';
 import { CONTRACTOR_CONTACT_TYPES } from '@/lib/contact-helpers';
 import ContactSelect from '../../components/ContactSelect';
@@ -24,11 +23,14 @@ const inputStyle = {
   color: 'var(--auth-input-text)',
 };
 
+// Slot start/end are optional on the DB now; the admin flow enters the number
+// of hours directly instead of two datetime pickers. Legacy bookings that
+// already have slot_start/slot_end still compute correctly through the
+// fallback in bookingHours() / computeBookingAmountCents().
 const EMPTY_FORM = {
-  slot_start: '',
-  slot_end: '',
   pay_type: 'hourly',
   hourly_rate: '',
+  hours: '',
   flat_amount: '',
 };
 
@@ -78,42 +80,13 @@ function statusBadgeColors(status) {
   return { color: 'var(--auth-violet-strong)', bg: 'var(--auth-card-bg-alt)', border: 'var(--auth-card-border)' };
 }
 
-// Slot times + pay type/rate. Shared by "add artist" and "edit booking" so
+// Pay type / rate / hours. Shared by "add artist" and "edit booking" so
 // both submit the same shape the API route validates with buildBookingPayload.
 function BookingForm({ form, setForm, busy, error, onSubmit, onCancel, submitLabel }) {
   const field = (key) => (e) => setForm({ ...form, [key]: e.target.value });
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className={labelClass} style={labelStyle}>
-            SLOT START
-          </label>
-          <input
-            type="datetime-local"
-            value={form.slot_start}
-            onChange={field('slot_start')}
-            required
-            className={inputClass}
-            style={inputStyle}
-          />
-        </div>
-        <div>
-          <label className={labelClass} style={labelStyle}>
-            SLOT END
-          </label>
-          <input
-            type="datetime-local"
-            value={form.slot_end}
-            onChange={field('slot_end')}
-            required
-            className={inputClass}
-            style={inputStyle}
-          />
-        </div>
-      </div>
-
       <div>
         <label className={labelClass} style={labelStyle}>
           PAY TYPE
@@ -138,20 +111,38 @@ function BookingForm({ form, setForm, busy, error, onSubmit, onCancel, submitLab
       </div>
 
       {form.pay_type === 'hourly' ? (
-        <div>
-          <label className={labelClass} style={labelStyle}>
-            HOURLY RATE ($)
-          </label>
-          <input
-            type="number"
-            min={0}
-            step="0.01"
-            value={form.hourly_rate}
-            onChange={field('hourly_rate')}
-            required
-            className={inputClass}
-            style={inputStyle}
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelClass} style={labelStyle}>
+              HOURLY RATE ($)
+            </label>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={form.hourly_rate}
+              onChange={field('hourly_rate')}
+              required
+              className={inputClass}
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <label className={labelClass} style={labelStyle}>
+              HOURS
+            </label>
+            <input
+              type="number"
+              min={0}
+              step="0.25"
+              value={form.hours}
+              onChange={field('hours')}
+              required
+              className={inputClass}
+              style={inputStyle}
+              placeholder="e.g. 3"
+            />
+          </div>
         </div>
       ) : (
         <div>
@@ -245,13 +236,25 @@ export default function ArtistLineupPanel({ eventId }) {
   };
 
   const openEdit = (booking) => {
+    // Prefer stored hours_worked; fall back to slot-derived hours so a legacy
+    // booking edited under the new UI shows the same total instead of blanking.
+    let hoursValue = '';
+    if (booking.hours_worked !== null && booking.hours_worked !== undefined && booking.hours_worked !== '') {
+      hoursValue = String(booking.hours_worked);
+    } else if (booking.slot_start && booking.slot_end) {
+      const start = new Date(booking.slot_start).getTime();
+      const end = new Date(booking.slot_end).getTime();
+      if (Number.isFinite(start) && Number.isFinite(end) && end > start) {
+        const h = (end - start) / (1000 * 60 * 60);
+        hoursValue = String(Math.round(h * 100) / 100);
+      }
+    }
     setEditing({
       id: booking.id,
       form: {
-        slot_start: toDatetimeLocalValue(booking.slot_start),
-        slot_end: toDatetimeLocalValue(booking.slot_end),
         pay_type: booking.pay_type,
         hourly_rate: booking.hourly_rate_cents ? String(booking.hourly_rate_cents / 100) : '',
+        hours: hoursValue,
         flat_amount: booking.flat_amount_cents ? String(booking.flat_amount_cents / 100) : '',
       },
     });
@@ -434,9 +437,11 @@ export default function ArtistLineupPanel({ eventId }) {
                       {booking.contact.company}
                     </span>
                   )}
-                  <div className="text-[13px] mt-1" style={{ color: 'var(--auth-text)' }}>
-                    {formatSlotRange(booking.slot_start, booking.slot_end)}
-                  </div>
+                  {booking.slot_start && booking.slot_end && (
+                    <div className="text-[13px] mt-1" style={{ color: 'var(--auth-text)' }}>
+                      {formatSlotRange(booking.slot_start, booking.slot_end)}
+                    </div>
+                  )}
                   <div className="text-[13px] mt-1" style={{ color: 'var(--auth-muted-strong)' }}>
                     {formatBookingAmount(booking)}
                   </div>
