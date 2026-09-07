@@ -54,8 +54,11 @@ function blankProduct(eventId) {
   return {
     id: null,
     event_id: eventId,
-    name: '',
+    // Always auto-named 'Tickets' — not shown in the admin UI. The visible
+    // labels a buyer sees are the tier names (Early Bird / Phase 1 / GA).
+    name: 'Tickets',
     description: '',
+    kind: 'tickets',
     member_only: false,
     min_per_order: 1,
     max_per_order: 10,
@@ -242,7 +245,9 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
   const [p, setP] = useState(() => (initial ? toEditShape(initial) : blankProduct(eventId)));
 
   const activeTier = useMemo(() => resolveActiveTier(p.tiers), [p.tiers]);
-  const nameValid = p.name.trim().length > 0;
+  // The product's own name is always 'Tickets' behind the scenes and not
+  // shown in the UI — buyers see tier names. So we only validate tiers.
+  const nameValid = true;
   const tiersValid = p.tiers.length > 0 && p.tiers.every((t) =>
     t.name?.trim() &&
     Number.isFinite(t.price_cents) &&
@@ -277,7 +282,10 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
   function submit() {
     const payload = {
       ...p,
-      name: p.name.trim(),
+      // Force the invisible-in-UI product name to 'Tickets' so the DB row is
+      // stable regardless of whether it was ever edited elsewhere.
+      name: 'Tickets',
+      kind: 'tickets',
       description: p.description?.trim() || null,
       // Hardcoded default: always reveal the next tier at ≤ 10 remaining.
       // Next-tier visibility is controlled per-tier via status='hidden'.
@@ -299,16 +307,6 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
     <div style={{ ...cardStyle({ padding: 20 }), marginBottom: 20 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
         <label>
-          <div style={fieldLabelStyle()}>Name *</div>
-          <input
-            type="text"
-            value={p.name}
-            onChange={(e) => setP({ ...p, name: e.target.value })}
-            style={inputStyle({ invalid: !nameValid && p.name.length > 0 })}
-            placeholder="General Admission"
-          />
-        </label>
-        <label>
           <div style={fieldLabelStyle()}>Min per order</div>
           <input
             type="number"
@@ -326,16 +324,6 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
             value={p.max_per_order}
             onChange={(e) => setP({ ...p, max_per_order: parseInt(e.target.value, 10) || 1 })}
             style={inputStyle()}
-          />
-        </label>
-
-        <label style={{ gridColumn: '1 / -1' }}>
-          <div style={fieldLabelStyle()}>Description</div>
-          <textarea
-            rows={2}
-            value={p.description}
-            onChange={(e) => setP({ ...p, description: e.target.value })}
-            style={{ ...inputStyle(), resize: 'vertical', minHeight: 60 }}
           />
         </label>
 
@@ -375,7 +363,7 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
 
       <h4 style={{ ...sectionHeaderStyle(), marginTop: 24, marginBottom: 4, fontSize: 12 }}>Price tiers</h4>
       <p style={sectionSubStyle()}>
-        Each tier is a price window. Leave start/end blank for open-ended. Tiers are checked in order; the first Active tier whose window contains &quot;now&quot; wins. Booking fee override is per ticket in dollars — blank uses the event default.
+        Add a tier for each price phase (e.g. Early Bird → Phase 1 → Phase 2 → General Admission). Each tier is a price window — leave start/end blank for open-ended. The tier name is what buyers see. Booking fee override is per ticket in dollars — blank uses the event default.
       </p>
 
       <div style={{ border: `1px solid ${T.border}`, borderRadius: 12, overflow: 'hidden', background: T.cardBg }}>
@@ -395,7 +383,7 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
             fontFamily: T.fontStack,
           }}
         >
-          <span>Name</span>
+          <span>Tier name</span>
           <span>Price $</span>
           <span>Starts</span>
           <span>Ends</span>
@@ -485,8 +473,7 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
         >
           CANCEL
         </button>
-        {!nameValid && <span style={{ color: T.danger, fontSize: 12 }}>Name required</span>}
-        {nameValid && !tiersValid && (
+        {!tiersValid && (
           <span style={{ color: T.danger, fontSize: 12 }}>
             Each tier needs a name, price, and if status is &quot;Access code required&quot;, at least one access code
           </span>
@@ -502,7 +489,11 @@ export default function ProductEditor({ eventId, products, onReload, eventFeeDef
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(null);
 
-  const target = editing === 'new' ? null : (products.find((p) => p.id === editing) || null);
+  // Only render the default 'tickets' product here. Private-space rentals
+  // live in their own PrivateSpacesManager section below the ticketing UI.
+  const ticketsProducts = (products || []).filter((p) => (p.kind || 'tickets') === 'tickets');
+
+  const target = editing === 'new' ? null : (ticketsProducts.find((p) => p.id === editing) || null);
 
   async function save(payload) {
     setSaving(true);
@@ -583,7 +574,6 @@ export default function ProductEditor({ eventId, products, onReload, eventFeeDef
       <table style={tableStyle()}>
         <thead>
           <tr>
-            <th style={thStyle()}>Name</th>
             <th style={thStyle()}>Tiers</th>
             <th style={thStyle({ align: 'right' })}>Inventory</th>
             <th style={thStyle()}>Flags</th>
@@ -591,14 +581,14 @@ export default function ProductEditor({ eventId, products, onReload, eventFeeDef
           </tr>
         </thead>
         <tbody>
-          {products.length === 0 && (
+          {ticketsProducts.length === 0 && (
             <tr>
-              <td colSpan={5} style={{ ...tdStyle(), color: T.muted, textAlign: 'center' }}>
-                No products yet. Click &quot;+ NEW PRODUCT&quot; to create one.
+              <td colSpan={4} style={{ ...tdStyle(), color: T.muted, textAlign: 'center' }}>
+                No tickets yet. Click &quot;+ NEW PRODUCT&quot; to create your tier ladder.
               </td>
             </tr>
           )}
-          {products.map((p) => {
+          {ticketsProducts.map((p) => {
             const active = resolveActiveTier(p.tiers || []);
             const totalTiers = (p.tiers || []).length;
             const hiddenCount = (p.tiers || []).filter((t) => (t.status || 'active') === 'hidden').length;
@@ -606,10 +596,6 @@ export default function ProductEditor({ eventId, products, onReload, eventFeeDef
             const soldOutTiers = (p.tiers || []).filter((t) => (t.status || 'active') === 'sold_out').length;
             return (
               <tr key={p.id}>
-                <td style={tdStyle()}>
-                  <div style={{ fontWeight: 700, color: T.strongText }}>{p.name}</div>
-                  {p.description && <div style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>{p.description}</div>}
-                </td>
                 <td style={tdStyle()}>
                   <div>{totalTiers} tier{totalTiers === 1 ? '' : 's'}</div>
                   {active && (

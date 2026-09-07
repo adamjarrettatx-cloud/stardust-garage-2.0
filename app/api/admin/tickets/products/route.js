@@ -86,6 +86,7 @@ export async function POST(request) {
   try { body = await request.json(); } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
   const {
     id, event_id, name, description = null,
+    kind = 'tickets',
     member_only = false,
     min_per_order = 1,
     max_per_order = 10,
@@ -96,6 +97,9 @@ export async function POST(request) {
     tiers = [],
   } = body || {};
   if (!event_id || !name) return NextResponse.json({ error: 'Missing event_id or name' }, { status: 400 });
+  if (kind !== 'tickets' && kind !== 'private_space') {
+    return NextResponse.json({ error: "kind must be 'tickets' or 'private_space'" }, { status: 400 });
+  }
 
   const supabaseAdmin = admin();
 
@@ -104,6 +108,7 @@ export async function POST(request) {
     event_id,
     name,
     description,
+    kind,
     member_only,
     min_per_order,
     max_per_order,

@@ -22,6 +22,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import ProductEditor from '@/components/ticketing/ProductEditor';
+import PrivateSpacesManager from '@/components/ticketing/PrivateSpacesManager';
 import DiscountCodesManager from '@/components/ticketing/DiscountCodesManager';
 
 const UI_MODES = [
@@ -419,9 +420,9 @@ export default function TicketingPanel({
           </div>
           {feeError && <div style={{ color: '#f66', margin: '4px 0 12px 0', fontSize: 13 }}>{feeError}</div>}
 
-          <h3 style={{ margin: 0, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Ticket products</h3>
+          <h3 style={{ margin: 0, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Tickets</h3>
           <p style={{ margin: '4px 0 12px 0', fontSize: 12, opacity: 0.7 }}>
-            Create at least one product with one price tier. Set per-tier status (hidden / sold out / access-code) and per-product reveal threshold as needed.
+            Build the ticket price ladder (e.g. Early Bird → Phase 1 → Phase 2 → General Admission). Buyers see tier names. Set per-tier status (hidden / sold out / access-code) as needed.
           </p>
           {productsError && <div style={{ color: '#f66', margin: '8px 0' }}>{productsError}</div>}
           {productsLoading && !products.length ? (
@@ -436,11 +437,30 @@ export default function TicketingPanel({
           )}
 
           <div style={{ marginTop: 28 }}>
+            <h3 style={{ margin: 0, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Private spaces</h3>
+            <p style={{ margin: '4px 0 12px 0', fontSize: 12, opacity: 0.7 }}>
+              Optional. Sell reservable private spaces alongside tickets (e.g. Outer Space — Green Room / Upstairs Office). Each space has its own price and capacity.
+            </p>
+            {productsLoading && !products.length ? (
+              <div style={{ opacity: 0.7, fontSize: 13 }}>Loading…</div>
+            ) : (
+              <PrivateSpacesManager
+                eventId={eventId}
+                products={products}
+                onReload={loadProducts}
+              />
+            )}
+          </div>
+
+          <div style={{ marginTop: 28 }}>
             <h3 style={{ margin: 0, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Discount codes</h3>
             <p style={{ margin: '4px 0 12px 0', fontSize: 12, opacity: 0.7 }}>
               Optional promo codes for this event. Percent or fixed-amount off, scoped to all products or specific ones, with optional usage limits and windows.
             </p>
-            <DiscountCodesManager eventId={eventId} products={products} />
+            <DiscountCodesManager
+              eventId={eventId}
+              products={products.filter((p) => (p.kind || 'tickets') === 'tickets')}
+            />
           </div>
 
           <div style={{ marginTop: 20, fontSize: 12, opacity: 0.7 }}>

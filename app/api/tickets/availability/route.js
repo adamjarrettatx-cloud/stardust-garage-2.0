@@ -52,7 +52,7 @@ export async function GET(request) {
 
   const { data: products } = await supabaseAdmin
     .from('ticket_products')
-    .select('id, name, description, min_per_order, max_per_order, member_only, sales_start_at, sales_end_at, display_order, is_active, tier_reveal_threshold')
+    .select('id, name, description, kind, min_per_order, max_per_order, member_only, sales_start_at, sales_end_at, display_order, is_active, tier_reveal_threshold')
     .eq('event_id', eventId)
     .eq('is_active', true)
     .order('display_order', { ascending: true });
