@@ -173,13 +173,14 @@ test('malformed tokens are rejected before they can become a query', () => {
 });
 
 test('the pass URL fits the QR encoder we actually ship', () => {
-  // lib/qr-code.js tops out at version 6 byte mode and returns null above it.
-  // If the token or the domain ever grows past that ceiling, every printed
-  // flier stops producing a scannable code — so assert it here rather than
-  // discovering it on a Friday night.
+  // lib/qr-code.js now delegates to the `qrcode` npm package, which handles
+  // up to QR version 40 (2953 byte-mode chars). The pass URL is well under
+  // any conceivable ceiling, but keep the length + encodability assertions
+  // as a smoke test so a future URL-scheme change that blows up the payload
+  // is caught here rather than discovered on a Friday night at the door.
   const url = buildPassUrl('https://sdgatx.com', generatePassToken());
   assert.match(url, /^https:\/\/sdgatx\.com\/pass\/[A-Za-z0-9_-]+$/);
-  assert.ok(url.length < 100, `pass URL is ${url.length} chars`);
+  assert.ok(url.length < 200, `pass URL is ${url.length} chars`);
   const matrix = encodeQrMatrix(url);
   assert.ok(Array.isArray(matrix) && matrix.length > 0, 'the URL encodes to a real QR matrix');
 });
