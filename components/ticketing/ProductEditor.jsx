@@ -1,6 +1,12 @@
 'use client';
 import { useMemo, useState } from 'react';
 import {
+  HOURS_AFTER_DOORS_OPTIONS,
+  resolveEventStartDate,
+  hoursAfterDoorsFromIso,
+  isoForHoursAfterDoors,
+} from '@/lib/tickets/sales-end-hours';
+import {
   T,
   cardStyle,
   fieldLabelStyle,
@@ -37,6 +43,7 @@ function localInputToIso(v) {
   if (Number.isNaN(d.getTime())) return null;
   return d.toISOString();
 }
+
 function money(cents, currency = 'usd') {
   if (typeof cents !== 'number') return '';
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100);
@@ -299,8 +306,24 @@ function AccessCodesInput({ tier, onChange }) {
 }
 
 // ---- product form ----
-function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefault }) {
+function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefault, eventDate = null, eventStartTime = null }) {
   const [p, setP] = useState(() => (initial ? toEditShape(initial) : blankProduct(eventId)));
+
+  // Resolve the event's doors-open moment once per render — this is what the
+  // 'N hours after doors open' dropdown is anchored to. Null when the event's
+  // start time is missing or free-form text we can't parse ("doors at dusk").
+  const eventStart = useMemo(
+    () => resolveEventStartDate(eventDate, eventStartTime),
+    [eventDate, eventStartTime]
+  );
+
+  // Local dropdown state for the 'Ticket Sales End' control. Seeded from the
+  // persisted sales_end_at when it lines up on a whole hour after doors, and
+  // otherwise 'No cutoff' — leaving the stored value unchanged until the user
+  // actively picks a new option.
+  const [hoursAfterDoors, setHoursAfterDoors] = useState(
+    () => hoursAfterDoorsFromIso(p.sales_end_at, eventStart)
+  );
 
   const activeTier = useMemo(() => resolveActiveTier(p.tiers), [p.tiers]);
   // The product's own name is always 'Tickets' behind the scenes and not
@@ -405,16 +428,69 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
   return (
     <div style={{ ...cardStyle({ padding: 20 }), marginBottom: 20 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14 }}>
-        <label>
-          <div style={fieldLabelStyle()}>Ticket sales end at</div>
-          <input
-            type="datetime-local"
-            value={isoToLocalInput(p.sales_end_at)}
-            onChange={(e) => setP({ ...p, sales_end_at: localInputToIso(e.target.value) })}
-            style={inputStyle()}
-            title="When online ticket sales close. Blank = sales run until the event ends."
-          />
-        </label>
+        <div>
+          <div style={fieldLabelStyle()}>Ticket sales end</div>
+          {eventStart ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <select
+                  value={hoursAfterDoors == null ? '' : String(hoursAfterDoors)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === '') {
+                      setHoursAfterDoors(null);
+                      setP({ ...p, sales_end_at: null });
+                      return;
+                    }
+                    const n = parseInt(v, 10);
+                    setHoursAfterDoors(n);
+                    setP({ ...p, sales_end_at: isoForHoursAfterDoors(eventStart, n) });
+                  }}
+                  style={{ ...inputStyle(), width: 'auto', minWidth: 96 }}
+                  title="How many hours after doors open online sales stay live."
+                >
+                  <option value="">— No cutoff —</option>
+                  {HOURS_AFTER_DOORS_OPTIONS.map((h) => (
+                    <option key={h} value={h}>{h}</option>
+                  ))}
+                </select>
+                <span style={{ fontSize: 13, color: T.text, fontFamily: T.fontStack }}>
+                  {hoursAfterDoors == null
+                    ? 'hours after doors open (no cutoff)'
+                    : `hour${hoursAfterDoors === 1 ? '' : 's'} after doors open`}
+                </span>
+              </div>
+              <div style={{ marginTop: 6, fontSize: 12, color: T.muted, fontFamily: T.fontStack }}>
+                {hoursAfterDoors == null ? (
+                  <>Sales run until the event ends. Doors open{' '}
+                    <strong style={{ color: T.strongText }}>{eventStart.toLocaleString()}</strong>.</>
+                ) : (
+                  <>Sales close automatically at{' '}
+                    <strong style={{ color: T.strongText }}>
+                      {new Date(eventStart.getTime() + hoursAfterDoors * 60 * 60 * 1000).toLocaleString()}
+                    </strong>.</>
+                )}
+              </div>
+            </>
+          ) : (
+            // Fallback when the event has no parseable start time yet (empty,
+            // or free-form text like "doors at dusk"). We keep the raw ISO
+            // input so an admin can still set a cutoff, and nudge them to fix
+            // the event start time so the dropdown becomes available.
+            <>
+              <input
+                type="datetime-local"
+                value={isoToLocalInput(p.sales_end_at)}
+                onChange={(e) => setP({ ...p, sales_end_at: localInputToIso(e.target.value) })}
+                style={inputStyle()}
+                title="When online ticket sales close. Blank = sales run until the event ends."
+              />
+              <div style={{ marginTop: 6, fontSize: 12, color: T.muted, fontFamily: T.fontStack }}>
+                Set the event start time above (e.g. “10:00 PM”) to pick the cutoff as “N hours after doors open” instead.
+              </div>
+            </>
+          )}
+        </div>
 
         {/* Audience: mutually-exclusive Public vs Members Only.
             Public (default) = anyone can buy. Members Only = restricted to
@@ -589,7 +665,7 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
 }
 
 // ---- top-level manager ----
-export default function ProductEditor({ eventId, products, onReload, eventFeeDefault }) {
+export default function ProductEditor({ eventId, products, onReload, eventFeeDefault, eventDate = null, eventStartTime = null }) {
   const [editing, setEditing] = useState(null); // null | 'new' | product-id
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(null);
@@ -662,6 +738,8 @@ export default function ProductEditor({ eventId, products, onReload, eventFeeDef
           onCancel={() => { setEditing(null); setErr(null); }}
           saving={saving}
           eventFeeDefault={eventFeeDefault}
+          eventDate={eventDate}
+          eventStartTime={eventStartTime}
         />
       ) : (
         <div style={{ marginBottom: 14 }}>

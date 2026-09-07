@@ -97,6 +97,13 @@ export default async function EditEventPage({ params }) {
             initialBookingFeeCentsDefault={event.booking_fee_cents_default ?? 295}
             initialMemberDiscountPercentCowork={event.member_discount_percent_cowork ?? null}
             initialMemberDiscountPercentIykyk={event.member_discount_percent_iykyk ?? null}
+            // Event start date + free-text start time. The ticketing panel uses
+            // these to render the 'Ticket Sales End … hours after doors open'
+            // dropdown and to compute the persisted `sales_end_at` timestamp.
+            // event_time is free text (e.g. '10:00 PM'); the panel parses only
+            // the simple clock shapes and hides the dropdown for anything else.
+            eventDate={event.event_date || null}
+            eventStartTime={event.event_time || null}
           />
           <EventContractsPanel eventId={event.id} />
           {/* Guest list allocation lives on its own page at
