@@ -59,7 +59,11 @@ test('computeHoldSnapshot sums line items into a subtotal in cents', () => {
   assert.deepEqual(snap.items[0], { product_id: 'p1', tier_id: 't1', quantity: 2, unit_price_cents: 2500, booking_fee_unit_cents: 0 });
   assert.equal(snap.bookingFeeCents, 0);
   assert.equal(snap.discountCents, 0);
-  assert.equal(snap.totalCents, snap.subtotalCents);
+  // Total now includes Texas 8.25% sales tax on (subtotal + booking_fee).
+  const expectedTax = Math.round(snap.subtotalCents * 0.0825);
+  assert.equal(snap.taxCents, expectedTax);
+  assert.equal(snap.taxRateBps, 825);
+  assert.equal(snap.totalCents, snap.subtotalCents + expectedTax);
 });
 
 test('computeHoldSnapshot applies event default booking fee and discount code', async () => {
@@ -88,7 +92,11 @@ test('computeHoldSnapshot applies event default booking fee and discount code', 
   assert.equal(snap.subtotalCents, 10000);
   assert.equal(snap.discountCents, 5000);
   assert.equal(snap.bookingFeeCents, 590);
-  assert.equal(snap.totalCents, 10000 - 5000 + 590);
+  // Pre-tax subtotal after discount + fee is 5590; tax = round(5590 * 0.0825) = 461.
+  const preTax = 10000 - 5000 + 590;
+  const expectedTax = Math.round(preTax * 0.0825);
+  assert.equal(snap.taxCents, expectedTax);
+  assert.equal(snap.totalCents, preTax + expectedTax);
   assert.equal(snap.items[0].booking_fee_unit_cents, 295);
 });
 

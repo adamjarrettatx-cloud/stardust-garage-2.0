@@ -35,6 +35,9 @@ export async function POST(request) {
   const eventId = body?.event_id;
   const rawCode = typeof body?.code === 'string' ? body.code.trim().toUpperCase() : '';
   const items = Array.isArray(body?.items) ? body.items : [];
+  // Booking fee total for the current cart. Only material for target_total
+  // codes; percent/amount codes ignore it. Optional to preserve callers.
+  const bookingFeeCents = Math.max(0, Number(body?.booking_fee_cents) || 0);
 
   if (!eventId || !rawCode || !items.length) {
     return NextResponse.json({ error: 'Missing event_id, code, or items' }, { status: 400 });
@@ -57,7 +60,12 @@ export async function POST(request) {
   if (!code) return NextResponse.json({ error: 'Invalid or inactive code' }, { status: 400 });
 
   try {
-    const { discountCents } = applyDiscountCode({ code, items, productsById: new Map() });
+    const { discountCents } = applyDiscountCode({
+      code,
+      items,
+      productsById: new Map(),
+      bookingFeeCents,
+    });
     return NextResponse.json({
       code: code.code,
       discount_cents: discountCents,

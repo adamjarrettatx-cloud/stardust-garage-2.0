@@ -298,11 +298,16 @@ const GUEST_LIST_PANEL = read('app/bananas/components/GuestListPanel.js');
 const EVENT_EDIT_PAGE = read('app/bananas/events/[id]/page.js');
 const HELPERS = read('lib/guestlist-helpers.js');
 
-test('one shared panel serves the guest list screen and the event form', () => {
+test('the shared guest-list panel serves the dedicated guest-list screen only', () => {
+  // Per product decision: the guest-list panel is intentionally NOT embedded
+  // on the event-edit page — it's reachable via the 'Guest list' link on the
+  // events list. The shared panel component still backs the dedicated screen.
   assert.match(EVENT_GUEST_LIST, /import GuestListPanel from '\.\.\/\.\.\/components\/GuestListPanel'/);
   assert.match(EVENT_GUEST_LIST, /<GuestListPanel eventId=\{event\.id\} \/>/);
-  assert.match(EVENT_EDIT_PAGE, /import GuestListPanel from '\.\.\/\.\.\/components\/GuestListPanel'/);
-  assert.match(EVENT_EDIT_PAGE, /<GuestListPanel eventId=\{event\.id\} \/>/);
+  assert.ok(
+    !/import GuestListPanel from/.test(EVENT_EDIT_PAGE),
+    'event edit page must not re-embed the guest-list panel',
+  );
   assert.equal(
     fs.existsSync(path.join(REPO_ROOT, 'app/bananas/events/[id]/GuestListPanel.js')),
     false,

@@ -24,7 +24,7 @@ function formatMoney(cents, currency = 'usd') {
 }
 
 export default function InternalTicketPurchase({ eventId, isMember = false, buyerEmailPrefill = '' }) {
-  const [state, setState] = useState({ loading: true, event: null, products: [], error: null });
+  const [state, setState] = useState({ loading: true, event: null, products: [], taxRateBps: 0, error: null });
   const [quantities, setQuantities] = useState({});
   const [email, setEmail] = useState(buyerEmailPrefill);
   const [submitting, setSubmitting] = useState(false);
@@ -60,7 +60,7 @@ export default function InternalTicketPurchase({ eventId, isMember = false, buye
         const initialQty = {};
         for (const p of data.products || []) initialQty[p.product_id] = 0;
         setQuantities(initialQty);
-        setState({ loading: false, event: data.event || null, products: data.products || [], error: null });
+        setState({ loading: false, event: data.event || null, products: data.products || [], taxRateBps: Number(data.tax_rate_bps) || 0, error: null });
       } catch (err) {
         if (!cancelled) setState({ loading: false, event: null, products: [], error: String(err?.message || err) });
       }
@@ -92,7 +92,7 @@ export default function InternalTicketPurchase({ eventId, isMember = false, buye
       for (const key of nowVisibleTiers) if (!prevVisibleTiers.has(key)) { unlockedAny = true; break; }
 
       setAppliedAccessCodes(codes);
-      setState((s) => ({ ...s, event: data.event || s.event, products: data.products || [] }));
+      setState((s) => ({ ...s, event: data.event || s.event, products: data.products || [], taxRateBps: Number(data.tax_rate_bps) || s.taxRateBps || 0 }));
       // Preserve quantities for known products; init new ones.
       setQuantities((prev) => {
         const next = { ...prev };
@@ -129,7 +129,12 @@ export default function InternalTicketPurchase({ eventId, isMember = false, buye
   }, 0);
 
   const discountCents = discount?.discount_cents || 0;
-  const totalCents = Math.max(0, subtotalCents - discountCents) + bookingFeeCents;
+  const preTaxCents = Math.max(0, subtotalCents - discountCents) + bookingFeeCents;
+  // Texas sales tax (8.25%) is the platform-wide rate; server is the source
+  // of truth via availability.tax_rate_bps.
+  const taxRateBps = Number(state.taxRateBps) || 0;
+  const taxCents = Math.round(preTaxCents * (taxRateBps / 10000));
+  const totalCents = preTaxCents + taxCents;
 
   async function applyDiscount(e) {
     e?.preventDefault?.();
@@ -141,6 +146,8 @@ export default function InternalTicketPurchase({ eventId, isMember = false, buye
     }
     setDiscountBusy(true);
     try {
+      // Passing booking_fee_cents lets the server back-solve target_total
+      // codes correctly (percent/amount codes ignore it).
       const res = await fetch('/api/tickets/discount-code/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -148,6 +155,7 @@ export default function InternalTicketPurchase({ eventId, isMember = false, buye
           event_id: eventId,
           code: discountInput.trim(),
           items: lineItems,
+          booking_fee_cents: bookingFeeCents,
         }),
       });
       const data = await res.json();
@@ -359,6 +367,12 @@ export default function InternalTicketPurchase({ eventId, isMember = false, buye
           <div style={{ display: 'flex', justifyContent: 'space-between', color: '#666' }}>
             <span>Booking fee</span>
             <span>{formatMoney(bookingFeeCents, currency)}</span>
+          </div>
+        )}
+        {taxCents > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#666' }}>
+            <span>{`Sales tax (${(taxRateBps / 100).toFixed(2)}%)`}</span>
+            <span>{formatMoney(taxCents, currency)}</span>
           </div>
         )}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontWeight: 700, fontSize: 15 }}>

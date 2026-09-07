@@ -62,8 +62,8 @@ export async function POST(request) {
   if (!event_id || !code || !discount_type) {
     return NextResponse.json({ error: 'Missing event_id, code, or discount_type' }, { status: 400 });
   }
-  if (!['percent', 'amount'].includes(discount_type)) {
-    return NextResponse.json({ error: 'discount_type must be percent or amount' }, { status: 400 });
+  if (!['percent', 'amount', 'target_total'].includes(discount_type)) {
+    return NextResponse.json({ error: 'discount_type must be percent, amount, or target_total' }, { status: 400 });
   }
   const value = Number(discount_value);
   if (!Number.isFinite(value) || value < 0) {
@@ -72,6 +72,8 @@ export async function POST(request) {
   if (discount_type === 'percent' && value > 100) {
     return NextResponse.json({ error: 'percent discount must be 0-100' }, { status: 400 });
   }
+  // target_total stores cents; 0 would mean "give it away free" and is allowed
+  // but rejecting sub-cent nonsense is enforced by the >= 0 check above.
   if (!['all_products', 'specific'].includes(applies_to)) {
     return NextResponse.json({ error: 'applies_to must be all_products or specific' }, { status: 400 });
   }

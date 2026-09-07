@@ -74,11 +74,26 @@ function CodeForm({ eventId, initial, onSave, onCancel, saving, products }) {
 
   const valid =
     c.code.trim().length >= 2 &&
-    ['percent', 'amount'].includes(c.discount_type) &&
+    ['percent', 'amount', 'target_total'].includes(c.discount_type) &&
     Number.isFinite(Number(c.discount_value)) &&
     Number(c.discount_value) >= 0 &&
     (c.discount_type !== 'percent' || Number(c.discount_value) <= 100) &&
     (c.applies_to !== 'specific' || (c.product_ids && c.product_ids.length));
+
+  // Per-type UI helpers so the value input is self-explanatory. Cents are the
+  // canonical stored unit for amount + target_total; percent stores 0-100.
+  const valueLabel =
+    c.discount_type === 'percent'
+      ? 'Value (0-100)'
+      : c.discount_type === 'target_total'
+      ? 'Buyer sees exactly (cents)'
+      : 'Value (cents)';
+  const valueHint =
+    c.discount_type === 'target_total'
+      ? 'Back-solves booking fee + 8.25% Texas sales tax so the buyer\u2019s final total is exactly this amount.'
+      : c.discount_type === 'amount'
+      ? 'Flat cents off the subtotal (e.g. 500 = $5.00).'
+      : 'Percent off the subtotal.';
 
   return (
     <div style={{ ...cardStyle({ padding: 20 }), marginBottom: 14 }}>
@@ -102,12 +117,11 @@ function CodeForm({ eventId, initial, onSave, onCancel, saving, products }) {
           >
             <option value="percent">Percent off</option>
             <option value="amount">$ off (cents)</option>
+            <option value="target_total">Target total ($ after tax + fee)</option>
           </select>
         </label>
         <label>
-          <div style={fieldLabelStyle()}>
-            Value {c.discount_type === 'percent' ? '(0-100)' : '(cents)'}
-          </div>
+          <div style={fieldLabelStyle()}>{valueLabel}</div>
           <input
             type="number"
             min="0"
@@ -116,6 +130,7 @@ function CodeForm({ eventId, initial, onSave, onCancel, saving, products }) {
             onChange={(e) => setC({ ...c, discount_value: e.target.value })}
             style={inputStyle()}
           />
+          <div style={{ fontSize: 11, color: T.muted, marginTop: 4 }}>{valueHint}</div>
         </label>
         <label>
           <div style={fieldLabelStyle()}>Applies to</div>
@@ -355,6 +370,8 @@ export default function DiscountCodesManager({ eventId, products = [] }) {
               <td style={tdStyle()}>
                 {c.discount_type === 'percent'
                   ? `${c.discount_value}% off`
+                  : c.discount_type === 'target_total'
+                  ? `Buyer pays ${money(c.discount_value)}`
                   : `${money(c.discount_value)} off`}
               </td>
               <td style={tdStyle()}>

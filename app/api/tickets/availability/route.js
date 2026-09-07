@@ -6,6 +6,7 @@ import {
   isProductOnSale,
   projectTiersForBuyer,
   bookingFeeForTier,
+  TEXAS_SALES_TAX_RATE_BPS,
 } from '@/lib/tickets/pricing';
 
 // GET /api/tickets/availability?event_id=<uuid>&codes=CODE1,CODE2
@@ -160,6 +161,10 @@ export async function GET(request) {
       title: event.title,
       booking_fee_cents_default: event.booking_fee_cents_default,
     },
+    // Buyer widget uses this to render the "Sales tax (8.25%)" line before
+    // the buyer commits to checkout. Exposed as bps so the client doesn't
+    // hardcode the rate.
+    tax_rate_bps: TEXAS_SALES_TAX_RATE_BPS,
     products: items,
   });
 }

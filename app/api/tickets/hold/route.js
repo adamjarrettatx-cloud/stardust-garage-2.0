@@ -303,6 +303,16 @@ export async function POST(request) {
       kind: 'fee',
     });
   }
+  // Texas sales tax is broken out as its own Stripe line so buyers see it
+  // itemized on the Stripe-hosted checkout, exactly matching our widget.
+  if (snapshot.taxCents > 0) {
+    productLineDescriptors.push({
+      name: `Sales tax (${(snapshot.taxRateBps / 100).toFixed(2)}%)`,
+      unit_price_cents: snapshot.taxCents,
+      quantity: 1,
+      kind: 'tax',
+    });
+  }
 
   const origin = resolveSiteUrl(request);
   const successUrl = `${origin}/tickets/status?hold=${hold.hold_token}`;
@@ -340,6 +350,13 @@ export async function POST(request) {
     })
     .eq('id', hold.id);
 
+  // Persist tax on the hold row so downstream reconciliation (webhook -> order)
+  // has an authoritative snapshot. Additive: pre-tax holds default to 0.
+  await supabaseAdmin
+    .from('ticket_holds')
+    .update({ tax_cents: snapshot.taxCents || 0 })
+    .eq('id', hold.id);
+
   return NextResponse.json({
     checkout_url: session.url,
     hold_id: hold.id,
@@ -349,6 +366,8 @@ export async function POST(request) {
       subtotal_cents: snapshot.subtotalCents,
       discount_cents: snapshot.discountCents,
       booking_fee_cents: snapshot.bookingFeeCents,
+      tax_cents: snapshot.taxCents,
+      tax_rate_bps: snapshot.taxRateBps,
       total_cents: snapshot.totalCents,
       currency: snapshot.currency,
     },
