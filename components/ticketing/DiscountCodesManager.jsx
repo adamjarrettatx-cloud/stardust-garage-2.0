@@ -86,7 +86,7 @@ function CodeForm({ eventId, initial, onSave, onCancel, saving, products }) {
     c.discount_type === 'percent'
       ? 'Value (0-100)'
       : c.discount_type === 'target_total'
-      ? 'Buyer sees exactly (cents)'
+      ? 'Exact price buyer pays (cents)'
       : 'Value (cents)';
   const valueHint =
     c.discount_type === 'target_total'
