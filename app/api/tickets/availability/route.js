@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { isInternalTicketingEnabled } from '@/lib/feature-flags';
+import { requireAdmin } from '@/lib/auth-helpers';
 import {
   selectActiveTier,
   isProductOnSale,
@@ -35,6 +36,19 @@ export async function GET(request) {
     .map((c) => c.trim())
     .filter(Boolean);
 
+  // Admin-only preview mode. When ?preview=1 is present and the caller is a
+  // team_members admin, we skip the 'status must be published' check so the
+  // Edit Event PREVIEW button can render the buyer widget against a draft.
+  // Non-admins requesting preview=1 get the same 404 as an unpublished event —
+  // no information leak. The /api/tickets/hold route stays strict (drafts
+  // always rejected), so preview can never turn into an actual purchase.
+  const previewRequested = searchParams.get('preview') === '1';
+  let previewAuthorized = false;
+  if (previewRequested) {
+    const { unauthorized } = await requireAdmin();
+    previewAuthorized = !unauthorized;
+  }
+
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -47,7 +61,10 @@ export async function GET(request) {
     .eq('id', eventId)
     .maybeSingle();
   if (eventErr) return NextResponse.json({ error: 'Event lookup failed' }, { status: 500 });
-  if (!event || event.status !== 'published' || event.ticketing_mode !== 'internal') {
+  if (!event || event.ticketing_mode !== 'internal') {
+    return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+  }
+  if (event.status !== 'published' && !previewAuthorized) {
     return NextResponse.json({ error: 'Event not found' }, { status: 404 });
   }
 

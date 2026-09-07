@@ -23,7 +23,12 @@ function formatMoney(cents, currency = 'usd') {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100);
 }
 
-export default function InternalTicketPurchase({ eventId, isMember = false, buyerEmailPrefill = '' }) {
+// `preview`: rendered inside the admin-only /events/[slug]/preview route.
+// When true, availability requests carry ?preview=1 so drafts render, and
+// the checkout CTA is disabled + relabeled so the admin can't accidentally
+// try to buy from a draft. (The /api/tickets/hold route is also strict and
+// would reject a draft server-side — this is just a UX safety on top.)
+export default function InternalTicketPurchase({ eventId, isMember = false, buyerEmailPrefill = '', preview = false }) {
   const [state, setState] = useState({ loading: true, event: null, products: [], taxRateBps: 0, error: null });
   const [quantities, setQuantities] = useState({});
   const [email, setEmail] = useState(buyerEmailPrefill);
@@ -46,6 +51,7 @@ export default function InternalTicketPurchase({ eventId, isMember = false, buye
     const qs = new URLSearchParams({ event_id: eventId });
     const list = Array.isArray(codes) ? codes : [];
     if (list.length) qs.set('codes', list.join(','));
+    if (preview) qs.set('preview', '1');
     const res = await fetch(`/api/tickets/availability?${qs.toString()}`, { cache: 'no-store' });
     if (!res.ok) throw new Error(`Availability lookup failed (${res.status})`);
     return res.json();
@@ -385,10 +391,24 @@ export default function InternalTicketPurchase({ eventId, isMember = false, buye
 
       <button
         type="submit"
-        disabled={submitting || totalQty === 0}
-        style={{ marginTop: 12, width: '100%', padding: '12px 16px', background: '#111', color: '#fff', border: 0, borderRadius: 4, cursor: totalQty ? 'pointer' : 'not-allowed' }}
+        disabled={preview || submitting || totalQty === 0}
+        style={{
+          marginTop: 12,
+          width: '100%',
+          padding: '12px 16px',
+          background: preview ? '#555' : '#111',
+          color: '#fff',
+          border: 0,
+          borderRadius: 4,
+          cursor: preview ? 'not-allowed' : totalQty ? 'pointer' : 'not-allowed',
+          opacity: preview ? 0.85 : 1,
+        }}
       >
-        {submitting ? 'Starting checkout…' : `Checkout · ${formatMoney(totalCents, currency)}`}
+        {preview
+          ? 'Checkout disabled in preview'
+          : submitting
+            ? 'Starting checkout…'
+            : `Checkout · ${formatMoney(totalCents, currency)}`}
       </button>
 
       <div style={{ fontSize: 11, color: '#888', marginTop: 8, textAlign: 'center' }}>
