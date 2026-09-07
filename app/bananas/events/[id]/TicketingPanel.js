@@ -87,16 +87,12 @@ export default function TicketingPanel({
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState(null);
 
-  // Event-level default booking fee. Stored in cents in DB; edited in dollars.
-  const [bookingFeeDollars, setBookingFeeDollars] = useState(() =>
-    ((initialBookingFeeCentsDefault ?? 295) / 100).toFixed(2)
-  );
-  const [savedBookingFeeDollars, setSavedBookingFeeDollars] = useState(bookingFeeDollars);
-  const [savingFee, setSavingFee] = useState(false);
-  const [feeError, setFeeError] = useState(null);
-
-  const bookingFeeCents = Math.round(parseFloat(bookingFeeDollars || '0') * 100);
-  const bookingFeeDirty = bookingFeeDollars !== savedBookingFeeDollars;
+  // Event-level default booking fee. Not editable in the admin — the per-tier
+  // Fee column in the ticket ladder handles overrides. The DB column stays
+  // populated (schema default $2.95) and is still applied when a tier has no
+  // override. We still read it here so ProductEditor can show it as the
+  // placeholder value on tier fee inputs.
+  const bookingFeeCents = initialBookingFeeCentsDefault ?? 295;
 
   // Per-membership discount percents. Empty string means "no override" (falls
   // back to legacy events.member_discount_percent → category default).
@@ -139,25 +135,6 @@ export default function TicketingPanel({
       setMemberDiscountError(String(e.message || e));
     } finally {
       setSavingMemberDiscounts(false);
-    }
-  }
-
-  async function saveBookingFee() {
-    setSavingFee(true);
-    setFeeError(null);
-    try {
-      const cents = Math.round(parseFloat(bookingFeeDollars || '0') * 100);
-      if (!Number.isFinite(cents) || cents < 0) throw new Error('Fee must be $0 or greater');
-      const { error } = await supabase
-        .from('events')
-        .update({ booking_fee_cents_default: cents })
-        .eq('id', eventId);
-      if (error) throw error;
-      setSavedBookingFeeDollars(bookingFeeDollars);
-    } catch (e) {
-      setFeeError(String(e.message || e));
-    } finally {
-      setSavingFee(false);
     }
   }
 
@@ -383,44 +360,6 @@ export default function TicketingPanel({
 
       {savedUiMode === 'default' && (
         <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--auth-border, #333)' }}>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', marginBottom: 20 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, opacity: 0.75, marginBottom: 4 }}>
-                Default booking fee ($ per ticket)
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={bookingFeeDollars}
-                onChange={(e) => setBookingFeeDollars(e.target.value)}
-                disabled={savingFee}
-                style={{
-                  padding: '6px 8px',
-                  background: 'transparent',
-                  color: 'inherit',
-                  border: '1px solid var(--auth-border, #333)',
-                  borderRadius: 4,
-                  fontSize: 13,
-                  width: 100,
-                }}
-              />
-            </div>
-            <button
-              type="button"
-              onClick={saveBookingFee}
-              disabled={!bookingFeeDirty || savingFee}
-              className="auth-theme-border-button px-3 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border"
-              style={{ opacity: bookingFeeDirty ? 1 : 0.5 }}
-            >
-              {savingFee ? 'SAVING…' : bookingFeeDirty ? 'SAVE FEE' : 'SAVED'}
-            </button>
-            <span style={{ fontSize: 12, opacity: 0.6 }}>
-              Applied to every ticket unless a tier overrides it.
-            </span>
-          </div>
-          {feeError && <div style={{ color: '#f66', margin: '4px 0 12px 0', fontSize: 13 }}>{feeError}</div>}
-
           <h3 style={{ margin: 0, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Tickets</h3>
           <p style={{ margin: '4px 0 12px 0', fontSize: 12, opacity: 0.7 }}>
             Build the ticket price ladder (e.g. Early Bird → Phase 1 → Phase 2 → General Admission). Buyers see tier names. Set per-tier status (hidden / sold out / access-code) as needed.
