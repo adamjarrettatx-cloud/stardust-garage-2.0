@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import TtLinkPanel from './TtLinkPanel';
@@ -76,7 +76,9 @@ export default function EventForm({
   // or 'internal' (a "micro party" — known only to admin/team; appears on the
   // team calendar and admin dashboard but never publicly). Defaults to public.
   const [isInternal, setIsInternal] = useState(event?.visibility === 'internal');
-  const [ticketUrl, setTicketUrl] = useState(event?.ticket_url || '');
+  // Preserved for round-trip on legacy events; the input was removed and no
+  // new event ever sets one via this form.
+  const [ticketUrl] = useState(event?.ticket_url || '');
   // New events default to Day Party, which is the most common ticketed event
   // type. Legacy events keep whatever category was saved on the row.
   const [category, setCategory] = useState(event?.category || 'day_party');
@@ -86,36 +88,19 @@ export default function EventForm({
   // rows were backfilled to is_sdg_only = true.
   const [isSdgOnly, setIsSdgOnly] = useState(isEditing ? event.is_sdg_only !== false : false);
   const [contactId, setContactId] = useState(event?.contact_id || null);
-  const [ttEventSeriesId, setTtEventSeriesId] = useState(event?.tt_event_series_id || '');
-  const [ttSeries, setTtSeries] = useState([]);
-  const [ttSeriesError, setTtSeriesError] = useState('');
+  // `ttEventSeriesId` is preserved so the two legacy TicketTailor events
+  // (ubiyu 9/18, Groove Therapy 9/19) still round-trip their linked series
+  // through save(). We don't expose a picker in the form anymore — the
+  // legacy events edit their link via <TtLinkPanel> (server-side route).
+  const [ttEventSeriesId] = useState(event?.tt_event_series_id || '');
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [generating, setGenerating] = useState(false);
   const [generateMessage, setGenerateMessage] = useState('');
 
-  // Load TicketTailor event series so admins can pick one for discount codes.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('/api/admin/tt-event-series');
-        const body = await res.json();
-        if (cancelled) return;
-        if (res.ok && Array.isArray(body.series)) {
-          setTtSeries(body.series);
-        } else {
-          setTtSeriesError(body?.error || 'Could not load TicketTailor event series');
-        }
-      } catch (err) {
-        if (!cancelled) setTtSeriesError(err?.message || 'Could not load TicketTailor event series');
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // (Previously fetched /api/admin/tt-event-series to populate a picker on the
+  // form. That picker was removed — no new events link a TicketTailor series.)
 
   const handleTitleChange = (e) => {
     const newTitle = e.target.value;
@@ -388,47 +373,14 @@ export default function EventForm({
           </p>
         </div>
 
-        {/* TICKETTAILOR EVENT SERIES */}
-        {isEditing ? (
-          // For an existing event, link/unlink goes through the server route
-          // (requireAdminMfa + server-side validation), not the client save.
+        {/* LEGACY TICKETTAILOR EVENT SERIES
+            We no longer sell tickets through TicketTailor for new events. Two
+            legacy events (ubiyu 9/18, Groove Therapy 9/19) still have a linked
+            TT series and must keep working — render the link panel only for
+            those. New events never see this panel and never link a series. */}
+        {isEditing && ttEventSeriesId ? (
           <TtLinkPanel eventId={event.id} initialSeriesId={ttEventSeriesId} metrics={metrics} />
-        ) : (
-          <div>
-            <label className={labelClass} style={labelStyle}>TICKETTAILOR EVENT SERIES</label>
-            {ttSeries.length > 0 ? (
-              <select
-                value={ttEventSeriesId}
-                onChange={(e) => setTtEventSeriesId(e.target.value)}
-                className={inputClass}
-                style={inputStyle}
-              >
-                <option value="">
-                  — None —
-                </option>
-                {ttSeries.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.id})
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                type="text"
-                value={ttEventSeriesId}
-                onChange={(e) => setTtEventSeriesId(e.target.value)}
-                placeholder="ev_xxxxxxxx"
-                className={inputClass}
-                style={inputStyle}
-              />
-            )}
-            <p className="text-[11px] mt-2" style={{ color: '#555' }}>
-              {ttSeriesError
-                ? `Could not load series list (${ttSeriesError}). Enter the series ID manually.`
-                : 'Link the TicketTailor event series so member discount codes apply to its tickets. You can verify the link after creating the event.'}
-            </p>
-          </div>
-        )}
+        ) : null}
 
         {/* CONTACT / SDG-ONLY — required unless the event is fully internal */}
         <EventContactFields
@@ -526,23 +478,10 @@ export default function EventForm({
           </div>
         </div>
 
-        {/* TICKET URL - only show if public */}
-        {eventType === 'public' && (
-          <div>
-            <label className={labelClass} style={labelStyle}>TICKET URL</label>
-            <input
-              type="url"
-              value={ticketUrl}
-              onChange={(e) => setTicketUrl(e.target.value)}
-              placeholder="https://..."
-              className={inputClass}
-              style={inputStyle}
-            />
-            <p className="text-[11px] mt-2" style={{ color: '#555' }}>
-              Link to Eventbrite, Shopify, Dice, etc. Leave blank if tickets are not yet available.
-            </p>
-          </div>
-        )}
+        {/* TICKET URL field removed: tickets now sell through our internal
+            checkout via the Ticketing panel below. The `ticketUrl` state
+            still holds any existing event.ticket_url so save() preserves it
+            for the two legacy TicketTailor events. */}
 
         <div>
           <label className={labelClass} style={labelStyle}>IMAGE</label>

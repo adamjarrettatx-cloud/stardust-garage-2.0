@@ -1,79 +1,44 @@
 'use client';
 
-import { Suspense, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
+import Link from 'next/link';
 import EventForm from '../../components/EventForm';
-import TtEventCreator from '../../components/TtEventCreator';
-import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 
-// Lets the admin pick how to create a new event:
-//   - "ticketed": create AND publish the website event together with a
-//     TicketTailor event series (date/time occurrence + ticket types) in one go.
-//   - "manual": the existing form (website event only, link an existing TT
-//     series or external ticket URL by hand).
+// Creating a new event now goes straight into the standard EventForm.
 //
-// When the calendar day-click modal routes here with ?date=YYYY-MM-DD the
-// user has already picked 'Public' from the modal — skip the chooser and
-// jump straight into the ticketed creator (with date pre-filled) so there's
-// only one create flow.
+// Historically this file offered two paths:
+//   - "ticketed": create AND publish the website event together with a
+//     TicketTailor event series in one go (<TtEventCreator />).
+//   - "manual":   the classic form (website event only).
+//
+// We no longer sell tickets through TicketTailor, so the ticketed/TT path
+// was removed. New events are always created via the manual form and sell
+// tickets through our internal checkout (configured on the Ticketing panel).
+// The two legacy TicketTailor-linked events keep working through their own
+// event editor — nothing here touches them.
 function NewEventChooserInner() {
-  const searchParams = useSearchParams();
-  const cameFromCalendar = /^\d{4}-\d{2}-\d{2}$/.test(searchParams?.get('date') || '');
-  const [mode, setMode] = useState(cameFromCalendar ? 'ticketed' : null);
-
-  if (mode === 'ticketed') return <TtEventCreator />;
-  if (mode === 'manual') return <EventForm />;
-
-  const cardStyle = { background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' };
-
   return (
-    <div className="max-w-[700px]">
-      <AuthenticatedPageHeader
-        backHref="/bananas?tab=events"
-        backLabel="← BACK TO ADMIN"
-        title="New Event"
-        description="How do you want to create this event?"
-        titleClassName="text-[36px] font-extrabold -tracking-[0.02em] leading-[1.1]"
-        className="mb-10"
-      />
-
-      <div className="grid gap-4">
-        <button
-          type="button"
-          onClick={() => setMode('ticketed')}
-          className="text-left rounded-[14px] border p-6 transition-all hover:-translate-y-0.5 hover:border-white/20"
-          style={cardStyle}
+    <div>
+      {/* Back trail: landing on the default admin section after leaving a
+          create-event page was the original UX bug. Keep an explicit link
+          back to /bananas?tab=events so admins land on the Events tab. */}
+      <div className="mb-6">
+        <Link
+          href="/bananas?tab=events"
+          className="text-[11px] font-semibold tracking-[0.14em]"
+          style={{ color: 'var(--auth-muted)' }}
         >
-          <div className="text-[17px] font-bold mb-1.5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Ticketed event (TicketTailor)
-          </div>
-          <div className="text-[13px] leading-[1.6]" style={{ color: 'var(--auth-muted)' }}>
-            Creates and publishes the website event and a TicketTailor event series together — date,
-            times and ticket types included. Both go live immediately.
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setMode('manual')}
-          className="text-left rounded-[14px] border p-6 transition-all hover:-translate-y-0.5 hover:border-white/20"
-          style={cardStyle}
-        >
-          <div className="text-[17px] font-bold mb-1.5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Manual / private event
-          </div>
-          <div className="text-[13px] leading-[1.6]" style={{ color: 'var(--auth-muted)' }}>
-            The classic form — website event only. Link an existing TicketTailor series or paste an
-            external ticket URL, or leave it as a private (no-ticket) event.
-          </div>
-        </button>
+          ← BACK TO EVENTS
+        </Link>
       </div>
+      <EventForm />
     </div>
   );
 }
 
 export default function NewEventChooser() {
-  // useSearchParams requires a Suspense boundary in the App Router.
+  // useSearchParams inside EventForm may require a Suspense boundary in the
+  // App Router; keep one here so the page stays SSR-safe.
   return (
     <Suspense fallback={null}>
       <NewEventChooserInner />

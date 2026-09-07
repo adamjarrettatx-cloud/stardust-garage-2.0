@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation';
 import { adminFetch } from '@/lib/admin-fetch';
 
 // Status panel for the event editor. For a DRAFT event it shows a "Publish"
-// action that takes both sides live at once: it publishes the linked
-// TicketTailor event series (server-side) and flips the website event to
-// 'published' so it appears on the public /events page. For an already
-// published event it just shows the published badge.
+// action that flips the website event to 'published' so it appears on the
+// public /events page. Two legacy events still have a linked TicketTailor
+// series — for those, the same server route also flips the TT series to
+// 'published' so their tickets go on sale. New/future events don't touch TT.
 //
 // The publish itself runs in /api/admin/events/:id/tt-publish (admin + MFA
 // gated). The TICKETTAILOR_API_KEY is never exposed to the browser.
@@ -35,7 +35,8 @@ export default function PublishEventButton({ eventId, status, ttEventSeriesId })
       if (res.ttNote) {
         setMsg(res.ttNote);
       } else if (res.ttPublished) {
-        setMsg('Published — website event is live and the TicketTailor series is now on sale.');
+        // Legacy: this event still has a linked TicketTailor series.
+        setMsg('Website event published and its ticket series is now on sale.');
       } else {
         setMsg('Website event published.');
       }
@@ -76,7 +77,7 @@ export default function PublishEventButton({ eventId, status, ttEventSeriesId })
             className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-40"
             style={{ background: 'var(--auth-success)', color: 'var(--auth-strong-surface-text)' }}
           >
-            {publishing ? 'PUBLISHING…' : 'PUBLISH WEBSITE + TICKETTAILOR'}
+            {publishing ? 'PUBLISHING…' : 'PUBLISH WEBSITE'}
           </button>
         )}
       </div>
@@ -84,8 +85,9 @@ export default function PublishEventButton({ eventId, status, ttEventSeriesId })
       <p className="text-[11px] mt-3" style={{ color: 'var(--auth-muted)' }}>
         {isDraft
           ? ttEventSeriesId
-            ? 'Publishing makes this event public and sets its TicketTailor series to "published" so tickets go on sale.'
-            : 'Publishing makes this event public. No TicketTailor series is linked, so only the website event is published.'
+            // Legacy TicketTailor-linked event.
+            ? 'Publishing makes this event public and sets its linked ticket series to "published" so tickets go on sale.'
+            : 'Publishing makes this event public on the events page.'
           : 'This event is live on the public events page.'}
       </p>
 

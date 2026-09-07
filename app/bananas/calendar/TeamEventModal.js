@@ -374,7 +374,7 @@ export default function TeamEventModal({
             <p className="mt-2 text-[11px] leading-snug" style={{ color: m.muted }}>
               {visibility === 'internal'
                 ? 'Team-only calendar entry. Not published to the website.'
-                : 'Ticketed event. Publishes to the website and creates a TicketTailor series.'}
+                : 'Public event. Published to the website; sell tickets via the Ticketing panel on the event editor.'}
             </p>
           </div>
         )}
