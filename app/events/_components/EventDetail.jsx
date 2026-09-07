@@ -1,7 +1,7 @@
 import Link from 'next/link';
-import { memberDiscountCallout } from '@/lib/event-discount-display';
+import { memberDiscountCalloutRows } from '@/lib/event-discount-display';
 import { formatEventTime } from '@/lib/events/format-event-time';
-import InternalTicketPurchase from './InternalTicketPurchase';
+import InternalTicketModal from './InternalTicketModal';
 
 // Shared render for a single event's public detail page. Used by both the
 // live route (app/events/[slug]/page.js) and the admin-only preview route
@@ -23,7 +23,10 @@ function formatEventDate(dateString) {
 // draft events still show their products, and the checkout button is
 // disabled so no purchase can accidentally start.
 export default function EventDetail({ event, preview = false }) {
-  const discountCallout = memberDiscountCallout(event.member_discount_percent);
+  // Tiered member callout. Returns 0, 1, or 2 rows depending on which of
+  // member_discount_percent_cowork / _iykyk / (legacy) member_discount_percent
+  // are set. Rendered inside a single gold pill below the ticket CTA.
+  const memberRows = memberDiscountCalloutRows(event);
 
   return (
     <main className="max-w-[1100px] mx-auto px-4 md:px-6 py-8 md:py-10">
@@ -74,11 +77,16 @@ export default function EventDetail({ event, preview = false }) {
           </div>
 
           {event.ticketing_mode === 'internal' ? (
-            // First-party checkout. Widget fetches its own availability +
-            // handles access codes, discount codes, fees, quantities, and
-            // the redirect to Stripe.
+            // First-party checkout. Trigger renders as the same white BUY
+            // TICKETS pill the tickettailor path uses; clicking opens a full-
+            // screen dark modal with the actual widget (tiers, quantity,
+            // access codes, discount codes, email, totals, Stripe redirect).
             <div className="order-1 mb-8">
-              <InternalTicketPurchase eventId={event.id} preview={preview} />
+              <InternalTicketModal
+                eventId={event.id}
+                eventTitle={event.title}
+                preview={preview}
+              />
             </div>
           ) : event.ticket_url ? (
             <a
@@ -105,23 +113,30 @@ export default function EventDetail({ event, preview = false }) {
             </div>
           )}
 
-          {discountCallout.show && (
+          {memberRows.length > 0 && (
             <div
-              className="order-2 flex items-center gap-2.5 px-4 py-3 rounded-[10px] mb-8 -mt-3"
+              className="order-2 flex flex-col gap-2 px-4 py-3 rounded-[10px] mb-8 -mt-3"
               style={{
                 background: 'rgba(255,184,77,0.1)',
                 border: '1px solid rgba(255,184,77,0.35)',
               }}
             >
-              <span
-                className="text-[11px] font-extrabold tracking-[0.1em] px-2 py-1 rounded-full"
-                style={{ background: '#ffb84d', color: '#0a0a0a' }}
-              >
-                MEMBERS
-              </span>
-              <span className="text-[13px] font-bold tracking-[0.02em]" style={{ color: '#ffb84d' }}>
-                Get {discountCallout.percent}% OFF
-              </span>
+              {memberRows.map((row) => (
+                <div key={row.key} className="flex items-center gap-2.5">
+                  <span
+                    className="text-[11px] font-extrabold tracking-[0.1em] px-2 py-1 rounded-full whitespace-nowrap"
+                    style={{ background: '#ffb84d', color: '#0a0a0a' }}
+                  >
+                    {row.label.toUpperCase()}
+                  </span>
+                  <span
+                    className="text-[13px] font-bold tracking-[0.02em]"
+                    style={{ color: '#ffb84d' }}
+                  >
+                    Get {row.percent}% OFF
+                  </span>
+                </div>
+              ))}
             </div>
           )}
 

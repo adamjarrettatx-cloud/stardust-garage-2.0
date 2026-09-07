@@ -220,101 +220,226 @@ export default function InternalTicketPurchase({ eventId, isMember = false, buye
     }
   }
 
-  if (state.loading) return <div style={{ padding: 16 }}>Loading tickets…</div>;
-  if (state.error) return <div style={{ padding: 16, color: '#a00' }}>{state.error}</div>;
-  if (!state.products.length) return <div style={{ padding: 16 }}>No tickets available yet.</div>;
+  // -------------------------------------------------------------------------
+  // Dark-theme skin. This widget lives inside a modal that sits on top of the
+  // event page (which is black end-to-end), so everything here uses the same
+  // palette: near-black surfaces, hairline white borders, off-white text,
+  // gold accent for member-only badges, and the same white pill / rounded
+  // 'BUY TICKETS' CTA the rest of the page uses.
+  //
+  // Every color is inline so the widget renders correctly regardless of
+  // whether it's mounted inside a Tailwind tree with the site's CSS vars
+  // available. Adam previewed this on production drafts before shipping.
+  // -------------------------------------------------------------------------
+  const SURFACE = '#111111';
+  const HAIRLINE = 'rgba(255,255,255,0.10)';
+  const HAIRLINE_STRONG = 'rgba(255,255,255,0.18)';
+  const TEXT = '#f5f5f5';
+  const MUTED = '#8a8a8a';
+  const GOLD = '#ffb84d';
+  const GREEN = '#5ec27b';
+  const DANGER = '#ff6b6b';
+
+  const inputStyle = {
+    width: '100%',
+    padding: '10px 12px',
+    background: 'rgba(255,255,255,0.04)',
+    color: TEXT,
+    border: `1px solid ${HAIRLINE_STRONG}`,
+    borderRadius: 8,
+    fontSize: 13,
+    outline: 'none',
+  };
+
+  const ghostButtonStyle = {
+    padding: '10px 14px',
+    background: 'transparent',
+    color: TEXT,
+    border: `1px solid ${HAIRLINE_STRONG}`,
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 600,
+    letterSpacing: '0.06em',
+    cursor: 'pointer',
+  };
+
+  if (state.loading) {
+    return (
+      <div style={{ padding: 24, color: MUTED, fontSize: 13, textAlign: 'center' }}>
+        Loading tickets…
+      </div>
+    );
+  }
+  if (state.error) {
+    return (
+      <div style={{ padding: 24, color: DANGER, fontSize: 13, textAlign: 'center' }}>
+        {state.error}
+      </div>
+    );
+  }
+  if (!state.products.length) {
+    return (
+      <div style={{ padding: 24, color: MUTED, fontSize: 13, textAlign: 'center' }}>
+        No tickets available yet.
+      </div>
+    );
+  }
 
   const anyVisible = state.products.some((p) => p.any_visible !== false);
   if (!anyVisible) {
     return (
-      <div style={{ padding: 16, border: '1px solid #eee', borderRadius: 8, maxWidth: 480 }}>
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>Not on sale yet</div>
-        <p style={{ fontSize: 13, color: '#666', margin: 0 }}>
+      <div style={{ color: TEXT }}>
+        <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>Not on sale yet</div>
+        <p style={{ fontSize: 13, color: MUTED, margin: '0 0 14px' }}>
           Tickets aren&apos;t available to the public yet. If you have an access code, enter it below.
         </p>
-        <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
           <input
             type="text"
             value={accessCodesInput}
             onChange={(e) => setAccessCodesInput(e.target.value)}
             placeholder="Access code"
-            style={{ flex: 1, padding: 8, border: '1px solid #ccc', borderRadius: 4 }}
+            style={inputStyle}
           />
-          <button type="button" onClick={applyAccessCodes} style={{ padding: '8px 16px' }}>Unlock</button>
+          <button type="button" onClick={applyAccessCodes} style={ghostButtonStyle}>
+            UNLOCK
+          </button>
         </div>
-        {accessCodeError && <div style={{ color: '#a00', fontSize: 12, marginTop: 6 }}>{accessCodeError}</div>}
+        {accessCodeError && (
+          <div style={{ color: DANGER, fontSize: 12, marginTop: 8 }}>{accessCodeError}</div>
+        )}
       </div>
     );
   }
 
   return (
-    <form onSubmit={onCheckout} style={{ padding: 16, border: '1px solid #eee', borderRadius: 8, maxWidth: 480 }}>
-      <h3 style={{ margin: '0 0 12px' }}>Tickets</h3>
-
-      {state.products.map((p) => {
-        const soldOut = p.availability === 'sold_out' || p.price?.tier_status === 'sold_out';
-        const disabled = !p.on_sale || soldOut || (p.member_only && !isMember);
-        const max = Math.min(p.max_per_order || 10, p.availability === 'limited' ? 10 : 20);
-        const qty = Number(quantities[p.product_id] || 0);
-        return (
-          <div key={p.product_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #f0f0f0', opacity: disabled ? 0.6 : 1 }}>
-            <div style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
-              <div style={{ fontWeight: 600 }}>{p.name}{p.member_only ? ' · Members only' : ''}</div>
-              <div style={{ fontSize: 13, color: '#666' }}>
-                {p.price ? formatMoney(p.price.cents, p.price.currency) : '—'}
-                {p.price?.tier_name ? ` · ${p.price.tier_name}` : ''}
-                {soldOut && ' · Sold out'}
-                {!soldOut && p.availability === 'limited' && ' · Limited'}
-                {!p.on_sale && !soldOut && ' · Not on sale'}
-                {p.price?.booking_fee_cents ? ` · +${formatMoney(p.price.booking_fee_cents)} fee` : ''}
-              </div>
-              {p.description && <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{p.description}</div>}
-              {p.tiers && p.tiers.length > 1 && (
-                <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>
-                  Coming next:{' '}
-                  {p.tiers
-                    .filter((t) => !t.buyable)
-                    .slice(0, 2)
-                    .map((t) => `${t.name} ${formatMoney(t.price_cents, t.currency)}`)
-                    .join(' · ')}
+    <form onSubmit={onCheckout} style={{ color: TEXT }}>
+      {/* PRODUCT LADDER */}
+      <div
+        style={{
+          background: SURFACE,
+          border: `1px solid ${HAIRLINE}`,
+          borderRadius: 14,
+          overflow: 'hidden',
+        }}
+      >
+        {state.products.map((p, idx) => {
+          const soldOut = p.availability === 'sold_out' || p.price?.tier_status === 'sold_out';
+          const disabled = !p.on_sale || soldOut || (p.member_only && !isMember);
+          const max = Math.min(p.max_per_order || 10, p.availability === 'limited' ? 10 : 20);
+          const qty = Number(quantities[p.product_id] || 0);
+          return (
+            <div
+              key={p.product_id}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: 12,
+                padding: '16px 18px',
+                borderTop: idx === 0 ? 'none' : `1px solid ${HAIRLINE}`,
+                opacity: disabled ? 0.5 : 1,
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 700, fontSize: 15 }}>{p.name}</span>
+                  {p.member_only && (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 800,
+                        letterSpacing: '0.1em',
+                        padding: '3px 8px',
+                        borderRadius: 999,
+                        background: GOLD,
+                        color: '#0a0a0a',
+                      }}
+                    >
+                      MEMBERS ONLY
+                    </span>
+                  )}
                 </div>
-              )}
+                <div style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>
+                  {p.price ? formatMoney(p.price.cents, p.price.currency) : '—'}
+                  {p.price?.tier_name ? ` · ${p.price.tier_name}` : ''}
+                  {soldOut && ' · Sold out'}
+                  {!soldOut && p.availability === 'limited' && ' · Limited'}
+                  {!p.on_sale && !soldOut && ' · Not on sale'}
+                  {p.price?.booking_fee_cents
+                    ? ` · +${formatMoney(p.price.booking_fee_cents)} fee`
+                    : ''}
+                </div>
+                {p.description && (
+                  <div style={{ fontSize: 12, color: MUTED, marginTop: 6, opacity: 0.8 }}>
+                    {p.description}
+                  </div>
+                )}
+                {p.tiers && p.tiers.length > 1 && (
+                  <div style={{ fontSize: 11, color: MUTED, marginTop: 6, opacity: 0.7 }}>
+                    Coming next:{' '}
+                    {p.tiers
+                      .filter((t) => !t.buyable)
+                      .slice(0, 2)
+                      .map((t) => `${t.name} ${formatMoney(t.price_cents, t.currency)}`)
+                      .join(' · ')}
+                  </div>
+                )}
+              </div>
+              <input
+                type="number"
+                min={0}
+                max={max}
+                value={qty}
+                disabled={disabled}
+                onChange={(e) => setQuantities({ ...quantities, [p.product_id]: e.target.value })}
+                style={{
+                  width: 60,
+                  padding: '8px 6px',
+                  background: 'rgba(255,255,255,0.04)',
+                  color: TEXT,
+                  border: `1px solid ${HAIRLINE_STRONG}`,
+                  borderRadius: 8,
+                  fontSize: 14,
+                  textAlign: 'center',
+                  outline: 'none',
+                }}
+              />
             </div>
-            <input
-              type="number"
-              min={0}
-              max={max}
-              value={qty}
-              disabled={disabled}
-              onChange={(e) => setQuantities({ ...quantities, [p.product_id]: e.target.value })}
-              style={{ width: 64, padding: 6 }}
-            />
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
 
-      <details style={{ marginTop: 12, fontSize: 13 }}>
-        <summary style={{ cursor: 'pointer', color: '#555' }}>Have an access code?</summary>
+      {/* ACCESS + DISCOUNT CODE PAIR — collapsed by default so the widget
+          starts clean and doesn't push totals below the fold. */}
+      <details style={{ marginTop: 14, fontSize: 13 }}>
+        <summary style={{ cursor: 'pointer', color: MUTED, listStyle: 'none' }}>
+          Have an access code?
+        </summary>
         <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
           <input
             type="text"
             value={accessCodesInput}
             onChange={(e) => setAccessCodesInput(e.target.value)}
             placeholder="Access code"
-            style={{ flex: 1, padding: 6, border: '1px solid #ccc', borderRadius: 4 }}
+            style={inputStyle}
           />
-          <button type="button" onClick={applyAccessCodes} style={{ padding: '6px 12px' }}>Unlock</button>
+          <button type="button" onClick={applyAccessCodes} style={ghostButtonStyle}>
+            UNLOCK
+          </button>
         </div>
         {appliedAccessCodes.length > 0 && (
-          <div style={{ fontSize: 12, color: '#083', marginTop: 4 }}>
+          <div style={{ fontSize: 12, color: GREEN, marginTop: 6 }}>
             Applied: {appliedAccessCodes.join(', ')}
           </div>
         )}
-        {accessCodeError && <div style={{ color: '#a00', fontSize: 12, marginTop: 4 }}>{accessCodeError}</div>}
+        {accessCodeError && (
+          <div style={{ color: DANGER, fontSize: 12, marginTop: 6 }}>{accessCodeError}</div>
+        )}
       </details>
 
       <details style={{ marginTop: 8, fontSize: 13 }}>
-        <summary style={{ cursor: 'pointer', color: '#555' }}>
+        <summary style={{ cursor: 'pointer', color: MUTED, listStyle: 'none' }}>
           {discount ? `Discount applied: ${discount.code}` : 'Have a discount code?'}
         </summary>
         {!discount ? (
@@ -324,94 +449,137 @@ export default function InternalTicketPurchase({ eventId, isMember = false, buye
               value={discountInput}
               onChange={(e) => setDiscountInput(e.target.value.toUpperCase())}
               placeholder="Discount code"
-              style={{ flex: 1, padding: 6, border: '1px solid #ccc', borderRadius: 4, textTransform: 'uppercase' }}
+              style={{ ...inputStyle, textTransform: 'uppercase' }}
             />
-            <button type="button" onClick={applyDiscount} disabled={discountBusy} style={{ padding: '6px 12px' }}>
-              {discountBusy ? 'Checking…' : 'Apply'}
+            <button
+              type="button"
+              onClick={applyDiscount}
+              disabled={discountBusy}
+              style={{ ...ghostButtonStyle, opacity: discountBusy ? 0.6 : 1 }}
+            >
+              {discountBusy ? 'CHECKING…' : 'APPLY'}
             </button>
           </div>
         ) : (
-          <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div
+            style={{
+              marginTop: 8,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: 12,
+              color: TEXT,
+            }}
+          >
             <span>
               {discount.discount_type === 'percent'
                 ? `${discount.discount_value}% off`
                 : `${formatMoney(discount.discount_value)} off`}
-              {' · '}<strong>−{formatMoney(discountCents)}</strong>
+              {' · '}
+              <strong>−{formatMoney(discountCents)}</strong>
             </span>
-            <button type="button" onClick={clearDiscount} style={{ padding: '4px 8px', fontSize: 12 }}>Remove</button>
+            <button type="button" onClick={clearDiscount} style={{ ...ghostButtonStyle, padding: '6px 12px', fontSize: 11 }}>
+              REMOVE
+            </button>
           </div>
         )}
-        {discountError && <div style={{ color: '#a00', fontSize: 12, marginTop: 4 }}>{discountError}</div>}
+        {discountError && (
+          <div style={{ color: DANGER, fontSize: 12, marginTop: 6 }}>{discountError}</div>
+        )}
       </details>
 
+      {/* EMAIL FOR TICKETS — only shown for anonymous buyers once they've picked
+          at least one ticket, matching the previous UX. */}
       {!isMember && totalQty > 0 && (
-        <div style={{ marginTop: 12 }}>
-          <label style={{ display: 'block', fontSize: 13, marginBottom: 4 }}>Email for tickets</label>
+        <div style={{ marginTop: 16 }}>
+          <label style={{ display: 'block', fontSize: 12, color: MUTED, marginBottom: 6, letterSpacing: '0.06em' }}>
+            EMAIL FOR TICKETS
+          </label>
           <input
             type="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
-            style={{ width: '100%', padding: 8, border: '1px solid #ccc', borderRadius: 4 }}
+            style={inputStyle}
           />
         </div>
       )}
 
-      <div style={{ marginTop: 16, fontSize: 13 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Subtotal ({totalQty})</span>
+      {/* TOTALS */}
+      <div style={{ marginTop: 20, fontSize: 13, color: TEXT }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+          <span style={{ color: MUTED }}>Subtotal ({totalQty})</span>
           <span>{formatMoney(subtotalCents, currency)}</span>
         </div>
         {discountCents > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#083' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', color: GREEN }}>
             <span>Discount ({discount.code})</span>
             <span>−{formatMoney(discountCents, currency)}</span>
           </div>
         )}
         {bookingFeeCents > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#666' }}>
-            <span>Booking fee</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+            <span style={{ color: MUTED }}>Booking fee</span>
             <span>{formatMoney(bookingFeeCents, currency)}</span>
           </div>
         )}
         {taxCents > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#666' }}>
-            <span>{`Sales tax (${(taxRateBps / 100).toFixed(2)}%)`}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+            <span style={{ color: MUTED }}>{`Sales tax (${(taxRateBps / 100).toFixed(2)}%)`}</span>
             <span>{formatMoney(taxCents, currency)}</span>
           </div>
         )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontWeight: 700, fontSize: 15 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            marginTop: 10,
+            paddingTop: 10,
+            borderTop: `1px solid ${HAIRLINE}`,
+            fontWeight: 800,
+            fontSize: 16,
+          }}
+        >
           <span>Total</span>
           <span>{formatMoney(totalCents, currency)}</span>
         </div>
       </div>
 
-      {submitError && <div style={{ color: '#a00', marginTop: 8 }}>{submitError}</div>}
+      {submitError && (
+        <div style={{ color: DANGER, fontSize: 13, marginTop: 12 }}>{submitError}</div>
+      )}
 
+      {/* CTA — same white pill the rest of the event page uses for BUY TICKETS,
+          so once you're inside the modal the primary action still reads on-brand. */}
       <button
         type="submit"
         disabled={preview || submitting || totalQty === 0}
         style={{
-          marginTop: 12,
+          marginTop: 16,
           width: '100%',
-          padding: '12px 16px',
-          background: preview ? '#555' : '#111',
-          color: '#fff',
+          padding: '14px 22px',
+          background: preview ? 'rgba(255,255,255,0.14)' : totalQty === 0 ? 'rgba(255,255,255,0.14)' : '#ffffff',
+          color: preview ? MUTED : totalQty === 0 ? MUTED : '#0a0a0a',
           border: 0,
-          borderRadius: 4,
-          cursor: preview ? 'not-allowed' : totalQty ? 'pointer' : 'not-allowed',
-          opacity: preview ? 0.85 : 1,
+          borderRadius: 999,
+          fontSize: 13,
+          fontWeight: 800,
+          letterSpacing: '0.08em',
+          cursor: preview || totalQty === 0 ? 'not-allowed' : 'pointer',
+          transition: 'transform 0.15s ease, background 0.15s ease',
         }}
       >
         {preview
-          ? 'Checkout disabled in preview'
+          ? 'CHECKOUT DISABLED IN PREVIEW'
           : submitting
-            ? 'Starting checkout…'
-            : `Checkout · ${formatMoney(totalCents, currency)}`}
+            ? 'STARTING CHECKOUT…'
+            : totalQty === 0
+              ? 'PICK YOUR TICKETS'
+              : `CHECKOUT · ${formatMoney(totalCents, currency)}`}
       </button>
 
-      <div style={{ fontSize: 11, color: '#888', marginTop: 8, textAlign: 'center' }}>
+      <div style={{ fontSize: 11, color: MUTED, marginTop: 10, textAlign: 'center', letterSpacing: '0.03em' }}>
         Secure payment by Stripe. Confirmation email includes your QR ticket.
       </div>
     </form>
