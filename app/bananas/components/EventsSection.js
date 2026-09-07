@@ -140,13 +140,20 @@ export default function EventsSection({ upcoming, past, metricsByEvent = {} }) {
                 initialMetrics={metricsByEvent[event.id] || null}
               />
               <div className="flex flex-wrap gap-2 justify-end flex-shrink-0">
-                <Link
-                  href={`/bananas/events/${event.id}#contracts`}
-                  className="auth-theme-border-button px-3 sm:px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
-                  title={`Contracts for ${event.title}`}
-                >
-                  CONTRACTS
-                </Link>
+                {/* SDG-only events have no counterparty to sign anything, so
+                    the Contracts section is hidden on the edit page for those
+                    (see app/bananas/events/[id]/page.js). Hiding the button
+                    here too keeps the row honest — no dead deep-link into a
+                    section that doesn't render. */}
+                {!event.is_sdg_only && (
+                  <Link
+                    href={`/bananas/events/${event.id}#contracts`}
+                    className="auth-theme-border-button px-3 sm:px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
+                    title={`Contracts for ${event.title}`}
+                  >
+                    CONTRACTS
+                  </Link>
+                )}
                 <Link
                   href={`/bananas/guest-list/${event.id}`}
                   className="auth-theme-border-button px-3 sm:px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"

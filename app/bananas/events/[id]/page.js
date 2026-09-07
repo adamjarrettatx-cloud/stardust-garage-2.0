@@ -106,13 +106,22 @@ export default async function EditEventPage({ params }) {
             eventDate={event.event_date || null}
             eventStartTime={event.event_time || null}
           />
-          {/* `id="contracts"` is the scroll target for the Events list row's
-              CONTRACTS button (app/bananas/components/EventsSection.js). Kept
-              on a wrapper here so EventContractsPanel stays self-contained
-              and other callers don't inherit a page-level anchor. */}
-          <section id="contracts" style={{ scrollMarginTop: '96px' }}>
-            <EventContractsPanel eventId={event.id} />
-          </section>
+          {/* Contracts section is hidden entirely for SDG-only events
+              (Organizer = "SDG Only") because those events have no
+              counterparty to sign anything — nothing to draft, nothing
+              to send, nothing to archive. `id="contracts"` is the
+              scroll target for the Events list row's CONTRACTS button
+              (app/bananas/components/EventsSection.js). Kept on a
+              wrapper here so EventContractsPanel stays self-contained
+              and other callers don't inherit a page-level anchor.
+              Deep-links to #contracts on an SDG-only event just land at
+              the bottom of the editor, which is the correct behavior
+              since the section legitimately doesn't exist for them. */}
+          {!event.is_sdg_only && (
+            <section id="contracts" style={{ scrollMarginTop: '96px' }}>
+              <EventContractsPanel eventId={event.id} />
+            </section>
+          )}
           {/* Guest list allocation lives on its own page at
               /bananas/guest-list/<id> — reachable from the Events row's
               GUEST LIST button. Kept off the edit page so this screen stays
