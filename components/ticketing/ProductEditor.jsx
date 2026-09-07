@@ -126,24 +126,64 @@ const STATUS_OPTIONS = [
 ];
 
 // ---- tier row ----
-function TierRow({ tier, onChange, onDelete, canDelete, eventFeeDefault }) {
+// Grid columns (kept in sync with the header row below):
+//   24px drag handle | tier name | price | qty | starts | ends | status | fee | 32px delete
+const TIER_GRID = '24px minmax(140px, 1.4fr) 90px 90px 170px 170px 150px 100px 32px';
+
+function TierRow({
+  tier,
+  index,
+  onChange,
+  onDelete,
+  canDelete,
+  eventFeeDefault,
+  // drag props from parent
+  isDragging,
+  isDragOver,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+}) {
   const status = tier.status || 'active';
   const feePlaceholder = centsToDollarInput(eventFeeDefault ?? 295);
 
   return (
     <div
+      onDragOver={onDragOver}
+      onDrop={onDrop}
       style={{
         display: 'grid',
         gap: 8,
-        gridTemplateColumns: 'minmax(140px, 1.4fr) 90px 90px 170px 170px 150px 100px 32px',
+        gridTemplateColumns: TIER_GRID,
         alignItems: 'center',
         padding: '10px 12px',
         borderBottom: `1px solid ${T.borderSoft}`,
         fontSize: 13,
         color: T.text,
         fontFamily: T.fontStack,
+        opacity: isDragging ? 0.4 : 1,
+        background: isDragOver ? 'rgba(0,0,0,0.04)' : 'transparent',
+        transition: 'background 120ms ease',
       }}
     >
+      <div
+        draggable
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
+        title="Drag to reorder"
+        style={{
+          cursor: 'grab',
+          userSelect: 'none',
+          color: T.faint,
+          fontSize: 16,
+          lineHeight: 1,
+          textAlign: 'center',
+          padding: '4px 0',
+        }}
+      >
+        ⋮⋮
+      </div>
       <input
         type="text"
         value={tier.name || ''}
@@ -295,6 +335,42 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
     setP({ ...p, tiers: p.tiers.filter((_, i) => i !== index) });
   }
 
+  // --- drag-and-drop reorder for tier rows ---
+  // Order is by array index; submit() writes display_order: i so the DB
+  // half is automatic. dragIndex is the row being dragged; overIndex is the
+  // row it's currently hovered over (for the highlight).
+  const [dragIndex, setDragIndex] = useState(null);
+  const [overIndex, setOverIndex] = useState(null);
+
+  function handleTierDragStart(i, e) {
+    setDragIndex(i);
+    // Firefox needs setData to enable the drag.
+    try { e.dataTransfer.setData('text/plain', String(i)); } catch {}
+    e.dataTransfer.effectAllowed = 'move';
+  }
+  function handleTierDragOver(i, e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (overIndex !== i) setOverIndex(i);
+  }
+  function handleTierDrop(i, e) {
+    e.preventDefault();
+    const from = dragIndex;
+    setDragIndex(null);
+    setOverIndex(null);
+    if (from === null || from === i) return;
+    setP((prev) => {
+      const next = prev.tiers.slice();
+      const [moved] = next.splice(from, 1);
+      next.splice(i, 0, moved);
+      return { ...prev, tiers: next };
+    });
+  }
+  function handleTierDragEnd() {
+    setDragIndex(null);
+    setOverIndex(null);
+  }
+
   function submit() {
     const payload = {
       ...p,
@@ -325,7 +401,7 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
 
   return (
     <div style={{ ...cardStyle({ padding: 20 }), marginBottom: 20 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         <label>
           <div style={fieldLabelStyle()}>Min per order</div>
           <input
@@ -347,16 +423,6 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
           />
         </label>
 
-        <label>
-          <div style={fieldLabelStyle()}>Sort order</div>
-          <input
-            type="number"
-            value={p.display_order}
-            onChange={(e) => setP({ ...p, display_order: parseInt(e.target.value, 10) || 0 })}
-            style={inputStyle()}
-          />
-        </label>
-
         <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 20, marginTop: 4 }}>
           <CheckboxRow
             checked={!!p.member_only}
@@ -373,14 +439,14 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
 
       <h4 style={{ ...sectionHeaderStyle(), marginTop: 24, marginBottom: 4, fontSize: 12 }}>Price tiers</h4>
       <p style={sectionSubStyle()}>
-        Add a tier for each price phase (e.g. Early Bird → Phase 1 → Phase 2 → General Admission). Set a Qty for each tier to cap how many tickets sell at that price — leave blank for unlimited. Each tier is a price window; leave start/end blank for open-ended. The tier name is what buyers see. Booking fee override is per ticket in dollars — blank uses the event default.
+        Tiers show in the order listed below — first row is the first tier buyers see. Drag the ⋮⋮ handle to reorder. Set a Qty for each tier to cap how many tickets sell at that price (blank = unlimited). Each tier is a price window; leave start/end blank for open-ended. The tier name is what buyers see. Booking fee override is per ticket in dollars — blank uses the event default.
       </p>
 
       <div style={{ border: `1px solid ${T.border}`, borderRadius: 12, overflow: 'hidden', background: T.cardBg }}>
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'minmax(140px, 1.4fr) 90px 90px 170px 170px 150px 100px 32px',
+            gridTemplateColumns: TIER_GRID,
             gap: 8,
             fontSize: 11,
             color: T.muted,
@@ -393,6 +459,7 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
             fontFamily: T.fontStack,
           }}
         >
+          <span />
           <span>Tier name</span>
           <span>Price $</span>
           <span>Qty</span>
@@ -406,10 +473,17 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
           <div key={t.id || `new-${i}`}>
             <TierRow
               tier={t}
+              index={i}
               onChange={(next) => updateTier(i, next)}
               onDelete={() => removeTier(i)}
               canDelete={p.tiers.length > 1}
               eventFeeDefault={eventFeeDefault}
+              isDragging={dragIndex === i}
+              isDragOver={overIndex === i && dragIndex !== null && dragIndex !== i}
+              onDragStart={(e) => handleTierDragStart(i, e)}
+              onDragOver={(e) => handleTierDragOver(i, e)}
+              onDrop={(e) => handleTierDrop(i, e)}
+              onDragEnd={handleTierDragEnd}
             />
             <AccessCodesInput tier={t} onChange={(next) => updateTier(i, next)} />
           </div>
