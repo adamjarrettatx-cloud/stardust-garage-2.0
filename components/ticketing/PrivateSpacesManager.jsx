@@ -20,7 +20,7 @@ import {
 // with a single price tier, so the same order / checkout / inventory pipeline
 // applies. The UI is deliberately simpler than the tiered ticket editor:
 //
-//   - Space name           (e.g. "Outer Space \u2014 Green Room")
+//   - Space name           (e.g. "Outer Space — Green Room")
 //   - Description          (free-form, shown to buyers)
 //   - Price ($)            (single, no time-based tiers)
 //   - Capacity             (usually 1 or 2)
@@ -142,7 +142,7 @@ function SpaceForm({ eventId, initial, onSave, onCancel, saving }) {
             value={s.name}
             onChange={(e) => setS({ ...s, name: e.target.value })}
             style={inputStyle({ invalid: !nameValid && s.name.length > 0 })}
-            placeholder="Outer Space \u2014 Green Room / Upstairs Office"
+            placeholder="Outer Space — Green Room / Upstairs Office"
           />
         </label>
         <label>
@@ -392,7 +392,7 @@ export default function PrivateSpacesManager({ eventId, products, onReload }) {
   return (
     <div>
       <p style={sectionSubStyle()}>
-        Rentable private spaces at this event (e.g. Outer Space \u2014 Green Room / Upstairs Office).
+        Rentable private spaces at this event (e.g. Outer Space — Green Room / Upstairs Office).
         Each has a single price and its own capacity. Buyers pay the space price on top of any ticket they buy.
       </p>
 
