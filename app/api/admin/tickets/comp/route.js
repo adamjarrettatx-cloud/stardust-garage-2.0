@@ -5,6 +5,7 @@ import { isInternalTicketingEnabled } from '@/lib/feature-flags';
 import { generateTicketCode } from '@/lib/tickets/codes';
 import { sendTicketConfirmation } from '@/lib/email';
 import { renderTicketQrSvg } from '@/lib/tickets/qr';
+import { fetchEventForEmail } from '@/lib/tickets/fetch-event-for-email';
 
 // POST /api/admin/tickets/comp
 // Body: { event_id, product_id, quantity, buyer_email, buyer_name?, send_email? }
@@ -127,7 +128,7 @@ export async function POST(request) {
   });
 
   if (send_email) {
-    const { data: event } = await supabaseAdmin.from('events').select('title, event_date, start_time').eq('id', event_id).maybeSingle();
+    const eventCtx = await fetchEventForEmail({ supabaseAdmin, eventId: event_id, request });
     const rows = ticketRows.map((t) => ({
       ticketCode: t.ticket_code,
       productName: product.name,
@@ -139,9 +140,13 @@ export async function POST(request) {
       await sendTicketConfirmation({
         to: buyer_email,
         orderId: order.id,
-        eventTitle: event?.title || 'Stardust Garage',
-        eventWhen: event?.event_date ? `${event.event_date}${event.start_time ? ` at ${event.start_time}` : ''}` : null,
+        orderDate: order.created_at,
+        eventTitle: eventCtx.eventTitle,
+        eventWhen: eventCtx.eventWhen,
+        eventFlyerUrl: eventCtx.eventFlyerUrl,
+        venueAddress: eventCtx.venueAddress,
         ticketRows: rows,
+        orderUrl: eventCtx.orderUrlBase,
       });
     } catch (err) {
       console.warn('comp email send failed:', err?.message);

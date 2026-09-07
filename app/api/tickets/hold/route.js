@@ -13,14 +13,18 @@ import { findOrCreateStripeCustomer } from '@/lib/stripe/client';
 // Body: {
 //   event_id: uuid,
 //   selections: [{ product_id: uuid, quantity: int }],
-//   buyer_email?: string,          // required for guest checkout
 //   access_codes?: string[],       // unlock access-code tiers
 //   discount_code?: string          // optional promo code
 // }
 //
+// Auth: A Stardust-account session is REQUIRED. Anonymous callers get a
+// hard 401. The account gate lives in the InternalTicketModal wrapper —
+// this endpoint is the second line of defence so an unauthenticated call
+// (e.g. a curl'd hold request) never creates an order.
+//
 // Server flow:
 //   1. Rate-limit by IP + validate flag.
-//   2. Resolve caller (member session or guest).
+//   2. Resolve caller — 401 if none.
 //   3. Load products + tiers + optional discount code, verify on-sale,
 //      price authoritatively (adds per-ticket booking fee, applies
 //      discount to subtotal).
@@ -81,7 +85,6 @@ export async function POST(request) {
   try { body = await request.json(); } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
   const eventId = body?.event_id;
   const selections = Array.isArray(body?.selections) ? body.selections : [];
-  const buyerEmailInput = typeof body?.buyer_email === 'string' ? body.buyer_email.trim().toLowerCase() : null;
   const unlockedCodes = Array.isArray(body?.access_codes) ? body.access_codes.map(String) : [];
   const discountCodeInput = typeof body?.discount_code === 'string'
     ? body.discount_code.trim().toUpperCase()
@@ -91,7 +94,16 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Missing event_id or selections' }, { status: 400 });
   }
 
-  const user = await getRequestUser(request); // may be null for guests
+  // Stardust-account gate. Anonymous purchases were removed when the account
+  // gate shipped — every hold now belongs to a real auth.users id so the
+  // ticket wallet, refunds, and door lookups all resolve to a single identity.
+  const user = await getRequestUser(request);
+  if (!user) {
+    return NextResponse.json(
+      { error: 'Sign in required to purchase tickets.' },
+      { status: 401 },
+    );
+  }
 
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -109,22 +121,19 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Event not available for purchase' }, { status: 404 });
   }
 
-  // --- Resolve buyer email (member session wins) --------------------------
-  let memberProfile = null;
-  let buyerEmail = null;
-  if (user) {
-    const { data } = await supabaseAdmin
-      .from('member_profiles')
-      .select('id, email, full_name, stripe_customer_id')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    memberProfile = data;
-    buyerEmail = (user.email || memberProfile?.email || '').toLowerCase();
-  } else {
-    buyerEmail = buyerEmailInput;
-  }
+  // --- Resolve buyer email from the authenticated identity ---------------
+  // Members carry a member_profiles row with a curated email that may differ
+  // from the auth.users email (e.g. they applied with one address then
+  // switched login providers). For non-members, the auth.users email is the
+  // only address we have and is the one Stripe + our confirmation email use.
+  const { data: memberProfile } = await supabaseAdmin
+    .from('member_profiles')
+    .select('id, email, full_name, stripe_customer_id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  const buyerEmail = (user.email || memberProfile?.email || '').toLowerCase();
   if (!buyerEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail)) {
-    return NextResponse.json({ error: 'A valid email is required for guest checkout' }, { status: 400 });
+    return NextResponse.json({ error: 'Your account has no email on file — contact the front desk.' }, { status: 400 });
   }
 
   // --- Load products + tiers ---------------------------------------------
@@ -225,7 +234,7 @@ export async function POST(request) {
     p_quantity_total: snapshot.quantityTotal,
     p_subtotal_cents: snapshot.totalCents, // hold subtotal = what the buyer pays
     p_currency: snapshot.currency,
-    p_user_id: user?.id || null,
+    p_user_id: user.id,
     p_member_profile_id: memberProfile?.id || null,
     p_buyer_email: buyerEmail,
     p_expires_at: expiresAt.toISOString(),

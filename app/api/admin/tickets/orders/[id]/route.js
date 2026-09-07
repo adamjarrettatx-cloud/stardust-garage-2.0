@@ -5,6 +5,7 @@ import { isInternalTicketingEnabled } from '@/lib/feature-flags';
 import { refundTicketOrder } from '@/lib/tickets/stripe';
 import { splitRefundTax } from '@/lib/tickets/pricing';
 import { sendTicketConfirmation } from '@/lib/email';
+import { fetchEventForEmail } from '@/lib/tickets/fetch-event-for-email';
 import { renderTicketQrSvg } from '@/lib/tickets/qr';
 
 // GET    /api/admin/tickets/orders/[id]  -> full order detail (items + tickets)
@@ -166,8 +167,8 @@ export async function POST(request, { params }) {
     if (order.status !== 'paid' && order.status !== 'partial_refund') {
       return NextResponse.json({ error: 'Order not paid' }, { status: 400 });
     }
-    const [event, tickets, items] = await Promise.all([
-      supabaseAdmin.from('events').select('title, event_date, start_time').eq('id', order.event_id).maybeSingle(),
+    const [eventCtx, tickets, items] = await Promise.all([
+      fetchEventForEmail({ supabaseAdmin, eventId: order.event_id, request }),
       supabaseAdmin.from('tickets').select('id, ticket_code, order_item_id, status').eq('order_id', order.id).neq('status', 'void'),
       supabaseAdmin.from('order_items').select('id, product_name_snapshot, tier_name_snapshot').eq('order_id', order.id),
     ]);
@@ -183,9 +184,13 @@ export async function POST(request, { params }) {
     await sendTicketConfirmation({
       to: body.to_email || order.buyer_email,
       orderId: order.id,
-      eventTitle: event.data?.title || 'Stardust Garage',
-      eventWhen: event.data?.event_date ? `${event.data.event_date}${event.data.start_time ? ` at ${event.data.start_time}` : ''}` : null,
+      orderDate: order.created_at,
+      eventTitle: eventCtx.eventTitle,
+      eventWhen: eventCtx.eventWhen,
+      eventFlyerUrl: eventCtx.eventFlyerUrl,
+      venueAddress: eventCtx.venueAddress,
       ticketRows,
+      orderUrl: eventCtx.orderUrlBase,
     });
 
     await supabaseAdmin.from('ticket_audit_log').insert({

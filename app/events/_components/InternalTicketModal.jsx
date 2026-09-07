@@ -1,10 +1,28 @@
 'use client';
 
-// Trigger + modal wrapper around InternalTicketPurchase.
+// Trigger + modal wrapper around InternalTicketPurchase, now with an account
+// gate in front of the purchase widget.
 //
 // The event page shows a single white "BUY TICKETS" pill that matches the
-// external TicketTailor flow. Clicking it pops a full-screen dark modal
-// containing the actual purchase widget so the event page itself stays clean.
+// external TicketTailor flow. Clicking it pops a full-screen dark modal that
+// EITHER asks the visitor to create/sign into a Stardust account (if they
+// aren't already authenticated) or drops them straight into the purchase
+// widget. Successful sign-in seamlessly swaps to the purchase step inside
+// the same modal, without a page refresh.
+//
+// Why the gate lives here (and not on /api/tickets/hold alone):
+//   * The API also rejects anonymous callers with 401, but that's a defence-
+//     in-depth check for direct callers. The user-facing gate is a modal step
+//     so the buyer never sees a checkout form only to be blocked at submit.
+//   * Keeping the gate + purchase inside one modal means there's no full-page
+//     navigation between "click BUY TICKETS" and "pay", which is important
+//     on mobile where redirects lose the buyer to Safari's tab history.
+//
+// Google OAuth handoff:
+//   * AccountGate's Google button hands off to /auth/callback?next=<eventUrl>
+//     ?signup=complete. When Google returns the visitor to the event page,
+//     our mount effect detects ?signup=complete, opens the modal in the
+//     checkout step, and strips the query param so a back-nav doesn't loop.
 //
 // Modal behaviors:
 //   * Esc closes.
@@ -12,12 +30,16 @@
 //   * `body` scroll is locked while open so mobile doesn't fight the modal.
 //   * Focus lands on the close button on open (keyboard users can Tab into
 //     the widget from there).
-//   * The whole widget mounts lazily — availability is only fetched the first
-//     time the modal opens, so scrolling the event page doesn't trigger a
-//     network round-trip for every visitor who never clicks BUY TICKETS.
+//   * The whole widget mounts lazily \u2014 availability is only fetched the
+//     first time the modal opens, so scrolling the event page doesn't
+//     trigger a network round-trip for every visitor who never clicks BUY
+//     TICKETS.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 import InternalTicketPurchase from './InternalTicketPurchase';
+import AccountGate from '@/app/components/AccountGate';
 
 export default function InternalTicketModal({
   eventId,
@@ -28,9 +50,56 @@ export default function InternalTicketModal({
   triggerLabel = 'BUY TICKETS',
 }) {
   const [open, setOpen] = useState(false);
+  // step: 'gate' \u2014 show AccountGate; 'checkout' \u2014 show InternalTicketPurchase.
+  // Resolved on open (and on Google-callback re-entry) from supabase.auth.getUser.
+  const [step, setStep] = useState('gate');
+  const [checkingAuth, setCheckingAuth] = useState(false);
   const closeButtonRef = useRef(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const close = useCallback(() => setOpen(false), []);
+
+  // On mount, if we came back from Google OAuth (?signup=complete) and are
+  // authenticated, jump straight into checkout inside the modal and strip
+  // the query param so back-nav doesn't loop the modal open forever.
+  useEffect(() => {
+    if (searchParams.get('signup') !== 'complete') return;
+    let cancelled = false;
+    (async () => {
+      const supabase = createClient();
+      const { data } = await supabase.auth.getUser();
+      if (cancelled) return;
+      if (data?.user) {
+        setStep('checkout');
+        setOpen(true);
+        // Strip the query param without touching pathname.
+        const params = new URLSearchParams(Array.from(searchParams.entries()));
+        params.delete('signup');
+        const query = params.toString();
+        router.replace(query ? `?${query}` : '?', { scroll: false });
+      }
+    })();
+    return () => { cancelled = true; };
+    // Only fire on mount \u2014 subsequent renders shouldn't re-trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Decide gate-vs-checkout every time the modal opens, so a sign-out
+  // elsewhere in the tab isn't papered over by stale state.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setCheckingAuth(true);
+    (async () => {
+      const supabase = createClient();
+      const { data } = await supabase.auth.getUser();
+      if (cancelled) return;
+      setStep(data?.user ? 'checkout' : 'gate');
+      setCheckingAuth(false);
+    })();
+    return () => { cancelled = true; };
+  }, [open]);
 
   // Lock body scroll + wire the Escape key while open. Both must be torn down
   // in the effect cleanup or the page stays frozen after the modal closes.
@@ -140,16 +209,29 @@ export default function InternalTicketModal({
                   cursor: 'pointer',
                 }}
               >
-                ×
+                \u00D7
               </button>
             </div>
 
-            <InternalTicketPurchase
-              eventId={eventId}
-              preview={preview}
-              isMember={isMember}
-              buyerEmailPrefill={buyerEmailPrefill}
-            />
+            {checkingAuth ? (
+              <div style={{ padding: '32px 0', textAlign: 'center', color: '#8a8a8a', fontSize: 13 }}>
+                Loading\u2026
+              </div>
+            ) : step === 'gate' ? (
+              <AccountGate
+                defaultTab="signup"
+                headline="Sign in to buy tickets"
+                subheadline="Online purchases now require a Stardust account \u2014 takes about 15 seconds. All your tickets live in your account."
+                onSuccess={() => setStep('checkout')}
+              />
+            ) : (
+              <InternalTicketPurchase
+                eventId={eventId}
+                preview={preview}
+                isMember={isMember}
+                buyerEmailPrefill={buyerEmailPrefill}
+              />
+            )}
           </div>
         </div>
       )}
