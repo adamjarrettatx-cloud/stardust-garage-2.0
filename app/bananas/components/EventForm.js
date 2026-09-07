@@ -324,6 +324,53 @@ export default function EventForm({
 
       {statusPanel}
 
+      {/* VISIBILITY + EVENT TYPE strip — lives above the details cards so
+          the top-of-page controls (STATUS → how it's shown / what it is)
+          read as one contiguous decision bar before you get into details.
+          Wired into the same form state; saved with the form. */}
+      <section className="rounded-[14px] border p-5 mb-4" style={cardStyle}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div>
+            <label className={labelClass} style={labelStyle}>Visibility</label>
+            <Segmented
+              value={isInternal ? 'internal' : 'public'}
+              onChange={(v) => setIsInternal(v === 'internal')}
+              options={[
+                { value: 'public', label: 'Public' },
+                { value: 'internal', label: 'Internal' },
+              ]}
+            />
+            <p className="text-[11px] mt-2" style={helperStyle}>
+              {isInternal
+                ? 'Hidden from the public events page — team calendar only.'
+                : 'Shown on the public events page and member surfaces.'}
+            </p>
+          </div>
+          <div>
+            <label className={labelClass} style={labelStyle}>Event Type</label>
+            <Segmented
+              value={eventType}
+              onChange={setEventType}
+              options={[
+                { value: 'public', label: 'Ticketed' },
+                { value: 'private', label: 'Private Rental' },
+              ]}
+            />
+            <p className="text-[11px] mt-2" style={helperStyle}>
+              {eventType === 'private'
+                ? 'Venue rental — no ticket sales for this event.'
+                : 'Sells tickets through the internal checkout below.'}
+            </p>
+          </div>
+        </div>
+        {isInternal && (
+          <p className="text-[11px] mt-4" style={{ color: '#f59e0b' }}>
+            Internal event: never appears on the public events page or member surfaces. It still
+            supports contracts, SignNow, financials, and POS imports, and shows on the team calendar.
+          </p>
+        )}
+      </section>
+
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* IDENTITY HERO — profile-style header with square thumbnail + title/slug. */}
         <section className="rounded-[14px] border p-5" style={cardStyle}>
@@ -478,51 +525,6 @@ export default function EventForm({
             className={inputClass + ' resize-y'}
             style={inputStyle}
           />
-        </section>
-
-        {/* SETTINGS — visibility + event type, side-by-side segmented controls. */}
-        <section className="rounded-[14px] border p-5" style={cardStyle}>
-          <h3 className={sectionTitle} style={labelStyle}>Settings</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <div>
-              <label className={labelClass} style={labelStyle}>Visibility</label>
-              <Segmented
-                value={isInternal ? 'internal' : 'public'}
-                onChange={(v) => setIsInternal(v === 'internal')}
-                options={[
-                  { value: 'public', label: 'Public' },
-                  { value: 'internal', label: 'Internal' },
-                ]}
-              />
-              <p className="text-[11px] mt-2" style={helperStyle}>
-                {isInternal
-                  ? 'Hidden from the public events page — team calendar only.'
-                  : 'Shown on the public events page and member surfaces.'}
-              </p>
-            </div>
-            <div>
-              <label className={labelClass} style={labelStyle}>Event Type</label>
-              <Segmented
-                value={eventType}
-                onChange={setEventType}
-                options={[
-                  { value: 'public', label: 'Ticketed' },
-                  { value: 'private', label: 'Private Rental' },
-                ]}
-              />
-              <p className="text-[11px] mt-2" style={helperStyle}>
-                {eventType === 'private'
-                  ? 'Venue rental — no ticket sales for this event.'
-                  : 'Sells tickets through the internal checkout below.'}
-              </p>
-            </div>
-          </div>
-          {isInternal && (
-            <p className="text-[11px] mt-4" style={{ color: '#f59e0b' }}>
-              Internal event: never appears on the public events page or member surfaces. It still
-              supports contracts, SignNow, financials, and POS imports, and shows on the team calendar.
-            </p>
-          )}
         </section>
 
         {/* CONTACT / SDG-ONLY — required unless the event is fully internal. */}
