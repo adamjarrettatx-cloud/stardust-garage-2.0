@@ -153,10 +153,14 @@ export default function TicketingPanel({
     }
   }
 
+  // Load products whenever the UI is showing the Default (internal) mode —
+  // driven by the live selection, not the persisted one, so previewing the
+  // Default panel populates the editor immediately even before Save Ticketing.
+  // Products are already scoped to this event, so a preview-mode GET is cheap.
   useEffect(() => {
-    if (savedUiMode === 'default') loadProducts();
+    if (uiMode === 'default') loadProducts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [savedUiMode, eventId]);
+  }, [uiMode, eventId]);
 
   const dirtyMode = uiMode !== savedUiMode;
   const dirtyUrl = uiMode === 'external' && ticketUrl !== savedTicketUrl;
@@ -287,7 +291,11 @@ export default function TicketingPanel({
           third-party site we don't control — our member codes can't apply
           there). Shown for internal ticketing and for the two legacy
           TicketTailor events, which both drive member-code generation. */}
-      {savedUiMode !== 'free' && savedUiMode !== 'external' && (
+      {/* Downstream sections (Member discounts, Tickets, Private spaces,
+          Discount codes) mirror the LIVE selection, not the persisted one, so
+          clicking External / Free / Default immediately reveals or hides the
+          right controls without waiting for a Save Ticketing round-trip. */}
+      {uiMode !== 'free' && uiMode !== 'external' && (
       <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--auth-border, #333)' }}>
         <h3 style={{ margin: 0, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Member discounts</h3>
         <p style={{ margin: '4px 0 12px 0', fontSize: 12, opacity: 0.7 }}>
@@ -358,7 +366,7 @@ export default function TicketingPanel({
       </div>
       )}
 
-      {savedUiMode === 'default' && (
+      {uiMode === 'default' && (
         <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--auth-border, #333)' }}>
           <h3 style={{ margin: 0, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Tickets</h3>
           <p style={{ margin: '4px 0 12px 0', fontSize: 12, opacity: 0.7 }}>
