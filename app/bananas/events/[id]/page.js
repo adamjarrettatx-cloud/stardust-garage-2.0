@@ -106,7 +106,13 @@ export default async function EditEventPage({ params }) {
             eventDate={event.event_date || null}
             eventStartTime={event.event_time || null}
           />
-          <EventContractsPanel eventId={event.id} />
+          {/* `id="contracts"` is the scroll target for the Events list row's
+              CONTRACTS button (app/bananas/components/EventsSection.js). Kept
+              on a wrapper here so EventContractsPanel stays self-contained
+              and other callers don't inherit a page-level anchor. */}
+          <section id="contracts" style={{ scrollMarginTop: '96px' }}>
+            <EventContractsPanel eventId={event.id} />
+          </section>
           {/* Guest list allocation lives on its own page at
               /bananas/guest-list/<id> — reachable from the Events row's
               GUEST LIST button. Kept off the edit page so this screen stays
