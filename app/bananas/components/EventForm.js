@@ -598,7 +598,7 @@ export default function EventForm({
               color: 'var(--auth-strong-surface-text)',
             }}
           >
-            {saving ? 'SAVING…' : isEditing ? 'SAVE CHANGES' : 'CREATE EVENT'}
+            {saving ? 'SAVING…' : isEditing ? 'SAVE EVENT DETAILS' : 'CREATE EVENT'}
           </button>
         </div>
 
