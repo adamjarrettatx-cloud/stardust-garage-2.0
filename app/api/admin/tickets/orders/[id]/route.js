@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/auth-helpers';
 import { isInternalTicketingEnabled } from '@/lib/feature-flags';
 import { refundTicketOrder } from '@/lib/tickets/stripe';
+import { splitRefundTax } from '@/lib/tickets/pricing';
 import { sendTicketConfirmation } from '@/lib/email';
 import { renderTicketQrSvg } from '@/lib/tickets/qr';
 
@@ -88,9 +89,26 @@ export async function POST(request, { params }) {
       const remaining = order.total_cents - newRefundedTotal;
       const newStatus = remaining <= 0 ? 'refunded' : 'partial_refund';
 
+      // Split the Stripe refund proportionally: how much of this refund was
+      // returning Texas sales tax vs. ticket/booking-fee revenue. Persist so
+      // the tax-owed report can back it out. See lib/tickets/pricing.js
+      // splitRefundTax for the math + invariants.
+      const remainingTaxBudget = Math.max(0, (order.tax_cents || 0) - (order.refunded_tax_cents || 0));
+      const { taxPortionCents, nonTaxPortionCents } = splitRefundTax({
+        refundAmountCents: refunded,
+        orderTotalCents: order.total_cents || 0,
+        orderTaxCents: order.tax_cents || 0,
+        remainingTaxCents: remainingTaxBudget,
+      });
+      const newRefundedTaxTotal = (order.refunded_tax_cents || 0) + taxPortionCents;
+
       await supabaseAdmin
         .from('orders')
-        .update({ status: newStatus, refunded_cents: newRefundedTotal })
+        .update({
+          status: newStatus,
+          refunded_cents: newRefundedTotal,
+          refunded_tax_cents: newRefundedTaxTotal,
+        })
         .eq('id', order.id);
 
       // Mark impacted tickets refunded. If caller specified a subset, use it;
@@ -106,10 +124,24 @@ export async function POST(request, { params }) {
         event_id: order.event_id, order_id: order.id,
         actor_user_id: gate.user.id, actor_role: 'admin',
         action: 'order.refund',
-        detail: { amount_cents: refunded, stripe_refund_id: refund.id, reason: body.reason || null, ticket_ids: ticketIds || 'all' },
+        detail: {
+          amount_cents: refunded,
+          tax_portion_cents: taxPortionCents,
+          non_tax_portion_cents: nonTaxPortionCents,
+          stripe_refund_id: refund.id,
+          reason: body.reason || null,
+          ticket_ids: ticketIds || 'all',
+        },
       });
 
-      return NextResponse.json({ ok: true, refund_id: refund.id, refunded_cents: refunded, new_status: newStatus });
+      return NextResponse.json({
+        ok: true,
+        refund_id: refund.id,
+        refunded_cents: refunded,
+        refunded_tax_cents: taxPortionCents,
+        refunded_non_tax_cents: nonTaxPortionCents,
+        new_status: newStatus,
+      });
     } catch (err) {
       console.error('refund failed:', err);
       return NextResponse.json({ error: `Refund failed: ${err?.message || err}` }, { status: 502 });

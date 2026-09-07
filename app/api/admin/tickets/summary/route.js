@@ -25,15 +25,23 @@ export async function GET(request) {
   );
 
   const [orders, tickets, checkins, products] = await Promise.all([
-    supabaseAdmin.from('orders').select('status, total_cents, refunded_cents').eq('event_id', eventId),
+    supabaseAdmin.from('orders').select('status, total_cents, refunded_cents, tax_cents, refunded_tax_cents').eq('event_id', eventId),
     supabaseAdmin.from('tickets').select('status').eq('event_id', eventId),
     supabaseAdmin.from('ticket_checkins').select('result').eq('event_id', eventId),
     supabaseAdmin.from('ticket_products').select('id, name, total_inventory, sold_count, held_count').eq('event_id', eventId),
   ]);
 
-  const grossCents = (orders.data || []).filter((o) => ['paid', 'refunded', 'partial_refund'].includes(o.status)).reduce((s, o) => s + (o.total_cents || 0), 0);
+  const paidLikeOrders = (orders.data || []).filter((o) => ['paid', 'refunded', 'partial_refund'].includes(o.status));
+  const grossCents = paidLikeOrders.reduce((s, o) => s + (o.total_cents || 0), 0);
   const refundedCents = (orders.data || []).reduce((s, o) => s + (o.refunded_cents || 0), 0);
   const netCents = grossCents - refundedCents;
+  // Tax collected: gross tax we billed on all paid-like orders, minus the tax
+  // portion of refunds we've since returned. This is what SDG still owes the
+  // Texas Comptroller for this event.
+  const taxCollectedCents = paidLikeOrders.reduce((s, o) => s + (o.tax_cents || 0), 0);
+  const taxRefundedCents = (orders.data || []).reduce((s, o) => s + (o.refunded_tax_cents || 0), 0);
+  const netTaxOwedCents = taxCollectedCents - taxRefundedCents;
+  const netExclTaxCents = netCents - netTaxOwedCents;
   const orderStatusCounts = {};
   for (const o of orders.data || []) orderStatusCounts[o.status] = (orderStatusCounts[o.status] || 0) + 1;
 
@@ -44,7 +52,16 @@ export async function GET(request) {
   for (const c of checkins.data || []) scanCounts[c.result] = (scanCounts[c.result] || 0) + 1;
 
   return NextResponse.json({
-    money: { gross_cents: grossCents, refunded_cents: refundedCents, net_cents: netCents, currency: 'usd' },
+    money: {
+      gross_cents: grossCents,
+      refunded_cents: refundedCents,
+      net_cents: netCents,
+      tax_collected_cents: taxCollectedCents,
+      tax_refunded_cents: taxRefundedCents,
+      net_tax_owed_cents: netTaxOwedCents,
+      net_excl_tax_cents: netExclTaxCents,
+      currency: 'usd',
+    },
     orders: orderStatusCounts,
     tickets: ticketStatusCounts,
     scans: scanCounts,

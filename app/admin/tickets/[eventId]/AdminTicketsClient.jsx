@@ -108,6 +108,14 @@ export default function AdminTicketsClient({ eventId }) {
           <div>Gross: {money(summary.money.gross_cents)}</div>
           <div>Refunded: {money(summary.money.refunded_cents)}</div>
           <div><strong>Net: {money(summary.money.net_cents)}</strong></div>
+          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px dashed #ccc' }}>
+            <div>Tax collected: {money(summary.money.tax_collected_cents || 0)}</div>
+            {(summary.money.tax_refunded_cents || 0) > 0 && (
+              <div>Tax refunded: −{money(summary.money.tax_refunded_cents || 0)}</div>
+            )}
+            <div><strong>Net tax owed (TX): {money(summary.money.net_tax_owed_cents || 0)}</strong></div>
+            <div style={{ opacity: 0.75, fontSize: 12 }}>Net excl. tax: {money(summary.money.net_excl_tax_cents || 0)}</div>
+          </div>
           <h2 style={{ marginTop: 20 }}>Tickets</h2>
           <pre style={{ background: '#f6f6f6', padding: 10 }}>{JSON.stringify(summary.tickets, null, 2)}</pre>
           <h2>Scans</h2>
@@ -134,14 +142,16 @@ export default function AdminTicketsClient({ eventId }) {
       {tab === 'orders' && (
         <section>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead><tr style={{ borderBottom: '1px solid #ccc' }}><th align="left">Buyer</th><th align="left">Status</th><th align="right">Total</th><th align="right">Refunded</th><th align="left">Tickets</th><th align="left">When</th><th></th></tr></thead>
+            <thead><tr style={{ borderBottom: '1px solid #ccc' }}><th align="left">Buyer</th><th align="left">Status</th><th align="right">Total</th><th align="right">Tax</th><th align="right">Refunded</th><th align="right">Tax refunded</th><th align="left">Tickets</th><th align="left">When</th><th></th></tr></thead>
             <tbody>
               {orders.map((o) => (
                 <tr key={o.id} style={{ borderBottom: '1px solid #eee' }}>
                   <td>{o.buyer_email}</td>
                   <td>{o.status}</td>
                   <td align="right">{money(o.total_cents, o.currency)}</td>
+                  <td align="right">{money(o.tax_cents || 0, o.currency)}</td>
                   <td align="right">{money(o.refunded_cents || 0, o.currency)}</td>
+                  <td align="right">{money(o.refunded_tax_cents || 0, o.currency)}</td>
                   <td>{o.tickets.length}</td>
                   <td>{new Date(o.paid_at || o.created_at).toLocaleString()}</td>
                   <td>

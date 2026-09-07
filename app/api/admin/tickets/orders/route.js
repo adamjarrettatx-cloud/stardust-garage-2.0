@@ -27,7 +27,7 @@ export async function GET(request) {
 
   let q = supabaseAdmin
     .from('orders')
-    .select('id, buyer_email, buyer_name, status, subtotal_cents, total_cents, refunded_cents, currency, paid_at, created_at, stripe_payment_intent_id')
+    .select('id, buyer_email, buyer_name, status, subtotal_cents, total_cents, tax_cents, refunded_cents, refunded_tax_cents, currency, paid_at, created_at, stripe_payment_intent_id')
     .eq('event_id', eventId)
     .order('created_at', { ascending: false })
     .limit(500);
