@@ -6,7 +6,6 @@ import {
   QUALIFYING_CATEGORIES,
   getEligibleMembers,
   createCodeForMember,
-  getDiscountPercent,
 } from '@/lib/discountCodeUtils';
 
 export const runtime = 'nodejs';
@@ -56,18 +55,18 @@ export async function POST(request) {
 
     const ticketTypeIds = await getEventSeriesTicketTypes(event.tt_event_series_id);
     const members = await getEligibleMembers(supabaseAdmin);
-    const discountPercent = getDiscountPercent(event.category, event.member_discount_percent);
 
     let codesGenerated = 0;
     const errors = [];
     for (const member of members) {
       try {
+        // discountPercent is resolved inside createCodeForMember per member's
+        // subscription_plan (The Weekender / Experience get separate overrides).
         const row = await createCodeForMember({
           supabaseAdmin,
           event,
           member,
           ticketTypeIds,
-          discountPercent,
         });
         if (row) codesGenerated++;
       } catch (err) {

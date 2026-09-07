@@ -62,7 +62,15 @@ function ticketTailorUrl(seriesId) {
   return `https://www.tickettailor.com/events/stardustgarage/${seriesId}`;
 }
 
-export default function TicketingPanel({ eventId, initialMode, initialTicketUrl, initialTtSeriesId, initialBookingFeeCentsDefault = 295 }) {
+export default function TicketingPanel({
+  eventId,
+  initialMode,
+  initialTicketUrl,
+  initialTtSeriesId,
+  initialBookingFeeCentsDefault = 295,
+  initialMemberDiscountPercentCowork = null,
+  initialMemberDiscountPercentIykyk = null,
+}) {
   const supabase = createClient();
 
   const [uiMode, setUiMode] = useState(() => dbToUi(initialMode));
@@ -88,6 +96,50 @@ export default function TicketingPanel({ eventId, initialMode, initialTicketUrl,
 
   const bookingFeeCents = Math.round(parseFloat(bookingFeeDollars || '0') * 100);
   const bookingFeeDirty = bookingFeeDollars !== savedBookingFeeDollars;
+
+  // Per-membership discount percents. Empty string means "no override" (falls
+  // back to legacy events.member_discount_percent → category default).
+  const [memberDiscountCowork, setMemberDiscountCowork] = useState(
+    initialMemberDiscountPercentCowork != null ? String(initialMemberDiscountPercentCowork) : ''
+  );
+  const [memberDiscountIykyk, setMemberDiscountIykyk] = useState(
+    initialMemberDiscountPercentIykyk != null ? String(initialMemberDiscountPercentIykyk) : ''
+  );
+  const [savedMemberDiscountCowork, setSavedMemberDiscountCowork] = useState(memberDiscountCowork);
+  const [savedMemberDiscountIykyk, setSavedMemberDiscountIykyk] = useState(memberDiscountIykyk);
+  const [savingMemberDiscounts, setSavingMemberDiscounts] = useState(false);
+  const [memberDiscountError, setMemberDiscountError] = useState(null);
+  const memberDiscountsDirty =
+    memberDiscountCowork !== savedMemberDiscountCowork ||
+    memberDiscountIykyk !== savedMemberDiscountIykyk;
+
+  function parsePercentOrNull(v) {
+    const s = String(v || '').trim();
+    if (s === '') return null;
+    const n = Number(s);
+    if (!Number.isFinite(n)) throw new Error('Percent must be a number 0–100');
+    if (n < 0 || n > 100) throw new Error('Percent must be between 0 and 100');
+    return Math.round(n);
+  }
+
+  async function saveMemberDiscounts() {
+    setSavingMemberDiscounts(true);
+    setMemberDiscountError(null);
+    try {
+      const patch = {
+        member_discount_percent_cowork: parsePercentOrNull(memberDiscountCowork),
+        member_discount_percent_iykyk: parsePercentOrNull(memberDiscountIykyk),
+      };
+      const { error } = await supabase.from('events').update(patch).eq('id', eventId);
+      if (error) throw error;
+      setSavedMemberDiscountCowork(memberDiscountCowork);
+      setSavedMemberDiscountIykyk(memberDiscountIykyk);
+    } catch (e) {
+      setMemberDiscountError(String(e.message || e));
+    } finally {
+      setSavingMemberDiscounts(false);
+    }
+  }
 
   async function saveBookingFee() {
     setSavingFee(true);
@@ -249,6 +301,78 @@ export default function TicketingPanel({ eventId, initialMode, initialTicketUrl,
           >
             Cancel
           </button>
+        )}
+      </div>
+
+      {/* Per-membership discount percents. Shown for every ticketing mode
+          because they also drive the TicketTailor member-code generator that
+          still runs against legacy events. */}
+      <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--auth-border, #333)' }}>
+        <h3 style={{ margin: 0, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Member discounts</h3>
+        <p style={{ margin: '4px 0 12px 0', fontSize: 12, opacity: 0.7 }}>
+          Percent off tickets for each active membership. Leave blank to fall back to the category default. Applied when member codes are generated for this event.
+        </p>
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, opacity: 0.75, marginBottom: 4 }}>
+              The Weekender (%)
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="1"
+              value={memberDiscountCowork}
+              onChange={(e) => setMemberDiscountCowork(e.target.value)}
+              disabled={savingMemberDiscounts}
+              placeholder="e.g. 40"
+              style={{
+                padding: '6px 8px',
+                background: 'transparent',
+                color: 'inherit',
+                border: '1px solid var(--auth-border, #333)',
+                borderRadius: 4,
+                fontSize: 13,
+                width: 110,
+              }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, opacity: 0.75, marginBottom: 4 }}>
+              Experience Member (%)
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="1"
+              value={memberDiscountIykyk}
+              onChange={(e) => setMemberDiscountIykyk(e.target.value)}
+              disabled={savingMemberDiscounts}
+              placeholder="e.g. 60"
+              style={{
+                padding: '6px 8px',
+                background: 'transparent',
+                color: 'inherit',
+                border: '1px solid var(--auth-border, #333)',
+                borderRadius: 4,
+                fontSize: 13,
+                width: 110,
+              }}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={saveMemberDiscounts}
+            disabled={!memberDiscountsDirty || savingMemberDiscounts}
+            className="auth-theme-border-button px-3 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border"
+            style={{ opacity: memberDiscountsDirty ? 1 : 0.5 }}
+          >
+            {savingMemberDiscounts ? 'SAVING…' : memberDiscountsDirty ? 'SAVE MEMBER DISCOUNTS' : 'SAVED'}
+          </button>
+        </div>
+        {memberDiscountError && (
+          <div style={{ color: '#f66', marginTop: 8, fontSize: 13 }}>{memberDiscountError}</div>
         )}
       </div>
 

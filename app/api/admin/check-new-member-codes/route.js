@@ -5,7 +5,6 @@ import { getEventSeriesTicketTypes } from '@/lib/tickettailor';
 import {
   QUALIFYING_CATEGORIES,
   createCodeForMember,
-  getDiscountPercent,
 } from '@/lib/discountCodeUtils';
 
 export const runtime = 'nodejs';
@@ -43,7 +42,7 @@ export async function POST(request) {
 
     const { data: member, error: memberError } = await supabaseAdmin
       .from('member_profiles')
-      .select('id, user_id, full_name, email, is_active, subscription_status')
+      .select('id, user_id, full_name, email, is_active, subscription_status, subscription_plan')
       .eq('id', memberId)
       .single();
     if (memberError || !member) {
@@ -84,13 +83,12 @@ export async function POST(request) {
 
       try {
         const ticketTypeIds = await getEventSeriesTicketTypes(event.tt_event_series_id);
-        const discountPercent = getDiscountPercent(event.category, event.member_discount_percent);
+        // Per-plan discount is resolved inside createCodeForMember.
         const row = await createCodeForMember({
           supabaseAdmin,
           event,
           member,
           ticketTypeIds,
-          discountPercent,
         });
         if (row) codesGenerated++;
       } catch (err) {

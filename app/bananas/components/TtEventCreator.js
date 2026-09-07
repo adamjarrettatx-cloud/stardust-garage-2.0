@@ -23,32 +23,6 @@ const CATEGORY_OPTIONS = [
   { value: 'workshop', label: 'Workshop' },
 ];
 
-// Categories that generate member ticket codes. Purely-internal categories
-// (internal / team_meeting) are intentionally excluded.
-const QUALIFYING_CATEGORIES = [
-  'workshop',
-  'yoga',
-  'yoga_residency',
-  'evening_music_residency',
-  'day_party',
-  'trial_resident_party',
-  'sdg_party',
-  'party',
-];
-
-const CATEGORY_DISCOUNT_DEFAULTS = {
-  workshop: 60,
-  yoga: 40,
-  yoga_residency: 40,
-  evening_music_residency: 60,
-  day_party: 60,
-  trial_resident_party: 60,
-  sdg_party: 60,
-  // Legacy fallback for historical events.
-  party: 60,
-  other: 50,
-};
-
 function slugify(text) {
   return text
     .toLowerCase()
@@ -86,9 +60,6 @@ export default function TtEventCreator() {
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [category, setCategory] = useState('day_party');
-  const [memberDiscountPercent, setMemberDiscountPercent] = useState(
-    String(CATEGORY_DISCOUNT_DEFAULTS.day_party),
-  );
   // Defaults to "has an outside partner" so the team opts into SDG-only rather
   // than defaulting into the path that skips the contact requirement.
   const [isSdgOnly, setIsSdgOnly] = useState(false);
@@ -106,13 +77,7 @@ export default function TtEventCreator() {
   };
 
   const handleCategoryChange = (e) => {
-    const newCategory = e.target.value;
-    setCategory(newCategory);
-    if (QUALIFYING_CATEGORIES.includes(newCategory)) {
-      setMemberDiscountPercent(String(CATEGORY_DISCOUNT_DEFAULTS[newCategory]));
-    } else {
-      setMemberDiscountPercent('');
-    }
+    setCategory(e.target.value);
   };
 
   const handleImageUpload = async (e) => {
@@ -154,10 +119,6 @@ export default function TtEventCreator() {
       description: description.trim() || null,
       image_url: imageUrl.trim() || null,
       category,
-      member_discount_percent:
-        QUALIFYING_CATEGORIES.includes(category) && memberDiscountPercent.trim() !== ''
-          ? Number(memberDiscountPercent)
-          : null,
       is_sdg_only: isSdgOnly,
       contact_id: isSdgOnly ? null : contactId,
       // Internal-ticketing v2: no ticket types on create. The event editor's
@@ -265,28 +226,9 @@ export default function TtEventCreator() {
             ))}
           </select>
           <p className="text-[11px] mt-2" style={{ color: '#555' }}>
-            Workshop, Yoga, and Party events generate member discount codes automatically.
+            Member discounts (Weekender / Experience) are configured on the event editor’s Ticketing panel after you save.
           </p>
         </div>
-
-        {QUALIFYING_CATEGORIES.includes(category) && (
-          <div>
-            <label className={labelClass} style={labelStyle}>MEMBER DISCOUNT %</label>
-            <div className="flex items-center gap-3">
-              <input
-                type="number"
-                min={1}
-                max={100}
-                step={1}
-                value={memberDiscountPercent}
-                onChange={(e) => setMemberDiscountPercent(e.target.value)}
-                className={inputClass + ' max-w-[140px]'}
-                style={inputStyle}
-              />
-              <span className="text-[14px]" style={{ color: '#8a8a8a' }}>%</span>
-            </div>
-          </div>
-        )}
 
         {/* CONTACT / SDG-ONLY — required unless the event is fully internal */}
         <EventContactFields

@@ -96,6 +96,8 @@ export default async function EditEventPage({ params }) {
             initialTicketUrl={event.ticket_url}
             initialTtSeriesId={event.tt_event_series_id}
             initialBookingFeeCentsDefault={event.booking_fee_cents_default ?? 295}
+            initialMemberDiscountPercentCowork={event.member_discount_percent_cowork ?? null}
+            initialMemberDiscountPercentIykyk={event.member_discount_percent_iykyk ?? null}
           />
           <EventContractsPanel eventId={event.id} />
           {/* Also a full screen of its own at /bananas/guest-list/<id>, which is

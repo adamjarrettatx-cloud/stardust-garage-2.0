@@ -40,19 +40,6 @@ const QUALIFYING_CATEGORIES = [
   'party',
 ];
 
-const CATEGORY_DISCOUNT_DEFAULTS = {
-  workshop: 60,
-  yoga: 40,
-  yoga_residency: 40,
-  evening_music_residency: 60,
-  day_party: 60,
-  trial_resident_party: 60,
-  sdg_party: 60,
-  // Legacy fallbacks for historical events.
-  party: 60,
-  other: 50,
-};
-
 function slugify(text) {
   return text
     .toLowerCase()
@@ -93,9 +80,6 @@ export default function EventForm({
   // New events default to Day Party, which is the most common ticketed event
   // type. Legacy events keep whatever category was saved on the row.
   const [category, setCategory] = useState(event?.category || 'day_party');
-  const [memberDiscountPercent, setMemberDiscountPercent] = useState(
-    event?.member_discount_percent != null ? String(event.member_discount_percent) : ''
-  );
   // A NEW event starts as "has an outside partner" so the team has to actively
   // opt into SDG-only rather than defaulting into the path that skips the
   // contact requirement. An EXISTING event keeps whatever it has — pre-migration
@@ -142,15 +126,7 @@ export default function EventForm({
   };
 
   const handleCategoryChange = (e) => {
-    const newCategory = e.target.value;
-    setCategory(newCategory);
-    // Auto-fill the discount percent with the category default for qualifying
-    // categories so admins start from the expected value.
-    if (QUALIFYING_CATEGORIES.includes(newCategory)) {
-      setMemberDiscountPercent(String(CATEGORY_DISCOUNT_DEFAULTS[newCategory]));
-    } else {
-      setMemberDiscountPercent('');
-    }
+    setCategory(e.target.value);
   };
 
   const handleImageUpload = async (e) => {
@@ -204,10 +180,6 @@ export default function EventForm({
       slug: slug.trim() || slugify(title),
       ticket_url: eventType === 'public' ? (ticketUrl.trim() || null) : null,
       category,
-      member_discount_percent:
-        QUALIFYING_CATEGORIES.includes(category) && memberDiscountPercent.trim() !== ''
-          ? Number(memberDiscountPercent)
-          : null,
       // Internal micro-party events are hidden from the public /events page and
       // member surfaces but keep all internal capabilities (contracts, SignNow,
       // financials, POS). event_type labels the internal kind; visibility is the
@@ -412,32 +384,9 @@ export default function EventForm({
             ))}
           </select>
           <p className="text-[11px] mt-2" style={{ color: '#555' }}>
-            Workshop, Yoga, and Party events generate member discount codes automatically.
+            Member discounts (Weekender / Experience) are configured on the Ticketing panel below.
           </p>
         </div>
-
-        {/* MEMBER DISCOUNT % - only for qualifying categories */}
-        {QUALIFYING_CATEGORIES.includes(category) && (
-          <div>
-            <label className={labelClass} style={labelStyle}>MEMBER DISCOUNT %</label>
-            <div className="flex items-center gap-3">
-              <input
-                type="number"
-                min={1}
-                max={100}
-                step={1}
-                value={memberDiscountPercent}
-                onChange={(e) => setMemberDiscountPercent(e.target.value)}
-                className={inputClass + ' max-w-[140px]'}
-                style={inputStyle}
-              />
-              <span className="text-[14px]" style={{ color: 'var(--auth-muted)' }}>%</span>
-            </div>
-            <p className="text-[11px] mt-2" style={{ color: '#555' }}>
-              Default: Workshop 60%, Yoga 40%, Party 60%
-            </p>
-          </div>
-        )}
 
         {/* TICKETTAILOR EVENT SERIES */}
         {isEditing ? (
