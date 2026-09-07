@@ -132,22 +132,32 @@ export async function POST(request) {
   if (productResult.error) return NextResponse.json({ error: productResult.error.message }, { status: 400 });
   const product = productResult.data;
 
-  // Ensure inventory row exists / update capacity. Zero-out reserved on
-  // manual capacity edits (avoid negative-remaining showing up).
+  // Ensure inventory row exists — the hold RPC updates this row and
+  // treats "no row found" as INVENTORY_UNAVAILABLE, so a product created
+  // with unlimited capacity (capacity = null) previously wound up
+  // un-purchaseable because we skipped the insert entirely. Always upsert
+  // now: unlimited stays null (RPC treats null capacity as "no cap"),
+  // finite caps are stored as an integer. sold/reserved default to 0 on
+  // first insert and are otherwise left alone.
+  let capValue = null;
   if (capacity !== null && capacity !== undefined) {
     const cap = Number(capacity);
-    if (Number.isFinite(cap) && cap >= 0) {
-      const { data: existingInv } = await supabaseAdmin
-        .from('ticket_inventory')
-        .select('product_id')
-        .eq('product_id', product.id)
-        .maybeSingle();
-      if (existingInv) {
-        await supabaseAdmin.from('ticket_inventory').update({ capacity: cap }).eq('product_id', product.id);
-      } else {
-        await supabaseAdmin.from('ticket_inventory').insert({ product_id: product.id, capacity: cap, sold: 0, reserved: 0 });
-      }
-    }
+    if (Number.isFinite(cap) && cap >= 0) capValue = cap;
+  }
+  const { data: existingInv } = await supabaseAdmin
+    .from('ticket_inventory')
+    .select('product_id')
+    .eq('product_id', product.id)
+    .maybeSingle();
+  if (existingInv) {
+    await supabaseAdmin
+      .from('ticket_inventory')
+      .update({ capacity: capValue })
+      .eq('product_id', product.id);
+  } else {
+    await supabaseAdmin
+      .from('ticket_inventory')
+      .insert({ product_id: product.id, capacity: capValue, sold: 0, reserved: 0 });
   }
 
   // Sync tiers. Delete removed (only if zero sales), upsert kept, insert new.
