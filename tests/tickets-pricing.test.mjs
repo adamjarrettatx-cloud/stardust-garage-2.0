@@ -56,7 +56,58 @@ test('computeHoldSnapshot sums line items into a subtotal in cents', () => {
   assert.equal(snap.quantityTotal, 5);
   assert.equal(snap.currency, 'usd');
   assert.equal(snap.items.length, 2);
-  assert.deepEqual(snap.items[0], { product_id: 'p1', tier_id: 't1', quantity: 2, unit_price_cents: 2500 });
+  assert.deepEqual(snap.items[0], { product_id: 'p1', tier_id: 't1', quantity: 2, unit_price_cents: 2500, booking_fee_unit_cents: 0 });
+  assert.equal(snap.bookingFeeCents, 0);
+  assert.equal(snap.discountCents, 0);
+  assert.equal(snap.totalCents, snap.subtotalCents);
+});
+
+test('computeHoldSnapshot applies event default booking fee and discount code', async () => {
+  const { computeHoldSnapshot } = await import('../lib/tickets/pricing.js');
+  const productsById = new Map([
+    ['p1', { id: 'p1', is_active: true, min_per_order: 1, max_per_order: 10 }],
+  ]);
+  const activeTierByProduct = new Map([
+    ['p1', { id: 't1', price_cents: 5000, currency: 'usd' }],
+  ]);
+  const event = { id: 'e1', booking_fee_cents_default: 295 };
+  const discountCode = {
+    id: 'd1', event_id: 'e1', code: 'HALFOFF', is_active: true,
+    discount_type: 'percent', discount_value: 50,
+    applies_to: 'all_products', product_ids: null,
+    starts_at: null, ends_at: null, max_redemptions: null,
+    redemptions_count: 0,
+  };
+  const snap = computeHoldSnapshot({
+    selections: [{ product_id: 'p1', quantity: 2 }],
+    productsById,
+    activeTierByProduct,
+    event,
+    discountCode,
+  });
+  assert.equal(snap.subtotalCents, 10000);
+  assert.equal(snap.discountCents, 5000);
+  assert.equal(snap.bookingFeeCents, 590);
+  assert.equal(snap.totalCents, 10000 - 5000 + 590);
+  assert.equal(snap.items[0].booking_fee_unit_cents, 295);
+});
+
+test('computeHoldSnapshot honors per-tier booking fee override', async () => {
+  const { computeHoldSnapshot } = await import('../lib/tickets/pricing.js');
+  const productsById = new Map([
+    ['p1', { id: 'p1', is_active: true, min_per_order: 1, max_per_order: 10 }],
+  ]);
+  const activeTierByProduct = new Map([
+    ['p1', { id: 't1', price_cents: 5000, currency: 'usd', booking_fee_cents_override: 0 }],
+  ]);
+  const snap = computeHoldSnapshot({
+    selections: [{ product_id: 'p1', quantity: 1 }],
+    productsById,
+    activeTierByProduct,
+    event: { booking_fee_cents_default: 295 },
+  });
+  assert.equal(snap.bookingFeeCents, 0);
+  assert.equal(snap.items[0].booking_fee_unit_cents, 0);
 });
 
 test('computeHoldSnapshot rejects empty and non-array selections', () => {

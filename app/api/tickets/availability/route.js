@@ -1,18 +1,22 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { isInternalTicketingEnabled } from '@/lib/feature-flags';
-import { selectActiveTier, isProductOnSale } from '@/lib/tickets/pricing';
+import {
+  selectActiveTier,
+  isProductOnSale,
+  projectTiersForBuyer,
+  bookingFeeForTier,
+} from '@/lib/tickets/pricing';
 
-// GET /api/tickets/availability?event_id=<uuid>
+// GET /api/tickets/availability?event_id=<uuid>&codes=CODE1,CODE2
 //
 // Public, read-only endpoint that returns the products, active price tier,
-// and coarse availability for an event running on internal ticketing. Uses
-// the service-role client to read past RLS because the public view
-// (ticket_product_availability) hides raw sold/reserved counts and we want
-// to reuse a single source of truth for the JSON shape.
+// booking fee, and coarse availability for an event on internal ticketing.
 //
-// Anon-safe: returns only display fields; never returns capacity numbers,
-// hold ids, or admin fields.
+// `codes` (optional): comma-separated access codes the buyer has entered.
+// They unlock any tier whose status='access_code' with a matching code.
+//
+// Anon-safe: no capacity numbers, hold ids, or admin fields leak.
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +29,10 @@ export async function GET(request) {
   if (!eventId) {
     return NextResponse.json({ error: 'Missing event_id' }, { status: 400 });
   }
+  const unlockedCodes = (searchParams.get('codes') || '')
+    .split(',')
+    .map((c) => c.trim())
+    .filter(Boolean);
 
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -34,7 +42,7 @@ export async function GET(request) {
 
   const { data: event, error: eventErr } = await supabaseAdmin
     .from('events')
-    .select('id, title, status, ticketing_mode')
+    .select('id, title, status, ticketing_mode, booking_fee_cents_default')
     .eq('id', eventId)
     .maybeSingle();
   if (eventErr) return NextResponse.json({ error: 'Event lookup failed' }, { status: 500 });
@@ -44,7 +52,7 @@ export async function GET(request) {
 
   const { data: products } = await supabaseAdmin
     .from('ticket_products')
-    .select('id, name, description, min_per_order, max_per_order, member_only, sales_start_at, sales_end_at, display_order, is_active')
+    .select('id, name, description, min_per_order, max_per_order, member_only, sales_start_at, sales_end_at, display_order, is_active, tier_reveal_threshold')
     .eq('event_id', eventId)
     .eq('is_active', true)
     .order('display_order', { ascending: true });
@@ -54,7 +62,7 @@ export async function GET(request) {
     productIds.length
       ? supabaseAdmin
           .from('ticket_price_tiers')
-          .select('id, product_id, name, price_cents, currency, starts_at, ends_at, display_order, is_active')
+          .select('id, product_id, name, price_cents, currency, starts_at, ends_at, display_order, is_active, status, access_codes, booking_fee_cents_override')
           .in('product_id', productIds)
       : Promise.resolve({ data: [] }),
     productIds.length
@@ -74,12 +82,34 @@ export async function GET(request) {
   const now = new Date();
 
   const items = (products || []).map((p) => {
-    const activeTier = selectActiveTier(tiersByProduct.get(p.id) || [], { now });
+    const productTiers = tiersByProduct.get(p.id) || [];
     const invRow = invByProduct.get(p.id);
-    const remaining = invRow ? invRow.capacity - invRow.sold - invRow.reserved : 0;
+    const remaining = invRow ? invRow.capacity - invRow.sold - invRow.reserved : null;
+
+    const activeTier = selectActiveTier(productTiers, { now, unlockedCodes });
+    const revealed = projectTiersForBuyer(productTiers, {
+      now,
+      unlockedCodes,
+      remainingInventory: remaining,
+      revealThreshold: p.tier_reveal_threshold,
+    });
+
     let availability = 'available';
-    if (!invRow || remaining <= 0) availability = 'sold_out';
-    else if (remaining < 10) availability = 'limited';
+    if (remaining !== null) {
+      if (remaining <= 0) availability = 'sold_out';
+      else if (remaining < 10) availability = 'limited';
+    }
+
+    // If the selected active tier itself is marked sold_out on status,
+    // reflect that even if inventory says otherwise.
+    if (activeTier && activeTier.status === 'sold_out') availability = 'sold_out';
+
+    // If no active tier exists but there are hidden or code-gated tiers, the
+    // product is "coming soon" (or code-gated).
+    const hasAnyVisible = revealed.some((t) => t.visible);
+    let onSale = isProductOnSale(p, now) && !!activeTier;
+    if (activeTier && activeTier.status === 'sold_out') onSale = false;
+
     return {
       product_id: p.id,
       name: p.name,
@@ -87,16 +117,40 @@ export async function GET(request) {
       member_only: p.member_only,
       min_per_order: p.min_per_order,
       max_per_order: p.max_per_order,
-      on_sale: isProductOnSale(p, now),
+      on_sale: onSale,
       availability,
+      any_visible: hasAnyVisible,
       price: activeTier
-        ? { cents: activeTier.price_cents, currency: activeTier.currency, tier_name: activeTier.name }
+        ? {
+            cents: activeTier.price_cents,
+            currency: activeTier.currency,
+            tier_name: activeTier.name,
+            tier_status: activeTier.status || 'active',
+            booking_fee_cents: bookingFeeForTier({ tier: activeTier, event }),
+          }
         : null,
+      // Buyer-safe projection of every visible tier (current + revealed
+      // future tiers). Hidden and locked access-code tiers are filtered out.
+      tiers: revealed
+        .filter((t) => t.visible)
+        .map((t) => ({
+          id: t.id,
+          name: t.name,
+          price_cents: t.price_cents,
+          currency: t.currency,
+          status: t.status || 'active',
+          buyable: t.buyable,
+          reveal_gated: t.reveal_gated,
+        })),
     };
   });
 
   return NextResponse.json({
-    event: { id: event.id, title: event.title },
+    event: {
+      id: event.id,
+      title: event.title,
+      booking_fee_cents_default: event.booking_fee_cents_default,
+    },
     products: items,
   });
 }

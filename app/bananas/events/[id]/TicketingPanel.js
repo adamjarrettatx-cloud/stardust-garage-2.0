@@ -22,6 +22,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import ProductEditor from '@/components/ticketing/ProductEditor';
+import DiscountCodesManager from '@/components/ticketing/DiscountCodesManager';
 
 const UI_MODES = [
   {
@@ -61,7 +62,7 @@ function ticketTailorUrl(seriesId) {
   return `https://www.tickettailor.com/events/stardustgarage/${seriesId}`;
 }
 
-export default function TicketingPanel({ eventId, initialMode, initialTicketUrl, initialTtSeriesId }) {
+export default function TicketingPanel({ eventId, initialMode, initialTicketUrl, initialTtSeriesId, initialBookingFeeCentsDefault = 295 }) {
   const supabase = createClient();
 
   const [uiMode, setUiMode] = useState(() => dbToUi(initialMode));
@@ -76,6 +77,36 @@ export default function TicketingPanel({ eventId, initialMode, initialTicketUrl,
   const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState(null);
+
+  // Event-level default booking fee. Stored in cents in DB; edited in dollars.
+  const [bookingFeeDollars, setBookingFeeDollars] = useState(() =>
+    ((initialBookingFeeCentsDefault ?? 295) / 100).toFixed(2)
+  );
+  const [savedBookingFeeDollars, setSavedBookingFeeDollars] = useState(bookingFeeDollars);
+  const [savingFee, setSavingFee] = useState(false);
+  const [feeError, setFeeError] = useState(null);
+
+  const bookingFeeCents = Math.round(parseFloat(bookingFeeDollars || '0') * 100);
+  const bookingFeeDirty = bookingFeeDollars !== savedBookingFeeDollars;
+
+  async function saveBookingFee() {
+    setSavingFee(true);
+    setFeeError(null);
+    try {
+      const cents = Math.round(parseFloat(bookingFeeDollars || '0') * 100);
+      if (!Number.isFinite(cents) || cents < 0) throw new Error('Fee must be $0 or greater');
+      const { error } = await supabase
+        .from('events')
+        .update({ booking_fee_cents_default: cents })
+        .eq('id', eventId);
+      if (error) throw error;
+      setSavedBookingFeeDollars(bookingFeeDollars);
+    } catch (e) {
+      setFeeError(String(e.message || e));
+    } finally {
+      setSavingFee(false);
+    }
+  }
 
   async function loadProducts() {
     setProductsLoading(true);
@@ -223,16 +254,68 @@ export default function TicketingPanel({ eventId, initialMode, initialTicketUrl,
 
       {savedUiMode === 'default' && (
         <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--auth-border, #333)' }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', marginBottom: 20 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, opacity: 0.75, marginBottom: 4 }}>
+                Default booking fee ($ per ticket)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={bookingFeeDollars}
+                onChange={(e) => setBookingFeeDollars(e.target.value)}
+                disabled={savingFee}
+                style={{
+                  padding: '6px 8px',
+                  background: 'transparent',
+                  color: 'inherit',
+                  border: '1px solid var(--auth-border, #333)',
+                  borderRadius: 4,
+                  fontSize: 13,
+                  width: 100,
+                }}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={saveBookingFee}
+              disabled={!bookingFeeDirty || savingFee}
+              className="auth-theme-border-button px-3 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border"
+              style={{ opacity: bookingFeeDirty ? 1 : 0.5 }}
+            >
+              {savingFee ? 'SAVING…' : bookingFeeDirty ? 'SAVE FEE' : 'SAVED'}
+            </button>
+            <span style={{ fontSize: 12, opacity: 0.6 }}>
+              Applied to every ticket unless a tier overrides it.
+            </span>
+          </div>
+          {feeError && <div style={{ color: '#f66', margin: '4px 0 12px 0', fontSize: 13 }}>{feeError}</div>}
+
           <h3 style={{ margin: 0, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Ticket products</h3>
           <p style={{ margin: '4px 0 12px 0', fontSize: 12, opacity: 0.7 }}>
-            Create at least one product with one price tier. Buyer preview updates live so you can sanity-check dates and prices.
+            Create at least one product with one price tier. Set per-tier status (hidden / sold out / access-code) and per-product reveal threshold as needed.
           </p>
           {productsError && <div style={{ color: '#f66', margin: '8px 0' }}>{productsError}</div>}
           {productsLoading && !products.length ? (
             <div style={{ opacity: 0.7, fontSize: 13 }}>Loading products…</div>
           ) : (
-            <ProductEditor eventId={eventId} products={products} onReload={loadProducts} />
+            <ProductEditor
+              eventId={eventId}
+              products={products}
+              onReload={loadProducts}
+              eventFeeDefault={bookingFeeCents}
+            />
           )}
+
+          <div style={{ marginTop: 28 }}>
+            <h3 style={{ margin: 0, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Discount codes</h3>
+            <p style={{ margin: '4px 0 12px 0', fontSize: 12, opacity: 0.7 }}>
+              Optional promo codes for this event. Percent or fixed-amount off, scoped to all products or specific ones, with optional usage limits and windows.
+            </p>
+            <DiscountCodesManager eventId={eventId} products={products} />
+          </div>
+
           <div style={{ marginTop: 20, fontSize: 12, opacity: 0.7 }}>
             Day-of operations (orders, refunds, scanner activity) live on the{' '}
             <a href={`/admin/tickets/${eventId}`} style={{ textDecoration: 'underline' }}>ticket operations console</a>.

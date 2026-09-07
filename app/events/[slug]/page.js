@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { memberDiscountCallout } from '@/lib/event-discount-display';
+import InternalTicketPurchase from '../_components/InternalTicketPurchase';
 
 export const revalidate = 0;
 
@@ -71,7 +72,14 @@ export default async function EventPage({ params }) {
             {formatEventDate(event.event_date)}
           </div>
 
-          {event.ticket_url ? (
+          {event.ticketing_mode === 'internal' ? (
+            // First-party checkout. Widget fetches its own availability +
+            // handles access codes, discount codes, fees, quantities, and
+            // the redirect to Stripe.
+            <div className="order-1 mb-8">
+              <InternalTicketPurchase eventId={event.id} />
+            </div>
+          ) : event.ticket_url ? (
             <a
               href={event.ticket_url}
               target="_blank"
@@ -80,6 +88,13 @@ export default async function EventPage({ params }) {
             >
               BUY TICKETS
             </a>
+          ) : event.ticketing_mode === 'none' ? (
+            <div
+              className="order-1 block w-full text-center md:inline-block md:w-auto px-[22px] py-3 md:py-2.5 rounded-full text-[13px] font-bold tracking-[0.08em] mb-8 border"
+              style={{ borderColor: 'rgba(255,255,255,0.3)', color: '#f5f5f5' }}
+            >
+              FREE EVENT
+            </div>
           ) : (
             <div
               className="order-1 block w-full text-center md:inline-block md:w-auto px-[22px] py-3 md:py-2.5 rounded-full text-[13px] font-bold tracking-[0.08em] mb-8 border"
