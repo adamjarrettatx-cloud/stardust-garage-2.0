@@ -68,9 +68,15 @@ export default function EventForm({
   const [description, setDescription] = useState(event?.description || '');
   const [imageUrl, setImageUrl] = useState(event?.image_url || '');
   const [slug, setSlug] = useState(event?.slug || '');
-  // Event type: 'public' (with tickets) or 'private' (no ticket link)
+  // Event type: 'public' (Ticketed — sells tickets through internal checkout)
+  // or 'private' (Private Rental — venue rental with no ticket sales).
+  //
+  // Default is always 'public' (Ticketed) unless the event was explicitly
+  // marked as a private rental. There is no dedicated DB flag for private
+  // rental yet, so we only fall to 'private' when a stored hint says so;
+  // otherwise every event — new or existing — opens on Ticketed.
   const [eventType, setEventType] = useState(
-    event?.ticket_url ? 'public' : isEditing ? 'private' : 'public'
+    event?.event_type === 'private_rental' ? 'private' : 'public'
   );
   // Visibility: 'public' (shown on the public /events page and member surfaces)
   // or 'internal' (a "micro party" — known only to admin/team; appears on the
