@@ -550,18 +550,21 @@ export default function EventForm({
           </div>
         )}
 
-        {/* Sticky action bar: right-aligned button group on a subtle blurred
-            strip. No black "container pill" — the buttons are the UI. */}
+        {/* Sticky action bar: matches the section cards above (same card bg,
+            same border, same radius) so it reads as an extension of the form,
+            not a random plank slapped on top. Buttons use the site's canonical
+            primary style (auth-text-strong on auth-strong-surface-text) — the
+            same pattern used across the admin. */}
         <div
-          className="sticky bottom-4 z-10 flex items-center justify-end gap-2 py-2 px-2 rounded-[12px] backdrop-blur border"
+          className="sticky bottom-4 z-10 flex items-center justify-end gap-2 px-4 py-3 rounded-[14px] border shadow-lg"
           style={{
-            background: 'rgba(20, 20, 20, 0.55)',
-            borderColor: 'rgba(255,255,255,0.08)',
+            background: 'var(--auth-card-bg)',
+            borderColor: 'var(--auth-card-border)',
           }}
         >
           <Link
             href="/bananas?tab=events"
-            className="px-4 py-2 rounded-[8px] text-[12px] font-semibold tracking-[0.12em] transition-colors hover:bg-white/5"
+            className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.14em] transition-colors hover:bg-black/5"
             style={{ color: 'var(--auth-muted)' }}
           >
             CANCEL
@@ -571,8 +574,8 @@ export default function EventForm({
               type="button"
               onClick={handleGenerateCodes}
               disabled={generating}
-              className="px-4 py-2 rounded-[8px] text-[12px] font-semibold tracking-[0.12em] transition-colors hover:bg-white/5 disabled:opacity-50 whitespace-nowrap"
-              style={{ color: '#ffb84d' }}
+              className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.14em] border transition-colors hover:bg-black/5 disabled:opacity-50 whitespace-nowrap"
+              style={{ color: '#c17800', borderColor: 'rgba(193, 120, 0, 0.35)' }}
               title="Generate member ticket codes for this event"
             >
               {generating ? 'GENERATING…' : 'MEMBER CODES'}
@@ -581,8 +584,11 @@ export default function EventForm({
           <button
             type="submit"
             disabled={saving || uploading}
-            className="px-6 py-2.5 rounded-[8px] text-[12px] font-semibold tracking-[0.12em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
-            style={{ background: '#ffffff', color: '#0a0a0a' }}
+            className="px-6 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
+            style={{
+              background: 'var(--auth-text-strong)',
+              color: 'var(--auth-strong-surface-text)',
+            }}
           >
             {saving ? 'SAVING…' : isEditing ? 'SAVE CHANGES' : 'CREATE EVENT'}
           </button>
