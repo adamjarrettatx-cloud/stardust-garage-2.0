@@ -470,7 +470,7 @@ export default function EventForm({
               }}
             >
               <div className="text-[14px] font-bold mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                Micro Party (Internal)
+                Internal (hidden)
               </div>
               <div className="text-[12px]" style={{ color: isInternal ? 'var(--auth-accent-text)' : 'var(--auth-muted)' }}>
                 Hidden from public · team calendar only
@@ -479,7 +479,7 @@ export default function EventForm({
           </div>
           {isInternal && (
             <p className="text-[11px] mt-2" style={{ color: '#f59e0b' }}>
-              Internal micro party: never appears on the public events page or member surfaces. It still
+              Internal event: never appears on the public events page or member surfaces. It still
               supports contracts, SignNow, financials, and POS imports, and shows on the team calendar.
             </p>
           )}
