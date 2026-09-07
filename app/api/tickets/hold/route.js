@@ -284,10 +284,15 @@ export async function POST(request) {
   const discountedItems = applyDiscountToLines(snapshot.items, snapshot.discountCents || 0);
   const productLineDescriptors = discountedItems.map((line) => {
     const product = productsById.get(line.product_id);
+    const productKind = product.kind || 'tickets';
+    // Prefix private-space line items so the Stripe dashboard reads clearly
+    // (e.g. "Rental — Outer Space Green Room" vs plain "Early Bird").
+    const displayName = productKind === 'private_space' ? `Rental — ${product.name}` : product.name;
     return {
-      name: product.name,
+      name: displayName,
       unit_price_cents: line.unit_price_cents,
       quantity: line.quantity,
+      kind: productKind,
     };
   });
   if (snapshot.bookingFeeCents > 0) {
@@ -295,6 +300,7 @@ export async function POST(request) {
       name: 'Booking fee',
       unit_price_cents: snapshot.bookingFeeCents,
       quantity: 1,
+      kind: 'fee',
     });
   }
 
