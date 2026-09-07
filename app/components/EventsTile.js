@@ -137,8 +137,36 @@ export default function EventsTile({ events = [] }) {
               {feature.title}
             </h3>
 
-            {/* Primary CTA */}
-            {feature.ticket_url ? (
+            {/* Primary CTA. Order of preference:
+                   1. Internal ticketing — route to the event detail page,
+                      which mounts <InternalTicketModal>.
+                   2. External ticket URL (Ticket Tailor etc.).
+                   3. "None" (free) — FREE EVENT badge.
+                   4. Everything else — MEMBERS ONLY badge (kept for the
+                      original homepage aesthetic of an intriguing gate). */}
+            {feature.ticketing_mode === 'internal' ? (
+              <a
+                data-ticket
+                href={`/events/${feature.slug}`}
+                className="inline-flex items-center gap-2.5 px-5 py-3 rounded-full text-[11px] font-semibold tracking-[0.2em] transition-all hover:-translate-y-0.5"
+                style={{ background: '#ffffff', color: '#0a0a0a' }}
+              >
+                GET TICKETS
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="7" y1="17" x2="17" y2="7" />
+                  <polyline points="7 7 17 7 17 17" />
+                </svg>
+              </a>
+            ) : feature.ticket_url ? (
               <a
                 data-ticket
                 href={feature.ticket_url}
@@ -162,6 +190,17 @@ export default function EventsTile({ events = [] }) {
                   <polyline points="7 7 17 7 17 17" />
                 </svg>
               </a>
+            ) : feature.ticketing_mode === 'none' ? (
+              <span
+                className="inline-flex items-center gap-2.5 px-5 py-3 rounded-full text-[11px] font-semibold tracking-[0.2em] border"
+                style={{
+                  borderColor: 'rgba(255,255,255,0.3)',
+                  color: '#f5f5f5',
+                  background: 'rgba(255,255,255,0.04)',
+                }}
+              >
+                FREE EVENT
+              </span>
             ) : (
               <span
                 className="inline-flex items-center gap-2.5 px-5 py-3 rounded-full text-[11px] font-semibold tracking-[0.2em] border"
@@ -198,7 +237,19 @@ export default function EventsTile({ events = [] }) {
               const d = parseDate(ev.event_date);
               return (
                 <li key={ev.id ?? ev.slug ?? ev.title}>
-                  {ev.ticket_url ? (
+                  {/* Same three-way as the primary CTA: internal ticketing
+                      links to the event detail page (which owns the modal);
+                      external ticket URL opens in a new tab; anything else is
+                      a non-interactive row. */}
+                  {ev.ticketing_mode === 'internal' ? (
+                    <a
+                      data-ticket
+                      href={`/events/${ev.slug}`}
+                      className="flex items-center gap-4 py-2.5 -mx-2 px-2 rounded-md transition-colors hover:bg-white/[0.04]"
+                    >
+                      <SecondaryRow d={d} title={ev.title} hasTicket />
+                    </a>
+                  ) : ev.ticket_url ? (
                     <a
                       data-ticket
                       href={ev.ticket_url}
