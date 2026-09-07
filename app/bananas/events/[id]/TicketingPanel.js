@@ -71,6 +71,11 @@ export default function TicketingPanel({
   initialBookingFeeCentsDefault = 295,
   initialMemberDiscountPercentCowork = null,
   initialMemberDiscountPercentIykyk = null,
+  // Event start (date + free-text time) — forwarded to ProductEditor so its
+  // 'Ticket Sales End … hours after doors open' control can compute the
+  // persisted `sales_end_at` timestamp relative to doors.
+  eventDate = null,
+  eventStartTime = null,
 }) {
   const supabase = createClient();
 
@@ -381,6 +386,8 @@ export default function TicketingPanel({
               products={products}
               onReload={loadProducts}
               eventFeeDefault={bookingFeeCents}
+              eventDate={eventDate}
+              eventStartTime={eventStartTime}
             />
           )}
 
