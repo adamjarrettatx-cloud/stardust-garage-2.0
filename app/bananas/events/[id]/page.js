@@ -82,6 +82,7 @@ export default async function EditEventPage({ params }) {
       statusPanel={(
         <PublishEventButton
           eventId={event.id}
+          slug={event.slug}
           status={event.status}
           ttEventSeriesId={event.tt_event_series_id}
         />
