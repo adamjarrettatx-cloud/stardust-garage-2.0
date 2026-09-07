@@ -80,13 +80,59 @@ export default async function TicketStatusPage({ searchParams }) {
   }
 
   if (status.state === 'paid') {
+    // Buttons kept dead-simple inline: we want this page to render even if
+    // Tailwind or the design system fails to load on a mobile confirmation
+    // return (users often open Stripe on a browser without your CSS in
+    // cache yet). Ticket QR codes and check-in codes live on /account/tickets.
     return (
-      <main style={{ maxWidth: 640, margin: '48px auto', padding: '0 20px' }}>
-        <h1>You’re in.</h1>
-        <p>We emailed your tickets to <strong>{status.order.buyer_email}</strong>.</p>
-        {status.event && (
-          <p><a href={`/events/${status.event.slug || status.event.id}`}>Back to {status.event.title}</a></p>
-        )}
+      <main style={{ maxWidth: 640, margin: '48px auto', padding: '0 20px', color: '#f5f5f5' }}>
+        <h1 style={{ fontSize: 32, marginBottom: 16 }}>{'You’re in.'}</h1>
+        <p style={{ fontSize: 16, lineHeight: 1.55, marginBottom: 12 }}>
+          We emailed your tickets to <strong>{status.order.buyer_email}</strong>.
+        </p>
+        <p style={{ fontSize: 16, lineHeight: 1.55, marginBottom: 28, color: '#c9c9c9' }}>
+          {'Each ticket has its own QR code that we’ll scan at the front desk on the night. You can also pull them up any time in your account.'}
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 32 }}>
+          <a
+            href="/account/tickets"
+            style={{
+              display: 'inline-block',
+              padding: '14px 24px',
+              borderRadius: 999,
+              background: '#ffffff',
+              color: '#0a0a0a',
+              textDecoration: 'none',
+              fontSize: 13,
+              fontWeight: 600,
+              letterSpacing: '0.16em',
+            }}
+          >
+            VIEW MY TICKETS
+          </a>
+          {status.event && (
+            <a
+              href={`/events/${status.event.slug || status.event.id}`}
+              style={{
+                display: 'inline-block',
+                padding: '14px 24px',
+                borderRadius: 999,
+                background: 'transparent',
+                color: '#f5f5f5',
+                textDecoration: 'none',
+                fontSize: 13,
+                fontWeight: 600,
+                letterSpacing: '0.16em',
+                border: '1px solid rgba(255,255,255,0.2)',
+              }}
+            >
+              BACK TO EVENT
+            </a>
+          )}
+        </div>
+        <p style={{ fontSize: 13, color: '#8a8a8a', lineHeight: 1.5 }}>
+          Tip: save <a href="/account/tickets" style={{ color: '#d9c48c' }}>your account page</a> to your phone home screen so your QR codes are one tap away at the door.
+        </p>
       </main>
     );
   }
