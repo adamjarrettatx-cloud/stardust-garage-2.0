@@ -170,17 +170,23 @@ export async function POST(request, { params }) {
     const [eventCtx, tickets, items] = await Promise.all([
       fetchEventForEmail({ supabaseAdmin, eventId: order.event_id, request }),
       supabaseAdmin.from('tickets').select('id, ticket_code, order_item_id, status').eq('order_id', order.id).neq('status', 'void'),
-      supabaseAdmin.from('order_items').select('id, product_name_snapshot, tier_name_snapshot').eq('order_id', order.id),
+      supabaseAdmin.from('order_items').select('id, product_name_snapshot, tier_name_snapshot, quantity, unit_price_cents, subtotal_cents').eq('order_id', order.id),
     ]);
     const itemById = new Map((items.data || []).map((i) => [i.id, i]));
     const ticketRows = await Promise.all(
-      (tickets.data || []).map(async (t) => ({
-        ticketCode: t.ticket_code,
-        productName: itemById.get(t.order_item_id)?.product_name_snapshot || 'Ticket',
-        tierName: itemById.get(t.order_item_id)?.tier_name_snapshot || null,
-        qrPngBuffer: await renderTicketQrPngBuffer({ ticketCode: t.ticket_code }),
-        viewUrl: null,
-      })),
+      (tickets.data || []).map(async (t) => {
+        const item = itemById.get(t.order_item_id);
+        return {
+          ticketCode: t.ticket_code,
+          productName: item?.product_name_snapshot || 'Ticket',
+          tierName: item?.tier_name_snapshot || null,
+          quantity: item?.quantity ?? null,
+          unitPriceCents: item?.unit_price_cents ?? null,
+          subtotalCents: item?.subtotal_cents ?? null,
+          qrPngBuffer: await renderTicketQrPngBuffer({ ticketCode: t.ticket_code }),
+          viewUrl: null,
+        };
+      }),
     );
 
     await sendTicketConfirmation({
@@ -193,6 +199,14 @@ export async function POST(request, { params }) {
       venueAddress: eventCtx.venueAddress,
       ticketRows,
       orderUrl: eventCtx.orderUrlBase,
+      orderTotals: {
+        subtotalCents: order.subtotal_cents,
+        feesCents: order.fees_cents,
+        taxCents: order.tax_cents,
+        discountCents: order.discount_cents,
+        totalCents: order.total_cents,
+      },
+      currency: order.currency,
     });
 
     await supabaseAdmin.from('ticket_audit_log').insert({

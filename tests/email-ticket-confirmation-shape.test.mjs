@@ -127,6 +127,120 @@ test('sendTicketConfirmation omits the flyer <img> when eventFlyerUrl is missing
   });
 });
 
+test('sendTicketConfirmation renders quantity, unit price, subtotal, and order totals block', async () => {
+  // A real paid order: 3 tickets on one line item at $10 each. The email
+  // must show ONE group header ("3 tickets · $10 each · $30 subtotal"),
+  // three QR rows underneath (one per ticket), and an order-totals block
+  // at the bottom with subtotal / fees / tax / total paid.
+  await withFetchCapture(async (calls) => {
+    const line = {
+      productName: 'Tickets',
+      tierName: 'General',
+      quantity: 3,
+      unitPriceCents: 1000,
+      subtotalCents: 3000,
+      qrPngBuffer: baseTicketRow.qrPngBuffer,
+      viewUrl: null,
+    };
+    await sendTicketConfirmation({
+      to: 'buyer@example.com',
+      orderId: 'ord_priced',
+      eventTitle: 'Cosmic Cabaret',
+      eventWhen: '2026-09-15 at 20:00',
+      ticketRows: [
+        { ...line, ticketCode: 'SDGA-AAAA-1111' },
+        { ...line, ticketCode: 'SDGA-BBBB-2222' },
+        { ...line, ticketCode: 'SDGA-CCCC-3333' },
+      ],
+      orderTotals: {
+        subtotalCents: 3000,
+        feesCents: 150,
+        taxCents: 260,
+        discountCents: 0,
+        totalCents: 3410,
+      },
+      currency: 'usd',
+    });
+    const html = parseSentHtml(calls);
+
+    // Ticket code is still present (fallback for door manual entry) but no
+    // longer the ONLY thing on the row.
+    assert.ok(html.includes('SDGA-AAAA-1111'), 'ticket code still rendered as a fallback');
+
+    // Group header: product name, tier, qty, unit price, line subtotal.
+    assert.ok(html.includes('Tickets — General'), 'product — tier label renders');
+    assert.ok(html.includes('3 tickets'), 'quantity renders as N tickets');
+    assert.ok(html.includes('$10.00 each'), 'unit price renders as "$X each"');
+    assert.ok(html.includes('$30.00'), 'line subtotal renders');
+
+    // Order totals block at the bottom.
+    assert.ok(html.includes('Subtotal'), 'totals block has subtotal label');
+    assert.ok(html.includes('Fees'), 'totals block has fees label when non-zero');
+    assert.ok(html.includes('Tax'), 'totals block has tax label when non-zero');
+    assert.ok(html.includes('Total paid'), 'totals block has total-paid label');
+    assert.ok(html.includes('$34.10'), 'grand total renders in the totals block');
+    assert.ok(!html.includes('Discount'), 'discount row is omitted when discount is zero');
+
+    // Event title is prominently rendered under the "You\'re in." heading.
+    assert.ok(html.includes('Cosmic Cabaret'), 'event title is rendered');
+  });
+});
+
+test('sendTicketConfirmation groups tickets by line item, not per-ticket', async () => {
+  // Two DIFFERENT line items: 2 General ($10) + 1 VIP ($30). Must render
+  // exactly TWO group headers, not three, and not one merged row.
+  await withFetchCapture(async (calls) => {
+    await sendTicketConfirmation({
+      to: 'buyer@example.com',
+      orderId: 'ord_two_lines',
+      eventTitle: 'Two Tier Show',
+      eventWhen: null,
+      ticketRows: [
+        { ...baseTicketRow, ticketCode: 'SDGA-G-1', productName: 'Tickets', tierName: 'General', quantity: 2, unitPriceCents: 1000, subtotalCents: 2000 },
+        { ...baseTicketRow, ticketCode: 'SDGA-G-2', productName: 'Tickets', tierName: 'General', quantity: 2, unitPriceCents: 1000, subtotalCents: 2000 },
+        { ...baseTicketRow, ticketCode: 'SDGA-V-1', productName: 'Tickets', tierName: 'VIP', quantity: 1, unitPriceCents: 3000, subtotalCents: 3000 },
+      ],
+      orderTotals: { subtotalCents: 5000, feesCents: 0, taxCents: 0, discountCents: 0, totalCents: 5000 },
+      currency: 'usd',
+    });
+    const html = parseSentHtml(calls);
+    // Count the "— General" and "— VIP" labels: must appear exactly once each.
+    const generalMatches = html.match(/Tickets — General/g) || [];
+    const vipMatches = html.match(/Tickets — VIP/g) || [];
+    assert.equal(generalMatches.length, 1, 'General group header rendered exactly once');
+    assert.equal(vipMatches.length, 1, 'VIP group header rendered exactly once');
+    // Both line subtotals visible.
+    assert.ok(html.includes('$20.00'), 'General line subtotal $20');
+    assert.ok(html.includes('$30.00'), 'VIP line subtotal $30');
+    assert.ok(html.includes('$50.00'), 'order grand total $50');
+  });
+});
+
+test('sendTicketConfirmation renders comp orders without pricing clutter', async () => {
+  // Comp: $0 unit, $0 subtotal, $0 total. The header should show the label
+  // and "N tickets" but NOT "$0.00 each" or a subtotal cell. The order
+  // totals block should be omitted entirely.
+  await withFetchCapture(async (calls) => {
+    await sendTicketConfirmation({
+      to: 'buyer@example.com',
+      orderId: 'ord_comp',
+      eventTitle: 'Comp Show',
+      eventWhen: null,
+      ticketRows: [
+        { ...baseTicketRow, ticketCode: 'SDGA-COMP-1', productName: 'Tickets', tierName: 'Comp', quantity: 2, unitPriceCents: 0, subtotalCents: 0 },
+        { ...baseTicketRow, ticketCode: 'SDGA-COMP-2', productName: 'Tickets', tierName: 'Comp', quantity: 2, unitPriceCents: 0, subtotalCents: 0 },
+      ],
+      orderTotals: { subtotalCents: 0, feesCents: 0, taxCents: 0, discountCents: 0, totalCents: 0 },
+      currency: 'usd',
+    });
+    const html = parseSentHtml(calls);
+    assert.ok(html.includes('Tickets — Comp'), 'comp label renders');
+    assert.ok(html.includes('2 tickets'), 'comp quantity renders');
+    assert.ok(!html.includes('$0.00 each'), 'no zero unit-price clutter');
+    assert.ok(!html.includes('Total paid'), 'no totals block for fully-comped order');
+  });
+});
+
 test('sendTicketConfirmation short-circuits when `to` is falsy', async () => {
   const originalFetch = globalThis.fetch;
   let fetchCalled = false;
