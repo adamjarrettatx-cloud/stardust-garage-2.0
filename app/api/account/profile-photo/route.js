@@ -102,27 +102,57 @@ export async function POST(request) {
     );
   }
 
-  // Upsert the free_accounts row. On first ticket purchase / trial-pass
-  // intake we may not have created the row yet, so INSERT ... ON CONFLICT
-  // keyed by user_id.
+  // Write the photo pointer to the caller's free_accounts row.
+  //
+  // Do NOT use upsert here — free_accounts requires full_name + phone at
+  // insert time (NOT NULL, no defaults), which are captured during the
+  // free-account intake flow. An upsert from this endpoint would fail the
+  // NOT NULL check for anyone who signed in via OAuth without completing
+  // intake first. Instead: try UPDATE, and if no row exists, create a
+  // minimal one filling required fields from the auth user metadata so
+  // the photo isn't left orphaned.
   const nowIso = new Date().toISOString();
-  const { error: dbError } = await admin
+  const { data: updated, error: updateError } = await admin
     .from('free_accounts')
-    .upsert(
-      {
-        user_id: user.id,
-        email: user.email || null,
-        profile_photo_path: path,
-        profile_photo_uploaded_at: nowIso,
-        updated_at: nowIso,
-      },
-      { onConflict: 'user_id' },
-    );
-  if (dbError) {
+    .update({
+      profile_photo_path: path,
+      profile_photo_uploaded_at: nowIso,
+      updated_at: nowIso,
+    })
+    .eq('user_id', user.id)
+    .select('id')
+    .maybeSingle();
+
+  if (updateError) {
     return NextResponse.json(
-      { error: 'Photo uploaded but profile could not be updated.', detail: dbError.message },
+      { error: 'Photo uploaded but profile could not be updated.', detail: updateError.message },
       { status: 500 },
     );
+  }
+
+  if (!updated) {
+    // No free_accounts row yet — the user signed in but never went through
+    // intake. Create a minimal row so we can attach the photo. Missing
+    // required fields fall back to placeholders the user can edit later.
+    const meta = user.user_metadata || {};
+    const fallbackName =
+      meta.full_name || meta.name || (user.email ? user.email.split('@')[0] : 'Guest');
+    const fallbackPhone = meta.phone || '+10000000000';
+    const { error: insertError } = await admin.from('free_accounts').insert({
+      user_id: user.id,
+      email: user.email || meta.email || 'unknown@sdgatx.com',
+      full_name: fallbackName,
+      phone: fallbackPhone,
+      phone_verified_at: null,
+      profile_photo_path: path,
+      profile_photo_uploaded_at: nowIso,
+    });
+    if (insertError) {
+      return NextResponse.json(
+        { error: 'Photo uploaded but profile could not be updated.', detail: insertError.message },
+        { status: 500 },
+      );
+    }
   }
 
   // Return a signed URL so the caller can immediately display the new
