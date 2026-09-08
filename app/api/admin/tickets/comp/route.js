@@ -134,6 +134,9 @@ export async function POST(request) {
         ticketCode: t.ticket_code,
         productName: product.name,
         tierName: 'Comp',
+        quantity,
+        unitPriceCents: 0,
+        subtotalCents: 0,
         qrPngBuffer: await renderTicketQrPngBuffer({ ticketCode: t.ticket_code }),
         viewUrl: null,
       })),
@@ -149,6 +152,16 @@ export async function POST(request) {
         venueAddress: eventCtx.venueAddress,
         ticketRows: rows,
         orderUrl: eventCtx.orderUrlBase,
+        // Comps are $0: no orderTotals block will render (renderOrderTotals
+        // returns '' when nothing is > 0 and total is 0).
+        orderTotals: {
+          subtotalCents: order.subtotal_cents,
+          feesCents: order.fees_cents,
+          taxCents: order.tax_cents,
+          discountCents: order.discount_cents,
+          totalCents: order.total_cents,
+        },
+        currency: order.currency,
       });
     } catch (err) {
       console.warn('comp email send failed:', err?.message);
