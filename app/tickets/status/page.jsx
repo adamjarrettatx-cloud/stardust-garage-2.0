@@ -362,10 +362,9 @@ export default async function TicketStatusPage({ searchParams }) {
               lineHeight: 1.55,
               color: MUTED_STRONG,
               margin: '0 0 28px',
-              maxWidth: '38ch',
             }}
           >
-            Show your QR code at the front desk. That\u2019s the whole ritual.
+            Each ticket has its own QR code that we\u2019ll scan at the front desk on the night. You can also pull them up any time in your account.
           </p>
 
           {/* Info block — event / date / email. Uses hairline dividers so it
