@@ -25,7 +25,7 @@ const plans = [
     kicker: 'FOR THE WORKDAY',
     tagline: 'For people who do their best work somewhere that isn’t home and isn’t a coffee shop.',
     benefits: [
-      'Cowork access, 8AM – 6PM, Mon–Fri',
+      'Cowork access, 8AM – 5PM, Mon–Fri',
       'Gigabit fiber, refreshments, curated room',
       '3 guest passes per month',
       'A community of artists, builders, and culturally aligned people',
