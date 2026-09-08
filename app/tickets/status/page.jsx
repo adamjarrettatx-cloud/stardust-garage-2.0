@@ -354,7 +354,7 @@ export default async function TicketStatusPage({ searchParams }) {
       <PageShell>
         <Card accent="gold">
           <Eyebrow>Confirmed</Eyebrow>
-          <Headline>{'You\u2019re in.'}</Headline>
+          <Headline>You’re in.</Headline>
 
           <p
             style={{
@@ -364,7 +364,7 @@ export default async function TicketStatusPage({ searchParams }) {
               margin: '0 0 28px',
             }}
           >
-            Each ticket has its own QR code that we\u2019ll scan at the front desk on the night. You can also pull them up any time in your account.
+            Each ticket has its own QR code that we’ll scan at the front desk on the night. You can also pull them up any time in your account.
           </p>
 
           {/* Info block — event / date / email. Uses hairline dividers so it
@@ -406,7 +406,7 @@ export default async function TicketStatusPage({ searchParams }) {
             >
               your account
             </a>{' '}
-            to your phone\u2019s home screen. Your ticket is one tap away at the door.
+            to your phone’s home screen. Your ticket is one tap away at the door.
           </p>
         </Card>
       </PageShell>
@@ -423,9 +423,9 @@ export default async function TicketStatusPage({ searchParams }) {
     <PageShell>
       <Card accent="gold">
         <Eyebrow>Almost there</Eyebrow>
-        <Headline>Confirming\u2026</Headline>
+        <Headline>Confirming…</Headline>
         <p style={{ fontSize: 15, lineHeight: 1.6, color: MUTED_STRONG, margin: '0 0 24px' }}>
-          Your payment went through. We\u2019re just waiting on Stripe to hand us the receipt \u2014 usually a couple seconds. This page will refresh itself.
+          Your payment went through. We’re just waiting on Stripe to hand us the receipt — usually a couple seconds. This page will refresh itself.
         </p>
         <p style={{ fontSize: 13, color: MUTED, margin: 0 }}>
           If it stalls for more than a minute, check your email for the confirmation or ping the front desk.
