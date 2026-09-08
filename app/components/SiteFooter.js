@@ -86,7 +86,7 @@ export default function SiteFooter() {
               HOURS
             </h3>
             <div className="text-[14px] space-y-1.5" style={{ color: '#d0d0d0' }}>
-              <p>Mon–Fri: 8AM – 6PM</p>
+              <p>Mon–Fri: 8AM – 5PM</p>
               <p>Wknd: see schedule</p>
             </div>
           </div>
