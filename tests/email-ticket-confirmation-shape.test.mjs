@@ -69,6 +69,14 @@ test('sendTicketConfirmation renders the flyer <img> when eventFlyerUrl is provi
     });
     const html = parseSentHtml(calls);
     assert.ok(html.includes('<img src="https://example.com/flyer.jpg"'), 'flyer img tag with the provided URL should appear');
+    // The event flyer must render as the hero image above the visible event
+    // title block — the flyer IS the event's identity, not a mid-email accent.
+    // (The hidden preheader div also mentions the event title, so search from
+    // after the flyer to confirm the visible display-font title follows it.)
+    const flyerIdx = html.indexOf('src="https://example.com/flyer.jpg"');
+    assert.ok(flyerIdx > 0, 'flyer img must be present');
+    const displayTitleAfterFlyer = html.indexOf('Cosmic Cabaret', flyerIdx);
+    assert.ok(displayTitleAfterFlyer > flyerIdx, 'visible event title must appear after the flyer hero');
     assert.ok(html.includes('1610 East Cesar Chavez Street'), 'venue address should render under the event line');
     // CTA is now cased 'View in your account' and uppercased via CSS.
     assert.ok(html.includes('View in your account'), 'account CTA button should render');
