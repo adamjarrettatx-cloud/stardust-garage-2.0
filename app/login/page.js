@@ -86,7 +86,7 @@ export default function UnifiedLoginPage() {
           Sign In
         </h1>
         <p className="text-[13px] text-center mb-10" style={{ color: '#8a8a8a' }}>
-          Members, team and admin all sign in here
+          Members sign in here
         </p>
 
         {/* Google sign-in. Kept above the password form because ticket buyers
