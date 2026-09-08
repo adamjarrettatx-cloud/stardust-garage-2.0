@@ -26,9 +26,47 @@ export default async function ScanPage({ searchParams }) {
   }
 
   return (
-    <main style={{ maxWidth: 520, margin: '32px auto', padding: 20 }}>
-      <h1>Door Scanner</h1>
-      <ScannerClient prefillCode={prefill} />
+    <main
+      style={{
+        minHeight: '100vh',
+        background: '#0a0a0a',
+        color: '#f5f5f5',
+        fontFamily: "'Plus Jakarta Sans', sans-serif",
+      }}
+    >
+      <div style={{ maxWidth: 560, margin: '0 auto', padding: '32px 20px 60px' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 24,
+          }}
+        >
+          <h1
+            style={{
+              fontSize: 22,
+              fontWeight: 800,
+              letterSpacing: '-0.01em',
+              margin: 0,
+            }}
+          >
+            Door Scanner
+          </h1>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.16em',
+              color: '#8a8a8a',
+              textTransform: 'uppercase',
+            }}
+          >
+            STARDUST GARAGE
+          </span>
+        </div>
+        <ScannerClient prefillCode={prefill} />
+      </div>
     </main>
   );
 }
