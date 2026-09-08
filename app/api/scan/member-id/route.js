@@ -62,8 +62,8 @@ export async function POST(request) {
   }
 
   const gate = await requireTeam();
-  if (gate?.error) {
-    return NextResponse.json({ error: gate.error }, { status: gate.status || 401 });
+  if (gate?.unauthorized) {
+    return NextResponse.json({ error: 'Not authorized' }, { status: 401 });
   }
 
   let body;
@@ -79,6 +79,7 @@ export async function POST(request) {
   const deviceLabel = typeof body?.device_label === 'string' ? body.device_label.slice(0, 120) : null;
   const rejectReason = typeof body?.reject_reason === 'string' ? body.reject_reason.trim() : '';
   const note = typeof body?.note === 'string' ? body.note.trim().slice(0, 280) : '';
+  const doorSessionId = typeof body?.door_session_id === 'string' && body.door_session_id ? body.door_session_id : null;
 
   if (!isWellFormedMemberIdentityToken(token)) {
     return NextResponse.json({ error: 'Not a Member ID QR' }, { status: 400 });
@@ -138,6 +139,7 @@ export async function POST(request) {
       notes: note || null,
       scanned_by: user?.id || null,
       door_device_id: deviceLabel,
+      door_session_id: doorSessionId,
     });
     if (error) {
       console.error('[member-id-scan.reject]', error.message);
@@ -156,6 +158,7 @@ export async function POST(request) {
     notes: note || null,
     scanned_by: user?.id || null,
     door_device_id: deviceLabel,
+    door_session_id: doorSessionId,
   });
   if (error) {
     console.error('[member-id-scan.verify]', error.message);

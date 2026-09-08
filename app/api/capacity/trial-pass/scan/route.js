@@ -106,6 +106,7 @@ export async function POST(request) {
   const mode = typeof body?.mode === 'string' && VALID_MODES.has(body.mode) ? body.mode : 'preview';
   const rejectReason = typeof body?.reject_reason === 'string' ? body.reject_reason.trim() : '';
   const rejectNote = typeof body?.note === 'string' ? body.note.trim().slice(0, 280) : '';
+  const doorSessionId = typeof body?.door_session_id === 'string' && body.door_session_id ? body.door_session_id : null;
 
   // A scan of some other QR entirely — a Ticket Tailor code, a wifi sticker,
   // a bottle label. Answered as "not a pass" rather than "denied", because the
@@ -223,6 +224,7 @@ export async function POST(request) {
       reject_reason: rejectReason,
       checked_in_by: staffUserId,
       door_device_id: device?.id || null,
+      door_session_id: doorSessionId,
       notes: rejectNote || null,
     });
     if (rejectLogError) {
@@ -251,6 +253,7 @@ export async function POST(request) {
     result: decision.result,
     checked_in_by: staffUserId,
     door_device_id: device?.id || null,
+    door_session_id: doorSessionId,
   });
   if (logError && logError.code !== '23505') {
     // 23505 is the one-allowed-scan-per-event unique index doing its job under

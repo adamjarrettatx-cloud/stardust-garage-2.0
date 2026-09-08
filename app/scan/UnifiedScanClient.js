@@ -85,9 +85,22 @@ export default function UnifiedScanClient() {
   const [eventPickerOpen, setEventPickerOpen] = useState(false);
   const [pendingTicketCode, setPendingTicketCode] = useState(null);
 
-  // Load events + restore last-used event from localStorage. Same key as
-  // /t/scan so the two scanners share event context across a single door
-  // shift on the same device.
+  // Door session state — the source of truth for "which event tonight".
+  //   activeSession: currently-open door_sessions row (or null)
+  //   sessionLoading: initial fetch pending, don't render Start button yet
+  //   sessionBusy:    a start/end call is in flight
+  //   confirmEnd:     End Event confirm modal open
+  //   sessionError:   most recent start/end failure message
+  const [activeSession, setActiveSession] = useState(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
+  const [sessionBusy, setSessionBusy] = useState(false);
+  const [confirmEnd, setConfirmEnd] = useState(false);
+  const [sessionError, setSessionError] = useState('');
+  const [startPickerOpen, setStartPickerOpen] = useState(false);
+
+  // Load events + fetch the active door session. Also restore last-used
+  // event from localStorage as a fallback for scanners run before staff
+  // starts a shift (rare — used mostly for team testing/off-hours).
   useEffect(() => {
     fetch('/api/tickets/scanner-events')
       .then((r) => (r.ok ? r.json() : { events: [] }))
@@ -97,6 +110,16 @@ export default function UnifiedScanClient() {
       const stored = window.localStorage.getItem('sdg_scanner_event');
       if (stored) setEventId(stored);
     }
+    fetch('/api/door-session/active')
+      .then((r) => (r.ok ? r.json() : { session: null }))
+      .then((d) => {
+        if (d?.session) {
+          setActiveSession(d.session);
+          setEventId(d.session.event_id);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setSessionLoading(false));
   }, []);
 
   useEffect(() => {
@@ -105,7 +128,66 @@ export default function UnifiedScanClient() {
     else window.localStorage.removeItem('sdg_scanner_event');
   }, [eventId]);
 
-  const activeEvent = events.find((e) => e.id === eventId) || null;
+  const activeEvent = events.find((e) => e.id === eventId)
+    || (activeSession?.event ? { id: activeSession.event.id, title: activeSession.event.title, event_date: activeSession.event.event_date } : null);
+
+  const sessionId = activeSession?.id || null;
+
+  // Start an event (open a door session). Called from the start picker.
+  const startEvent = useCallback(async (evId) => {
+    setSessionBusy(true);
+    setSessionError('');
+    try {
+      const res = await fetch('/api/door-session/start', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ event_id: evId }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSessionError(body?.error || `Could not start event (${res.status})`);
+        // If the server says one is already open, refresh our view of it.
+        if (body?.active_session) setActiveSession({ ...body.active_session, event: null });
+        return;
+      }
+      const session = body.session;
+      const event = body.event;
+      setActiveSession(session ? { ...session, event } : null);
+      setEventId(event?.id || evId);
+      setStartPickerOpen(false);
+    } catch (err) {
+      setSessionError(err?.message || 'Network error starting event');
+    } finally {
+      setSessionBusy(false);
+    }
+  }, []);
+
+  // End the currently-open event (close the door session).
+  const endEvent = useCallback(async () => {
+    setSessionBusy(true);
+    setSessionError('');
+    try {
+      const res = await fetch('/api/door-session/end', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSessionError(body?.error || `Could not end event (${res.status})`);
+        return;
+      }
+      setActiveSession(null);
+      setConfirmEnd(false);
+      // Deliberately keep eventId around — /t/scan and manual ticket flows
+      // may still want the last event as context. Session-gated scans
+      // require an open session anyway.
+    } catch (err) {
+      setSessionError(err?.message || 'Network error ending event');
+    } finally {
+      setSessionBusy(false);
+    }
+  }, []);
 
   // --- reset back to idle scanning ---
   const resetToIdle = useCallback(() => {
@@ -143,13 +225,13 @@ export default function UnifiedScanClient() {
         res = await fetch('/api/capacity/trial-pass/scan', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ token: sniff.token, mode: 'preview' }),
+          body: JSON.stringify({ token: sniff.token, mode: 'preview', door_session_id: sessionId }),
         });
       } else if (sniff.kind === 'member_id') {
         res = await fetch('/api/scan/member-id', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ token: sniff.token, mode: 'preview' }),
+          body: JSON.stringify({ token: sniff.token, mode: 'preview', event_id: eventId || undefined, door_session_id: sessionId }),
         });
       } else if (sniff.kind === 'ticket') {
         if (!eventId) {
@@ -164,7 +246,7 @@ export default function UnifiedScanClient() {
         res = await fetch('/api/tickets/scan', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ code: sniff.code, event_id: eventId, mode: 'preview' }),
+          body: JSON.stringify({ code: sniff.code, event_id: eventId, mode: 'preview', door_session_id: sessionId }),
         });
       } else if (sniff.kind === 'ambiguous_token') {
         // Bare 43-char base64url \u2014 same shape as both member and trial-pass
@@ -172,14 +254,14 @@ export default function UnifiedScanClient() {
         res = await fetch('/api/scan/member-id', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ token: sniff.token, mode: 'preview' }),
+          body: JSON.stringify({ token: sniff.token, mode: 'preview', event_id: eventId || undefined, door_session_id: sessionId }),
         });
         if (res.status === 404) {
           // Not a member \u2014 fall through to trial-pass.
           res = await fetch('/api/capacity/trial-pass/scan', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ token: sniff.token, mode: 'preview' }),
+            body: JSON.stringify({ token: sniff.token, mode: 'preview', door_session_id: sessionId }),
           });
         }
       }
@@ -218,7 +300,7 @@ export default function UnifiedScanClient() {
       const res = await fetch('/api/tickets/scan', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ code, event_id: evId, mode: 'preview' }),
+        body: JSON.stringify({ code, event_id: evId, mode: 'preview', door_session_id: sessionId }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -234,7 +316,7 @@ export default function UnifiedScanClient() {
       setPhase('error');
       resetTimerRef.current = setTimeout(resetToIdle, 3000);
     }
-  }, [resetToIdle]);
+  }, [resetToIdle, sessionId]);
 
   // --- decision handlers ---
   const commitVerify = useCallback(async () => {
@@ -248,13 +330,13 @@ export default function UnifiedScanClient() {
         res = await fetch('/api/capacity/trial-pass/scan', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ token: payload, mode: 'checkin' }),
+          body: JSON.stringify({ token: payload, mode: 'checkin', door_session_id: sessionId }),
         });
       } else if (kind === 'member_id') {
         res = await fetch('/api/scan/member-id', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ token: payload, mode: 'verify' }),
+          body: JSON.stringify({ token: payload, mode: 'verify', event_id: eventId || undefined, door_session_id: sessionId }),
         });
       } else if (kind === 'ticket') {
         if (!eventId) {
@@ -265,7 +347,7 @@ export default function UnifiedScanClient() {
         res = await fetch('/api/tickets/scan', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ code: payload, event_id: eventId, mode: 'checkin' }),
+          body: JSON.stringify({ code: payload, event_id: eventId, mode: 'checkin', door_session_id: sessionId }),
         });
       } else {
         setErrorMessage('Unknown scan kind on verify');
@@ -288,7 +370,7 @@ export default function UnifiedScanClient() {
       setDecisionBusy(false);
       resetTimerRef.current = setTimeout(resetToIdle, RESULT_HOLD_MS);
     }
-  }, [preview, decisionBusy, resetToIdle, eventId]);
+  }, [preview, decisionBusy, resetToIdle, eventId, sessionId]);
 
   const commitReject = useCallback(async (reasonCode) => {
     if (!preview || decisionBusy) return;
@@ -301,13 +383,13 @@ export default function UnifiedScanClient() {
         res = await fetch('/api/capacity/trial-pass/scan', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ token: payload, mode: 'reject', reject_reason: reasonCode, note: rejectNote || undefined }),
+          body: JSON.stringify({ token: payload, mode: 'reject', reject_reason: reasonCode, note: rejectNote || undefined, door_session_id: sessionId }),
         });
       } else if (kind === 'member_id') {
         res = await fetch('/api/scan/member-id', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ token: payload, mode: 'reject', reject_reason: reasonCode, note: rejectNote || undefined }),
+          body: JSON.stringify({ token: payload, mode: 'reject', reject_reason: reasonCode, note: rejectNote || undefined, event_id: eventId || undefined, door_session_id: sessionId }),
         });
       } else if (kind === 'ticket') {
         if (!eventId) {
@@ -318,7 +400,7 @@ export default function UnifiedScanClient() {
         res = await fetch('/api/tickets/scan', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ code: payload, event_id: eventId, mode: 'reject', reject_reason: reasonCode, note: rejectNote || undefined }),
+          body: JSON.stringify({ code: payload, event_id: eventId, mode: 'reject', reject_reason: reasonCode, note: rejectNote || undefined, door_session_id: sessionId }),
         });
       } else {
         setErrorMessage('Unknown scan kind on reject');
@@ -340,7 +422,7 @@ export default function UnifiedScanClient() {
       setDecisionBusy(false);
       resetTimerRef.current = setTimeout(resetToIdle, RESULT_HOLD_MS);
     }
-  }, [preview, decisionBusy, rejectNote, resetToIdle, eventId]);
+  }, [preview, decisionBusy, rejectNote, resetToIdle, eventId, sessionId]);
 
   // --- scan loop ---
   const scanFrame = useCallback(async () => {
@@ -454,9 +536,15 @@ export default function UnifiedScanClient() {
       <div style={styles.header}>
         <div style={styles.headerRow}>
           <div style={styles.brand}>SDG DOOR SCANNER</div>
-          <button style={styles.eventChip} onClick={() => setEventPickerOpen(true)}>
-            {activeEvent ? formatEventChip(activeEvent) : 'Pick event'}
-          </button>
+          <SessionControl
+            sessionLoading={sessionLoading}
+            activeSession={activeSession}
+            activeEvent={activeEvent}
+            sessionBusy={sessionBusy}
+            onStart={() => { setSessionError(''); setStartPickerOpen(true); }}
+            onEnd={() => { setSessionError(''); setConfirmEnd(true); }}
+            onPickEvent={() => setEventPickerOpen(true)}
+          />
         </div>
         <div style={styles.hint}>{hintForPhase(phase)}</div>
       </div>
@@ -530,6 +618,30 @@ export default function UnifiedScanClient() {
           onCancel={() => setEventPickerOpen(false)}
           pendingTicketCode={pendingTicketCode}
         />
+      )}
+
+      {startPickerOpen && (
+        <StartEventOverlay
+          events={events}
+          busy={sessionBusy}
+          errorMessage={sessionError}
+          onPick={startEvent}
+          onCancel={() => setStartPickerOpen(false)}
+        />
+      )}
+
+      {confirmEnd && activeSession && (
+        <ConfirmEndOverlay
+          event={activeEvent}
+          busy={sessionBusy}
+          errorMessage={sessionError}
+          onConfirm={endEvent}
+          onCancel={() => { setConfirmEnd(false); setSessionError(''); }}
+        />
+      )}
+
+      {sessionError && !startPickerOpen && !confirmEnd && (
+        <div style={styles.sessionToast}>{sessionError}</div>
       )}
 
       {phase === 'result' && result && (
@@ -730,6 +842,98 @@ function EventPickerOverlay({ events, activeEventId, onPick, onClear, onCancel, 
   );
 }
 
+function SessionControl({ sessionLoading, activeSession, activeEvent, sessionBusy, onStart, onEnd, onPickEvent }) {
+  if (sessionLoading) {
+    return <div style={styles.sessionChipMuted}>…</div>;
+  }
+  if (activeSession) {
+    const title = activeEvent?.title || 'Event live';
+    const openedAt = activeSession.opened_at
+      ? new Date(activeSession.opened_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+      : '';
+    return (
+      <div style={styles.sessionActive}>
+        <div style={styles.sessionActiveLive}>
+          <span style={styles.sessionDot} />
+          <span style={styles.sessionActiveTitle}>{title}</span>
+          {openedAt && <span style={styles.sessionActiveMeta}> · opened {openedAt}</span>}
+        </div>
+        <button style={styles.sessionEndBtn} onClick={onEnd} disabled={sessionBusy}>
+          End event
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div style={styles.sessionInactive}>
+      <button style={styles.sessionStartBtn} onClick={onStart} disabled={sessionBusy}>
+        START EVENT →
+      </button>
+      {activeEvent && (
+        <button style={styles.sessionPickBtn} onClick={onPickEvent} title="Change fallback event (no shift)">
+          {activeEvent.title}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function StartEventOverlay({ events, busy, errorMessage, onPick, onCancel }) {
+  return (
+    <div style={styles.overlay}>
+      <div style={{ ...styles.card, ...styles.cardWide }}>
+        <div style={styles.pickerHeader}>Start event for tonight</div>
+        <div style={styles.pickerHint}>
+          Opens a door session. Every scan from here on is bound to this event
+          until you tap End event.
+        </div>
+        {events.length === 0 && (
+          <div style={styles.pickerHint}>No upcoming internal-ticketing events.</div>
+        )}
+        <div style={styles.eventList}>
+          {events.map((evt) => (
+            <button
+              key={evt.id}
+              style={styles.eventOption}
+              onClick={() => onPick(evt.id)}
+              disabled={busy}
+            >
+              <div style={styles.eventOptionTitle}>{evt.title}</div>
+              <div style={styles.eventOptionMeta}>{evt.event_date}{evt.start_time ? ` \u00b7 ${evt.start_time}` : ''}</div>
+            </button>
+          ))}
+        </div>
+        {errorMessage && <div style={styles.pickerError}>{errorMessage}</div>}
+        <div style={styles.pickerActions}>
+          <button style={styles.pickerCancelBtn} onClick={onCancel} disabled={busy}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConfirmEndOverlay({ event, busy, errorMessage, onConfirm, onCancel }) {
+  const title = event?.title || 'this event';
+  return (
+    <div style={styles.overlay}>
+      <div style={styles.card}>
+        <div style={styles.pickerHeader}>End event?</div>
+        <div style={styles.pickerHint}>
+          Close the door session for <strong>{title}</strong>? Scans made after
+          this will not be bound to any shift until you start a new event.
+        </div>
+        {errorMessage && <div style={styles.pickerError}>{errorMessage}</div>}
+        <div style={styles.pickerActions}>
+          <button style={styles.pickerCancelBtn} onClick={onCancel} disabled={busy}>Cancel</button>
+          <button style={styles.rejectBtn} onClick={onConfirm} disabled={busy}>
+            {busy ? 'Ending…' : 'End event'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function hintForPhase(phase) {
   switch (phase) {
     case 'booting': return 'Starting camera...';
@@ -844,5 +1048,48 @@ const styles = {
   nextButton: {
     marginTop: 20, padding: '16px 24px', borderRadius: 12, border: 'none',
     background: '#d9c48c', color: '#0a0a0a', fontSize: 16, fontWeight: 700, cursor: 'pointer', width: '100%',
+  },
+  sessionChipMuted: {
+    padding: '8px 14px', borderRadius: 999, background: '#1a1a1a', color: '#8a8a8a',
+    fontSize: 13, fontWeight: 600, letterSpacing: 1,
+  },
+  sessionActive: {
+    display: 'flex', alignItems: 'center', gap: 10,
+  },
+  sessionActiveLive: {
+    display: 'flex', alignItems: 'center', gap: 8,
+    padding: '8px 14px', borderRadius: 999, background: '#0e2618', border: '1px solid #1f5f3a',
+  },
+  sessionActiveTitle: { color: '#7CFC9B', fontSize: 13, fontWeight: 700, letterSpacing: 0.5 },
+  sessionActiveMeta:  { color: '#4a8a5e', fontSize: 12 },
+  sessionDot: {
+    width: 8, height: 8, borderRadius: '50%', background: '#7CFC9B',
+    boxShadow: '0 0 8px #7CFC9B', animation: 'pulse 1.4s ease-in-out infinite',
+  },
+  sessionEndBtn: {
+    padding: '8px 12px', borderRadius: 999, border: '1px solid #333',
+    background: 'transparent', color: '#8a8a8a', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+  },
+  sessionInactive: {
+    display: 'flex', alignItems: 'center', gap: 8,
+  },
+  sessionStartBtn: {
+    padding: '10px 18px', borderRadius: 999, border: 'none',
+    background: '#d9c48c', color: '#0a0a0a', fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: 'pointer',
+  },
+  sessionPickBtn: {
+    padding: '8px 12px', borderRadius: 999, border: '1px solid #333',
+    background: 'transparent', color: '#8a8a8a', fontSize: 11, cursor: 'pointer',
+  },
+  pickerError: {
+    marginTop: 12, padding: '10px 12px', borderRadius: 8,
+    background: '#3a1414', border: '1px solid #5a2020', color: '#ff8686',
+    fontSize: 13, textAlign: 'center',
+  },
+  sessionToast: {
+    position: 'absolute', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+    padding: '10px 16px', borderRadius: 999,
+    background: '#3a1414', border: '1px solid #5a2020', color: '#ff8686',
+    fontSize: 13, zIndex: 20,
   },
 };
