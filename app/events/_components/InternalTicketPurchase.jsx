@@ -431,25 +431,116 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
             </div>
           )}
         </div>
-        <input
-          type="number"
-          min={0}
-          max={max}
-          value={qty}
-          disabled={disabled}
-          onChange={(e) => setQuantities({ ...quantities, [p.product_id]: e.target.value })}
+        {/* Quantity stepper. On mobile in-app browsers the native
+            number-input spinner is unreliable (invisible on iOS, jumpy
+            keyboard on Android), so we render explicit − / + buttons and
+            keep the input as a fallback for keyboard entry on desktop.
+            The buttons have a 44×44 touch target which is the iOS HIG
+            minimum — makes the control easy to hit one-handed. */}
+        <div
           style={{
-            width: 60,
-            padding: '8px 6px',
-            background: '#ffffff',
-            color: ROW_TEXT,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0,
             border: `1px solid ${ROW_HAIRLINE_STRONG}`,
-            borderRadius: 8,
-            fontSize: 14,
-            textAlign: 'center',
-            outline: 'none',
+            borderRadius: 10,
+            background: '#ffffff',
+            overflow: 'hidden',
           }}
-        />
+        >
+          <button
+            type="button"
+            aria-label={`Decrease ${p.name} quantity`}
+            disabled={disabled || qty <= 0}
+            onClick={() => {
+              const next = Math.max(0, qty - 1);
+              setQuantities({ ...quantities, [p.product_id]: String(next) });
+            }}
+            style={{
+              width: 44,
+              height: 44,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'transparent',
+              border: 'none',
+              borderRight: `1px solid ${ROW_HAIRLINE}`,
+              color: qty <= 0 || disabled ? '#c0c0c0' : ROW_TEXT,
+              fontSize: 20,
+              fontWeight: 600,
+              lineHeight: 1,
+              cursor: qty <= 0 || disabled ? 'not-allowed' : 'pointer',
+              padding: 0,
+              WebkitTapHighlightColor: 'transparent',
+              userSelect: 'none',
+              touchAction: 'manipulation',
+            }}
+          >
+            −
+          </button>
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={qty}
+            disabled={disabled}
+            onChange={(e) => {
+              // Strip non-digits, clamp to [0, max]. Empty string becomes 0.
+              const raw = e.target.value.replace(/[^0-9]/g, '');
+              if (raw === '') {
+                setQuantities({ ...quantities, [p.product_id]: '0' });
+                return;
+              }
+              const n = Math.min(max, Math.max(0, Number(raw)));
+              setQuantities({ ...quantities, [p.product_id]: String(n) });
+            }}
+            onFocus={(e) => e.target.select()}
+            style={{
+              width: 40,
+              height: 44,
+              padding: 0,
+              background: 'transparent',
+              color: ROW_TEXT,
+              border: 'none',
+              fontSize: 15,
+              fontWeight: 600,
+              textAlign: 'center',
+              outline: 'none',
+              // Hide the native spinners on desktop — our buttons replace them.
+              MozAppearance: 'textfield',
+            }}
+          />
+          <button
+            type="button"
+            aria-label={`Increase ${p.name} quantity`}
+            disabled={disabled || qty >= max}
+            onClick={() => {
+              const next = Math.min(max, qty + 1);
+              setQuantities({ ...quantities, [p.product_id]: String(next) });
+            }}
+            style={{
+              width: 44,
+              height: 44,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'transparent',
+              border: 'none',
+              borderLeft: `1px solid ${ROW_HAIRLINE}`,
+              color: qty >= max || disabled ? '#c0c0c0' : ROW_TEXT,
+              fontSize: 20,
+              fontWeight: 600,
+              lineHeight: 1,
+              cursor: qty >= max || disabled ? 'not-allowed' : 'pointer',
+              padding: 0,
+              WebkitTapHighlightColor: 'transparent',
+              userSelect: 'none',
+              touchAction: 'manipulation',
+            }}
+          >
+            +
+          </button>
+        </div>
       </div>
     );
   }
