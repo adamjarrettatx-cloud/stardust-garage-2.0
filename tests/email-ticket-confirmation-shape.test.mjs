@@ -85,6 +85,12 @@ test('sendTicketConfirmation renders the flyer <img> when eventFlyerUrl is provi
     assert.ok(/Ordered\s+September\s+5,\s+2026/.test(html), 'formatted order date should render');
     // Cosmos hero + wordmark are baked into a single CID-attached image.
     assert.ok(html.includes('cid:hero@sdgatx'), 'branded hero image should render via CID');
+    // Gmail (iOS/Android/web) auto-inverts dark-designed emails on devices
+    // in dark mode unless we opt in to color-scheme. Without these tags our
+    // dark card gets flipped to near-white — the branding breaks. Locked in.
+    assert.ok(/<meta[^>]+name="color-scheme"[^>]+content="dark light"/.test(html), 'color-scheme meta must declare dark palette');
+    assert.ok(/<meta[^>]+name="supported-color-schemes"[^>]+content="dark light"/.test(html), 'supported-color-schemes meta must declare dark palette');
+    assert.ok(/color-scheme:\s*dark light/.test(html), ':root color-scheme CSS declaration must be present');
     // Dark theme surfaces (matching site).
     assert.ok(html.includes('#141414'), 'dark card background');
     assert.ok(html.includes('#f5f5f5'), 'light text color for body');
