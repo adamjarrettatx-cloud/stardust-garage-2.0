@@ -204,7 +204,7 @@ export default function ScannerClient({ prefillCode = '' }) {
           <input
             value={deviceLabel}
             onChange={(e) => setDeviceLabel(e.target.value)}
-            placeholder="Front door iPad"
+            placeholder="Front door scanner"
             style={inputStyle}
           />
 
