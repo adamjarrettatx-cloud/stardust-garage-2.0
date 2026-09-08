@@ -81,12 +81,14 @@ export default async function TrialPassViewPage({ params }) {
       ? 'Show this code at the door. Staff scan it and your access is checked automatically.'
       : 'Your 30-day trial starts the first night you come out. Show this code at the door to activate it.';
 
-  // The header on the expiry card tracks the same three states.
-  const expiryLabel = !live
-    ? 'EXPIRED ON'
-    : activated
-      ? 'GOOD THROUGH'
-      : 'ACTIVATE BY';
+  // The header on the expiry card. Only two states now flow through this
+  // label — !live → EXPIRED ON, activated → GOOD THROUGH. The third state
+  // (live + unactivated) is rendered in its own branch below with a
+  // "30-DAY TRIAL / Starts on your first visit" card that leads with the
+  // trial length instead of the outer signup-window date; the ternary here
+  // never falls through to it because the JSX guards on `live && !activated`
+  // above the {expiryLabel} block. See tests/pass-page-30day-copy.test.mjs.
+  const expiryLabel = !live ? 'EXPIRED ON' : 'GOOD THROUGH';
 
   // The QR encodes this page's own URL, so a scan at the door resolves to the
   // same token the guest is looking at. Regenerated per render rather than
@@ -146,23 +148,62 @@ export default async function TrialPassViewPage({ params }) {
           />
         ) : null}
 
-        <div
-          className="mt-7 rounded-xl px-5 py-4 text-left"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-        >
-          <div className="text-[10px] font-semibold tracking-[0.16em] mb-1.5" style={{ color: 'rgba(255,255,255,0.45)' }}>
-            {expiryLabel}
+        {/*
+         * Three visual states for the primary card:
+         *
+         *   1. Live + unactivated  →  "30-DAY TRIAL / Starts on your first visit."
+         *      The date we have on file here is signup_expires_at (60 days out),
+         *      which is the OUTER window — the QR expires unused, not the trial.
+         *      Foregrounding that date next to the word "PASS" made guests read
+         *      it as a 60-day trial. Now the trial length leads and the raw
+         *      date is demoted to a footnote below.
+         *
+         *   2. Live + activated    →  "GOOD THROUGH / <date> · N days left"
+         *      Same as before. Clock is real, date is the 30-day expires_at.
+         *
+         *   3. Expired             →  "EXPIRED ON / <date>"
+         *      Same as before.
+         */}
+        {live && !activated ? (
+          <>
+            <div
+              className="mt-7 rounded-xl px-5 py-4 text-left"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+            >
+              <div className="text-[10px] font-semibold tracking-[0.16em] mb-1.5" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                30-DAY TRIAL
+              </div>
+              <div className="text-[15px] font-semibold" style={{ color: '#ffffff' }}>
+                Starts on your first visit.
+              </div>
+              <div className="text-[12px] mt-1.5 leading-[1.55]" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                Show the code at the door. Your 30 days start when we scan you in — not before.
+              </div>
+            </div>
+            <p className="text-[11px] mt-2.5 leading-[1.55] px-1 text-left" style={{ color: 'rgba(255,255,255,0.4)' }}>
+              Heads up: if this QR isn&apos;t used by {formatPassDate(expiry)} it will expire —
+              that&apos;s the QR itself, not your 30-day trial.
+            </p>
+          </>
+        ) : (
+          <div
+            className="mt-7 rounded-xl px-5 py-4 text-left"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            <div className="text-[10px] font-semibold tracking-[0.16em] mb-1.5" style={{ color: 'rgba(255,255,255,0.45)' }}>
+              {expiryLabel}
+            </div>
+            <div className="text-[15px] font-semibold" style={{ color: '#ffffff' }}>
+              {formatPassDate(expiry)}
+              {live && daysLeft <= 7 ? (
+                <span style={{ color: accent, fontWeight: 600 }}>
+                  {' '}
+                  · {daysLeft === 0 ? 'today' : `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left`}
+                </span>
+              ) : null}
+            </div>
           </div>
-          <div className="text-[15px] font-semibold" style={{ color: '#ffffff' }}>
-            {formatPassDate(expiry)}
-            {live && daysLeft <= 7 ? (
-              <span style={{ color: accent, fontWeight: 600 }}>
-                {' '}
-                · {daysLeft === 0 ? 'today' : `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left`}
-              </span>
-            ) : null}
-          </div>
-        </div>
+        )}
 
         {pass.applied_at ? (
           <p className="text-[12px] mt-5 leading-[1.6]" style={{ color: 'rgba(255,255,255,0.5)' }}>
