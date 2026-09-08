@@ -17,33 +17,54 @@ import {
   isWellFormedPassToken,
   passStatusLabel,
 } from '@/lib/trial-pass';
+import { REJECT_REASONS, isValidRejectReason } from '@/lib/tickets/checkin.js';
+import { buildTrialPassPreview } from '@/lib/tickets/trial-pass-preview';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const VALID_MODES = new Set(['preview', 'checkin', 'reject']);
+
 // POST /api/capacity/trial-pass/scan
-// Body: { token, eventId? }
+// Body: { token, eventId?, mode? = 'preview', reject_reason?, note? }
 // Auth: a team Supabase session OR a front-door device token.
 //
 // What the door hits when a guest holds up their pass. The scanner is
 // authoritative: the QR carries nothing but an opaque token, so every
-// allow/deny decision is made here against the live row, and a screenshot of a
-// pass that was valid last month denies on the spot.
+// allow/deny decision is made here against the live row.
+//
+// Three modes, mirroring /api/tickets/scan:
+//
+//   mode = 'preview' (default when omitted)
+//     Validate the token and evaluate the door decision, but write NOTHING
+//     down. Return the guest's first name + face photo (signed URL) so the
+//     operator can compare against the person in front of them BEFORE they
+//     commit. Does NOT activate the pass, does NOT send the application
+//     invite email, does NOT bump capacity. This is the safe default so a
+//     bare code-only POST no longer auto-consumes a pass.
+//
+//   mode = 'checkin'
+//     The full "let them in" flow: log the check-in, activate the pass on
+//     first allowed scan, fire the one-shot application-invite email. Only
+//     called when staff hits "Check In" after seeing the photo.
+//
+//   mode = 'reject'
+//     Staff saw the photo and this is not the right person. Requires a
+//     whitelisted reject_reason. Logs the rejection with an optional note.
+//     Does NOT activate the pass and does NOT change its state, so the real
+//     guest can re-scan later and get through cleanly.
 //
 // The decision itself is evaluateDoorScan() in lib/trial-pass.js — pure, no
 // database, unit tested. This route's job is to authorise the scanner, resolve
-// the token to a row, ask that function, and write the attempt down.
+// the token to a row, ask that function, and (in checkin mode) write the
+// attempt down.
 //
 // Two auth paths on purpose, matching the rest of the capacity surface: staff
 // working from a logged-in tablet at /capacity/front-door, and the Jelly2 door
 // phones that hold a device token instead of a session. An exit_door token is
 // refused — checking a trial pass is an entry decision.
-//
-// The response is deliberately thin: first name, decision, expiry, days left.
-// The door needs to know "let them in or not" and who they are looking at. It
-// does not need the guest's email, phone, or row id, so it never receives them.
 export async function POST(request) {
   const url = new URL(request.url);
   const deviceToken = extractDeviceToken({
@@ -82,6 +103,9 @@ export async function POST(request) {
 
   const passToken = typeof body?.token === 'string' ? body.token.trim() : '';
   const eventId = typeof body?.eventId === 'string' && UUID.test(body.eventId) ? body.eventId : null;
+  const mode = typeof body?.mode === 'string' && VALID_MODES.has(body.mode) ? body.mode : 'preview';
+  const rejectReason = typeof body?.reject_reason === 'string' ? body.reject_reason.trim() : '';
+  const rejectNote = typeof body?.note === 'string' ? body.note.trim().slice(0, 280) : '';
 
   // A scan of some other QR entirely — a Ticket Tailor code, a wifi sticker,
   // a bottle label. Answered as "not a pass" rather than "denied", because the
@@ -98,7 +122,7 @@ export async function POST(request) {
 
   let { data: pass, error: passError } = await admin
     .from('trial_passes')
-    .select('id, full_name, email, status, issued_at, expires_at, extended_until, applied_at, converted_at, activated_at, signup_expires_at')
+    .select('id, full_name, email, status, issued_at, expires_at, extended_until, applied_at, converted_at, activated_at, signup_expires_at, profile_photo_path')
     .eq('qr_token_hash', hashPassToken(passToken))
     .maybeSingle();
 
@@ -147,10 +171,80 @@ export async function POST(request) {
   }
 
   const decision = evaluateDoorScan({ pass, event, alreadyCheckedIn, now: new Date() });
+  const expiryBeforeActivation = effectiveExpiry(pass);
 
-  // Every scan is written down, allowed or not. Denials are the useful half of
-  // this table: they are how Adam finds out that the trial window is too short,
-  // or that people keep turning up on nights the pass does not cover.
+  // --------------------------------------------------------------------------
+  // MODE: preview  (default) — pure read + photo lookup, no writes
+  //
+  // Return the door decision and the buyer's photo. Nothing hits the DB
+  // outside the SELECTs already run above.
+  // --------------------------------------------------------------------------
+  if (mode === 'preview') {
+    const preview = await buildTrialPassPreview(admin, pass);
+    return NextResponse.json({
+      ok: decision.allowed,
+      mode: 'preview',
+      result: decision.result,
+      reason: decision.reason,
+      staffAction: decision.staffAction || null,
+      guest: {
+        // First name only. Enough for the attendant to greet them and match
+        // the face to the phone; not a contact record handed to a door device.
+        firstName: preview.firstName,
+        statusLabel: passStatusLabel(pass),
+        expiresLabel: expiryBeforeActivation ? formatPassDate(expiryBeforeActivation) : null,
+        daysLeft: daysRemaining(pass),
+        hasPhoto: preview.hasPhoto,
+        photoSignedUrl: preview.photoSignedUrl,
+      },
+      event: event ? { id: event.id, title: event.title, date: event.event_date } : null,
+    });
+  }
+
+  // --------------------------------------------------------------------------
+  // MODE: reject — log rejection, do NOT activate the pass
+  //
+  // Staff saw the photo and this is not the right person. We log the attempt
+  // so Adam can audit reject rates later, but the pass row is untouched —
+  // the real guest can walk up next and their scan still activates cleanly.
+  // --------------------------------------------------------------------------
+  if (mode === 'reject') {
+    if (!isValidRejectReason(rejectReason)) {
+      return NextResponse.json(
+        { error: 'Missing or invalid reject_reason.', code: 'bad_input' },
+        { status: 400 },
+      );
+    }
+
+    const { error: rejectLogError } = await admin.from('trial_pass_checkins').insert({
+      trial_pass_id: pass.id,
+      event_id: eventId,
+      result: 'rejected',
+      reject_reason: rejectReason,
+      checked_in_by: staffUserId,
+      door_device_id: device?.id || null,
+      notes: rejectNote || null,
+    });
+    if (rejectLogError) {
+      console.error('[door.trial-pass.scan.reject-log]', rejectLogError);
+    }
+
+    return NextResponse.json({
+      ok: false,
+      mode: 'reject',
+      result: 'rejected',
+      reject_reason: rejectReason,
+      reason: rejectReasonLabel(rejectReason),
+    });
+  }
+
+  // --------------------------------------------------------------------------
+  // MODE: checkin — the full existing flow
+  //
+  // Every scan attempt (allowed or denied) is written down so Adam can see
+  // that the trial window is too short, or that people keep turning up on
+  // nights the pass does not cover.
+  // --------------------------------------------------------------------------
   const { error: logError } = await admin.from('trial_pass_checkins').insert({
     trial_pass_id: pass.id,
     event_id: eventId,
@@ -195,7 +289,7 @@ export async function POST(request) {
       })
       .eq('id', pass.id)
       .is('activated_at', null)
-      .select('id, full_name, email, status, issued_at, expires_at, extended_until, applied_at, converted_at, activated_at, signup_expires_at')
+      .select('id, full_name, email, status, issued_at, expires_at, extended_until, applied_at, converted_at, activated_at, signup_expires_at, profile_photo_path')
       .maybeSingle();
     if (activateError) {
       console.error('[door.trial-pass.scan.activate]', activateError);
@@ -279,12 +373,11 @@ export async function POST(request) {
 
   return NextResponse.json({
     ok: decision.allowed,
+    mode: 'checkin',
     result: decision.result,
     reason: decision.reason,
     staffAction: decision.staffAction || null,
     guest: {
-      // First name only. Enough for the attendant to greet them and match the
-      // face to the phone; not a contact record handed to a door device.
       firstName: String(pass.full_name || '').split(' ')[0] || null,
       statusLabel: passStatusLabel(pass),
       expiresLabel: expiry ? formatPassDate(expiry) : null,
@@ -292,4 +385,14 @@ export async function POST(request) {
     },
     event: event ? { id: event.id, title: event.title, date: event.event_date } : null,
   });
+}
+
+function rejectReasonLabel(reason) {
+  switch (reason) {
+    case REJECT_REASONS.PHOTO_MISMATCH: return 'Photo mismatch';
+    case REJECT_REASONS.NO_PHOTO_ON_FILE: return 'No photo on file';
+    case REJECT_REASONS.ID_MISMATCH: return 'ID mismatch';
+    case REJECT_REASONS.MANUAL: return 'Manual rejection';
+    default: return 'Rejected';
+  }
 }

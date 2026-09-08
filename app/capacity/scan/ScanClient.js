@@ -11,13 +11,23 @@ import { extractPassTokenFromScan } from '@/lib/trial-pass';
 //
 //   idle           → camera is up, actively scanning, no card shown yet
 //   scanning       → we saw a QR, we're POSTing /api/capacity/trial-pass/scan
-//   result         → server responded; big card visible; scanning paused
+//                    (mode: 'preview' — validates + returns buyer photo, no writes)
+//   preview        → server returned the door decision + face photo; staff can
+//                    Check In or Reject. Camera is paused. Nothing has been
+//                    written to the DB yet — the pass has NOT been activated,
+//                    no invite email has been sent, capacity has not been bumped.
+//   result         → staff decided; final card shown (Check In → allow/deny with
+//                    activation, Reject → logged rejection). Scanning stays paused
+//                    until staff hits "Next guest".
 //   camera_error   → getUserMedia refused or the browser has no BarcodeDetector
 //
-// A completed scan (allowed OR denied) shows the card and pauses the loop for
-// 5 seconds, or until staff taps "Next guest". The pause matters — without it
-// the same pass in view would re-scan 30 times a second and drown the server
-// (and the on-screen card would flicker so fast it would be unreadable).
+// The preview → decide → result split is critical: on a preview alone the row
+// is untouched, so a friend scanning the buyer's forwarded QR does NOT activate
+// the pass. Only Check In flips state. Reject logs the attempt but never
+// touches the pass, so the real guest can walk up next and get through cleanly.
+//
+// A dedupe window (3s) blocks the same token from re-scanning while a preview
+// card is on screen — the QR stays in view naturally while staff decide.
 //
 // The pass URL that buildPassUrl() produced is what most QRs carry, but the
 // server endpoint takes the bare token. extractPassTokenFromScan() (tested in
@@ -26,8 +36,14 @@ import { extractPassTokenFromScan } from '@/lib/trial-pass';
 // show up as "Not a Trial SDG Pass" instantly instead of a server round-trip.
 
 const SCAN_INTERVAL_MS = 200; // 5 fps is plenty for a stationary QR at arm's length
-const RESULT_HOLD_MS = 5000;  // how long the big card stays up before auto-reset
+const RESULT_HOLD_MS = 5000;  // how long the FINAL card stays up before auto-reset
 const DUPLICATE_WINDOW_MS = 3000; // ignore the same token within 3s (prevents double-scans)
+const REJECT_REASONS = [
+  { code: 'photo_mismatch',    label: 'Photo mismatch' },
+  { code: 'no_photo_on_file',  label: 'No photo on file' },
+  { code: 'id_mismatch',       label: 'ID mismatch' },
+  { code: 'manual',            label: 'Manual reject' },
+];
 
 export default function ScanClient() {
   const videoRef = useRef(null);
@@ -37,8 +53,13 @@ export default function ScanClient() {
   const lastScanRef = useRef({ token: null, at: 0 });
   const resultTimerRef = useRef(null);
 
-  const [phase, setPhase] = useState('booting'); // booting | idle | scanning | result | camera_error
-  const [result, setResult] = useState(null); // { ok, result, guest, event, staffAction, reason }
+  const [phase, setPhase] = useState('booting'); // booting | idle | scanning | preview | result | camera_error
+  const [preview, setPreview] = useState(null); // preview response from mode:'preview' — includes buyer photo
+  const [result, setResult] = useState(null); // final response after Check In or Reject
+  const [pendingToken, setPendingToken] = useState(null); // token the preview is for; needed for the follow-up call
+  const [decisionBusy, setDecisionBusy] = useState(false);
+  const [rejectPicker, setRejectPicker] = useState(false);
+  const [rejectNote, setRejectNote] = useState('');
   const [notAPassMessage, setNotAPassMessage] = useState(null);
   const [torch, setTorch] = useState(false);
   const [torchSupported, setTorchSupported] = useState(false);
@@ -81,14 +102,25 @@ export default function ScanClient() {
     }
   }, []);
 
-  // ---- Server round-trip ----
-  const submitToken = useCallback(async (token) => {
+  // ---- Server round-trips ----
+  //
+  // Two distinct calls, on purpose:
+  //   1. previewToken — POST mode:'preview'. Validates the token, evaluates the
+  //      door decision, returns the buyer photo. NOTHING is written; the pass
+  //      is not activated, no email fires, capacity is not bumped.
+  //   2. commitDecision — POST mode:'checkin' OR mode:'reject' after staff sees
+  //      the photo and taps a button. This is where state changes.
+  //
+  // The token is remembered in `pendingToken` between the two calls so the
+  // commit call always operates on the same pass the operator was looking at,
+  // even if the camera has drifted or a duplicate scan came in during the pause.
+  const previewToken = useCallback(async (token) => {
     setPhase('scanning');
     try {
       const res = await fetch('/api/capacity/trial-pass/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ token, mode: 'preview' }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -100,15 +132,16 @@ export default function ScanClient() {
         setPhase('result');
         return;
       }
-      setResult(json);
-      setPhase('result');
-
-      // Fire the capacity bump only on allowed scans, in the background — do
-      // not block the result card on it.
-      if (json.result === 'allowed') {
-        const warning = await bumpCapacity();
-        if (warning) setBumpWarning(warning);
+      // 'not_a_pass' skips the preview and jumps straight to the final card —
+      // there is no photo to show and no Check In button to press.
+      if (json.result === 'not_a_pass') {
+        setResult(json);
+        setPhase('result');
+        return;
       }
+      setPendingToken(token);
+      setPreview(json);
+      setPhase('preview');
     } catch {
       setResult({
         ok: false,
@@ -117,7 +150,65 @@ export default function ScanClient() {
       });
       setPhase('result');
     }
-  }, [bumpCapacity]);
+  }, []);
+
+  const commitCheckIn = useCallback(async () => {
+    if (!pendingToken || decisionBusy) return;
+    setDecisionBusy(true);
+    try {
+      const res = await fetch('/api/capacity/trial-pass/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: pendingToken, mode: 'checkin' }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setResult({ ok: false, result: 'error', reason: json.error || 'Check-in failed.' });
+      } else {
+        setResult(json);
+        // Capacity bump only on the real allowed transition, matches the old
+        // behavior — never fires on a preview alone.
+        if (json.result === 'allowed') {
+          const warning = await bumpCapacity();
+          if (warning) setBumpWarning(warning);
+        }
+      }
+    } catch {
+      setResult({ ok: false, result: 'error', reason: 'Network error during check-in.' });
+    } finally {
+      setDecisionBusy(false);
+      setPhase('result');
+    }
+  }, [pendingToken, decisionBusy, bumpCapacity]);
+
+  const commitReject = useCallback(async (reasonCode) => {
+    if (!pendingToken || decisionBusy) return;
+    setDecisionBusy(true);
+    try {
+      const res = await fetch('/api/capacity/trial-pass/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: pendingToken,
+          mode: 'reject',
+          reject_reason: reasonCode,
+          note: rejectNote.slice(0, 280),
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setResult({ ok: false, result: 'error', reason: json.error || 'Reject failed.' });
+      } else {
+        setResult(json);
+      }
+    } catch {
+      setResult({ ok: false, result: 'error', reason: 'Network error during reject.' });
+    } finally {
+      setDecisionBusy(false);
+      setRejectPicker(false);
+      setPhase('result');
+    }
+  }, [pendingToken, decisionBusy, rejectNote]);
 
   // ---- The scan loop ----
   //
@@ -153,12 +244,12 @@ export default function ScanClient() {
         return;
       }
       lastScanRef.current = { token, at: now };
-      submitToken(token);
+      previewToken(token);
     } catch {
       // BarcodeDetector.detect() can throw on decode failures; that's a
       // "nothing found this frame" not an error, so swallow it.
     }
-  }, [submitToken]);
+  }, [previewToken]);
 
   // ---- Camera setup + teardown ----
   //
@@ -273,7 +364,11 @@ export default function ScanClient() {
     };
   }, [phase, scanTick]);
 
-  // ---- Auto-reset the result card after RESULT_HOLD_MS ----
+  // ---- Auto-reset the FINAL result card after RESULT_HOLD_MS ----
+  //
+  // Only auto-resets from the final result card. The preview card requires an
+  // explicit staff decision (Check In or Reject) — never times out on its own,
+  // because timing out a preview would silently drop a guest at the door.
   useEffect(() => {
     if (phase !== 'result') return;
     resultTimerRef.current = setTimeout(() => {
@@ -289,8 +384,18 @@ export default function ScanClient() {
 
   function resetToScanning() {
     setResult(null);
+    setPreview(null);
+    setPendingToken(null);
+    setRejectPicker(false);
+    setRejectNote('');
     setBumpWarning(null);
     setPhase('idle');
+  }
+
+  function cancelPreview() {
+    // Staff scanned by mistake or wants to re-scan the same guest — safe,
+    // because nothing has been written yet.
+    resetToScanning();
   }
 
   // ---- Torch toggle ----
@@ -402,6 +507,27 @@ export default function ScanClient() {
         </div>
       )}
 
+      {/* Preview card: shown after a scan succeeds but BEFORE staff decides.
+          Big photo of the buyer + door decision + Check In / Reject buttons.
+          Nothing has been written to the DB at this point — the pass has NOT
+          been activated and no email has been sent. */}
+      {phase === 'preview' && preview && (
+        <div className="relative z-10 flex-1 flex flex-col justify-end">
+          <PreviewCard
+            preview={preview}
+            rejectPicker={rejectPicker}
+            rejectNote={rejectNote}
+            decisionBusy={decisionBusy}
+            onCheckIn={commitCheckIn}
+            onOpenReject={() => setRejectPicker(true)}
+            onCancelReject={() => setRejectPicker(false)}
+            onReject={commitReject}
+            onRejectNoteChange={setRejectNote}
+            onCancelPreview={cancelPreview}
+          />
+        </div>
+      )}
+
       {/* Result card: fills the screen so it is impossible to miss at arm's
           length. Color-coded green/red/amber; big first-name headline; big
           reason line; big "Next guest" button under the thumb. */}
@@ -442,6 +568,207 @@ export default function ScanClient() {
         </div>
       )}
     </main>
+  );
+}
+
+function PreviewCard({
+  preview,
+  rejectPicker,
+  rejectNote,
+  decisionBusy,
+  onCheckIn,
+  onOpenReject,
+  onCancelReject,
+  onReject,
+  onRejectNoteChange,
+  onCancelPreview,
+}) {
+  const { theme, headline, subhead } = resultTheme(preview);
+  const guestName = preview.guest?.firstName || '';
+  const statusLabel = preview.guest?.statusLabel || null;
+  const expiresLabel = preview.guest?.expiresLabel || null;
+  const hasPhoto = Boolean(preview.guest?.hasPhoto);
+  const photoUrl = preview.guest?.photoSignedUrl || null;
+  const eventTitle = preview.event?.title || null;
+  const isAllowed = preview.result === 'allowed';
+
+  return (
+    <section
+      className="w-full rounded-t-3xl px-6 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] border-t"
+      style={{
+        background: theme.background,
+        borderColor: theme.border,
+        color: theme.foreground,
+      }}
+    >
+      {/* Header row: micro-label + who this pass belongs to */}
+      <div className="text-[13px] font-bold tracking-[0.18em] mb-2 uppercase" style={{ color: theme.accent }}>
+        {headline}
+      </div>
+
+      {/* Big photo + name side-by-side so the operator can compare the face in
+          front of them to the photo on file without moving their eyes. */}
+      <div className="flex gap-4 items-start mb-3">
+        <div
+          className="rounded-2xl overflow-hidden flex-shrink-0 flex items-center justify-center"
+          style={{
+            width: 132,
+            height: 132,
+            background: hasPhoto ? '#000' : 'rgba(0,0,0,0.35)',
+            border: hasPhoto ? `2px solid ${theme.border}` : '2px dashed rgba(217,196,140,0.9)',
+          }}
+        >
+          {hasPhoto && photoUrl ? (
+            <img
+              src={photoUrl}
+              alt="Buyer photo on file"
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          ) : (
+            <div className="text-center px-2">
+              <div
+                className="text-[10px] font-bold tracking-[0.16em] uppercase"
+                style={{ color: '#d9c48c' }}
+              >
+                {'No Photo\nOn File'}
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          {guestName && (
+            <div
+              className="text-[32px] font-extrabold leading-tight mb-1 truncate"
+              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+            >
+              {guestName}
+            </div>
+          )}
+          {subhead && (
+            <div className="text-[15px] font-semibold mb-1" style={{ color: theme.foreground }}>
+              {subhead}
+            </div>
+          )}
+          {(statusLabel || expiresLabel) && (
+            <div className="text-[13px]" style={{ color: theme.mutedForeground }}>
+              {[statusLabel, expiresLabel].filter(Boolean).join(' \u00B7 ')}
+            </div>
+          )}
+          {eventTitle && (
+            <div className="text-[13px] mt-1" style={{ color: theme.mutedForeground }}>
+              {'Tonight: '}{eventTitle}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {!hasPhoto && (
+        <div
+          className="rounded-xl px-4 py-2 mb-3 text-[13px] font-semibold"
+          style={{ background: 'rgba(217,196,140,0.14)', color: '#d9c48c' }}
+        >
+          {'No photo on file. Verify ID before checking in \u2014 or reject with \u201Cno photo on file.\u201D'}
+        </div>
+      )}
+
+      {/* Decision surface. Two paths: the reject picker (reasons) or the
+          normal Check In / Reject buttons. */}
+      {rejectPicker ? (
+        <div>
+          <div className="text-[11px] font-bold tracking-[0.16em] uppercase mb-2" style={{ color: theme.accent }}>
+            Reject reason
+          </div>
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            {REJECT_REASONS.map((r) => (
+              <button
+                key={r.code}
+                type="button"
+                disabled={decisionBusy}
+                onClick={() => onReject(r.code)}
+                className="rounded-xl py-3 text-[14px] font-bold active:scale-[0.98] transition-transform"
+                style={{
+                  background: 'rgba(255,138,138,0.16)',
+                  color: '#ffd6d6',
+                  border: '1px solid rgba(255,138,138,0.35)',
+                  opacity: decisionBusy ? 0.6 : 1,
+                }}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+          <textarea
+            value={rejectNote}
+            onChange={(e) => onRejectNoteChange(e.target.value)}
+            placeholder="Optional note (max 280 chars)"
+            maxLength={280}
+            className="w-full rounded-xl p-3 text-[14px] mb-3"
+            style={{
+              background: 'rgba(0,0,0,0.25)',
+              color: '#f5f5f5',
+              border: '1px solid rgba(255,255,255,0.08)',
+              minHeight: 60,
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+            }}
+          />
+          <button
+            type="button"
+            onClick={onCancelReject}
+            disabled={decisionBusy}
+            className="w-full rounded-2xl py-3 text-[15px] font-bold"
+            style={{
+              background: 'rgba(30,30,30,0.85)',
+              color: '#f5f5f5',
+            }}
+          >
+            Back
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={onCheckIn}
+            disabled={!isAllowed || decisionBusy}
+            className="w-full rounded-2xl py-5 text-[20px] font-extrabold active:scale-[0.98] transition-transform"
+            style={{
+              background: isAllowed ? '#7CFC9B' : 'rgba(124,252,155,0.25)',
+              color: isAllowed ? '#0a2410' : 'rgba(255,255,255,0.5)',
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              opacity: decisionBusy ? 0.6 : 1,
+            }}
+          >
+            {decisionBusy ? 'Working\u2026' : (isAllowed ? 'Check In' : 'Check In (denied)')}
+          </button>
+          <button
+            type="button"
+            onClick={onOpenReject}
+            disabled={decisionBusy}
+            className="w-full rounded-2xl py-4 text-[17px] font-extrabold active:scale-[0.98] transition-transform"
+            style={{
+              background: '#ff8a8a',
+              color: '#2a0a0a',
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              opacity: decisionBusy ? 0.6 : 1,
+            }}
+          >
+            Reject buyer not present
+          </button>
+          <button
+            type="button"
+            onClick={onCancelPreview}
+            disabled={decisionBusy}
+            className="w-full rounded-2xl py-3 text-[14px] font-bold"
+            style={{
+              background: 'rgba(30,30,30,0.85)',
+              color: '#c9c9c9',
+            }}
+          >
+            {'Cancel \u00B7 re-scan'}
+          </button>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -562,6 +889,14 @@ function resultTheme(result) {
       headline: 'Denied · Already used tonight',
       subhead: 'This pass was already scanned in for tonight.',
       theme: amberTheme(),
+    };
+  }
+
+  if (code === 'rejected') {
+    return {
+      headline: 'Rejected · Not this person',
+      subhead: result.reason || 'Rejection logged. Pass was not activated.',
+      theme: redTheme(),
     };
   }
 
