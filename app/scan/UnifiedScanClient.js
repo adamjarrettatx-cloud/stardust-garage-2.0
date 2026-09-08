@@ -76,6 +76,37 @@ export default function UnifiedScanClient() {
   const [notOursMessage, setNotOursMessage] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
 
+  // Event context for ticket scans. Shared with /t/scan via localStorage
+  // so switching between the two scanners on the same device keeps the
+  // same event loaded. Tickets need this at preview; trial passes and
+  // member IDs do NOT.
+  const [events, setEvents] = useState([]);
+  const [eventId, setEventId] = useState('');
+  const [eventPickerOpen, setEventPickerOpen] = useState(false);
+  const [pendingTicketCode, setPendingTicketCode] = useState(null);
+
+  // Load events + restore last-used event from localStorage. Same key as
+  // /t/scan so the two scanners share event context across a single door
+  // shift on the same device.
+  useEffect(() => {
+    fetch('/api/tickets/scanner-events')
+      .then((r) => (r.ok ? r.json() : { events: [] }))
+      .then((d) => setEvents(Array.isArray(d?.events) ? d.events : []))
+      .catch(() => setEvents([]));
+    if (typeof window !== 'undefined') {
+      const stored = window.localStorage.getItem('sdg_scanner_event');
+      if (stored) setEventId(stored);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (eventId) window.localStorage.setItem('sdg_scanner_event', eventId);
+    else window.localStorage.removeItem('sdg_scanner_event');
+  }, [eventId]);
+
+  const activeEvent = events.find((e) => e.id === eventId) || null;
+
   // --- reset back to idle scanning ---
   const resetToIdle = useCallback(() => {
     if (resetTimerRef.current) {
@@ -89,6 +120,7 @@ export default function UnifiedScanClient() {
     setNotOursMessage(null);
     setErrorMessage(null);
     setDecisionBusy(false);
+    setPendingTicketCode(null);
     lastScanRef.current = { payload: null, at: 0 };
     setPhase('idle');
   }, []);
@@ -120,16 +152,20 @@ export default function UnifiedScanClient() {
           body: JSON.stringify({ token: sniff.token, mode: 'preview' }),
         });
       } else if (sniff.kind === 'ticket') {
-        // The ticket scanner endpoint needs an event_id at preview to bind
-        // the scan to the current event. Without one we can still look the
-        // ticket up but not check it in. For the unified scanner we show a
-        // "load an event first" hint if no event is loaded.
-        // For now: emit a not-yet-supported message; PR G+1 will add event
-        // selector to /scan.
-        setNotOursMessage('Ticket QR: use /t/scan for now');
-        setPhase('not_ours');
-        resetTimerRef.current = setTimeout(resetToIdle, 2500);
-        return;
+        if (!eventId) {
+          // Ticket previews need an event_id to bind the scan to. Prompt
+          // staff to pick an event; keep the code around so tapping an
+          // event immediately runs the preview.
+          setPendingTicketCode(sniff.code);
+          setEventPickerOpen(true);
+          setPhase('idle');
+          return;
+        }
+        res = await fetch('/api/tickets/scan', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ code: sniff.code, event_id: eventId, mode: 'preview' }),
+        });
       } else if (sniff.kind === 'ambiguous_token') {
         // Bare 43-char base64url \u2014 same shape as both member and trial-pass
         // tokens. Try member first (more common in-venue).
@@ -164,6 +200,35 @@ export default function UnifiedScanClient() {
 
       setPreview({ kind: normalizePreviewKind(sniff.kind, body), payload: sniff.token || sniff.code, data: body });
       setPhase('preview');
+      setPendingTicketCode(null);
+    } catch (err) {
+      setErrorMessage(err?.message || 'Network error');
+      setPhase('error');
+      resetTimerRef.current = setTimeout(resetToIdle, 3000);
+    }
+  }, [resetToIdle, eventId]);
+
+  // Fire a ticket preview with an event id passed explicitly \u2014 used when
+  // staff picks an event after a ticket QR was scanned. Bypasses the useState
+  // read of `eventId` in the closure of runPreview, which hasn't re-rendered
+  // yet at the moment of the pick.
+  const runPreviewWithExplicitEvent = useCallback(async (code, evId) => {
+    setPhase('scanning');
+    try {
+      const res = await fetch('/api/tickets/scan', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ code, event_id: evId, mode: 'preview' }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setErrorMessage(body?.error || `Preview failed (${res.status})`);
+        setPhase('error');
+        resetTimerRef.current = setTimeout(resetToIdle, 3000);
+        return;
+      }
+      setPreview({ kind: 'ticket', payload: code, data: body });
+      setPhase('preview');
     } catch (err) {
       setErrorMessage(err?.message || 'Network error');
       setPhase('error');
@@ -191,6 +256,17 @@ export default function UnifiedScanClient() {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ token: payload, mode: 'verify' }),
         });
+      } else if (kind === 'ticket') {
+        if (!eventId) {
+          setErrorMessage('No event loaded');
+          setDecisionBusy(false);
+          return;
+        }
+        res = await fetch('/api/tickets/scan', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ code: payload, event_id: eventId, mode: 'checkin' }),
+        });
       } else {
         setErrorMessage('Unknown scan kind on verify');
         setDecisionBusy(false);
@@ -201,7 +277,7 @@ export default function UnifiedScanClient() {
         setErrorMessage(body?.error || `Verify failed (${res.status})`);
         setPhase('error');
       } else {
-        const firstName = body?.member?.firstName || body?.pass?.firstName || 'Guest';
+        const firstName = body?.member?.firstName || body?.pass?.firstName || body?.buyer?.firstName || 'Guest';
         setResult({ kind, ok: true, message: `${firstName} verified` });
         setPhase('result');
       }
@@ -212,7 +288,7 @@ export default function UnifiedScanClient() {
       setDecisionBusy(false);
       resetTimerRef.current = setTimeout(resetToIdle, RESULT_HOLD_MS);
     }
-  }, [preview, decisionBusy, resetToIdle]);
+  }, [preview, decisionBusy, resetToIdle, eventId]);
 
   const commitReject = useCallback(async (reasonCode) => {
     if (!preview || decisionBusy) return;
@@ -232,6 +308,17 @@ export default function UnifiedScanClient() {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ token: payload, mode: 'reject', reject_reason: reasonCode, note: rejectNote || undefined }),
+        });
+      } else if (kind === 'ticket') {
+        if (!eventId) {
+          setErrorMessage('No event loaded');
+          setDecisionBusy(false);
+          return;
+        }
+        res = await fetch('/api/tickets/scan', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ code: payload, event_id: eventId, mode: 'reject', reject_reason: reasonCode, note: rejectNote || undefined }),
         });
       } else {
         setErrorMessage('Unknown scan kind on reject');
@@ -253,7 +340,7 @@ export default function UnifiedScanClient() {
       setDecisionBusy(false);
       resetTimerRef.current = setTimeout(resetToIdle, RESULT_HOLD_MS);
     }
-  }, [preview, decisionBusy, rejectNote, resetToIdle]);
+  }, [preview, decisionBusy, rejectNote, resetToIdle, eventId]);
 
   // --- scan loop ---
   const scanFrame = useCallback(async () => {
@@ -365,7 +452,12 @@ export default function UnifiedScanClient() {
       <video ref={videoRef} style={styles.video} playsInline muted />
 
       <div style={styles.header}>
-        <div style={styles.brand}>SDG DOOR SCANNER</div>
+        <div style={styles.headerRow}>
+          <div style={styles.brand}>SDG DOOR SCANNER</div>
+          <button style={styles.eventChip} onClick={() => setEventPickerOpen(true)}>
+            {activeEvent ? formatEventChip(activeEvent) : 'Pick event'}
+          </button>
+        </div>
         <div style={styles.hint}>{hintForPhase(phase)}</div>
       </div>
 
@@ -393,7 +485,7 @@ export default function UnifiedScanClient() {
 
       {phase === 'preview' && preview && (
         <OverlayCard wide>
-          <PreviewCard preview={preview} />
+          <PreviewCard preview={preview} activeEvent={activeEvent} />
           {!rejectPickerOpen ? (
             <div style={styles.actionRow}>
               <button style={styles.verifyBtn} onClick={commitVerify} disabled={decisionBusy}>
@@ -414,6 +506,30 @@ export default function UnifiedScanClient() {
             />
           )}
         </OverlayCard>
+      )}
+
+      {eventPickerOpen && (
+        <EventPickerOverlay
+          events={events}
+          activeEventId={eventId}
+          onPick={(id) => {
+            setEventId(id);
+            setEventPickerOpen(false);
+            // If a ticket QR was waiting for an event to be picked, run its
+            // preview now.
+            if (pendingTicketCode && id) {
+              const code = pendingTicketCode;
+              setPendingTicketCode(null);
+              // Reset the dedupe so an immediate re-scan of the same code works.
+              lastScanRef.current = { payload: null, at: 0 };
+              // Kick the ticket preview with the freshly-picked event id.
+              runPreviewWithExplicitEvent(code, id);
+            }
+          }}
+          onClear={() => { setEventId(''); setEventPickerOpen(false); }}
+          onCancel={() => setEventPickerOpen(false)}
+          pendingTicketCode={pendingTicketCode}
+        />
       )}
 
       {phase === 'result' && result && (
@@ -440,7 +556,7 @@ function OverlayCard({ children, wide }) {
   );
 }
 
-function PreviewCard({ preview }) {
+function PreviewCard({ preview, activeEvent }) {
   const { kind, data } = preview;
   const person = personFromPreview(kind, data);
   return (
@@ -455,8 +571,14 @@ function PreviewCard({ preview }) {
       </div>
       <div style={styles.name}>{person.fullName || person.firstName || 'Guest'}</div>
       {person.subline && <div style={styles.subline}>{person.subline}</div>}
+      {kind === 'ticket' && activeEvent && (
+        <div style={styles.ticketEventLine}>{activeEvent.title}</div>
+      )}
       {kind === 'member_id' && person.isActive === false && (
         <div style={styles.inactivePill}>MEMBERSHIP INACTIVE</div>
+      )}
+      {kind === 'ticket' && person.isActive === false && (
+        <div style={styles.inactivePill}>NOT VALID</div>
       )}
     </div>
   );
@@ -526,6 +648,23 @@ function personFromPreview(kind, body) {
       subline: 'Trial SDG Pass',
     };
   }
+  if (kind === 'ticket' && body?.buyer) {
+    const b = body.buyer;
+    const sublineBits = ['Ticket'];
+    // Surface non-valid preview results (refunded, wrong_event, used, void)
+    // in the subline so staff sees it before deciding \u2014 the underlying
+    // /api/tickets/scan endpoint returns decision.result at preview.
+    if (body.result && body.result !== 'valid') {
+      sublineBits.push(String(body.result).toUpperCase().replace(/_/g, ' '));
+    }
+    return {
+      fullName: b.displayName,
+      firstName: b.firstName,
+      photoUrl: b.photoSignedUrl || null,
+      subline: sublineBits.join(' \u00b7 '),
+      isActive: !body.result || body.result === 'valid',
+    };
+  }
   return { firstName: 'Guest', photoUrl: null };
 }
 
@@ -544,6 +683,51 @@ function verifyLabelForKind(kind) {
 function labelForReason(kind, code) {
   const list = REJECT_REASONS_BY_KIND[kind] || REJECT_REASONS_BY_KIND.member_id;
   return list.find((r) => r.code === code)?.label || code;
+}
+
+function formatEventChip(evt) {
+  if (!evt) return 'Pick event';
+  const title = (evt.title || 'Event').slice(0, 22);
+  return `\u25CF ${title}`;
+}
+
+function EventPickerOverlay({ events, activeEventId, onPick, onClear, onCancel, pendingTicketCode }) {
+  return (
+    <div style={styles.overlay}>
+      <div style={{ ...styles.card, ...styles.cardWide }}>
+        <div style={styles.pickerHeader}>Pick event for ticket scans</div>
+        {pendingTicketCode && (
+          <div style={styles.pickerHint}>
+            A ticket QR was just scanned. Pick the event it belongs to.
+          </div>
+        )}
+        {events.length === 0 && (
+          <div style={styles.pickerHint}>No upcoming internal-ticketing events.</div>
+        )}
+        <div style={styles.eventList}>
+          {events.map((evt) => (
+            <button
+              key={evt.id}
+              style={{
+                ...styles.eventOption,
+                ...(evt.id === activeEventId ? styles.eventOptionActive : null),
+              }}
+              onClick={() => onPick(evt.id)}
+            >
+              <div style={styles.eventOptionTitle}>{evt.title}</div>
+              <div style={styles.eventOptionMeta}>{evt.event_date}{evt.start_time ? ` \u00b7 ${evt.start_time}` : ''}</div>
+            </button>
+          ))}
+        </div>
+        <div style={styles.pickerActions}>
+          {activeEventId && (
+            <button style={styles.pickerClearBtn} onClick={onClear}>Clear</button>
+          )}
+          <button style={styles.pickerCancelBtn} onClick={onCancel}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function hintForPhase(phase) {
@@ -574,7 +758,33 @@ const styles = {
     background: 'linear-gradient(to bottom, rgba(0,0,0,0.75), rgba(0,0,0,0))',
     display: 'flex', flexDirection: 'column', gap: 4, zIndex: 2,
   },
+  headerRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   brand: { fontSize: 14, letterSpacing: 2, color: '#d9c48c', fontWeight: 600 },
+  eventChip: {
+    padding: '6px 12px', borderRadius: 999, border: '1px solid #333',
+    background: 'rgba(0,0,0,0.5)', color: '#f5f5f5', fontSize: 12, fontFamily: 'inherit',
+    cursor: 'pointer', letterSpacing: 1, fontWeight: 600,
+  },
+  ticketEventLine: { fontSize: 13, color: '#d9c48c', textAlign: 'center', letterSpacing: 1, marginTop: 4 },
+  pickerHeader: { fontSize: 18, fontWeight: 700, color: '#f5f5f5', marginBottom: 12 },
+  pickerHint: { fontSize: 13, color: '#8a8a8a', marginBottom: 12 },
+  eventList: { display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 360, overflowY: 'auto' },
+  eventOption: {
+    padding: '14px 16px', borderRadius: 10, border: '1px solid #333',
+    background: '#0f0f0f', color: '#f5f5f5', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+  },
+  eventOptionActive: { border: '1px solid #d9c48c', background: '#1a1608' },
+  eventOptionTitle: { fontSize: 15, fontWeight: 600 },
+  eventOptionMeta: { fontSize: 12, color: '#8a8a8a', marginTop: 4 },
+  pickerActions: { display: 'flex', gap: 12, marginTop: 16, justifyContent: 'flex-end' },
+  pickerClearBtn: {
+    padding: '10px 16px', borderRadius: 10, border: '1px solid #3a1414',
+    background: 'transparent', color: '#ff8686', fontSize: 14, cursor: 'pointer',
+  },
+  pickerCancelBtn: {
+    padding: '10px 16px', borderRadius: 10, border: '1px solid #333',
+    background: 'transparent', color: '#8a8a8a', fontSize: 14, cursor: 'pointer',
+  },
   hint: { fontSize: 16, color: '#8a8a8a' },
   overlay: {
     position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.65)',
