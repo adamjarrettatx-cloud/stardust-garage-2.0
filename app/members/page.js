@@ -17,7 +17,7 @@ const plans = [
     ],
   },
   {
-    name: 'Cowork',
+    name: 'The Builder',
     slug: 'cowork',
     price: '$155',
     period: '/ month',
@@ -34,8 +34,8 @@ const plans = [
   {
     // NOTE: slug stays 'cowork-party' — renaming would ripple through Stripe,
     // activation, applications, and existing member records. Only the display
-    // name changes from "IYKYK" to "Experience".
-    name: 'Experience',
+    // name changes (previously "IYKYK", then "Experience", now "The Insider").
+    name: 'The Insider',
     slug: 'cowork-party',
     price: '$225',
     period: '/ month',
@@ -43,7 +43,7 @@ const plans = [
     kicker: 'WORKDAYS + WEEKENDS',
     tagline: 'The full Stardust Garage — every hour it’s open.',
     benefits: [
-      'Everything in Cowork',
+      'Everything in The Builder',
       '60% off SDG event tickets',
       'Members-only hours and experiences',
     ],
