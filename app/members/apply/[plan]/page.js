@@ -2,10 +2,10 @@ import { notFound } from 'next/navigation';
 import ApplyForm from './ApplyForm';
 
 const VALID_PLANS = {
-  'cowork': { name: 'Cowork', price: '$155/mo' },
-  // 'cowork-party' is the legacy slug for the tier now marketed as "Experience".
+  'cowork': { name: 'The Builder', price: '$155/mo' },
+  // 'cowork-party' is the legacy slug for the tier now marketed as "The Insider".
   // Slug preserved so existing Stripe prices, applications, and member records keep working.
-  'cowork-party': { name: 'Experience', price: '$225/mo' },
+  'cowork-party': { name: 'The Insider', price: '$225/mo' },
   // TODO(weekender): Stripe price IDs for The Weekender ($48/mo) still need to be created
   // and wired into lib/stripe-prices.js + app/api/stripe/checkout/route.js before this plan
   // can complete a paid checkout. The application form itself will render.
