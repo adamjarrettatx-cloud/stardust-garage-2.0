@@ -126,7 +126,7 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
         for (const p of data.products || []) if (!(p.product_id in next)) next[p.product_id] = 0;
         return next;
       });
-      if (!unlockedAny) setAccessCodeError('That code didn\u2019t unlock anything.');
+      if (!unlockedAny) setAccessCodeError('That code didn’t unlock anything.');
     } catch (err) {
       setAccessCodeError(String(err?.message || err));
     }

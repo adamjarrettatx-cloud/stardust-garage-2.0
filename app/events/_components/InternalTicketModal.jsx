@@ -231,7 +231,7 @@ export default function InternalTicketModal({
 
             {checkingAuth ? (
               <div style={{ padding: '32px 0', textAlign: 'center', color: '#8a8a8a', fontSize: 13 }}>
-                {'Loading\u2026'}
+                Loading…
               </div>
             ) : step === 'gate' ? (
               <AccountGate
@@ -242,7 +242,7 @@ export default function InternalTicketModal({
                 defaultTab={searchParams.get('email') ? 'signin' : 'signup'}
                 prefillEmail={searchParams.get('email') || ''}
                 headline="Sign in to buy tickets"
-                subheadline="Online purchases now require a Stardust account \u2014 takes about 15 seconds. All your tickets live in your account."
+                subheadline="Online purchases now require a Stardust account — takes about 15 seconds. All your tickets live in your account."
                 onSuccess={() => setStep('checkout')}
               />
             ) : (
