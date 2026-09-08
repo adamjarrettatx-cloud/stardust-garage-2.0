@@ -218,7 +218,12 @@ export default function InternalTicketModal({
               </div>
             ) : step === 'gate' ? (
               <AccountGate
-                defaultTab="signup"
+                // Prefill from ?email= on the URL and default to the Sign In
+                // tab when it's present \u2014 the mobile app deep-links here with
+                // the currently signed-in user's email so they don't have to
+                // retype it in the in-app browser.
+                defaultTab={searchParams.get('email') ? 'signin' : 'signup'}
+                prefillEmail={searchParams.get('email') || ''}
                 headline="Sign in to buy tickets"
                 subheadline="Online purchases now require a Stardust account \u2014 takes about 15 seconds. All your tickets live in your account."
                 onSuccess={() => setStep('checkout')}

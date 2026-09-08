@@ -75,17 +75,21 @@ export default function AccountGate({
   defaultTab = 'signup',
   headline = 'Sign in to continue',
   subheadline = null,
+  prefillEmail = '',
 }) {
   const [tab, setTab] = useState(defaultTab === 'signin' ? 'signin' : 'signup');
 
   // Sign-up form state
   const [suName, setSuName] = useState('');
-  const [suEmail, setSuEmail] = useState('');
+  const [suEmail, setSuEmail] = useState(prefillEmail);
   const [suPassword, setSuPassword] = useState('');
   const [suPhone, setSuPhone] = useState('');
 
-  // Sign-in form state
-  const [siEmail, setSiEmail] = useState('');
+  // Sign-in form state. Pre-fill from prop so the mobile app can pass the
+  // signed-in user's email through as ?email=... on the /events/[slug]
+  // deep-link \u2014 saves the buyer one keystroke and hints that they should
+  // sign in with the account they already use in the app.
+  const [siEmail, setSiEmail] = useState(prefillEmail);
   const [siPassword, setSiPassword] = useState('');
 
   const [busy, setBusy] = useState(false);
