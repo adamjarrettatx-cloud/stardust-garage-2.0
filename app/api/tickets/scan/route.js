@@ -68,6 +68,7 @@ export async function POST(request) {
   const rawCode = body?.code;
   const eventId = body?.event_id;
   const deviceLabel = body?.device_label || null;
+  const doorSessionId = typeof body?.door_session_id === 'string' && body.door_session_id ? body.door_session_id : null;
   const wantOverride = body?.override === true;
   const note = body?.note || null;
   const mode = body?.mode && VALID_MODES.has(body.mode) ? body.mode : 'preview';
@@ -128,6 +129,7 @@ export async function POST(request) {
       reject_reason: rejectReason,
       scanned_by: user.id,
       device_label: deviceLabel,
+      door_session_id: doorSessionId,
       note,
     });
     return NextResponse.json({
@@ -153,6 +155,7 @@ export async function POST(request) {
     result: effective,
     scanned_by: user.id,
     device_label: deviceLabel,
+    door_session_id: doorSessionId,
     note,
   });
 
@@ -172,6 +175,7 @@ export async function POST(request) {
         result: CHECKIN_RESULTS.ALREADY_USED,
         scanned_by: user.id,
         device_label: deviceLabel,
+        door_session_id: doorSessionId,
         note: 'lost_race',
       });
       return NextResponse.json({
