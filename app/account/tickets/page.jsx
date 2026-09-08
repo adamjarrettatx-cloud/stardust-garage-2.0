@@ -23,8 +23,10 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/stub';
 import { getWalletOrders, STARDUST_VENUE_ADDRESS } from '@/lib/wallet/get-orders';
 import { renderTicketQrSvg } from '@/lib/tickets/qr';
+import { createProfilePhotoSignedUrl } from '@/lib/profile-photo';
 import TicketsList from './TicketsList';
 import CompleteProfileNudge from './CompleteProfileNudge';
+import WalletPhotoNudge from '@/components/profile-photo/WalletPhotoNudge';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -47,7 +49,11 @@ export default async function AccountTicketsPage() {
     const admin = createAdminClient();
     const [walletRes, freeAccountRes] = await Promise.all([
       getWalletOrders({ supabaseAdmin: admin, user }),
-      admin.from('free_accounts').select('user_id, phone, full_name, phone_verified_at').eq('user_id', user.id).maybeSingle(),
+      admin
+        .from('free_accounts')
+        .select('user_id, phone, full_name, phone_verified_at, profile_photo_path, profile_photo_uploaded_at')
+        .eq('user_id', user.id)
+        .maybeSingle(),
     ]);
     orders = walletRes.orders;
     freeAccount = freeAccountRes.data;
@@ -68,6 +74,17 @@ export default async function AccountTicketsPage() {
   // eventually capture the phone. See /api/free-account/complete-profile-no-verify.
   const needsProfileCompletion = !freeAccount || !freeAccount.phone;
 
+  // Mint a server-side signed URL for the user's own photo (if any) so the
+  // wallet nudge and avatars render immediately without a client fetch.
+  let ownPhotoSignedUrl = null;
+  if (isSupabaseConfigured() && freeAccount?.profile_photo_path) {
+    const admin = createAdminClient();
+    const signed = await createProfilePhotoSignedUrl(admin, freeAccount.profile_photo_path);
+    ownPhotoSignedUrl = signed?.signedUrl || null;
+  }
+  const hasPhoto = !!freeAccount?.profile_photo_path;
+  const hasTickets = ordersWithQrs.length > 0;
+
   return (
     <div>
       {needsProfileCompletion && (
@@ -76,6 +93,12 @@ export default async function AccountTicketsPage() {
           initialPhone={freeAccount?.phone || ''}
         />
       )}
+      <WalletPhotoNudge
+        hasPhoto={hasPhoto}
+        hasTickets={hasTickets}
+        initialSignedUrl={ownPhotoSignedUrl}
+        nameOrEmail={freeAccount?.full_name || user.email || ''}
+      />
       <TicketsList orders={ordersWithQrs} venueAddress={STARDUST_VENUE_ADDRESS} />
     </div>
   );
