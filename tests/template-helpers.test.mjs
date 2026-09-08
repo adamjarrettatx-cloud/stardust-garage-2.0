@@ -6,7 +6,9 @@ import {
   readPdfMeta,
   businessValueText,
   bakeBusinessFields,
+  sanitizeForStandardFont,
 } from '../lib/template-helpers.js';
+import { StandardFonts } from 'pdf-lib';
 import { buildSignNowFields } from '../lib/contract-fields.js';
 
 async function makePdf(pages = [[612, 792]]) {
@@ -55,6 +57,29 @@ test('bakeBusinessFields returns a valid, larger PDF when a value is stamped', a
 test('bakeBusinessFields with no business fields returns a valid PDF', async () => {
   const base = await makePdf();
   const out = await bakeBusinessFields({ pdfBuffer: base, fieldLayout: [], fieldValues: {} });
+  const reloaded = await PDFDocument.load(out);
+  assert.equal(reloaded.getPageCount(), 1);
+});
+
+test('sanitizeForStandardFont maps smart punctuation and drops un-encodable chars', async () => {
+  const pdf = await PDFDocument.create();
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  // Smart quotes / dashes are preserved (WinAnsi can encode them) or mapped to
+  // ASCII; either way the result encodes without throwing.
+  const q = sanitizeForStandardFont(font, 'O’Brien — “VIP”');
+  assert.doesNotThrow(() => font.widthOfTextAtSize(q, 11));
+  // Emoji / CJK are outside the standard font and get dropped, not crash.
+  const e = sanitizeForStandardFont(font, 'Party \u{1F389} 中');
+  assert.doesNotThrow(() => font.widthOfTextAtSize(e, 11));
+  assert.ok(!/\u{1F389}/u.test(e));
+});
+
+test('bakeBusinessFields does not throw on an emoji value (regression)', async () => {
+  const base = await makePdf();
+  const layout = [
+    { id: 'f_a', type: 'text', assigned_to: 'business', page_number: 0, x: 50, y: 700, width: 200, height: 20, required: true },
+  ];
+  const out = await bakeBusinessFields({ pdfBuffer: base, fieldLayout: layout, fieldValues: { f_a: 'Party \u{1F389}' } });
   const reloaded = await PDFDocument.load(out);
   assert.equal(reloaded.getPageCount(), 1);
 });
