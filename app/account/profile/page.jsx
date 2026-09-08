@@ -9,6 +9,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/stub';
+import { createProfilePhotoSignedUrl } from '@/lib/profile-photo';
+import ProfilePhotoSection from './ProfilePhotoSection';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,14 +21,19 @@ export default async function AccountProfilePage() {
   if (!user) return null;
 
   let freeAccount = null;
+  let photoSignedUrl = null;
   if (isSupabaseConfigured()) {
     const admin = createAdminClient();
     const { data } = await admin
       .from('free_accounts')
-      .select('full_name, email, phone, phone_verified_at')
+      .select('full_name, email, phone, phone_verified_at, profile_photo_path, profile_photo_uploaded_at')
       .eq('user_id', user.id)
       .maybeSingle();
     freeAccount = data;
+    if (data?.profile_photo_path) {
+      const signed = await createProfilePhotoSignedUrl(admin, data.profile_photo_path);
+      photoSignedUrl = signed?.signedUrl || null;
+    }
   }
 
   const rows = [
@@ -36,17 +43,22 @@ export default async function AccountProfilePage() {
   ];
 
   return (
-    <div
-      style={{
-        background: '#111',
-        border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: 14,
-        padding: 20,
-      }}
-    >
-      <div style={{ fontSize: 13, color: '#a0a0a0', marginBottom: 16 }}>
-        Your account profile. Editing lands in a follow-up.
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <ProfilePhotoSection
+        initialSignedUrl={photoSignedUrl}
+        nameOrEmail={freeAccount?.full_name || user.email || ''}
+      />
+      <div
+        style={{
+          background: '#111',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 14,
+          padding: 20,
+        }}
+      >
+        <div style={{ fontSize: 13, color: '#a0a0a0', marginBottom: 16 }}>
+          Your account profile. Editing lands in a follow-up.
+        </div>
       <dl style={{ margin: 0 }}>
         {rows.map((r) => (
           <div
@@ -66,6 +78,7 @@ export default async function AccountProfilePage() {
           </div>
         ))}
       </dl>
+      </div>
     </div>
   );
 }
