@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { adminPageGate } from '@/lib/auth-helpers';
+import { resolveMemberPhotoUrls } from '@/lib/member-photo';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import MembersListClient from './MembersListClient';
 
@@ -20,6 +22,18 @@ export default async function AdminMembersPage() {
     .select('*')
     .order('created_at', { ascending: false });
 
+  // Resolve display photos server-side: for rows with profile_photo_path we
+  // mint a short-lived signed URL from the private bucket; legacy rows fall
+  // back to their photo_url. Attaching display_photo_url onto each row keeps
+  // MemberAvatar a dumb client component that just renders whatever URL it's
+  // handed — no admin client, no async work in a client component.
+  const admin = createAdminClient();
+  const photoMap = await resolveMemberPhotoUrls(admin, members || []);
+  const membersWithPhotos = (members || []).map((m) => ({
+    ...m,
+    display_photo_url: photoMap.get(m.id) || null,
+  }));
+
   return (
     <>
       <AuthenticatedPageHeader
@@ -28,7 +42,7 @@ export default async function AdminMembersPage() {
         className="mb-8"
       />
 
-      <MembersListClient members={members || []} />
+      <MembersListClient members={membersWithPhotos} />
     </>
   );
 }

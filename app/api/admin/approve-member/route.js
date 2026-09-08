@@ -127,7 +127,17 @@ export async function POST(request) {
       userId = created.user.id;
     }
 
-    // Create/update member_profiles row
+    // Create/update member_profiles row.
+    //
+    // Photo copying (PR E): applications since PR B.3 write to
+    // `profile_photo_path` in the private profile-photos bucket. Approval
+    // copies that path onto the member row so the admin UI can mint signed
+    // URLs (via lib/member-photo.js) instead of relying on a public URL.
+    //
+    // We also keep the legacy `photo_url` column in sync for backward compat:
+    // pre-PR E code that only reads photo_url still gets something (null for
+    // new rows since ApplyForm now writes photo_url=null; the legacy value
+    // is only present on old applications that existed before PR B.3).
     const { error: profileError } = await supabaseAdmin
       .from('member_profiles')
       .upsert(
@@ -137,6 +147,7 @@ export async function POST(request) {
           full_name: application.full_name,
           email,
           photo_url: application.photo_url,
+          profile_photo_path: application.profile_photo_path || null,
           is_active: false,
         },
         { onConflict: 'user_id' }
