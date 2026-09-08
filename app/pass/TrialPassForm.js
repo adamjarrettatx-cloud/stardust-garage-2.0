@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { qrMatrixToSvg } from '@/lib/qr-code';
+import ProfilePhotoUploader from '@/components/profile-photo/ProfilePhotoUploader';
 
 // The three-question intake form behind the printed QR codes in the venue,
 // the SMS-verification step it turns into, and the success state after that.
@@ -22,8 +23,12 @@ const FIELDS = [
 ];
 
 // Step names, kept in a const so the JSX below reads clean.
+// STEP_PHOTO sits between verify and pass: we require a face photo so door
+// staff can match the person scanning to the pass. See PR C for the scanner
+// UX that enforces this at check-in — this step is the guest-side capture.
 const STEP_FORM = 'form';
 const STEP_VERIFY = 'verify';
+const STEP_PHOTO = 'photo';
 const STEP_PASS = 'pass';
 
 export default function TrialPassForm() {
@@ -35,7 +40,8 @@ export default function TrialPassForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [badField, setBadField] = useState(null);
-  const [pass, setPass] = useState(null); // { passUrl, expiresLabel, emailed, fullName }
+  const [pass, setPass] = useState(null); // { passUrl, expiresLabel, emailed, fullName, token }
+  const [photoSignedUrl, setPhotoSignedUrl] = useState(null);
 
   // Drawn from the returned pass URL, client-side. Light modules stay pure
   // white and dark ones near-black regardless of the page's dark background —
@@ -147,13 +153,85 @@ export default function TrialPassForm() {
         return;
       }
       setPass(body);
-      setStep(STEP_PASS);
+      // Verify succeeded and the pass is minted. Steer the guest into the
+      // photo step next — the pass URL/email is already sent, so if they
+      // bail here they still have their pass, but door staff will bounce
+      // them at check-in without a photo on file (scanner reject reason:
+      // 'no photo on file'). See PR C.
+      setStep(STEP_PHOTO);
     } catch {
       setError('No connection. Check your signal and try again.');
     } finally {
       setSubmitting(false);
     }
   };
+
+  // ---------------------------------------------------------------------
+  // Step 2.5 — face photo capture (required for door check-in)
+  // ---------------------------------------------------------------------
+  // Photo upload uses the pass token as its credential (same model as the
+  // pass page itself: the token IS the auth). We POST to /api/trial-pass/photo
+  // with the token + file. Not wired into the Twilio verify endpoint on
+  // purpose so the Twilio flow stays untouched.
+  const uploadTrialPassPhoto = async (file) => {
+    const form = new FormData();
+    form.append('photo', file, file.name);
+    form.append('token', pass?.token || '');
+    const res = await fetch('/api/trial-pass/photo', { method: 'POST', body: form });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || `Upload failed (${res.status}).`);
+    return { signedUrl: json.signedUrl || null, uploadedAt: json.uploadedAt || null };
+  };
+
+  if (step === STEP_PHOTO && pass) {
+    return (
+      <div className="max-w-[440px] mx-auto">
+        <div className="text-center mb-6">
+          <div
+            className="inline-block text-[10px] font-semibold tracking-[0.2em] px-3.5 py-1.5 rounded-full mb-5"
+            style={{ color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.18)' }}
+          >
+            ONE LAST THING
+          </div>
+          <h1
+            className="text-[28px] md:text-[34px] font-extrabold -tracking-[0.02em] leading-[1.15] mb-3"
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#ffffff' }}
+          >
+            {'Add your face.'}
+          </h1>
+          <p className="text-[14px] leading-[1.6]" style={{ color: 'rgba(255,255,255,0.65)' }}>
+            {'Door staff sees this next to your pass when you scan in. Skipping this means you\u2019ll be turned away at the door.'}
+          </p>
+        </div>
+        <div
+          className="rounded-2xl p-5"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+        >
+          <ProfilePhotoUploader
+            currentSignedUrl={photoSignedUrl}
+            nameOrEmail={pass.fullName || values.fullName}
+            ctaLabel="TAKE PHOTO"
+            helperText="One clear photo of your face. Front camera opens by default on mobile."
+            uploadFn={uploadTrialPassPhoto}
+            onUploaded={(res) => {
+              setPhotoSignedUrl(res?.signedUrl || null);
+              setStep(STEP_PASS);
+            }}
+          />
+        </div>
+        <div className="text-center mt-5">
+          <button
+            type="button"
+            onClick={() => setStep(STEP_PASS)}
+            className="text-[11px] tracking-[0.16em] font-semibold underline"
+            style={{ color: 'rgba(255,255,255,0.45)' }}
+          >
+            {'SKIP FOR NOW (I\u2019LL DO IT BEFORE THE DOOR)'}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // ---------------------------------------------------------------------
   // Step 3 — pass ready

@@ -14,6 +14,8 @@ import {
   isWellFormedPassToken,
   passStatusLabel,
 } from '@/lib/trial-pass';
+import { createProfilePhotoSignedUrl } from '@/lib/profile-photo';
+import PhotoBlock from './PhotoBlock';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -52,7 +54,7 @@ export default async function TrialPassViewPage({ params }) {
   const admin = createAdminClient();
   const { data: pass, error } = await admin
     .from('trial_passes')
-    .select('id, full_name, status, issued_at, expires_at, extended_until, applied_at, converted_at, activated_at, signup_expires_at')
+    .select('id, full_name, status, issued_at, expires_at, extended_until, applied_at, converted_at, activated_at, signup_expires_at, profile_photo_path, profile_photo_uploaded_at')
     .eq('qr_token_hash', hashPassToken(token))
     .maybeSingle();
 
@@ -94,6 +96,14 @@ export default async function TrialPassViewPage({ params }) {
 
   const accent = live ? '#4ade80' : '#ff8a8a';
 
+  // Mint a signed URL for the pass photo (if any) so the client PhotoBlock
+  // renders the current photo without a follow-up fetch.
+  let photoSignedUrl = null;
+  if (pass.profile_photo_path) {
+    const signed = await createProfilePhotoSignedUrl(admin, pass.profile_photo_path);
+    photoSignedUrl = signed?.signedUrl || null;
+  }
+
   return (
     <main className="min-h-screen flex items-center justify-center px-5 py-20">
       <div className="max-w-[420px] w-full mx-auto text-center">
@@ -125,6 +135,14 @@ export default async function TrialPassViewPage({ params }) {
             style={{ background: '#ffffff' }}
             aria-label="Trial SDG Pass QR code"
             dangerouslySetInnerHTML={{ __html: qrSvg }}
+          />
+        ) : null}
+
+        {live ? (
+          <PhotoBlock
+            token={token}
+            initialSignedUrl={photoSignedUrl}
+            nameOrDisplay={pass.full_name || firstName}
           />
         ) : null}
 
