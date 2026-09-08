@@ -9,7 +9,17 @@ import WalletClient from './WalletClient';
 // Server component: gates on auth + feature flag, then resolves the current
 // member's identity token (if any) so the card at the top can render inline
 // without a client-side fetch.
+//
+// Visual language mirrors /account/tickets and /tickets/status: the shell
+// hero uses the site's serif display face (Cormorant Garamond), a champagne
+// overline, and muted subtitle — every child card renders as a variant of
+// the same design system (see WalletClient.jsx for the shared tokens).
 export const dynamic = 'force-dynamic';
+
+const SERIF = "'Cormorant Garamond', 'Cormorant Unicase', 'Moshra Aesthetic', serif";
+const SANS = "'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif";
+const GOLD = '#d9c48c';
+const MUTED = '#8a8a8a';
 
 export default async function WalletPage() {
   if (!isInternalTicketingEnabled()) redirect('/member');
@@ -47,8 +57,56 @@ export default async function WalletPage() {
   }
 
   return (
-    <main style={{ maxWidth: 720, margin: '32px auto', padding: '0 20px' }}>
-      <h1>Your Wallet</h1>
+    <main
+      style={{
+        maxWidth: 880,
+        margin: '0 auto',
+        padding: '40px 20px 80px',
+        color: '#f5f5f5',
+        fontFamily: SANS,
+      }}
+    >
+      {/* Hero — matches the overline + serif display pattern used on
+          /account/tickets and /tickets/status. Kept in the server component
+          so it never flashes an unstyled default heading on slow phones. */}
+      <header style={{ marginBottom: 28 }}>
+        <div
+          style={{
+            fontSize: 11,
+            letterSpacing: '0.28em',
+            color: GOLD,
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            marginBottom: 10,
+          }}
+        >
+          Stardust Garage
+        </div>
+        <h1
+          style={{
+            margin: 0,
+            fontFamily: SERIF,
+            fontWeight: 500,
+            fontSize: 'clamp(36px, 6vw, 52px)',
+            letterSpacing: '-0.01em',
+            lineHeight: 1.05,
+          }}
+        >
+          Your Wallet
+        </h1>
+        <p
+          style={{
+            margin: '10px 0 0',
+            color: MUTED,
+            fontSize: 15,
+            maxWidth: 560,
+            lineHeight: 1.55,
+          }}
+        >
+          Your member badge, saved cards, and every ticket you've picked up. Everything you need at the door lives here.
+        </p>
+      </header>
+
       <MemberIdCard tokenRaw={memberTokenRaw} isActive={memberIsActive} />
       <WalletClient walletEnabled={isMemberWalletEnabled()} />
     </main>
