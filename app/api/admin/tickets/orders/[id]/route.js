@@ -43,7 +43,7 @@ export async function GET(_request, { params }) {
       (await supabaseAdmin.from('tickets').select('id').eq('order_id', id)).data?.map((t) => t.id) || ['00000000-0000-0000-0000-000000000000']
     ),
     supabaseAdmin.from('ticket_audit_log').select('*').eq('order_id', id).order('created_at', { ascending: false }).limit(50),
-    supabaseAdmin.from('events').select('id, title, event_date, start_time').eq('id', order.event_id).maybeSingle(),
+    supabaseAdmin.from('events').select('id, title, event_date, event_time').eq('id', order.event_id).maybeSingle(),
   ]);
 
   return NextResponse.json({

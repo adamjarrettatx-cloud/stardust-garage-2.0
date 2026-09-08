@@ -61,7 +61,7 @@ function formatEventWhen(event) {
   try {
     const d = new Date(`${event.event_date}T00:00:00`);
     const date = d.toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' });
-    return event.start_time ? `${date} \u00B7 ${event.start_time}` : date;
+    return event.event_time ? `${date} \u00B7 ${event.event_time}` : date;
   } catch {
     return event.event_date;
   }

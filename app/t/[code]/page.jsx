@@ -39,7 +39,7 @@ export default async function TicketDetailPage({ params }) {
   }
 
   const [event, item] = await Promise.all([
-    supabaseAdmin.from('events').select('id, title, event_date, start_time').eq('id', ticket.event_id).maybeSingle(),
+    supabaseAdmin.from('events').select('id, title, event_date, event_time').eq('id', ticket.event_id).maybeSingle(),
     supabaseAdmin.from('order_items').select('product_name_snapshot, tier_name_snapshot').eq('id', ticket.order_item_id).maybeSingle(),
   ]);
 
@@ -57,7 +57,7 @@ export default async function TicketDetailPage({ params }) {
       <h1 style={{ fontSize: 22, margin: '8px 0 4px' }}>{event.data?.title || 'Event'}</h1>
       {event.data?.event_date && (
         <div style={{ color: '#666', marginBottom: 16 }}>
-          {event.data.event_date}{event.data.start_time ? ` · ${event.data.start_time}` : ''}
+          {event.data.event_date}{event.data.event_time ? ` · ${event.data.event_time}` : ''}
         </div>
       )}
 
