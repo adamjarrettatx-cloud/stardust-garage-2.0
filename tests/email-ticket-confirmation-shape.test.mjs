@@ -70,9 +70,18 @@ test('sendTicketConfirmation renders the flyer <img> when eventFlyerUrl is provi
     const html = parseSentHtml(calls);
     assert.ok(html.includes('<img src="https://example.com/flyer.jpg"'), 'flyer img tag with the provided URL should appear');
     assert.ok(html.includes('1610 East Cesar Chavez Street'), 'venue address should render under the event line');
-    assert.ok(html.includes('VIEW IN YOUR ACCOUNT'), 'account CTA button should render');
+    // CTA is now cased 'View in your account' and uppercased via CSS.
+    assert.ok(html.includes('View in your account'), 'account CTA button should render');
+    assert.ok(/text-transform:\s*uppercase/i.test(html), 'CTA relies on CSS uppercase, not HTML shouting');
     assert.ok(html.includes('sdgatx.com/account/tickets'), 'CTA button should link to the order URL');
     assert.ok(/Ordered\s+September\s+5,\s+2026/.test(html), 'formatted order date should render');
+    // Cosmos hero + wordmark are baked into a single CID-attached image.
+    assert.ok(html.includes('cid:hero@sdgatx'), 'branded hero image should render via CID');
+    // Dark theme surfaces (matching site).
+    assert.ok(html.includes('#141414'), 'dark card background');
+    assert.ok(html.includes('#f5f5f5'), 'light text color for body');
+    // Display font applied to the event title.
+    assert.ok(/Cormorant Garamond/.test(html), 'event title uses site display font');
   });
 });
 
@@ -90,7 +99,11 @@ test('sendTicketConfirmation attaches one PNG per ticket with a matching cid <im
     });
     const payload = parseSentPayload(calls);
     assert.ok(Array.isArray(payload.attachments), 'payload must include an attachments array');
-    assert.equal(payload.attachments.length, 2, 'one attachment per ticket');
+    // 2 ticket QRs + 1 branded cosmos hero (single PNG for header + wordmark).
+    const qrAttachments = payload.attachments.filter((a) => a.content_id !== 'hero@sdgatx');
+    const heroAttachments = payload.attachments.filter((a) => a.content_id === 'hero@sdgatx');
+    assert.equal(qrAttachments.length, 2, 'one QR attachment per ticket');
+    assert.equal(heroAttachments.length, 1, 'exactly one cosmos hero attachment per email');
     for (const att of payload.attachments) {
       assert.equal(att.content_type, 'image/png');
       assert.ok(att.filename.endsWith('.png'));
@@ -121,8 +134,12 @@ test('sendTicketConfirmation omits the flyer <img> when eventFlyerUrl is missing
       ticketRows: [{ ...baseTicketRow, qrPngBuffer: null }],
     });
     const html = parseSentHtml(calls);
-    assert.ok(!/<img\s+src=/.test(html), 'no img should render when both flyer and QR are omitted');
-    assert.ok(!html.includes('VIEW IN YOUR ACCOUNT'), 'CTA button should NOT render without orderUrl');
+    // The branded cosmos hero image ALWAYS renders (it's the header). The
+    // only imgs we care about here are the flyer and QR — neither should
+    // appear. Assert on those specifically rather than any <img>.
+    assert.ok(!/<img[^>]*src="https:\/\/example\.com\/flyer\.jpg"/.test(html), 'no flyer img when eventFlyerUrl omitted');
+    assert.ok(!/<img[^>]*src="cid:qr-/.test(html), 'no QR img when qrPngBuffer omitted');
+    assert.ok(!html.includes('View in your account'), 'CTA button should NOT render without orderUrl');
     assert.ok(!/Ordered\s+/.test(html), 'no ordered date row when orderDate is omitted');
   });
 });
