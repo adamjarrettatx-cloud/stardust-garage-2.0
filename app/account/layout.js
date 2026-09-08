@@ -20,7 +20,11 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { isSupabaseConfigured } from '@/lib/supabase/stub';
+import { createProfilePhotoSignedUrl } from '@/lib/profile-photo';
 import SignOutButton from './SignOutButton';
+import ProfileAvatar from '@/components/profile-photo/ProfileAvatar';
 
 const TABS = [
   { href: '/account/tickets', label: 'Tickets' },
@@ -54,6 +58,26 @@ export default async function AccountLayout({ children }) {
 
   const pathname = await resolvePathname();
 
+  // Fetch the profile photo (if any) so the signed-in chip shows the
+  // user's avatar. This is one lightweight query — running it in the
+  // shared layout keeps every /account/* page in sync (upload on one
+  // tab reflects on the other after a soft nav / router refresh).
+  let avatarSignedUrl = null;
+  let displayName = '';
+  if (isSupabaseConfigured()) {
+    const admin = createAdminClient();
+    const { data: fa } = await admin
+      .from('free_accounts')
+      .select('full_name, profile_photo_path')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    displayName = fa?.full_name || '';
+    if (fa?.profile_photo_path) {
+      const signed = await createProfilePhotoSignedUrl(admin, fa.profile_photo_path);
+      avatarSignedUrl = signed?.signedUrl || null;
+    }
+  }
+
   return (
     <main style={{ minHeight: '100vh', background: '#0a0a0a', color: '#f5f5f5' }}>
       <div className="max-w-[1100px] mx-auto px-4 md:px-6 pt-8 md:pt-10 pb-16">
@@ -79,9 +103,16 @@ export default async function AccountLayout({ children }) {
             className="mt-3 flex items-center justify-between gap-3 flex-wrap"
             style={{ fontSize: 12, color: '#8a8a8a' }}
           >
-            <div>
-              {'Signed in as '}
-              <span style={{ color: '#e0e0e0' }}>{user.email}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <ProfileAvatar
+                src={avatarSignedUrl}
+                nameOrEmail={displayName || user.email || ''}
+                size={32}
+              />
+              <div>
+                {'Signed in as '}
+                <span style={{ color: '#e0e0e0' }}>{user.email}</span>
+              </div>
             </div>
             <SignOutButton />
           </div>
