@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdminMfa } from '@/lib/auth-helpers';
 import { sendMemberWelcome } from '@/lib/email';
+import {
+  generateMemberIdentityToken,
+  hashMemberIdentityToken,
+} from '@/lib/member-identity';
 
 // POST /api/admin/approve-member
 // Body: { applicationId: string }
@@ -138,7 +142,7 @@ export async function POST(request) {
     // pre-PR E code that only reads photo_url still gets something (null for
     // new rows since ApplyForm now writes photo_url=null; the legacy value
     // is only present on old applications that existed before PR B.3).
-    const { error: profileError } = await supabaseAdmin
+    const { data: profileRow, error: profileError } = await supabaseAdmin
       .from('member_profiles')
       .upsert(
         {
@@ -151,14 +155,38 @@ export async function POST(request) {
           is_active: false,
         },
         { onConflict: 'user_id' }
-      );
+      )
+      .select('id')
+      .single();
 
-    if (profileError) {
+    if (profileError || !profileRow) {
       console.error('Profile upsert failed:', profileError);
       return NextResponse.json(
-        { error: 'Failed to create member profile: ' + profileError.message },
+        { error: 'Failed to create member profile: ' + (profileError?.message || 'no row returned') },
         { status: 500 }
       );
+    }
+
+    // Issue an identity token for the new member (PR F). Idempotent — approving
+    // the same member twice does NOT rotate the token, thanks to the
+    // member_profile_id unique constraint. Failure to issue is logged but does
+    // not fail the approval: the backfill script or a later admin action can
+    // recover, and the member's account still works without a badge QR.
+    try {
+      const rawToken = generateMemberIdentityToken();
+      const tokenHash = hashMemberIdentityToken(rawToken);
+      const { error: tokenError } = await supabaseAdmin
+        .from('member_identity_tokens')
+        .insert({
+          member_profile_id: profileRow.id,
+          token_hash: tokenHash,
+          token_raw: rawToken,
+        });
+      if (tokenError && !/duplicate|unique/i.test(tokenError.message || '')) {
+        console.error('[approve-member.identity-token]', tokenError.message);
+      }
+    } catch (err) {
+      console.error('[approve-member.identity-token]', err?.message || err);
     }
 
     // Mark application approved + account_created
