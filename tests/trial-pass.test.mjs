@@ -63,6 +63,11 @@ function makePass(overrides = {}) {
     converted_at: null,
     reminders_sent: 0,
     full_name: 'Jane Q Doe',
+    // Every legacy allow/deny test was written before the photo gate. The
+    // gate is checked in dedicated tests below (via overrides); the default
+    // fixture represents a compliant pass so unrelated tests keep meaning
+    // what they meant.
+    profile_photo_path: 'trial-pass/fixture/photo.jpg',
     ...overrides,
   };
 }
@@ -83,6 +88,7 @@ function makeUnactivatedPass(overrides = {}) {
     converted_at: null,
     reminders_sent: 0,
     full_name: 'Jane Q Doe',
+    profile_photo_path: 'trial-pass/fixture/photo.jpg',
     ...overrides,
   };
 }
@@ -425,6 +431,65 @@ test('an extended pass gets in during its extra week', () => {
   });
   const sunday = { id: 'e3', event_date: '2026-09-06', category: 'music' };
   assert.equal(evaluateDoorScan({ pass, event: sunday, now: at(34) }).allowed, true);
+});
+
+// --- Photo gate -------------------------------------------------------------
+//
+// The whole photo-verification scanner (PR C/D/#206/#209) assumes the guest
+// has uploaded a photo the operator can compare against. A legacy pass — or
+// one issued while the guest closed the tab before uploading — has no photo,
+// and the door decision must refuse to activate it rather than silently
+// starting the 30-day clock on someone whose face nobody ever verified.
+
+test('a pass with no photo on file is refused at the door', () => {
+  const pass = makeUnactivatedPass({ profile_photo_path: null });
+  const decision = evaluateDoorScan({ pass, event: MUSIC_FRIDAY, now: at(5) });
+  assert.equal(decision.allowed, false);
+  assert.equal(decision.result, DOOR_RESULTS.denied_no_photo);
+  assert.match(decision.reason, /photo/i);
+  assert.match(decision.staffAction, /upload/i);
+});
+
+test('an empty-string profile_photo_path is treated as no photo', () => {
+  const pass = makeUnactivatedPass({ profile_photo_path: '   ' });
+  const decision = evaluateDoorScan({ pass, event: MUSIC_FRIDAY, now: at(5) });
+  assert.equal(decision.result, DOOR_RESULTS.denied_no_photo);
+});
+
+test('expired passes report expired, not no-photo, even without a photo', () => {
+  // Order matters: telling a guest with a dead pass to "upload a selfie" is
+  // a dead end. Expiry takes precedence so staff give the actionable answer.
+  const pass = makePass({ profile_photo_path: null });
+  const decision = evaluateDoorScan({ pass, event: MUSIC_FRIDAY, now: at(40) });
+  assert.equal(decision.result, DOOR_RESULTS.denied_expired);
+});
+
+test('ineligible-event denials report the night, not no-photo', () => {
+  const pass = makePass({ profile_photo_path: null });
+  const wednesday = { id: 'e-wed', event_date: '2026-08-05', category: 'music' };
+  const decision = evaluateDoorScan({ pass, event: wednesday, now: at(4) });
+  assert.equal(decision.result, DOOR_RESULTS.denied_ineligible_event);
+});
+
+test('duplicate-scan takes precedence over the photo gate', () => {
+  // A pass already inside tonight should still get 'duplicate' (not
+  // 'no_photo'), because the honest concern is that the pass is being reused,
+  // not that the row is missing a file.
+  const pass = makePass({ profile_photo_path: null });
+  const decision = evaluateDoorScan({
+    pass,
+    event: MUSIC_FRIDAY,
+    alreadyCheckedIn: true,
+    now: at(5),
+  });
+  assert.equal(decision.result, DOOR_RESULTS.denied_duplicate);
+});
+
+test('a compliant pass with a photo is allowed', () => {
+  const pass = makeUnactivatedPass();
+  const decision = evaluateDoorScan({ pass, event: MUSIC_FRIDAY, now: at(5) });
+  assert.equal(decision.allowed, true);
+  assert.equal(decision.result, DOOR_RESULTS.allowed);
 });
 
 // --- Reminder schedule ------------------------------------------------------
