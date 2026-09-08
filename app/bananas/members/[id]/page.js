@@ -1,6 +1,8 @@
 import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { adminPageGate } from '@/lib/auth-helpers';
+import { resolveMemberPhotoUrl } from '@/lib/member-photo';
 import MemberDetailClient from './MemberDetailClient';
 
 export const revalidate = 0;
@@ -26,6 +28,12 @@ export default async function MemberDetailPage({ params }) {
     .maybeSingle();
 
   if (error || !member) notFound();
+
+  // Resolve display photo: signed URL from private bucket when
+  // profile_photo_path is set, fallback to legacy photo_url. See lib/member-photo.js.
+  const admin = createAdminClient();
+  const displayPhotoUrl = await resolveMemberPhotoUrl(admin, member);
+  const memberForClient = { ...member, display_photo_url: displayPhotoUrl };
 
   const email = (member.email || '').toLowerCase();
 
@@ -101,7 +109,7 @@ export default async function MemberDetailPage({ params }) {
   return (
     <div className="max-w-[900px]">
       <MemberDetailClient
-        member={member}
+        member={memberForClient}
         application={application?.data || null}
         tickets={tickets}
         eventsById={eventsById}

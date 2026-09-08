@@ -29,10 +29,14 @@ function initials(name) {
 }
 
 function Avatar({ application }) {
-  if (application.photo_url) {
+  // Prefer the server-resolved display_photo_url (signed URL from the private
+  // profile-photos bucket when profile_photo_path is set) over the raw
+  // legacy photo_url. See lib/member-photo.js.
+  const src = application.display_photo_url || application.photo_url;
+  if (src) {
     return (
       <img
-        src={application.photo_url}
+        src={src}
         alt={application.full_name}
         className="w-11 h-11 flex-shrink-0 object-cover"
         style={{ borderRadius: '50%', border: '1px solid var(--auth-card-border-strong)' }}
