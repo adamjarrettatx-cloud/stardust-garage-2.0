@@ -80,7 +80,24 @@ export default function InternalTicketModal({
       }
     })();
     return () => { cancelled = true; };
-    // Only fire on mount \u2014 subsequent renders shouldn't re-trigger.
+    // Only fire on mount — subsequent renders shouldn't re-trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Mobile-app deep-link support: when the app sends the user here with
+  // ?buy=1, auto-open the modal on mount so they don't have to tap BUY
+  // TICKETS a second time in the in-app browser. Combined with the
+  // ?email= param the app already sends, the sign-in prefill is one tap
+  // away. Strip ?buy=1 from the URL so back-nav / refresh don't reopen it
+  // in an infinite loop.
+  useEffect(() => {
+    if (searchParams.get('buy') !== '1') return;
+    setOpen(true);
+    const params = new URLSearchParams(Array.from(searchParams.entries()));
+    params.delete('buy');
+    const query = params.toString();
+    router.replace(query ? `?${query}` : '?', { scroll: false });
+    // Only fire on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
