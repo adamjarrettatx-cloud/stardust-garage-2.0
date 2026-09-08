@@ -5,7 +5,13 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
-const ACCEPTED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const ACCEPTED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+
+// Photo is REQUIRED for paid-membership applications as of PR B.3.
+// Door staff match the photo to the person at check-in; without one, the
+// scanner UI (PR C) will refuse the member. Applicants who insist on skipping
+// the photo should be told to come apply at the door in person instead.
+const PHOTO_REQUIRED = true;
 
 export default function ApplyForm({ planSlug, planName, planPrice }) {
   const [submitting, setSubmitting] = useState(false);
@@ -65,38 +71,42 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
       return;
     }
 
+    // Photo is required. Door staff can’t match a face without one, and the
+    // scanner UI will bounce a member with no photo on file.
+    if (PHOTO_REQUIRED && !photoFile) {
+      setError('Please add a face photo. Door staff use it at check-in.');
+      return;
+    }
+
     setSubmitting(true);
     const supabase = createClient();
 
-    // If a photo was selected, upload it to storage first and get a public URL.
-    let photoUrl = null;
+    // Upload photo through the members-apply-photo endpoint. This writes to
+    // the PRIVATE `profile-photos` bucket (not the legacy public
+    // `member-photos` bucket) and returns a server-generated storage path
+    // we submit alongside the application row.
+    let profilePhotoPath = null;
     if (photoFile) {
-      const ext = photoFile.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const sanitized = photoFile.name
-        .replace(/\.[^.]+$/, '')
-        .replace(/[^a-zA-Z0-9-_]/g, '-')
-        .slice(0, 40) || 'photo';
-      const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${sanitized}.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('member-photos')
-        .upload(filename, photoFile, { contentType: photoFile.type });
-
-      if (uploadError) {
+      const uploadForm = new FormData();
+      uploadForm.append('photo', photoFile, photoFile.name);
+      const uploadRes = await fetch('/api/members/apply/photo', {
+        method: 'POST',
+        body: uploadForm,
+      });
+      const uploadJson = await uploadRes.json().catch(() => ({}));
+      if (!uploadRes.ok) {
         setSubmitting(false);
-        setError('Could not upload your photo. Please try again or submit without one.');
+        setError(uploadJson?.error || 'Could not upload your photo. Please try again.');
         return;
       }
-
-      const { data: publicUrlData } = supabase.storage
-        .from('member-photos')
-        .getPublicUrl(filename);
-      photoUrl = publicUrlData?.publicUrl || null;
+      profilePhotoPath = uploadJson?.photoPath || null;
     }
 
     const { error: insertError } = await supabase.from('membership_applications').insert({
       plan: planSlug,
-      photo_url: photoUrl,
+      photo_url: null, // legacy public column, kept nullable for old rows
+      profile_photo_path: profilePhotoPath,
+      profile_photo_uploaded_at: profilePhotoPath ? new Date().toISOString() : null,
       full_name: form.full_name.trim(),
       preferred_name: form.preferred_name.trim() || null,
       email: form.email.trim(),
@@ -317,14 +327,16 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
           </div>
 
           <div>
-            <label className={labelClass} style={labelStyle}>PROFILE PHOTO</label>
+            <label className={labelClass} style={labelStyle}>PROFILE PHOTO *</label>
             <p className="text-[12px] leading-[1.5] mb-3" style={{ color: '#8a8a8a' }}>
-              Optional now, but required if your application is approved. JPG, PNG or WebP, max 5MB.
+              One clear photo of your face. Door staff sees this next to your
+              name at check-in. JPG, PNG, WebP or HEIC, max 5MB.
             </p>
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+              capture="user"
               onChange={handlePhotoChange}
               className="hidden"
             />

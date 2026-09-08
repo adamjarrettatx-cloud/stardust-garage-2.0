@@ -62,7 +62,11 @@ export async function POST(request) {
     }
 
     // A profile photo is mandatory before a member can be approved.
-    if (!application.photo_url) {
+    // As of PR B.3, new applications write to `profile_photo_path` in the
+    // private profile-photos bucket. Legacy rows still have `photo_url`
+    // (public bucket). Either satisfies the approval gate.
+    const hasPhoto = Boolean(application.photo_url) || Boolean(application.profile_photo_path);
+    if (!hasPhoto) {
       return NextResponse.json(
         { error: 'A profile photo is required before approving this member.' },
         { status: 400 }

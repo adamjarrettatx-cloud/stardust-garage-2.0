@@ -1,6 +1,8 @@
 import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { adminPageGate } from '@/lib/auth-helpers';
+import { createProfilePhotoSignedUrl } from '@/lib/profile-photo';
 import ApplicationActions from './ApplicationActions';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
@@ -48,6 +50,19 @@ export default async function ApplicationDetail({ params }) {
 
   if (error || !app) notFound();
 
+  // Prefer the private profile-photos bucket path if set (new PR B.3 flow).
+  // Fall back to the legacy public photo_url for pre-PR B.3 applications.
+  let displayPhotoUrl = app.photo_url || null;
+  let hasPhoto = Boolean(app.photo_url);
+  if (app.profile_photo_path) {
+    const admin = createAdminClient();
+    const signed = await createProfilePhotoSignedUrl(admin, app.profile_photo_path);
+    if (signed?.signedUrl) {
+      displayPhotoUrl = signed.signedUrl;
+      hasPhoto = true;
+    }
+  }
+
   return (
     <div className="max-w-[860px]">
       <AuthenticatedPageHeader
@@ -59,7 +74,7 @@ export default async function ApplicationDetail({ params }) {
 
       <ProfileHeader
         name={app.full_name}
-        photoUrl={app.photo_url}
+        photoUrl={displayPhotoUrl}
         subtitle={app.preferred_name ? `goes by ${app.preferred_name}` : null}
         submittedLabel={`Submitted ${formatDate(app.created_at)}`}
         badges={[
@@ -92,7 +107,7 @@ export default async function ApplicationDetail({ params }) {
         }
       />
 
-      {!app.photo_url && (
+      {!hasPhoto && (
         <div
           className="rounded-[12px] px-5 py-4 mb-4 text-[13px] leading-[1.5]"
           style={{ background: 'var(--auth-warn-bg)', border: '1px solid var(--auth-warn-border)', color: 'var(--auth-warn-strong)' }}
@@ -105,7 +120,7 @@ export default async function ApplicationDetail({ params }) {
         applicationId={app.id}
         currentStatus={app.status || 'new'}
         accountCreated={app.account_created || false}
-        hasPhoto={Boolean(app.photo_url)}
+        hasPhoto={hasPhoto}
       />
 
       <div className="mt-4">

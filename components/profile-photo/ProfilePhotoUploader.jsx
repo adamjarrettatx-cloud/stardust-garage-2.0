@@ -23,7 +23,6 @@
 //     update their own UI without a page refresh.
 
 import { useEffect, useRef, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import ProfileAvatar from './ProfileAvatar';
 
 const MAX_MB = 5;
@@ -36,12 +35,36 @@ const ACCEPTED_MIME = [
   'image/heif',
 ];
 
+// Default uploader: POST multipart to /api/account/profile-photo with the
+// caller's Supabase bearer token. Consumers can override `uploadFn` to
+// swap in a different endpoint (e.g. trial-pass token-authenticated upload).
+async function defaultAccountUpload(file) {
+  // Lazy import so this component can be used without a Supabase client
+  // available (e.g. in the trial-pass token flow which uses `uploadFn`).
+  const { createClient } = await import('@/lib/supabase/client');
+  const supabase = createClient();
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData?.session?.access_token;
+  if (!token) throw new Error('Your session expired. Please sign in again.');
+  const form = new FormData();
+  form.append('photo', file, file.name);
+  const res = await fetch('/api/account/profile-photo', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error || `Upload failed (${res.status}).`);
+  return { signedUrl: json.signedUrl || null, uploadedAt: json.uploadedAt || null };
+}
+
 export default function ProfilePhotoUploader({
   currentSignedUrl = null,
   nameOrEmail = '',
   variant = 'inline',      // 'inline' | 'modal-body'
   ctaLabel = 'UPLOAD PHOTO',
   helperText = 'One clear photo of your face. Door staff sees this next to your ticket at check-in.',
+  uploadFn,                // async (file) => { signedUrl, uploadedAt }
   onUploaded,              // (result: { signedUrl, uploadedAt }) => void
   onError,                 // (message: string) => void
 }) {
@@ -113,31 +136,17 @@ export default function ProfilePhotoUploader({
     setStatus('uploading');
     setMessage('');
     try {
-      const supabase = createClient();
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      if (!token) throw new Error('Your session expired. Please sign in again.');
-
-      const form = new FormData();
-      form.append('photo', pickedFile, pickedFile.name);
-
-      const res = await fetch('/api/account/profile-photo', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: form,
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(json.error || `Upload failed (${res.status}).`);
-      }
+      const result = uploadFn
+        ? await uploadFn(pickedFile)
+        : await defaultAccountUpload(pickedFile);
       setStatus('done');
       setMessage('Photo saved.');
-      setDisplayedSignedUrl(json.signedUrl || null);
+      setDisplayedSignedUrl(result?.signedUrl || null);
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
       setPickedFile(null);
       if (inputRef.current) inputRef.current.value = '';
-      onUploaded?.({ signedUrl: json.signedUrl || null, uploadedAt: json.uploadedAt });
+      onUploaded?.({ signedUrl: result?.signedUrl || null, uploadedAt: result?.uploadedAt || null });
     } catch (err) {
       const msg = err?.message || 'Upload failed. Please try again.';
       setStatus('error');
