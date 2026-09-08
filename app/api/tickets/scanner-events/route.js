@@ -9,11 +9,11 @@ import { isTicketScannerEnabled, isInternalTicketingEnabled } from '@/lib/featur
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request) {
   if (!isInternalTicketingEnabled() || !isTicketScannerEnabled()) {
     return NextResponse.json({ error: 'Scanner disabled' }, { status: 404 });
   }
-  const gate = await requireTeam();
+  const gate = await requireTeam(request);
   if (gate.unauthorized) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const supabaseAdmin = createClient(
