@@ -61,7 +61,7 @@ export async function POST(request) {
     );
   }
 
-  const gate = await requireTeam();
+  const gate = await requireTeam(request);
   if (gate?.unauthorized) {
     return NextResponse.json({ error: 'Not authorized' }, { status: 401 });
   }

@@ -87,7 +87,7 @@ export async function POST(request) {
       );
     }
   } else {
-    const { user, unauthorized } = await requireTeam();
+    const { user, unauthorized } = await requireTeam(request);
     if (unauthorized) {
       return NextResponse.json({ error: 'Unauthorized', code: 'forbidden' }, { status: 401 });
     }

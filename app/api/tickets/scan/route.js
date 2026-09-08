@@ -57,7 +57,7 @@ export async function POST(request) {
     );
   }
 
-  const gate = await requireTeam();
+  const gate = await requireTeam(request);
   if (gate.unauthorized) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { user, isAdmin } = gate;
 
