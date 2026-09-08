@@ -30,7 +30,7 @@ export async function GET() {
 
   const { data } = await supabaseAdmin
     .from('events')
-    .select('id, title, slug, event_date, start_time, status, ticketing_mode')
+    .select('id, title, slug, event_date, event_time, status, ticketing_mode')
     .in('ticketing_mode', ['internal'])
     .gte('event_date', cutoffStr)
     .order('event_date', { ascending: true })
