@@ -78,10 +78,22 @@ export default function EventForm({
   const [eventType, setEventType] = useState(
     event?.event_type === 'private_rental' ? 'private' : 'public'
   );
-  // Visibility: 'public' (shown on the public /events page and member surfaces)
-  // or 'internal' (a "micro party" — known only to admin/team; appears on the
-  // team calendar and admin dashboard but never publicly). Defaults to public.
-  const [isInternal, setIsInternal] = useState(event?.visibility === 'internal');
+  // Visibility has three tiers (see lib/event-visibility.js):
+  //   * 'public'   — shown on the public /events page and member surfaces.
+  //   * 'unlisted' — hidden from every listing, but /events/[slug] renders for
+  //                  anyone with the link. Ticket checkout works. Used for
+  //                  beta tests, invite-only nights, and private venue
+  //                  rentals that still sell tickets through the site.
+  //   * 'internal' — a "micro party" or team-only event: known only to
+  //                  admin/team; appears on the team calendar and admin
+  //                  dashboard but never publicly. Never renders at
+  //                  /events/[slug].
+  // Defaults to public. The form drives all three off a single `visibility`
+  // string so the segmented control below stays a straight 1:1 mirror of the
+  // saved value.
+  const [visibility, setVisibility] = useState(event?.visibility || 'public');
+  const isInternal = visibility === 'internal';
+  const isUnlisted = visibility === 'unlisted';
   // Preserved for round-trip on legacy events; the input was removed and no
   // new event ever sets one via this form.
   const [ticketUrl] = useState(event?.ticket_url || '');
@@ -179,7 +191,10 @@ export default function EventForm({
       // member surfaces but keep all internal capabilities (contracts, SignNow,
       // financials, POS). event_type labels the internal kind; visibility is the
       // access gate the public queries filter on.
-      visibility: isInternal ? 'internal' : 'public',
+      // event_type: 'micro_party' only for the internal tier; unlisted events
+      // are still 'standard' — they behave like normal ticketed events, they
+      // just aren't advertised.
+      visibility,
       event_type: isInternal ? 'micro_party' : 'standard',
       is_sdg_only: isSdgOnly,
       contact_id: isSdgOnly ? null : contactId,
@@ -359,17 +374,20 @@ export default function EventForm({
           <div>
             <label className={labelClass} style={labelStyle}>Visibility</label>
             <Segmented
-              value={isInternal ? 'internal' : 'public'}
-              onChange={(v) => setIsInternal(v === 'internal')}
+              value={visibility}
+              onChange={setVisibility}
               options={[
                 { value: 'public', label: 'Public' },
+                { value: 'unlisted', label: 'Unlisted' },
                 { value: 'internal', label: 'Internal' },
               ]}
             />
             <p className="text-[11px] mt-2" style={helperStyle}>
               {isInternal
-                ? 'Hidden from the public events page — team calendar only.'
-                : 'Shown on the public events page and member surfaces.'}
+                ? 'Hidden from every public surface — team calendar only.'
+                : isUnlisted
+                  ? 'Reachable only by the direct link. Not on /events, /home, or the public calendar.'
+                  : 'Shown on the public events page and member surfaces.'}
             </p>
           </div>
           <div>
@@ -393,6 +411,13 @@ export default function EventForm({
           <p className="text-[11px] mt-4" style={{ color: '#f59e0b' }}>
             Internal event: never appears on the public events page or member surfaces. It still
             supports contracts, SignNow, financials, and POS imports, and shows on the team calendar.
+          </p>
+        )}
+        {isUnlisted && (
+          <p className="text-[11px] mt-4" style={{ color: '#f59e0b' }}>
+            Unlisted event: not on /events, /home, or the public calendar, and search engines are
+            told not to index it. Anyone with the /events/{slug || '[slug]'} link can open the page
+            and buy tickets, so only share the link with people you want at the event.
           </p>
         )}
       </section>

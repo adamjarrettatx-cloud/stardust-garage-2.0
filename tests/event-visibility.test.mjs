@@ -2,11 +2,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   PUBLIC_VISIBILITY,
+  UNLISTED_VISIBILITY,
   INTERNAL_VISIBILITY,
   MICRO_PARTY_TYPE,
   isPublicEvent,
+  isUnlistedEvent,
   isInternalEvent,
   isMicroParty,
+  isReachableByLink,
 } from '../lib/event-visibility.js';
 import { buildEventFinancialSummary } from '../lib/event-financials.js';
 
@@ -67,6 +70,55 @@ test('isInternalEvent / isMicroParty classify correctly', () => {
   const pub = { visibility: 'public', event_type: 'standard' };
   assert.equal(isInternalEvent(pub), false);
   assert.equal(isMicroParty(pub), false);
+});
+
+// ---- Unlisted tier ----------------------------------------------------------
+// Unlisted events must be: (a) excluded from every public LISTING via
+// isPublicEvent, (b) still reachable by direct link via isReachableByLink, and
+// (c) never classified as internal.
+
+test('isUnlistedEvent flags only unlisted events', () => {
+  assert.equal(isUnlistedEvent({ visibility: UNLISTED_VISIBILITY }), true);
+  assert.equal(isUnlistedEvent({ visibility: 'public' }), false);
+  assert.equal(isUnlistedEvent({ visibility: 'internal' }), false);
+  assert.equal(isUnlistedEvent({}), false);
+  assert.equal(isUnlistedEvent(null), false);
+});
+
+test('isPublicEvent excludes unlisted events \u2014 they must not appear on listings', () => {
+  // The whole point of the unlisted tier: it stays out of /events, /home,
+  // and the public calendar. Any regression that leaks an unlisted event
+  // onto a public listing gets caught here.
+  assert.equal(isPublicEvent({ visibility: UNLISTED_VISIBILITY }), false);
+});
+
+test('isReachableByLink allows public AND unlisted events, but not internal or unknown', () => {
+  assert.equal(isReachableByLink({ visibility: 'public' }), true);
+  assert.equal(isReachableByLink({ visibility: 'unlisted' }), true);
+  assert.equal(isReachableByLink({ visibility: 'internal' }), false);
+  assert.equal(isReachableByLink({}), true, 'legacy rows with no visibility default to public');
+  assert.equal(isReachableByLink(null), false);
+});
+
+test('a listing filter by isPublicEvent excludes both internal and unlisted', () => {
+  const rows = [
+    { id: 'pub', visibility: 'public' },
+    { id: 'unl', visibility: 'unlisted' },
+    { id: 'int', visibility: 'internal' },
+    { id: 'legacy' },
+  ];
+  const listed = rows.filter(isPublicEvent).map((e) => e.id);
+  assert.deepEqual(listed, ['pub', 'legacy']);
+});
+
+test('a detail-page gate by isReachableByLink allows public + unlisted only', () => {
+  const rows = [
+    { id: 'pub', visibility: 'public' },
+    { id: 'unl', visibility: 'unlisted' },
+    { id: 'int', visibility: 'internal' },
+  ];
+  const reachable = rows.filter(isReachableByLink).map((e) => e.id);
+  assert.deepEqual(reachable, ['pub', 'unl']);
 });
 
 // ---- Financials with no TicketTailor link/metrics ---------------------------

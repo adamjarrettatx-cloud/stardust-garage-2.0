@@ -506,11 +506,13 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
                     {pub.slice(0, 2).map(evt => {
                       const st = eventStyle(evt, theme);
                       const internal = evt.visibility === 'internal';
+                      const unlisted = evt.visibility === 'unlisted';
                       // Contract stripe applies only to public events; internal
                       // micro-parties never have counterparties, so no stripe.
                       // Non-admins receive an empty list (RLS-scoped server-side)
                       // and therefore see no stripes at all — contract status is
-                      // admin business.
+                      // admin business. Unlisted events CAN have counterparties
+                      // (private rentals) so the stripe still applies to them.
                       const hasSignedContract = !internal && signedContractSet.has(evt.id);
                       const stripeColor = hasSignedContract ? CONTRACT_STRIPE_COLOR[theme] : null;
                       return (
@@ -528,9 +530,11 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
                           style={{ background: st.bg, color: st.color, border: `1px solid ${st.border}` }}
                           title={internal
                             ? `${evt.title} (internal micro party)`
-                            : hasSignedContract
-                              ? `${evt.title} \u2014 ${CONTRACT_STRIPE_LABEL}`
-                              : evt.title}
+                            : unlisted
+                              ? `${evt.title} (unlisted \u2014 link only)`
+                              : hasSignedContract
+                                ? `${evt.title} \u2014 ${CONTRACT_STRIPE_LABEL}`
+                                : evt.title}
                         >
                           {stripeColor && (
                             <span
@@ -545,7 +549,7 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
                               }}
                             />
                           )}
-                          <div className="truncate">{internal ? '🔒' : '★'} {evt.title}</div>
+                          <div className="truncate">{internal ? '🔒' : unlisted ? '🔗' : '★'} {evt.title}</div>
                           {evt.event_time && (
                             <div className="text-[10px] font-normal opacity-90 truncate">{evt.event_time}</div>
                           )}
