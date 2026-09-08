@@ -26,8 +26,18 @@ export async function middleware(request) {
   // the next request looks logged-out — which bounces the visitor to /login
   // out of the blue. See the setAll comment in lib/supabase/server.js.
   const isAccountRoute = pathname === '/account' || pathname.startsWith('/account/');
+  // /events/* also needs the middleware cookie-refresh dance even though
+  // it's publicly viewable, because InternalTicketModal on those pages
+  // calls supabase.auth.getUser() from the client to decide whether to
+  // show the AccountGate. If the access-token cookie went stale between
+  // page loads and the middleware never touched cookies for /events, the
+  // client's getUser() returns null and a signed-in buyer sees "Sign in
+  // to buy tickets" out of nowhere. Same treatment as /account: run
+  // through the createServerClient block below purely so @supabase/ssr
+  // can write refreshed cookies, then early-return before any gating.
+  const isEventsRoute = pathname === '/events' || pathname.startsWith('/events/');
 
-  if (!isAdminRoute && !isTeamRoute && !isMemberRoute && !isCapacityRoute && !isPartnerRoute && !isAccountRoute) {
+  if (!isAdminRoute && !isTeamRoute && !isMemberRoute && !isCapacityRoute && !isPartnerRoute && !isAccountRoute && !isEventsRoute) {
     return NextResponse.next();
   }
 
@@ -114,7 +124,10 @@ export async function middleware(request) {
   // this path — an unauthenticated visitor is fine here (the layout will
   // redirect them, with a proper `next=` for the specific subpath), and role
   // checks below (admin/team/partner) are meaningless for ticket buyers.
-  if (isAccountRoute) {
+  if (isAccountRoute || isEventsRoute) {
+    // Both routes are publicly viewable \u2014 middleware ran only to refresh
+    // the auth cookie for the client-side supabase.auth.getUser() call
+    // that the ticket modal (and /account layout) does. No gating here.
     return supabaseResponse;
   }
 
