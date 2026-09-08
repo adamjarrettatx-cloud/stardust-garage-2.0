@@ -113,6 +113,15 @@ export default function EventsSection({ upcoming, past, metricsByEvent = {} }) {
                       INTERNAL
                     </span>
                   )}
+                  {event.visibility === 'unlisted' && (
+                    <span
+                      className="flex-shrink-0 text-[10px] font-semibold tracking-[0.12em] px-2 py-0.5 rounded-full"
+                      style={{ color: 'var(--auth-accent-text)', background: 'var(--auth-warn)' }}
+                      title="Unlisted — reachable by link only, not on the public events page"
+                    >
+                      UNLISTED
+                    </span>
+                  )}
                 </div>
                 <div className="text-[12px] mt-1" style={{ color: 'var(--auth-faint)' }}>/events/{event.slug}</div>
               </div>

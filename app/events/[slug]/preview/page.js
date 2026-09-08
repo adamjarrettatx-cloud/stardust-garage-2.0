@@ -32,6 +32,7 @@ export default async function EventPreviewPage({ params }) {
 
   const isDraft = event.status === 'draft';
   const isInternal = event.visibility === 'internal';
+  const isUnlisted = event.visibility === 'unlisted';
 
   return (
     <>
@@ -61,7 +62,9 @@ export default async function EventPreviewPage({ params }) {
                 ? 'Draft — only admins can see this.'
                 : isInternal
                   ? 'Internal event — only admins can see this.'
-                  : 'Live event — this is how it looks to visitors.'}
+                  : isUnlisted
+                    ? 'Unlisted event — anyone with the link can see this, but it is not on the public events page.'
+                    : 'Live event — this is how it looks to visitors.'}
             </span>
           </div>
           <Link

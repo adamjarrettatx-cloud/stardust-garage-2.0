@@ -29,6 +29,15 @@ test('linkedEventHref: missing visibility is treated as public', () => {
   assert.equal(linkedEventHref({ id: 'evt-3', slug: 'legacy' }, false), '/events/legacy');
 });
 
+test('linkedEventHref: unlisted events resolve for non-admins \u2014 the URL is the whole point', () => {
+  // Unlisted events render at /events/[slug] for anyone with the link, so a
+  // team member seeing a linked-event marker in chat should get a clickable
+  // link, not the null we'd return for internal events.
+  const unlisted = { ...PUBLIC_EVENT, visibility: 'unlisted' };
+  assert.equal(linkedEventHref(unlisted, false), '/events/summer-social');
+  assert.equal(linkedEventHref(unlisted, true), '/bananas/events/evt-1');
+});
+
 test('linkedEventHref: an unresolved event never produces a link', () => {
   assert.equal(linkedEventHref(null, true), null);
   assert.equal(linkedEventHref(undefined, false), null);
