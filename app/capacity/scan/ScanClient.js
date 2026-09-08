@@ -264,7 +264,7 @@ export default function ScanClient() {
       //    Chromium-based browsers do. Older iPads do not — bail with a clear
       //    message rather than silently loading a 45KB polyfill.
       if (typeof window === 'undefined' || !('BarcodeDetector' in window)) {
-        setCameraErrorMessage('This iPad browser cannot scan QR codes. Update to iPadOS 17 or newer, or use the front-desk laptop.');
+        setCameraErrorMessage('This browser cannot scan QR codes. Update to iPadOS/iOS 17+ or use a Chromium-based browser.');
         setPhase('camera_error');
         return;
       }
