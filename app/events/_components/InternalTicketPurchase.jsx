@@ -17,6 +17,7 @@
 // No secrets. Server enforces price + inventory + code rules.
 
 import { useEffect, useMemo, useState } from 'react';
+import { WaiverGate } from '@/components/waiver/WaiverGate';
 
 function formatMoney(cents, currency = 'usd') {
   if (typeof cents !== 'number' || Number.isNaN(cents)) return '';
@@ -39,6 +40,11 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
   const [quantities, setQuantities] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+
+  // Waiver: fetched from /api/waiver/active on mount; envelope is set by
+  // <WaiverGate /> when the buyer ticks the checkbox. Submit is gated on it.
+  const [waiverPayload, setWaiverPayload] = useState(null);
+  const [waiverState, setWaiverState] = useState(null);
 
   // Access codes the buyer has entered (as raw comma-separated text, split
   // client-side on submit).
@@ -79,6 +85,16 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId]);
+
+  // Fetch the current active waiver payload once on mount.
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/waiver/active', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((data) => { if (!cancelled) setWaiverPayload(data); })
+      .catch(() => { /* soft-fail; buy button stays disabled */ });
+    return () => { cancelled = true; };
+  }, []);
 
   async function applyAccessCodes(e) {
     e?.preventDefault?.();
@@ -200,6 +216,12 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
       return;
     }
 
+    if (!waiverState?.accepted) {
+      setSubmitError('Please read and accept the liability waiver to continue.');
+      setSubmitting(false);
+      return;
+    }
+
     try {
       // Buyer email is no longer sent from the client — the hold route
       // resolves it from the authenticated session (which the AccountGate
@@ -207,6 +229,7 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
       const body = {
         event_id: eventId,
         selections,
+        waiver: waiverState,
       };
       if (appliedAccessCodes.length) body.access_codes = appliedAccessCodes;
       if (discount?.code) body.discount_code = discount.code;
@@ -602,11 +625,20 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
         <div style={{ color: DANGER, fontSize: 13, marginTop: 12 }}>{submitError}</div>
       )}
 
+      {/* Liability waiver — must be accepted on every ticket purchase.
+          Renders full text on-page above the CTA; server re-validates
+          the version + hash and 409s if the client rendered a stale copy. */}
+      {waiverPayload && (
+        <div style={{ marginTop: 16 }}>
+          <WaiverGate waiver={waiverPayload} onChange={setWaiverState} />
+        </div>
+      )}
+
       {/* CTA — same white pill the rest of the event page uses for BUY TICKETS,
           so once you're inside the modal the primary action still reads on-brand. */}
       <button
         type="submit"
-        disabled={preview || submitting || totalQty === 0}
+        disabled={preview || submitting || totalQty === 0 || !waiverState?.accepted}
         style={{
           marginTop: 16,
           width: '100%',
@@ -628,7 +660,9 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
             ? 'STARTING CHECKOUT…'
             : totalQty === 0
               ? 'PICK YOUR TICKETS'
-              : `CHECKOUT · ${formatMoney(totalCents, currency)}`}
+              : !waiverState?.accepted
+                ? 'ACCEPT WAIVER TO CONTINUE'
+                : `CHECKOUT · ${formatMoney(totalCents, currency)}`}
       </button>
 
       <div style={{ fontSize: 11, color: MUTED, marginTop: 10, textAlign: 'center', letterSpacing: '0.03em' }}>

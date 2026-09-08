@@ -8,6 +8,15 @@ import { selectActiveTier, isProductOnSale, computeHoldSnapshot } from '@/lib/ti
 import { generateHoldToken } from '@/lib/tickets/codes';
 import { createTicketCheckoutSession } from '@/lib/tickets/stripe';
 import { findOrCreateStripeCustomer } from '@/lib/stripe/client';
+import { validateAcceptancePayload, recordWaiverAcceptance, evidenceFromRequest }
+  from '@/lib/waiver/accept';
+
+// Waiver gate flag — when true, every hold must carry a validated waiver
+// envelope in the request body OR the request 4xxs before touching
+// inventory or Stripe. During rollout keep this false: acceptances are
+// still recorded when the client sends them, but missing envelopes are
+// not yet fatal.
+const WAIVER_GATE_ENABLED = process.env.WAIVER_GATE_ENABLED === 'true';
 
 // POST /api/tickets/hold
 // Body: {
@@ -89,6 +98,23 @@ export async function POST(request) {
   const discountCodeInput = typeof body?.discount_code === 'string'
     ? body.discount_code.trim().toUpperCase()
     : null;
+  const waiverEnvelope = body?.waiver ?? null;
+
+  // --- Waiver gate --------------------------------------------------------
+  // Validate BEFORE touching inventory or Stripe. If the flag is off and
+  // no envelope was sent, skip — during rollout only. Once flipped on,
+  // every hold must carry a fresh acceptance for the currently-active
+  // waiver version.
+  if (WAIVER_GATE_ENABLED || waiverEnvelope) {
+    try {
+      validateAcceptancePayload(waiverEnvelope, 'ticket');
+    } catch (e) {
+      return NextResponse.json(
+        { error: e.code || 'WAIVER_INVALID', expected: e.expected },
+        { status: e.status || 400 },
+      );
+    }
+  }
 
   if (!eventId || !selections.length) {
     return NextResponse.json({ error: 'Missing event_id or selections' }, { status: 400 });
@@ -365,6 +391,41 @@ export async function POST(request) {
     .from('ticket_holds')
     .update({ tax_cents: snapshot.taxCents || 0 })
     .eq('id', hold.id);
+
+  // --- Record waiver acceptance scoped to this hold ----------------------
+  // Writes AFTER hold + Stripe session are safely in place so a failed
+  // acceptance record does not orphan a Stripe URL the user could complete
+  // without evidence — we roll back the hold + refuse the checkout instead.
+  if (waiverEnvelope) {
+    try {
+      const ev = evidenceFromRequest(request);
+      await recordWaiverAcceptance({
+        source: 'internal_ticket',
+        payload: waiverEnvelope,
+        userId: user.id,
+        buyerEmail,
+        buyerName: memberProfile?.full_name || null,
+        eventId,
+        holdId: hold.id,
+        ...ev,
+      });
+    } catch (e) {
+      console.error('waiver_record_failed', e);
+      // Roll back: release the hold so inventory frees up immediately,
+      // and refuse to hand the buyer a Stripe URL.
+      await supabaseAdmin.rpc('release_ticket_hold', { p_hold_id: hold.id }).catch(() => {});
+      if (discountCode) {
+        await supabaseAdmin
+          .from('ticket_discount_codes')
+          .update({ redemptions_count: discountCode.redemptions_count })
+          .eq('id', discountCode.id);
+      }
+      return NextResponse.json(
+        { error: 'WAIVER_RECORD_FAILED' },
+        { status: 500 },
+      );
+    }
+  }
 
   return NextResponse.json({
     checkout_url: session.url,
