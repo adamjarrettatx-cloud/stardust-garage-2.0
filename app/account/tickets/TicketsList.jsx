@@ -320,61 +320,107 @@ function OrderCard({ order, venueAddress }) {
         flexDirection: 'column',
       }}
     >
-      {/* Thin gold accent bar at the very top of the card — the same signal
-          used on the /tickets/status confirmation page so the wallet reads
-          as a continuation of that flow. */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 3,
-          background: `linear-gradient(90deg, transparent 0%, ${GOLD} 50%, transparent 100%)`,
-          zIndex: 1,
-        }}
-      />
-
-      {event.image_url && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={event.image_url}
-          alt={event.title || ''}
-          style={{
-            width: '100%',
-            height: 200,
-            objectFit: 'cover',
-            display: 'block',
-            background: '#0a0a0a',
-            borderBottom: `1px solid ${HAIRLINE}`,
-          }}
-        />
-      )}
-
-      <div style={{ padding: '28px 24px 22px' }}>
-        {/* Header: serif event title on the left, status pill on the right. */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, marginBottom: 6 }}>
-          <h3
+      {/* FLYER HERO — the ticket IS the flyer. Full-bleed image at its
+          natural aspect, capped so ultra-tall portraits don't dominate the
+          page. Event title + status overlay the bottom of the flyer with
+          a dark gradient scrim so the type is always legible regardless of
+          what the flyer image looks like. If the event has no flyer
+          (should be rare), we fall back to a plain gold-accent header. */}
+      {event.image_url ? (
+        <div style={{ position: 'relative', width: '100%', background: '#0a0a0a' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={event.image_url}
+            alt={event.title || ''}
             style={{
-              fontFamily: SERIF,
-              fontSize: 'clamp(28px, 5vw, 36px)',
-              lineHeight: 1.05,
-              letterSpacing: '-0.01em',
-              margin: 0,
-              color: TEXT,
-              fontWeight: 400,
-              flex: 1,
-              minWidth: 0,
+              width: '100%',
+              maxHeight: 560,
+              objectFit: 'contain',
+              display: 'block',
+              background: '#0a0a0a',
+            }}
+          />
+          {/* Gold hairline strip between flyer and title overlay — echoes
+              the /tickets/status accent. */}
+          <div
+            style={{
+              position: 'absolute',
+              left: 0, right: 0, bottom: 0,
+              paddingTop: 80,
+              paddingBottom: 20,
+              paddingLeft: 24,
+              paddingRight: 24,
+              background: 'linear-gradient(180deg, rgba(10,10,10,0) 0%, rgba(10,10,10,0.75) 55%, rgba(10,10,10,0.95) 100%)',
+              display: 'flex',
+              alignItems: 'flex-end',
+              justifyContent: 'space-between',
+              gap: 14,
             }}
           >
-            {event.title || 'Stardust Garage'}
-          </h3>
-          <div style={{ flexShrink: 0, marginTop: 6 }}>{statusPill(order.status)}</div>
+            <h3
+              style={{
+                fontFamily: SERIF,
+                fontSize: 'clamp(30px, 5.5vw, 42px)',
+                lineHeight: 1.02,
+                letterSpacing: '-0.01em',
+                margin: 0,
+                color: TEXT,
+                fontWeight: 400,
+                flex: 1,
+                minWidth: 0,
+                textShadow: '0 2px 20px rgba(0,0,0,0.6)',
+              }}
+            >
+              {event.title || 'Ticket'}
+            </h3>
+            <div style={{ flexShrink: 0, marginBottom: 4 }}>{statusPill(order.status)}</div>
+          </div>
+          {/* Bottom gold hairline — separates flyer from receipt body. */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 0, left: 0, right: 0,
+              height: 2,
+              background: `linear-gradient(90deg, transparent 0%, ${GOLD} 50%, transparent 100%)`,
+            }}
+          />
         </div>
+      ) : (
+        <div style={{ padding: '28px 24px 0', position: 'relative' }}>
+          <div
+            style={{
+              position: 'absolute',
+              top: 0, left: 0, right: 0,
+              height: 3,
+              background: `linear-gradient(90deg, transparent 0%, ${GOLD} 50%, transparent 100%)`,
+            }}
+          />
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 }}>
+            <h3
+              style={{
+                fontFamily: SERIF,
+                fontSize: 'clamp(28px, 5vw, 36px)',
+                lineHeight: 1.05,
+                letterSpacing: '-0.01em',
+                margin: 0,
+                color: TEXT,
+                fontWeight: 400,
+                flex: 1,
+                minWidth: 0,
+              }}
+            >
+              {event.title || 'Ticket'}
+            </h3>
+            <div style={{ flexShrink: 0, marginTop: 6 }}>{statusPill(order.status)}</div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ padding: '22px 24px' }}>
 
         {/* Compact receipt: date, venue, order ref. Uses the same InfoRow
             pattern as /tickets/status so both pages feel like one system. */}
-        <div style={{ marginTop: 18, marginBottom: 22, borderBottom: `1px solid ${HAIRLINE}` }}>
+        <div style={{ marginBottom: 22, borderBottom: `1px solid ${HAIRLINE}` }}>
           {eventWhen && <InfoRow label="Date" value={eventWhen} />}
           {venueAddress && <InfoRow label="Venue" value={venueAddress} />}
           <InfoRow label="Order" value={`#${order.id.slice(0, 8).toUpperCase()} \u00B7 ${formatOrderDate(order.created_at)}`} />
@@ -506,7 +552,7 @@ function OrderCard({ order, venueAddress }) {
               opacity: resending || !isPaid ? 0.4 : 1,
             }}
           >
-            {resending ? 'Sending\u2026' : 'Resend email'}
+            {resending ? 'Sending\u2026' : 'Send to email'}
           </button>
         </div>
         {resendMsg && (
