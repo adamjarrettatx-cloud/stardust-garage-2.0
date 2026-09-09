@@ -36,10 +36,12 @@ const RANGES = [
   { id: 'all', label: 'All'     },
 ];
 
-// The six lifecycle stages, in journey order. `accent` uses the venue palette
-// (gold for trial, purple for consideration, green for the finish line, red
-// for attention) — no teal/blue, per brand.
+// The seven lifecycle stages, in journey order. `accent` uses the venue
+// palette — silver for the earliest signal (an account, not yet a pass),
+// gold/yellow for trial, purple for consideration, green for the finish
+// line, red for attention. No teal/blue, per brand.
 const STAGES = [
+  { id: 'account',   label: 'Account created',    hint: 'Signed up at /pass, no trial pass yet',  accent: '#d4d4d8' },
   { id: 'ready',     label: 'Trial pass ready',    hint: 'Issued, waiting for first visit',    accent: '#ffb84d' },
   { id: 'visited',   label: 'Visited on trial',    hint: 'Came through the door at least once', accent: '#facc15' },
   { id: 'applied',   label: 'Applied for membership', hint: 'Submitted, waiting on your review', accent: '#c084fc' },
@@ -276,6 +278,10 @@ function StageRow({ row, stage, theme }) {
 // The "one context line" — chosen for each kind so the row is legible at a
 // glance without a header row for every field.
 function StageContext({ row }) {
+  if (row.kind === 'account') {
+    const verified = Boolean(row.phone_verified_at);
+    return <>Signed up {fmtDate(row.created_at)} · {row.age_days}d ago · {verified ? 'phone verified' : 'phone unverified'}</>;
+  }
   if (row.kind === 'trial') {
     if (row.visits > 0) return <>Visited {row.visits}× · last {fmtWhen(row.last_visit)}</>;
     if (row.activated_at) return <>Activated {fmtDate(row.activated_at)} · {row.days_left}d left</>;
@@ -296,6 +302,12 @@ function StageContext({ row }) {
 }
 
 function StageBadge({ row, theme }) {
+  if (row.kind === 'account') {
+    // An account that has sat for a week without redeeming a trial pass is
+    // stalled — the free-account signup is a very short-lived intent signal.
+    if (row.age_days >= 7) return <Pill text={`${row.age_days}d`} bg="#facc1520" border="#facc15" color="#facc15" />;
+    return null;
+  }
   if (row.kind === 'trial') {
     if (typeof row.days_left === 'number' && row.days_left <= 5) {
       return <Pill text={`${row.days_left}d`} bg="#f8717120" border="#f87171" color="#f87171" />;
@@ -364,9 +376,9 @@ function TimeseriesChart({ data, theme }) {
   const pad = { top: 12, right: 12, bottom: 22, left: 30 };
   const innerW = width - pad.left - pad.right;
   const innerH = height - pad.top - pad.bottom;
-  const max = Math.max(1, ...data.map((d) => Math.max(d.passes, d.applications, d.members)));
+  const max = Math.max(1, ...data.map((d) => Math.max(d.accounts || 0, d.passes, d.applications, d.members)));
   const step = innerW / data.length;
-  const barW = Math.max(1, step * 0.28);
+  const barW = Math.max(1, step * 0.21);
 
   const yTick = (v) => pad.top + innerH - (v / max) * innerH;
 
@@ -383,13 +395,18 @@ function TimeseriesChart({ data, theme }) {
       ))}
       {data.map((d, i) => {
         const x = pad.left + i * step + step / 2;
+        // Four bars per day: accounts (silver) → passes (gold) → apps
+        // (purple) → new members (green). Kept in journey order so the
+        // eye reads the drop-off left-to-right within a single day.
         return (
           <g key={d.day}>
-            <rect x={x - barW * 1.5} y={yTick(d.passes)} width={barW}
+            <rect x={x - barW * 2} y={yTick(d.accounts || 0)} width={barW}
+              height={pad.top + innerH - yTick(d.accounts || 0)} fill="#d4d4d8" opacity="0.9" />
+            <rect x={x - barW} y={yTick(d.passes)} width={barW}
               height={pad.top + innerH - yTick(d.passes)} fill="#ffb84d" opacity="0.9" />
-            <rect x={x - barW * 0.5} y={yTick(d.applications)} width={barW}
+            <rect x={x} y={yTick(d.applications)} width={barW}
               height={pad.top + innerH - yTick(d.applications)} fill="#c084fc" opacity="0.9" />
-            <rect x={x + barW * 0.5} y={yTick(d.members)} width={barW}
+            <rect x={x + barW} y={yTick(d.members)} width={barW}
               height={pad.top + innerH - yTick(d.members)} fill="#4ade80" opacity="0.9" />
           </g>
         );
@@ -496,7 +513,8 @@ export default function MembershipHubClient({ initialRange = '30d' }) {
         ) : null}
 
         {/* ------------ KPI strip ------------ */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+          <Kpi theme={theme} label="Accounts created" value={fmtNumber(summary?.total_accounts)} hint={`${fmtNumber(summary?.accounts_awaiting_pass)} awaiting trial pass`} />
           <Kpi theme={theme} label="Trial passes issued" value={fmtNumber(summary?.total_trial_passes)} hint="Lifetime, all sources" />
           <Kpi theme={theme} label="Active paying members" value={fmtNumber(summary?.active_members)} accent="#4ade80" hint="Healthy subscriptions right now" />
           <Kpi theme={theme} label="Monthly recurring" value={fmtCents(summary?.mrr_cents)} accent="#facc15" hint="MRR from healthy subs, in USD" />
@@ -592,6 +610,7 @@ export default function MembershipHubClient({ initialRange = '30d' }) {
         <Card theme={theme}>
           <SectionTitle theme={theme} right={
             <div className="flex items-center gap-3 text-[11px]" style={{ color: theme.muted }}>
+              <LegendDot color="#d4d4d8" label="Accounts" />
               <LegendDot color="#ffb84d" label="Trial passes" />
               <LegendDot color="#c084fc" label="Applications" />
               <LegendDot color="#4ade80" label="New members" />

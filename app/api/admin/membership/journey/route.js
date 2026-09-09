@@ -32,10 +32,16 @@ export const revalidate = 0;
 const SALES_TIME_ZONE = 'America/Chicago';
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// The six lifecycle stages we track, in the order they appear in the hub.
-// Every trial pass and every application/member ends up in exactly one of
-// these based on the ordered rules in `resolveStage()` below.
+// The seven lifecycle stages we track, in the order they appear in the hub.
+// Every account/pass/application/member ends up in exactly one of these based
+// on the ordered rules below.
+//
+// `account` is the earliest stage: a `free_accounts` row exists (user signed
+// up at /pass) but no trial pass has been issued for their user_id yet. As
+// soon as a pass is minted for them (via /api/free-account/redeem-trial),
+// they move to `ready` and are represented by the trial pass row instead.
 const STAGE_ORDER = [
+  'account',      // free_account created, no trial pass issued yet
   'ready',        // trial pass issued, never used at the door
   'visited',      // came through the door on trial, not yet applied
   'applied',      // submitted membership_application, not yet approved
@@ -127,11 +133,11 @@ export async function GET(request) {
 
   // One parallel fan-out. All five queries are RLS-bypassing service-role
   // reads on tables the requireOwner gate already covers.
-  const [passesRes, checkinsRes, appsRes, membersRes] = await Promise.all([
+  const [passesRes, checkinsRes, appsRes, membersRes, accountsRes] = await Promise.all([
     admin
       .from('trial_passes')
       .select(
-        'id, full_name, email, phone, status, signup_source, source, issued_at, expires_at, extended_until, activated_at, signup_expires_at, applied_at, converted_at, phone_verified_at, member_profile_id, application_id, profile_photo_path'
+        'id, full_name, email, phone, status, signup_source, source, issued_at, expires_at, extended_until, activated_at, signup_expires_at, applied_at, converted_at, phone_verified_at, member_profile_id, application_id, profile_photo_path, user_id'
       )
       .order('issued_at', { ascending: false })
       .limit(2000),
@@ -147,7 +153,12 @@ export async function GET(request) {
       .limit(1000),
     admin
       .from('member_profiles')
-      .select('id, full_name, email, is_active, created_at, stripe_customer_id, stripe_subscription_id, subscription_status, subscription_plan, subscription_period, current_period_end, cancel_at_period_end, photo_url, profile_photo_path, application_id, trial_pass_code')
+      .select('id, full_name, email, is_active, created_at, stripe_customer_id, stripe_subscription_id, subscription_status, subscription_plan, subscription_period, current_period_end, cancel_at_period_end, photo_url, profile_photo_path, application_id, trial_pass_code, user_id')
+      .order('created_at', { ascending: false })
+      .limit(2000),
+    admin
+      .from('free_accounts')
+      .select('id, user_id, full_name, email, phone, phone_verified_at, created_at, profile_photo_path')
       .order('created_at', { ascending: false })
       .limit(2000),
   ]);
@@ -158,6 +169,7 @@ export async function GET(request) {
   const checkins  = checkinsRes?.data  || [];
   const apps      = appsRes?.data      || [];
   const members   = membersRes?.data   || [];
+  const accounts  = accountsRes?.data  || [];
 
   // -----------------------------------------------------------------------
   // Derived per-pass helpers (visited? denied? check-in count?)
@@ -193,6 +205,14 @@ export async function GET(request) {
   const memberByAppId  = new Map(members.filter((m) => m.application_id).map((m) => [m.application_id, m]));
   const passByAppId    = new Map(passes.filter((p) => p.application_id).map((p) => [p.application_id, p]));
   const passByMemberId = new Map(passes.filter((p) => p.member_profile_id).map((p) => [p.member_profile_id, p]));
+
+  // Set of user_ids that already own a trial pass, an approved application, or
+  // a member profile — anyone in that set has moved past the `account` stage,
+  // so their free_accounts row should be suppressed from the account column
+  // (they're already represented by a further-along row).
+  const advancedUserIds = new Set();
+  for (const p of passes) if (p.user_id) advancedUserIds.add(p.user_id);
+  for (const m of members) if (m.user_id) advancedUserIds.add(m.user_id);
 
   // -----------------------------------------------------------------------
   // Build each stage's roster
@@ -231,6 +251,15 @@ export async function GET(request) {
     stages.applied.push(shapeApplication(a, passByAppId.get(a.id) || null));
   }
 
+  // Free accounts with no trial pass yet — the earliest stage. Someone typed
+  // their info into /pass, verified their phone, but hasn't redeemed a trial
+  // pass yet. Adam wants to see these so he knows the signup funnel is
+  // producing intent that isn't yet crossing into pass-issued.
+  for (const acc of accounts) {
+    if (advancedUserIds.has(acc.user_id)) continue;
+    stages.account.push(shapeAccount(acc));
+  }
+
   // Trial passes: "visited" and "ready" columns.
   for (const p of passes) {
     // Any pass with applied_at is represented by an application row above (or
@@ -252,6 +281,7 @@ export async function GET(request) {
 
   // Sort each stage most-actionable first (oldest waiting at the top for
   // decision stages, newest first for reference stages).
+  stages.account   .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   stages.ready     .sort((a, b) => new Date(b.issued_at)   - new Date(a.issued_at));
   stages.visited   .sort((a, b) => new Date(b.last_visit || b.issued_at) - new Date(a.last_visit || a.issued_at));
   stages.applied   .sort((a, b) => new Date(a.applied_at || a.created_at) - new Date(b.applied_at || b.created_at));
@@ -267,6 +297,7 @@ export async function GET(request) {
   );
 
   const funnel = [
+    { key: 'account',  label: 'Account created',         count: accounts.length },
     { key: 'ready',    label: 'Trial pass issued',        count: passes.length },
     { key: 'visited',  label: 'Visited at least once',    count: [...new Set(checkins.filter((c) => c.result === 'allowed').map((c) => c.trial_pass_id))].length },
     { key: 'applied',  label: 'Submitted application',    count: passes.filter((p) => p.applied_at).length + apps.filter((a) => !passByAppId.get(a.id)).length },
@@ -335,9 +366,13 @@ export async function GET(request) {
     }
   }
   const daySet = new Set(dayKeys);
-  const timeseries = dayKeys.map((day) => ({ day, passes: 0, applications: 0, members: 0 }));
+  const timeseries = dayKeys.map((day) => ({ day, accounts: 0, passes: 0, applications: 0, members: 0 }));
   const byDayIdx = new Map(timeseries.map((row, i) => [row.day, i]));
 
+  for (const acc of accounts) {
+    const key = austinDayKey(acc.created_at);
+    if (daySet.has(key)) timeseries[byDayIdx.get(key)].accounts++;
+  }
   for (const p of passes) {
     const key = austinDayKey(p.issued_at);
     if (daySet.has(key)) timeseries[byDayIdx.get(key)].passes++;
@@ -392,11 +427,13 @@ export async function GET(request) {
     generated_at: new Date().toISOString(),
     range: range.label,
     summary: {
+      total_accounts: accounts.length,
       total_trial_passes: passes.length,
       active_members: members.filter((m) => m.is_active && stripeBucket(m) === 'healthy').length,
       attention_count: stages.attention.length,
       applications_pending: stages.applied.length,
       approved_pending_signup: stages.approved.length,
+      accounts_awaiting_pass: stages.account.length,
       mrr_cents: mrrCents,
       mrr_dollars: centsToDollars(mrrCents),
     },
@@ -427,6 +464,28 @@ export async function GET(request) {
 // client code doesn't need to know whether the underlying record is a trial
 // pass, an application, or a member.
 // ---------------------------------------------------------------------------
+
+// A free_account row that has NOT yet redeemed a trial pass. Rendered in the
+// leftmost column of the kanban. The `kind: 'account'` marker distinguishes
+// it from a trial-pass row in the client's per-kind context/badge rendering.
+function shapeAccount(acc) {
+  const ageDays = Math.max(0, Math.floor((Date.now() - new Date(acc.created_at)) / DAY_MS));
+  return {
+    kind: 'account',
+    id: acc.id,
+    user_id: acc.user_id,
+    full_name: acc.full_name,
+    email: acc.email,
+    phone: acc.phone,
+    photo_path: acc.profile_photo_path || null,
+    phone_verified_at: acc.phone_verified_at,
+    created_at: acc.created_at,
+    age_days: ageDays,
+    // Free accounts don't have their own admin detail page yet, but the
+    // /pass flow is the canonical place to see what they saw when signing up.
+    href: null,
+  };
+}
 
 function shapeTrialPass(p, { allowedCount, firstCheckin }) {
   const activated = Boolean(p.activated_at);
