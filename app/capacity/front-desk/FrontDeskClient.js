@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { filterRoster, summarizeRoster } from '@/lib/guestlist-checkin';
 import { useCapacity } from '../useCapacity';
@@ -63,6 +64,14 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
   const [sessionError, setSessionError] = useState('');
   const [startPickerOpen, setStartPickerOpen] = useState(false);
   const [confirmEndOpen, setConfirmEndOpen] = useState(false);
+
+  // The Start Event picker shows EVERY upcoming event (include_all=1) — not
+  // just the guest-list ones — so a manager can open a door for an early
+  // check-in or a testing pass. Loaded lazily when the picker opens so we
+  // don't fire an extra request on every page load.
+  const [pickerEvents, setPickerEvents] = useState([]);
+  const [pickerEventsLoading, setPickerEventsLoading] = useState(false);
+  const [pickerEventsError, setPickerEventsError] = useState('');
 
   // Load whatever session is currently open. Runs once at mount and again
   // after every start/end so the bar reflects reality without a full reload.
@@ -529,7 +538,27 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
             activeEvent={activeEvent}
             busy={sessionBusy}
             error={sessionError}
-            onStart={() => { setSessionError(''); setStartPickerOpen(true); }}
+            onStart={() => {
+              setSessionError('');
+              setStartPickerOpen(true);
+              // Lazy-load the wide event list every time the picker opens.
+              // Cheap query, and it means the manager sees an event they
+              // just created in another tab without a page reload.
+              setPickerEventsError('');
+              setPickerEventsLoading(true);
+              fetch('/api/capacity/guestlist/events?include_all=1', { cache: 'no-store' })
+                .then((res) => res.json().then((json) => ({ ok: res.ok, json })))
+                .then(({ ok, json }) => {
+                  if (!ok) {
+                    setPickerEventsError(json?.error || 'Could not load events.');
+                    setPickerEvents([]);
+                  } else {
+                    setPickerEvents(json?.events || []);
+                  }
+                })
+                .catch(() => setPickerEventsError('Network error loading events.'))
+                .finally(() => setPickerEventsLoading(false));
+            }}
             onEnd={() => { setSessionError(''); setConfirmEndOpen(true); }}
           />
           <UnifiedDoorScanner
@@ -543,7 +572,9 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
 
         {startPickerOpen && (
           <StartEventOverlay
-            events={events}
+            events={pickerEvents}
+            loading={pickerEventsLoading}
+            loadError={pickerEventsError}
             busy={sessionBusy}
             errorMessage={sessionError}
             onPick={startDoorSession}
@@ -916,7 +947,23 @@ function DoorSessionBar({ activeSession, activeEvent, busy, error, onStart, onEn
 
 // Full-screen picker \u2014 kept as an overlay (not a select) so the manager can
 // see event dates in a scannable list without hunting the native dropdown UI.
-function StartEventOverlay({ events, busy, errorMessage, onPick, onCancel }) {
+function StartEventOverlay({
+  events,
+  loading = false,
+  loadError = '',
+  busy,
+  errorMessage,
+  onPick,
+  onCancel,
+}) {
+  const [query, setQuery] = useState('');
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? events.filter((e) =>
+        (e.title || '').toLowerCase().includes(q)
+        || (e.event_date || '').toLowerCase().includes(q))
+    : events;
+
   return (
     <OverlayFrame onCancel={onCancel}>
       <div className="text-[11px] font-bold tracking-[0.16em] uppercase mb-2" style={{ color: '#8a8a8a' }}>
@@ -925,13 +972,47 @@ function StartEventOverlay({ events, busy, errorMessage, onPick, onCancel }) {
       <h2 className="text-[22px] font-bold mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
         Which event are you running the door for?
       </h2>
-      {events.length === 0 ? (
+
+      {events.length > 0 && (
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by title or date…"
+          className="w-full mb-3 rounded-xl border px-3 py-2 text-[14px]"
+          style={{
+            background: '#0a0a0a',
+            borderColor: 'rgba(255,255,255,0.15)',
+            color: '#f5f5f5',
+          }}
+          autoFocus
+        />
+      )}
+
+      {loading ? (
+        <div className="text-[13px]" style={{ color: '#8a8a8a' }}>Loading events…</div>
+      ) : loadError ? (
+        <div className="text-[13px]" style={{ color: '#ff8a8a' }}>{loadError}</div>
+      ) : events.length === 0 ? (
+        <div className="rounded-xl border p-4" style={{ borderColor: 'rgba(255,255,255,0.12)', background: '#0a0a0a' }}>
+          <div className="text-[13px] mb-3" style={{ color: '#c9c9c9' }}>
+            No upcoming events on the calendar.
+          </div>
+          <Link
+            href="/bananas/events/new"
+            className="inline-block rounded-full px-4 py-2 text-[12px] font-bold tracking-[0.12em] uppercase"
+            style={{ background: '#7CFC9B', color: '#0a0a0a' }}
+          >
+            Create an event →
+          </Link>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="text-[13px]" style={{ color: '#8a8a8a' }}>
-          No upcoming events found. Create one first, then come back.
+          No events match “{query}”.
         </div>
       ) : (
         <ul className="flex flex-col gap-2 max-h-[50vh] overflow-y-auto">
-          {events.map((evt) => (
+          {filtered.map((evt) => (
             <li key={evt.id}>
               <button
                 type="button"
@@ -951,10 +1032,18 @@ function StartEventOverlay({ events, busy, errorMessage, onPick, onCancel }) {
           ))}
         </ul>
       )}
+
       {errorMessage && (
         <div className="text-[12px] mt-3" style={{ color: '#ff8a8a' }}>{errorMessage}</div>
       )}
-      <div className="flex justify-end mt-4">
+      <div className="flex items-center justify-between mt-4">
+        <Link
+          href="/bananas/events/new"
+          className="text-[12px] font-bold tracking-[0.12em] uppercase"
+          style={{ color: '#7CFC9B' }}
+        >
+          + New event
+        </Link>
         <button
           type="button"
           onClick={onCancel}
