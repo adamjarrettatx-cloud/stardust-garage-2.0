@@ -17,8 +17,9 @@ import {
   isWellFormedPassToken,
   passStatusLabel,
 } from '@/lib/trial-pass';
-import { REJECT_REASONS, isValidRejectReason } from '@/lib/tickets/checkin.js';
+import { REJECT_REASONS, isValidRejectReason, CHECKIN_RESULTS } from '@/lib/tickets/checkin.js';
 import { buildTrialPassPreview } from '@/lib/tickets/trial-pass-preview';
+import { findTrialPassLinkedTicket } from '@/lib/trial-pass-linked-ticket';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -123,7 +124,7 @@ export async function POST(request) {
 
   let { data: pass, error: passError } = await admin
     .from('trial_passes')
-    .select('id, full_name, email, status, issued_at, expires_at, extended_until, applied_at, converted_at, activated_at, signup_expires_at, profile_photo_path')
+    .select('id, full_name, email, status, issued_at, expires_at, extended_until, applied_at, converted_at, activated_at, signup_expires_at, profile_photo_path, member_profile_id')
     .eq('qr_token_hash', hashPassToken(passToken))
     .maybeSingle();
 
@@ -182,6 +183,17 @@ export async function POST(request) {
   // --------------------------------------------------------------------------
   if (mode === 'preview') {
     const preview = await buildTrialPassPreview(admin, pass);
+    // Only surface a linked ticket when the pass decision itself is allowed —
+    // showing "WILL CHECK IN TICKET" alongside a denied pass preview would
+    // be misleading (we won't touch the ticket if we're refusing the pass).
+    const linkedTicket =
+      decision.allowed && eventId
+        ? await findTrialPassLinkedTicket(admin, {
+            passMemberProfileId: pass.member_profile_id || null,
+            passEmail: pass.email || null,
+            eventId,
+          })
+        : { ticket: null, productLabel: null, matchedVia: null, candidateCount: 0 };
     return NextResponse.json({
       ok: decision.allowed,
       mode: 'preview',
@@ -199,6 +211,15 @@ export async function POST(request) {
         photoSignedUrl: preview.photoSignedUrl,
       },
       event: event ? { id: event.id, title: event.title, date: event.event_date } : null,
+      linked_ticket: linkedTicket.ticket
+        ? {
+            ticket_id: linkedTicket.ticket.id,
+            ticket_code: linkedTicket.ticket.ticket_code,
+            product_label: linkedTicket.productLabel,
+            matched_via: linkedTicket.matchedVia,
+            candidate_count: linkedTicket.candidateCount,
+          }
+        : null,
     });
   }
 
@@ -292,7 +313,7 @@ export async function POST(request) {
       })
       .eq('id', pass.id)
       .is('activated_at', null)
-      .select('id, full_name, email, status, issued_at, expires_at, extended_until, applied_at, converted_at, activated_at, signup_expires_at, profile_photo_path')
+      .select('id, full_name, email, status, issued_at, expires_at, extended_until, applied_at, converted_at, activated_at, signup_expires_at, profile_photo_path, member_profile_id')
       .maybeSingle();
     if (activateError) {
       console.error('[door.trial-pass.scan.activate]', activateError);
@@ -374,6 +395,64 @@ export async function POST(request) {
     }
   }
 
+  // --------------------------------------------------------------------------
+  // ONE-SCAN TICKET REDEMPTION
+  //
+  // If the door decision was 'allowed' AND we're scanning for a specific
+  // event AND this pass holder has a paid ticket for that event, redeem it
+  // now. Same guarantees as /api/scan/member-id verify:
+  //
+  //   - Atomic status='valid' race guard so a concurrent scan at another
+  //     door can't double-redeem.
+  //   - Losing the race is not fatal — the pass check-in still succeeds
+  //     and the guest still walks in; the response surfaces
+  //     result='already_used' so the door screen shows that the ticket was
+  //     redeemed elsewhere.
+  //   - No ticket for the event: silent, response.ticket = null, behavior
+  //     is exactly what it was before this feature.
+  // --------------------------------------------------------------------------
+  let ticketOutcome = null;
+  if (decision.allowed && eventId) {
+    const linkedTicket = await findTrialPassLinkedTicket(admin, {
+      passMemberProfileId: pass.member_profile_id || null,
+      passEmail: pass.email || null,
+      eventId,
+    });
+
+    if (linkedTicket.ticket) {
+      const nowIso = new Date().toISOString();
+      const { data: flipped } = await admin
+        .from('tickets')
+        .update({ status: 'used', used_at: nowIso })
+        .eq('id', linkedTicket.ticket.id)
+        .eq('status', 'valid')
+        .select('id')
+        .maybeSingle();
+
+      const chosenResult = flipped ? CHECKIN_RESULTS.VALID : CHECKIN_RESULTS.ALREADY_USED;
+
+      await admin.from('ticket_checkins').insert({
+        ticket_id: linkedTicket.ticket.id,
+        event_id: eventId,
+        ticket_code_attempted: linkedTicket.ticket.ticket_code,
+        result: chosenResult,
+        scanned_by: staffUserId,
+        device_label: device?.id || null,
+        door_session_id: doorSessionId,
+        note: flipped
+          ? `via_trial_pass (matched=${linkedTicket.matchedVia})`
+          : 'via_trial_pass lost_race',
+      });
+
+      ticketOutcome = {
+        result: chosenResult,
+        ticket_id: linkedTicket.ticket.id,
+        product_label: linkedTicket.productLabel,
+        matched_via: linkedTicket.matchedVia,
+      };
+    }
+  }
+
   return NextResponse.json({
     ok: decision.allowed,
     mode: 'checkin',
@@ -387,6 +466,7 @@ export async function POST(request) {
       daysLeft: daysRemaining(pass),
     },
     event: event ? { id: event.id, title: event.title, date: event.event_date } : null,
+    ticket: ticketOutcome,
   });
 }
 

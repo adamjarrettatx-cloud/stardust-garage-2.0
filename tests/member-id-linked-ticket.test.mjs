@@ -112,7 +112,10 @@ test('helper reports how the match happened for audit', () => {
 // ---- UI wiring ----
 
 test('scanner UI shows a linked-ticket pill on member-id preview', () => {
-  assert.match(uiSrc, /kind === 'member_id' && preview\?\.data\?\.linked_ticket/);
+  // After the trial-pass follow-up the guard covers both kinds; the pill
+  // still fires for member_id \u2014 assert that member_id is one of the
+  // covered kinds and that the WILL CHECK IN label is present.
+  assert.match(uiSrc, /kind === 'member_id'[\s\S]{0,80}preview\?\.data\?\.linked_ticket/);
   assert.match(uiSrc, /WILL CHECK IN/);
 });
 
