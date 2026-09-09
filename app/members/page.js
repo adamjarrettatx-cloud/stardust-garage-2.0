@@ -8,12 +8,9 @@ const plans = [
     period: '/ month',
     featured: false,
     kicker: 'FOR THE WEEKEND CROWD',
-    tagline: 'Your ticket to every Music & Party night — for less.',
+    tagline: 'Your entry to music experiences Friday thru Sunday — for less.',
     benefits: [
       '25% off Music & Party tickets, every weekend',
-      'Priority access when shows sell out',
-      'Members-only pre-sale windows',
-      'Cancel anytime',
     ],
   },
   {
@@ -23,7 +20,7 @@ const plans = [
     period: '/ month',
     featured: false,
     kicker: 'FOR THE WORKDAY',
-    tagline: 'For people who do their best work somewhere that isn’t home and isn’t a coffee shop.',
+    tagline: 'For people who do their best work somewhere that isn’t home and that isn’t a traditional coffee shop.',
     benefits: [
       'Cowork access, 8AM – 5PM, Mon–Fri',
       'Gigabit fiber, refreshments, curated room',
@@ -41,11 +38,15 @@ const plans = [
     period: '/ month',
     featured: false,
     kicker: 'WORKDAYS + WEEKENDS',
-    tagline: 'The full Stardust Garage — every hour it’s open.',
+    tagline: 'The true Stardust Garage experience.',
     benefits: [
-      'Everything in The Builder',
-      '60% off SDG event tickets',
-      'Members-only hours and experiences',
+      'Everything in The Builder + The Weekender',
+      'Up to 60% off SDG event tickets',
+      'Insider-only hours and experiences',
+      'The Insider only access line to shows',
+      'Priority access to Space Rentals',
+      'Exclusive Studio Rental Access',
+      'Unlisted benefits',
     ],
   },
 ];
