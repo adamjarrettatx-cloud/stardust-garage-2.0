@@ -28,8 +28,11 @@ export default async function ActivatePage() {
       .eq('id', profile.application_id)
       .maybeSingle();
 
+    // Map application slugs → internal STRIPE_PRICES keys. 'cowork-party' is
+    // the legacy slug that predates the marketing rename → 'iykyk' internally.
     if (app?.plan === 'cowork-party') appliedPlan = 'iykyk';
     else if (app?.plan === 'cowork') appliedPlan = 'cowork';
+    else if (app?.plan === 'weekender') appliedPlan = 'weekender';
   }
 
   return <ActivateClient initialPlan={appliedPlan} />;
