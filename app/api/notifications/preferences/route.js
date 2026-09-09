@@ -47,10 +47,7 @@ export async function GET(request) {
       label: t.label,
       description: t.description,
       category: t.category,
-      // Push toggles are shown in the UI but greyed out with "coming soon"
-      // until Phase 2 wires Expo push. push_available makes that state
-      // explicit for the client.
-      push_available: false,
+      push_available: true,
       channels: effectiveChannels(t.id, prefByType.get(t.id) || null),
     })),
   });

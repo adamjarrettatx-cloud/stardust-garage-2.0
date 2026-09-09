@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdminMfa } from '@/lib/auth-helpers';
 import { sendMemberWelcome } from '@/lib/email';
+import { sendPushToUser } from '@/lib/notifications/send';
 
 // POST /api/admin/approve-member
 // Body: { applicationId: string }
@@ -191,6 +192,17 @@ export async function POST(request) {
         // Don't fail the approval — admin can manually share the password
       }
     }
+
+    // A newly provisioned account will usually have no device token yet; that
+    // is a normal successful no-op at the Edge Function. Existing users who
+    // applied with an account do receive the approval on their registered app.
+    await sendPushToUser({
+      userId,
+      type: 'trial_approved',
+      title: 'Trial approved',
+      body: 'Come by Stardust Garage tonight — your pass is ready',
+      data: { application_id: applicationId, url: '/member' },
+    });
 
     return NextResponse.json({
       ok: true,

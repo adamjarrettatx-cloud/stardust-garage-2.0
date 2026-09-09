@@ -47,7 +47,7 @@ test('checkin mode still uses the atomic status="valid" WHERE guard', () => {
 });
 
 test('team-only gate is still enforced', () => {
-  assert.match(src, /requireTeam\(\)/);
+  assert.match(src, /requireTeam\(/);
   assert.match(src, /gate\.unauthorized/);
 });
 

@@ -253,7 +253,7 @@ export async function POST(request) {
         userId: member.user_id,
         type: 'door_checkin',
         title: 'You\u2019re in',
-        body: 'Welcome to Stardust Garage. Have a beautiful night.',
+        body: 'Welcome to Stardust Garage',
         data: { event_id: eventId, url: '/notifications' },
       });
     }

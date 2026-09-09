@@ -46,10 +46,10 @@ test('sender writes to notifications table', () => {
   assert.match(src, /\.insert\(\{/);
 });
 
-test('sender has Phase 2 push stub with TODO', () => {
+test('sender invokes the versioned send-push Edge Function', () => {
   const src = read('lib/notifications/send.js');
-  assert.match(src, /Phase 2/i);
-  assert.match(src, /TODO/);
+  assert.match(src, /export async function sendPushToUser/);
+  assert.match(src, /functions\.invoke\('send-push'/);
 });
 
 // ---------------------------------------------------------------------------
@@ -128,6 +128,6 @@ test('feed page renders NotificationsClient', () => {
 
 test('settings page renders SettingsClient with per-type toggles', () => {
   const src = read('app/notifications/settings/SettingsClient.js');
-  assert.match(src, /Coming soon/); // push disabled note
+  assert.match(src, /setPref\(t\.id, \{ push: v \}\)/);
   assert.match(src, /Always on/);   // in-app disabled note
 });

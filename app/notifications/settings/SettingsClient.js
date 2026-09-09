@@ -7,7 +7,7 @@ import Link from 'next/link';
 //
 // Per-type notification preferences. In-app is always on \u2014 the toggle is
 // visible but disabled with a small "always on" label so users know why.
-// Push toggles are shown but disabled with a "Coming soon" chip until Phase 2.
+// Push preferences are available once the mobile app has registered a device.
 // Essential types (ticket confirmations, refunds, welcome, etc.) don't appear
 // here at all \u2014 the API filters them out because we always deliver them.
 
@@ -98,8 +98,8 @@ export default function SettingsClient() {
                       <Toggle
                         label="Push"
                         checked={!!t.channels.push}
-                        disabled
-                        note="Coming soon"
+                        onChange={(v) => setPref(t.id, { push: v })}
+                        busy={savingType === t.id}
                       />
                     </div>
                   </li>
