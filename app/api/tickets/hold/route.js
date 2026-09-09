@@ -11,13 +11,12 @@ import { findOrCreateStripeCustomer } from '@/lib/stripe/client';
 import { validateAcceptancePayload, recordWaiverAcceptance, evidenceFromRequest }
   from '@/lib/waiver/accept';
 import { memberSatisfiesTierGate, membershipTierLabel } from '@/lib/membership-tiers';
+import { resolveWaiverGateEnabled } from '@/lib/waiver-gate';
 
-// Waiver gate flag — when true, every hold must carry a validated waiver
-// envelope in the request body OR the request 4xxs before touching
-// inventory or Stripe. During rollout keep this false: acceptances are
-// still recorded when the client sends them, but missing envelopes are
-// not yet fatal.
-const WAIVER_GATE_ENABLED = process.env.WAIVER_GATE_ENABLED === 'true';
+// Waiver gate — fails CLOSED in production. See lib/waiver-gate.js for
+// the full policy + why. Resolved at module load so a request can never
+// mutate the gate mid-flight.
+const WAIVER_GATE_ENABLED = resolveWaiverGateEnabled();
 
 // POST /api/tickets/hold
 // Body: {
@@ -214,11 +213,29 @@ export async function POST(request) {
   }
 
   const now = new Date();
+
+  // SECURITY (H-03): `member_only` must require an ACTIVE member (or a
+  // team member for test-purchase / self-comp — same bypass we grant the
+  // tier gate above). Historically it accepted any row in member_profiles,
+  // including inactive / lapsed accounts, so a cancelled member could
+  // still buy Insider-only tickets.
+  const hasMemberOnlyProduct = products.some((p) => p.member_only);
+  let teamMemberForMemberOnly = null;
+  if (hasMemberOnlyProduct) {
+    const { data: teamRow } = await supabaseAdmin
+      .from('team_members')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    teamMemberForMemberOnly = teamRow || null;
+  }
+  const isActiveMemberForGate = memberProfile?.is_active === true;
+
   for (const p of products) {
     if (!isProductOnSale(p, now)) {
       return NextResponse.json({ error: `Product not on sale: ${p.name}` }, { status: 400 });
     }
-    if (p.member_only && !memberProfile) {
+    if (p.member_only && !isActiveMemberForGate && !teamMemberForMemberOnly) {
       return NextResponse.json({ error: `Members only: ${p.name}` }, { status: 403 });
     }
   }
