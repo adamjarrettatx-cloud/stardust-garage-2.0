@@ -360,7 +360,9 @@ export default function UnifiedDoorScanner({
         ? 'Wave them in.'
         : (json.reason || 'Denied at the door.');
 
-      // Log the activity for the recent panel.
+      // Log the activity for the recent panel + check-in history. photoUrl
+      // is a short-lived signed URL from the preview call; it powers the
+      // photo thumbnails in the chronological check-in list.
       onActivity?.({
         id: preview.activityId,
         kind: preview.source,
@@ -368,6 +370,7 @@ export default function UnifiedDoorScanner({
         detail: buildActivityDetail(preview, json),
         result: admitted ? 'admitted' : (json.result === 'rejected' ? 'rejected' : 'denied'),
         at: Date.now(),
+        photoUrl: preview.photoUrl || null,
       });
 
       showResult({ theme, headline, subhead, name: preview.name, bumpWarning });

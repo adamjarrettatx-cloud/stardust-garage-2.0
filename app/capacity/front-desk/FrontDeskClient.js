@@ -154,8 +154,16 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
   // scans, and member-id verifies all funnel through logActivity() so the
   // panel renders one unified stream sorted newest-first.
   const [recentActivity, setRecentActivity] = useState([]);
+  // Separate, longer-lived buffer for the chronological check-in list under
+  // the trial-pass panel. Only admitted entries land here; denials + rejects
+  // stay in recentActivity (the top-right "Last 5 admits" strip). 50 rows
+  // is enough to cover a full night without pinning render cost.
+  const [checkedInHistory, setCheckedInHistory] = useState([]);
   const logActivity = useCallback((entry) => {
     setRecentActivity((prev) => pushRecentActivity(prev, entry));
+    if (entry?.result === 'admitted') {
+      setCheckedInHistory((prev) => pushRecentActivity(prev, entry, 50));
+    }
   }, []);
 
   // Load event picker once. defaultEventId is tonight's event when there is
@@ -596,24 +604,28 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
             AuthenticatedThemeProvider; wrap the panel in the provider (team
             scope, dark) so we don't have to re-declare its theme here. */}
         <AuthenticatedThemeProvider scope="team">
-          <section
-            className="rounded-2xl border p-5"
-            style={{ background: '#111', borderColor: 'rgba(255,255,255,0.08)' }}
-          >
-            <div className="mb-4">
-              <div className="text-[11px] font-bold tracking-[0.16em] uppercase" style={{ color: '#8a8a8a' }}>
-                Trial Pass · Front-desk override
+          <div className="flex flex-col gap-4">
+            <section
+              className="rounded-2xl border p-4"
+              style={{ background: '#111', borderColor: 'rgba(255,255,255,0.08)' }}
+            >
+              <div className="mb-3">
+                <div className="text-[10px] font-bold tracking-[0.16em] uppercase" style={{ color: '#8a8a8a' }}>
+                  Trial Pass · Override
+                </div>
+                <h2 className="text-[16px] font-bold leading-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                  Issue a Trial SDG Pass
+                </h2>
+                <p className="text-[11px] mt-1 leading-snug" style={{ color: '#8a8a8a' }}>
+                  For guests who can&apos;t receive the SMS code. Bypasses verification and logs you as the issuer.
+                </p>
               </div>
-              <h2 className="text-[20px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                Issue a Trial SDG Pass
-              </h2>
-              <p className="text-[13px] mt-1" style={{ color: '#8a8a8a' }}>
-                For guests who can&apos;t receive the SMS code — dead phone, foreign number,
-                landline. Creates a pass without the code step and records that you did it.
-              </p>
-            </div>
-            <ManualTrialPassForm createdByEmail={staffEmail} />
-          </section>
+              <ManualTrialPassForm createdByEmail={staffEmail} compact />
+            </section>
+
+            {/* Chronological check-in list — photo + name + kind + time. */}
+            <CheckedInListPanel entries={checkedInHistory} />
+          </div>
         </AuthenticatedThemeProvider>
       </div>
 
@@ -832,6 +844,108 @@ function RecentActivityRow({ entry }) {
   );
 }
 
+// Chronological check-in list (newest first) rendered under the trial-pass
+// panel. Photo thumbnails come from the short-lived signed URL captured on
+// the preview call; if none is available (guest-list check-ins or a scan
+// with no photo on file) we fall back to a monogram avatar so the row still
+// reads at a glance. Only entries with result === 'admitted' land here.
+function CheckedInListPanel({ entries }) {
+  return (
+    <section
+      className="rounded-2xl border"
+      style={{ background: '#111', borderColor: 'rgba(255,255,255,0.08)' }}
+    >
+      <div
+        className="px-4 py-3 border-b flex items-baseline justify-between gap-2"
+        style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+      >
+        <div>
+          <div className="text-[10px] font-bold tracking-[0.16em] uppercase" style={{ color: '#8a8a8a' }}>
+            Tonight
+          </div>
+          <h3 className="text-[14px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            Checked in
+          </h3>
+        </div>
+        <div className="text-[11px] tabular-nums" style={{ color: '#8a8a8a' }}>
+          {entries.length}
+        </div>
+      </div>
+      {entries.length === 0 ? (
+        <div className="px-4 py-8 text-center text-[12px]" style={{ color: '#8a8a8a' }}>
+          Nobody in yet.
+        </div>
+      ) : (
+        <ul
+          className="divide-y overflow-y-auto"
+          style={{ borderColor: 'rgba(255,255,255,0.05)', maxHeight: 380 }}
+        >
+          {entries.map((e) => (
+            <CheckedInRow key={e.at + ':' + e.id} entry={e} />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function monogram(name) {
+  if (!name) return '?';
+  const parts = String(name).trim().split(/\s+/).slice(0, 2);
+  return parts.map((p) => p[0]?.toUpperCase() || '').join('') || '?';
+}
+
+function CheckedInRow({ entry }) {
+  const initials = monogram(entry.name);
+  return (
+    <li
+      className="px-4 py-2.5 flex items-center gap-3"
+      style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+    >
+      {entry.photoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={entry.photoUrl}
+          alt=""
+          className="w-10 h-10 rounded-full object-cover shrink-0"
+          style={{ background: '#000', border: '1px solid rgba(255,255,255,0.1)' }}
+        />
+      ) : (
+        <div
+          className="w-10 h-10 rounded-full shrink-0 flex items-center justify-center text-[11px] font-bold tracking-[0.05em]"
+          style={{
+            background: 'rgba(217,196,140,0.15)',
+            color: '#d9c48c',
+            border: '1px solid rgba(217,196,140,0.3)',
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+          }}
+          aria-hidden
+        >
+          {initials}
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <div
+          className="text-[13px] font-bold truncate leading-tight"
+          style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+        >
+          {entry.name}
+        </div>
+        <div className="text-[10px] mt-0.5 truncate" style={{ color: '#8a8a8a' }}>
+          {KIND_LABEL[entry.kind] || 'Door'}
+          {entry.detail ? ` · ${entry.detail}` : ''}
+        </div>
+      </div>
+      <div
+        className="text-[10px] tabular-nums shrink-0"
+        style={{ color: '#8a8a8a' }}
+      >
+        {formatActivityTime(entry.at)}
+      </div>
+    </li>
+  );
+}
+
 function EmptyState({ title, body }) {
   return (
     <div className="text-center py-10 px-4">
@@ -885,19 +999,19 @@ function DoorSessionBar({ activeSession, activeEvent, busy, error, onStart, onEn
       : '';
     return (
       <section
-        className="rounded-2xl border p-4 flex items-center gap-4"
+        className="rounded-2xl border p-3 flex items-center gap-3"
         style={{ background: 'rgba(124,252,155,0.06)', borderColor: 'rgba(124,252,155,0.35)' }}
       >
         <div className="flex-1 min-w-0">
-          <div className="text-[11px] font-bold tracking-[0.16em] uppercase" style={{ color: '#7CFC9B' }}>
+          <div className="text-[10px] font-bold tracking-[0.16em] uppercase" style={{ color: '#7CFC9B' }}>
             Event running
           </div>
-          <div className="text-[16px] font-bold truncate" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+          <div className="text-[15px] font-bold truncate leading-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             {eventTitle}
           </div>
           {opened && (
-            <div className="text-[12px]" style={{ color: '#8a8a8a' }}>
-              Opened at {opened}. Scanning tickets, members, and trial passes against this event.
+            <div className="text-[11px]" style={{ color: '#8a8a8a' }}>
+              Opened {opened}
             </div>
           )}
           {error && (
