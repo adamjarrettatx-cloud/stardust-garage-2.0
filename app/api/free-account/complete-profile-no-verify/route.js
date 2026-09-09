@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { sendGuestAccountWelcomeOnce } from '@/lib/free-account/send-welcome';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -70,6 +71,16 @@ export async function POST(request) {
     console.error('[free-account.complete-profile-no-verify.profile]', profileError);
     return NextResponse.json({ error: 'Could not save profile.' }, { status: 500 });
   }
+
+  // Guest-account welcome email. Same idempotent helper as the other three
+  // account-creation routes — first successful completion for this OAuth
+  // identity wins the send; every subsequent completion is suppressed.
+  await sendGuestAccountWelcomeOnce({
+    admin,
+    userId: user.id,
+    email: user.email,
+    fullName,
+  });
 
   return NextResponse.json({ ok: true });
 }

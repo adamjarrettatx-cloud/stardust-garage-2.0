@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/stub';
 import { validateTrialPassIntake } from '@/lib/trial-pass';
 import { checkVerification, isTwilioVerifyConfigured } from '@/lib/twilio-verify';
+import { sendGuestAccountWelcomeOnce } from '@/lib/free-account/send-welcome';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -128,6 +129,17 @@ export async function POST(request) {
     console.error('[free-account.verify.check.profile]', profileError);
     return NextResponse.json({ error: 'Could not save profile.' }, { status: 500 });
   }
+
+  // Guest-account welcome email. Same idempotent helper as the other
+  // account-creation routes — the reconnect branch above (existing user with
+  // matching email) will hit the already_sent short-circuit and not re-mail.
+  // Non-fatal: the account and phone verification are already committed.
+  await sendGuestAccountWelcomeOnce({
+    admin,
+    userId,
+    email: data.email_canonical || data.email,
+    fullName: data.full_name,
+  });
 
   return NextResponse.json({ ok: true, userId });
 }
