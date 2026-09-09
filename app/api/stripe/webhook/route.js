@@ -8,6 +8,7 @@ import {
   getDiscountPercent,
 } from '@/lib/discountCodeUtils';
 import { membershipPaymentFailedPush, membershipPushForTransition, sendPush } from '@/lib/push';
+import { sendPushToUser } from '@/lib/notifications/send';
 import { isTicketFlowEvent, handleTicketFlowEvent } from '@/lib/tickets/webhook-handlers';
 
 // POST /api/stripe/webhook
@@ -284,7 +285,7 @@ export async function POST(request) {
         next: { ...profile, ...updates },
       });
 
-      return { profileId: profile.id, isActive, push };
+      return { profileId: profile.id, userId: profile.user_id, isActive, push };
     }
 
     // If a member becomes active during this event, we capture their profile id
@@ -312,7 +313,7 @@ export async function POST(request) {
             const subscription = await subRes.json();
             const result = await syncSubscription(subscription);
             if (result?.isActive) activatedMemberId = result.profileId;
-            if (result?.push) pushes.push(result.push);
+            if (result?.push) pushes.push({ ...result.push, userId: result.userId });
           }
         }
         break;
@@ -324,7 +325,7 @@ export async function POST(request) {
         const subscription = event.data.object;
         const result = await syncSubscription(subscription);
         if (result?.isActive) activatedMemberId = result.profileId;
-        if (result?.push) pushes.push(result.push);
+        if (result?.push) pushes.push({ ...result.push, userId: result.userId });
         break;
       }
 
@@ -342,7 +343,7 @@ export async function POST(request) {
               })
               .eq('id', profile.id);
             const push = membershipPaymentFailedPush({ email: profile.email });
-            if (push) pushes.push(push);
+            if (push) pushes.push({ ...push, userId: profile.user_id });
           }
         }
         break;
@@ -357,7 +358,19 @@ export async function POST(request) {
     // or failing TT call can never make the webhook time out or error.
     const response = NextResponse.json({ received: true });
     for (const push of pushes) {
-      sendPush(push);
+      if (push.userId) {
+        sendPushToUser({
+          userId: push.userId,
+          type: 'membership_update',
+          title: push.title,
+          body: push.body,
+          data: push.data,
+        });
+      } else {
+        // Preserve legacy email-address targeting for historical profiles that
+        // are not linked to a Supabase auth user.
+        sendPush(push);
+      }
     }
     if (activatedMemberId) {
       generateCodesForNewMember(activatedMemberId, supabaseAdmin).catch((err) =>

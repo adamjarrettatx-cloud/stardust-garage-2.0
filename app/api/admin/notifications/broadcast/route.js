@@ -133,7 +133,15 @@ export async function POST(request) {
     const data = { url };
     if (eventId) data.event_id = eventId;
     const results = userIds.length
-      ? await notifyMany(admin, userIds, { type, title, body: bodyText || null, data })
+      ? await notifyMany(admin, userIds, {
+          type,
+          title,
+          body: bodyText || null,
+          data,
+          // notify() invokes sendPushToUser one recipient at a time, after
+          // honoring each recipient's push preference.
+          pushType: 'admin_broadcast',
+        })
       : [];
     const sent = results.filter((result) => result.ok).length;
 

@@ -10,6 +10,7 @@ import {
   isValidRejectReason,
 } from '@/lib/tickets/checkin';
 import { buildBuyerPreview } from '@/lib/tickets/buyer-preview';
+import { sendPushToUser } from '@/lib/notifications/send';
 
 // POST /api/tickets/scan
 //
@@ -196,6 +197,32 @@ export async function POST(request) {
       action: 'checkin.override',
       detail: { reason: decision.reason, note },
     });
+  }
+
+  // Notify the ticket holder only after a successful check-in. Resolve the
+  // account through the order rather than trusting any scanner-supplied data.
+  if (
+    (effective === CHECKIN_RESULTS.VALID || effective === CHECKIN_RESULTS.OVERRIDE) &&
+    ticket?.order_id
+  ) {
+    try {
+      const { data: order } = await supabaseAdmin
+        .from('orders')
+        .select('user_id')
+        .eq('id', ticket.order_id)
+        .maybeSingle();
+      if (order?.user_id) {
+        await sendPushToUser({
+          userId: order.user_id,
+          type: 'door_checkin',
+          title: 'You’re in',
+          body: 'Welcome to Stardust Garage',
+          data: { event_id: eventId, ticket_id: ticket.id, url: '/tickets' },
+        });
+      }
+    } catch (err) {
+      console.error('[tickets.scan.push]', err?.message || err);
+    }
   }
 
   return NextResponse.json({

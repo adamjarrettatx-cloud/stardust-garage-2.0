@@ -47,7 +47,7 @@ test('sendPush posts to the send-push function with the service role key', async
       sendPush({
         title: 'Tickets confirmed!',
         body: 'Your tickets are ready.',
-        data: { type: 'ticket_confirmed' },
+        data: { type: 'ticket_purchased' },
         emails: ['buyer@example.com'],
       })
   );
@@ -60,7 +60,7 @@ test('sendPush posts to the send-push function with the service role key', async
   assert.deepEqual(JSON.parse(calls[0].options.body), {
     title: 'Tickets confirmed!',
     body: 'Your tickets are ready.',
-    data: { type: 'ticket_confirmed' },
+    data: { type: 'ticket_purchased' },
     emails: ['buyer@example.com'],
   });
 });
@@ -130,7 +130,7 @@ test('ticket confirmation uses the event title when there is one', () => {
     {
       title: 'Tickets confirmed!',
       body: 'Your tickets for ANYTHING GOES are ready in your wallet.',
-      data: { type: 'ticket_confirmed', order_id: 'or_80206624' },
+      data: { type: 'ticket_purchased', order_id: 'or_80206624' },
       emails: ['buyer@example.com'],
     }
   );
