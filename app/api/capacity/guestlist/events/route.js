@@ -18,7 +18,15 @@ export const dynamic = 'force-dynamic';
 // Team-gated, then read with the service-role client — same posture as the
 // Phase 4 guest list routes, and it keeps the join onto `contacts` working
 // regardless of that table's RLS.
-export async function GET() {
+//
+// Query params:
+//   ?include_all=1  — skip the "has guest-list grants" filter. The door-
+//                     session Start Event picker uses this so a manager can
+//                     open a session for any upcoming event (early check-in,
+//                     testing, or events that never had a guest list). The
+//                     default guest-list dropdown does NOT pass this because
+//                     an event with zero grants has nothing to work.
+export async function GET(request) {
   const { unauthorized } = await requireTeam();
   if (unauthorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -26,6 +34,9 @@ export async function GET() {
   if (!isSupabaseConfigured()) {
     return NextResponse.json({ error: 'Supabase is not configured in this environment.' }, { status: 500 });
   }
+
+  const url = new URL(request.url);
+  const includeAll = url.searchParams.get('include_all') === '1';
 
   const admin = createAdminClient();
   const today = getTodayInAustin();
@@ -81,9 +92,11 @@ export async function GET() {
 
   // Only events someone has actually been granted slots on — an event with no
   // grant has no list to work, so it would just be noise in the picker.
+  // include_all=1 opts out (door-session picker: every upcoming event is
+  // valid to open a session on, guest list or not).
   const eventsWithGrants = new Set(eventIdByGrant.values());
   const shaped = (events || [])
-    .filter((e) => eventsWithGrants.has(e.id))
+    .filter((e) => includeAll || eventsWithGrants.has(e.id))
     .map((e) => ({
       id: e.id,
       title: e.title,
