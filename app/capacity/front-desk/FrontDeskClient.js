@@ -46,6 +46,97 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
   const [busyId, setBusyId] = useState(null);
   const searchRef = useRef(null);
 
+  // ---- Door session (governs which event's tickets are scannable) --------
+  //
+  // Ticket scans MUST be tied to an active door_sessions row — the /api/tickets
+  // /scan endpoint requires event_id, and every scan (member/trial/ticket)
+  // stamps door_session_id on its audit row so we can reconstruct "who was
+  // running the door for this event." This is the exact same contract the
+  // standalone /scan page uses; we're just presenting the controls next to
+  // the other front-desk surfaces instead of on their own page.
+  //
+  // Starting a session ALSO sets the guest-list dropdown to the same event.
+  // The two are conceptually distinct (roster vs door-log) but in practice
+  // the person at the front desk is always working one event at a time.
+  const [activeSession, setActiveSession] = useState(null); // full session row w/ .event
+  const [sessionBusy, setSessionBusy] = useState(false);
+  const [sessionError, setSessionError] = useState('');
+  const [startPickerOpen, setStartPickerOpen] = useState(false);
+  const [confirmEndOpen, setConfirmEndOpen] = useState(false);
+
+  // Load whatever session is currently open. Runs once at mount and again
+  // after every start/end so the bar reflects reality without a full reload.
+  const refreshActiveSession = useCallback(async () => {
+    try {
+      const res = await fetch('/api/door-session/active', { cache: 'no-store' });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setActiveSession(json.session || null);
+        if (json.session?.event_id) {
+          // Sync the guest-list dropdown to the session's event so the manager
+          // is not looking at Wednesday's roster while scanning Thursday's
+          // tickets. Safe to call setEventId with the same value — React will
+          // no-op if it hasn't changed.
+          setEventId(json.session.event_id);
+        }
+      }
+    } catch {
+      // Non-fatal — the bar will just show "no active event."
+    }
+  }, []);
+
+  useEffect(() => { refreshActiveSession(); }, [refreshActiveSession]);
+
+  const startDoorSession = useCallback(async (targetEventId) => {
+    if (!targetEventId) return;
+    setSessionBusy(true);
+    setSessionError('');
+    try {
+      const res = await fetch('/api/door-session/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_id: targetEventId }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSessionError(json.error || 'Could not start the event.');
+        return;
+      }
+      setStartPickerOpen(false);
+      await refreshActiveSession();
+    } catch {
+      setSessionError('Network error starting the event.');
+    } finally {
+      setSessionBusy(false);
+    }
+  }, [refreshActiveSession]);
+
+  const endDoorSession = useCallback(async () => {
+    setSessionBusy(true);
+    setSessionError('');
+    try {
+      const res = await fetch('/api/door-session/end', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSessionError(json.error || 'Could not end the event.');
+        return;
+      }
+      setConfirmEndOpen(false);
+      await refreshActiveSession();
+    } catch {
+      setSessionError('Network error ending the event.');
+    } finally {
+      setSessionBusy(false);
+    }
+  }, [refreshActiveSession]);
+
+  const activeEvent = activeSession?.event || null;
+  const doorSessionId = activeSession?.id || null;
+
   // ---- Recent activity (last 5, client-only ring buffer) ------------------
   //
   // Kept in memory only. Refreshing the laptop clears it — that's fine, it
@@ -433,12 +524,41 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
 
         {/* ============== CENTER: Door scanner + recent activity ============== */}
         <div className="flex flex-col gap-6 min-w-0">
+          <DoorSessionBar
+            activeSession={activeSession}
+            activeEvent={activeEvent}
+            busy={sessionBusy}
+            error={sessionError}
+            onStart={() => { setSessionError(''); setStartPickerOpen(true); }}
+            onEnd={() => { setSessionError(''); setConfirmEndOpen(true); }}
+          />
           <UnifiedDoorScanner
+            activeEvent={activeEvent}
+            doorSessionId={doorSessionId}
             onActivity={logActivity}
             getBumpWarning={getScannerBumpWarning}
           />
           <RecentActivityPanel entries={recentActivity} />
         </div>
+
+        {startPickerOpen && (
+          <StartEventOverlay
+            events={events}
+            busy={sessionBusy}
+            errorMessage={sessionError}
+            onPick={startDoorSession}
+            onCancel={() => setStartPickerOpen(false)}
+          />
+        )}
+        {confirmEndOpen && activeSession && (
+          <ConfirmEndOverlay
+            event={activeEvent}
+            busy={sessionBusy}
+            errorMessage={sessionError}
+            onConfirm={endDoorSession}
+            onCancel={() => setConfirmEndOpen(false)}
+          />
+        )}
 
         {/* ============== RIGHT: Issue trial pass ============================= */}
         {/* ManualTrialPassForm expects the --auth-* CSS variables set up by
@@ -714,4 +834,199 @@ function formatTime(ts) {
   } catch {
     return '';
   }
+}
+
+// ============================================================================
+// Door session controls
+// ============================================================================
+//
+// The bar sits directly above the scanner so staff cannot miss the "start an
+// event first" state. Copy is deliberately blunt \u2014 nobody at the door in the
+// middle of a rush should have to interpret a subtle icon to know if ticket
+// scanning is armed.
+
+function DoorSessionBar({ activeSession, activeEvent, busy, error, onStart, onEnd }) {
+  if (activeSession) {
+    const eventTitle = activeEvent?.title || 'Event live';
+    const opened = activeSession.opened_at
+      ? new Date(activeSession.opened_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+      : '';
+    return (
+      <section
+        className="rounded-2xl border p-4 flex items-center gap-4"
+        style={{ background: 'rgba(124,252,155,0.06)', borderColor: 'rgba(124,252,155,0.35)' }}
+      >
+        <div className="flex-1 min-w-0">
+          <div className="text-[11px] font-bold tracking-[0.16em] uppercase" style={{ color: '#7CFC9B' }}>
+            Event running
+          </div>
+          <div className="text-[16px] font-bold truncate" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            {eventTitle}
+          </div>
+          {opened && (
+            <div className="text-[12px]" style={{ color: '#8a8a8a' }}>
+              Opened at {opened}. Scanning tickets, members, and trial passes against this event.
+            </div>
+          )}
+          {error && (
+            <div className="text-[12px] mt-1" style={{ color: '#ff8a8a' }}>{error}</div>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onEnd}
+          disabled={busy}
+          className="rounded-full px-4 py-2 text-[12px] font-bold tracking-[0.12em] uppercase border"
+          style={{ borderColor: 'rgba(255,138,138,0.5)', color: '#ff8a8a', background: 'transparent' }}
+        >
+          End Event
+        </button>
+      </section>
+    );
+  }
+
+  return (
+    <section
+      className="rounded-2xl border p-4 flex items-center gap-4"
+      style={{ background: 'rgba(255,184,77,0.06)', borderColor: 'rgba(255,184,77,0.35)' }}
+    >
+      <div className="flex-1 min-w-0">
+        <div className="text-[11px] font-bold tracking-[0.16em] uppercase" style={{ color: '#ffb84d' }}>
+          No event running
+        </div>
+        <div className="text-[14px]" style={{ color: '#e5e5e5' }}>
+          Start an event to scan tickets. Member IDs and trial passes still work without one.
+        </div>
+        {error && (
+          <div className="text-[12px] mt-1" style={{ color: '#ff8a8a' }}>{error}</div>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={onStart}
+        disabled={busy}
+        className="rounded-full px-5 py-2 text-[12px] font-bold tracking-[0.12em] uppercase"
+        style={{ background: '#7CFC9B', color: '#0a0a0a' }}
+      >
+        Start Event
+      </button>
+    </section>
+  );
+}
+
+// Full-screen picker \u2014 kept as an overlay (not a select) so the manager can
+// see event dates in a scannable list without hunting the native dropdown UI.
+function StartEventOverlay({ events, busy, errorMessage, onPick, onCancel }) {
+  return (
+    <OverlayFrame onCancel={onCancel}>
+      <div className="text-[11px] font-bold tracking-[0.16em] uppercase mb-2" style={{ color: '#8a8a8a' }}>
+        Start event
+      </div>
+      <h2 className="text-[22px] font-bold mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        Which event are you running the door for?
+      </h2>
+      {events.length === 0 ? (
+        <div className="text-[13px]" style={{ color: '#8a8a8a' }}>
+          No upcoming events found. Create one first, then come back.
+        </div>
+      ) : (
+        <ul className="flex flex-col gap-2 max-h-[50vh] overflow-y-auto">
+          {events.map((evt) => (
+            <li key={evt.id}>
+              <button
+                type="button"
+                onClick={() => onPick(evt.id)}
+                disabled={busy}
+                className="w-full text-left rounded-xl border px-4 py-3 hover:border-white/30 transition-colors"
+                style={{ borderColor: 'rgba(255,255,255,0.12)', background: '#0a0a0a' }}
+              >
+                <div className="text-[11px]" style={{ color: '#8a8a8a' }}>
+                  {formatEventDate(evt.event_date)}
+                </div>
+                <div className="text-[16px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                  {evt.title}
+                </div>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {errorMessage && (
+        <div className="text-[12px] mt-3" style={{ color: '#ff8a8a' }}>{errorMessage}</div>
+      )}
+      <div className="flex justify-end mt-4">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={busy}
+          className="text-[12px] font-bold tracking-[0.12em] uppercase"
+          style={{ color: '#8a8a8a' }}
+        >
+          Cancel
+        </button>
+      </div>
+    </OverlayFrame>
+  );
+}
+
+function ConfirmEndOverlay({ event, busy, errorMessage, onConfirm, onCancel }) {
+  return (
+    <OverlayFrame onCancel={onCancel}>
+      <div className="text-[11px] font-bold tracking-[0.16em] uppercase mb-2" style={{ color: '#8a8a8a' }}>
+        End event
+      </div>
+      <h2 className="text-[22px] font-bold mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        End the door for {event?.title || 'this event'}?
+      </h2>
+      <div className="text-[13px] mb-4" style={{ color: '#8a8a8a' }}>
+        Ticket scans will stop being accepted. Member IDs and trial passes still work.
+      </div>
+      {errorMessage && (
+        <div className="text-[12px] mb-3" style={{ color: '#ff8a8a' }}>{errorMessage}</div>
+      )}
+      <div className="flex justify-end gap-3">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={busy}
+          className="text-[12px] font-bold tracking-[0.12em] uppercase"
+          style={{ color: '#8a8a8a' }}
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={busy}
+          className="rounded-full px-5 py-2 text-[12px] font-bold tracking-[0.12em] uppercase"
+          style={{ background: '#ff8a8a', color: '#0a0a0a' }}
+        >
+          {busy ? 'Ending\u2026' : 'End event'}
+        </button>
+      </div>
+    </OverlayFrame>
+  );
+}
+
+function OverlayFrame({ children, onCancel }) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      style={{ background: 'rgba(0,0,0,0.75)' }}
+      onClick={(e) => {
+        // Backdrop click cancels; child clicks do not (stopPropagation on the card).
+        if (e.target === e.currentTarget) onCancel?.();
+      }}
+    >
+      <div
+        className="w-full max-w-[520px] rounded-2xl border p-6"
+        style={{ background: '#111', borderColor: 'rgba(255,255,255,0.12)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+      </div>
+    </div>
+  );
 }
