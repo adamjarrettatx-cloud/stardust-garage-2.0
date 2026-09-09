@@ -31,14 +31,14 @@ create policy member_photos_owner_or_team_select
   on storage.objects for select to authenticated
   using (
     bucket_id = 'member-photos'
-    and (owner_id = auth.uid() or public.is_team())
+    and (owner_id = auth.uid()::text or public.is_team())
   );
 
 create policy member_photos_owner_insert
   on storage.objects for insert to authenticated
   with check (
     bucket_id = 'member-photos'
-    and owner_id = auth.uid()
+    and owner_id = auth.uid()::text
     and name ~ ('^' || auth.uid()::text || '/partner-[A-Za-z0-9][A-Za-z0-9._-]{0,180}$')
   );
 
@@ -46,16 +46,16 @@ create policy member_photos_owner_update
   on storage.objects for update to authenticated
   using (
     bucket_id = 'member-photos'
-    and owner_id = auth.uid()
+    and owner_id = auth.uid()::text
   )
   with check (
     bucket_id = 'member-photos'
-    and owner_id = auth.uid()
+    and owner_id = auth.uid()::text
     and name ~ ('^' || auth.uid()::text || '/partner-[A-Za-z0-9][A-Za-z0-9._-]{0,180}$')
   );
 
 create policy member_photos_owner_delete
   on storage.objects for delete to authenticated
-  using (bucket_id = 'member-photos' and owner_id = auth.uid());
+  using (bucket_id = 'member-photos' and owner_id = auth.uid()::text);
 
 commit;
