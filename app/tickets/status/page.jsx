@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { createClient as createServerSupabaseClient } from '@/lib/supabase/server';
 
 // /tickets/status?hold=<hold_token>[&cancelled=1]
 //
@@ -9,6 +10,17 @@ import { createClient } from '@supabase/supabase-js';
 //
 // Rendered server-side so we can read via the admin client without exposing
 // the service-role key to the browser.
+//
+// SECURITY (H-04): This page is OWNER-ONLY. A hold_token is a randomly
+// generated string but it appears in Stripe redirect URLs, browser history,
+// and Referer headers along its way. Before this gate, anyone with a
+// hold_token could pull the buyer's email off the order. Now:
+//   1. The caller must be signed in (else redirect to /login).
+//   2. The signed-in user must own the hold (hold.user_id === user.id) OR
+//      be a team member (door staff need to help resolve pending orders).
+//   3. The rendered card never prints buyer_email — we show "tickets are
+//      in your account" instead, since the owner already knows their
+//      own email and the door doesn't need it here.
 //
 // Visual style: matches the rest of sdgatx.com — deep-black background,
 // Moshra Aesthetic display serif for the headline, hairline card, gold accent
@@ -50,23 +62,38 @@ function formatEventDate(dateStr) {
   });
 }
 
-async function loadStatus(holdToken) {
+async function loadStatus(holdToken, currentUserId) {
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY,
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
+  // NOTE: buyer_email is intentionally NOT selected. See H-04 above.
   const { data: hold } = await supabaseAdmin
     .from('ticket_holds')
-    .select('id, event_id, status, expires_at, buyer_email, stripe_checkout_session_id')
+    .select('id, event_id, status, expires_at, user_id, stripe_checkout_session_id')
     .eq('hold_token', holdToken)
     .maybeSingle();
   if (!hold) return { state: 'unknown' };
 
+  // SECURITY (H-04) owner gate: the signed-in user must own the hold OR
+  // be a team member (door staff resolving a pending order). Any other
+  // signed-in user gets the same "unknown" state as an anonymous caller,
+  // so we don't confirm the hold_token even exists.
+  const isOwner = hold.user_id && hold.user_id === currentUserId;
+  if (!isOwner) {
+    const { data: teamRow } = await supabaseAdmin
+      .from('team_members')
+      .select('id')
+      .eq('user_id', currentUserId)
+      .maybeSingle();
+    if (!teamRow) return { state: 'unknown' };
+  }
+
   const { data: order } = await supabaseAdmin
     .from('orders')
-    .select('id, status, buyer_email, event_id')
+    .select('id, status, event_id')
     .eq('hold_id', hold.id)
     .maybeSingle();
 
@@ -269,6 +296,38 @@ export default async function TicketStatusPage({ searchParams }) {
   const holdToken = params?.hold;
   const cancelled = params?.cancelled === '1';
 
+  // SECURITY (H-04): auth gate BEFORE we touch the hold. Anonymous callers
+  // are sent to /login with a return_to back here so the flow resumes
+  // after sign-in. Signed-in-but-not-owner is handled inside loadStatus
+  // (returns state:'unknown' — same as a bad token, no leak).
+  let currentUserId = null;
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    currentUserId = user?.id ?? null;
+  } catch {
+    currentUserId = null;
+  }
+  if (!currentUserId && holdToken) {
+    // Bounce to sign-in. We URI-encode the hold-only path so ?hold=… is
+    // preserved but no other client params.
+    const returnTo = `/tickets/status?hold=${encodeURIComponent(String(holdToken))}${cancelled ? '&cancelled=1' : ''}`;
+    return (
+      <PageShell>
+        <Card accent="muted">
+          <Eyebrow>Sign in to view</Eyebrow>
+          <Headline>Almost there.</Headline>
+          <p style={{ fontSize: 15, lineHeight: 1.6, color: MUTED_STRONG, margin: '0 0 32px' }}>
+            Sign in with the Stardust account you used at checkout and we’ll pull up your order.
+          </p>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <PrimaryButton href={`/login?next=${encodeURIComponent(returnTo)}`}>Sign in</PrimaryButton>
+          </div>
+        </Card>
+      </PageShell>
+    );
+  }
+
   // -------------------------------------------------------------------------
   // Missing / malformed hold token — usually a stale bookmark or someone
   // navigating here directly. Show a friendly redirect back to /events.
@@ -290,7 +349,7 @@ export default async function TicketStatusPage({ searchParams }) {
     );
   }
 
-  const status = await loadStatus(holdToken);
+  const status = await loadStatus(holdToken, currentUserId);
 
   // -------------------------------------------------------------------------
   // Hold record missing — expired or tampered token. Same treatment as above
@@ -376,7 +435,12 @@ export default async function TicketStatusPage({ searchParams }) {
             {dateLine && (
               <InfoRow label="Date" value={dateLine} />
             )}
-            <InfoRow label="Ticket sent to" value={status.order.buyer_email} mono />
+            {/* H-04: we no longer render buyer_email here — the owner
+                already knows their own email, and this page is public-URL
+                enough (Stripe redirect, browser history) that PII should
+                not appear on it. The wallet at /account/tickets shows
+                everything they need. */}
+            <InfoRow label="Tickets" value="Waiting in your Stardust account" />
           </div>
 
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 32 }}>
