@@ -9,6 +9,7 @@ import ManualTrialPassForm from '@/app/team/trial-pass/manual/ManualTrialPassFor
 import AuthenticatedThemeProvider from '@/app/components/AuthenticatedThemeProvider';
 import UnifiedDoorScanner from '../components/UnifiedDoorScanner';
 import { pushRecentActivity, formatActivityTime } from '@/lib/scan/recent-activity';
+import { mergeCheckinFeed, CHECKIN_FEED_MAX } from '@/lib/capacity/checkin-feed';
 
 // /capacity/front-desk client
 //
@@ -154,17 +155,31 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
   // scans, and member-id verifies all funnel through logActivity() so the
   // panel renders one unified stream sorted newest-first.
   const [recentActivity, setRecentActivity] = useState([]);
-  // Separate, longer-lived buffer for the chronological check-in list under
-  // the trial-pass panel. Only admitted entries land here; denials + rejects
-  // stay in recentActivity (the top-right "Last 5 admits" strip). 50 rows
-  // is enough to cover a full night without pinning render cost.
-  const [checkedInHistory, setCheckedInHistory] = useState([]);
+  // Local buffer for the chronological check-in list under the trial-pass
+  // panel. Only admitted entries land here; denials + rejects stay in
+  // recentActivity (the top-right "Last 5 admits" strip).
+  //
+  // This buffer alone is NOT the list. It used to be, and that was a bug: it
+  // starts empty on every page load and only ever knows about check-ins made
+  // in this one browser tab, so a guest admitted on the door tablet never
+  // appeared on the front-desk laptop and a refresh wiped the night. The list
+  // is now the server feed merged with this buffer -- the buffer's job is
+  // instant feedback plus the scan photo, which the feed cannot carry.
+  const [localCheckedIn, setLocalCheckedIn] = useState([]);
+  const [serverCheckedIn, setServerCheckedIn] = useState([]);
   const logActivity = useCallback((entry) => {
     setRecentActivity((prev) => pushRecentActivity(prev, entry));
     if (entry?.result === 'admitted') {
-      setCheckedInHistory((prev) => pushRecentActivity(prev, entry, 50));
+      setLocalCheckedIn((prev) => pushRecentActivity(prev, entry, CHECKIN_FEED_MAX));
     }
   }, []);
+
+  // The list the panel renders: server truth first, local entries layered on
+  // top for their photos. Deduped by id, newest first.
+  const checkedInHistory = useMemo(
+    () => mergeCheckinFeed(serverCheckedIn, localCheckedIn),
+    [serverCheckedIn, localCheckedIn],
+  );
 
   // Load event picker once. defaultEventId is tonight's event when there is
   // one, so the common case is zero taps.
@@ -215,6 +230,32 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
   }, []);
 
   useEffect(() => { loadRoster(eventId); }, [eventId, loadRoster]);
+
+  // ---- Who is actually checked in (server-backed) --------------------------
+  //
+  // Seeded on load and polled on the same cadence as the roster so the panel
+  // reflects every device working the door, not just this tab. Failures are
+  // silent on purpose: the local buffer still renders, and the roster poll
+  // already surfaces connectivity problems.
+  const loadCheckedIn = useCallback(async (id) => {
+    try {
+      const qs = id ? `?eventId=${encodeURIComponent(id)}` : '';
+      const res = await fetch(`/api/capacity/checkins${qs}`, { cache: 'no-store' });
+      if (!res.ok) return;
+      const json = await res.json().catch(() => ({}));
+      if (Array.isArray(json.entries)) setServerCheckedIn(json.entries);
+    } catch {
+      /* keep whatever we last had */
+    }
+  }, []);
+
+  useEffect(() => { loadCheckedIn(eventId); }, [eventId, loadCheckedIn]);
+
+  useEffect(() => {
+    if (activeEntry) return undefined;
+    const id = setInterval(() => loadCheckedIn(eventId), ROSTER_POLL_MS);
+    return () => clearInterval(id);
+  }, [eventId, activeEntry, loadCheckedIn]);
 
   // Pause the poll while a check-in sheet is open so rows can't shift under it.
   useEffect(() => {
@@ -881,7 +922,10 @@ function CheckedInListPanel({ entries }) {
           style={{ borderColor: 'rgba(255,255,255,0.05)', maxHeight: 380 }}
         >
           {entries.map((e) => (
-            <CheckedInRow key={e.at + ':' + e.id} entry={e} />
+            // Key on id alone: the merge can revise a row's timestamp from
+            // the browser clock to the server's, and a composite key would
+            // remount (and flicker) the row when that happens.
+            <CheckedInRow key={e.id} entry={e} />
           ))}
         </ul>
       )}

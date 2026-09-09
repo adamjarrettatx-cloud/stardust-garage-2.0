@@ -50,8 +50,14 @@ test('FrontDeskClient wires CheckedInListPanel under the trial-pass panel', () =
   // The panel has to render inside the AuthenticatedThemeProvider block so
   // its dark styling matches, and it must receive checkedInHistory, not the
   // capped recentActivity buffer.
-  assert.match(src, /const \[checkedInHistory, setCheckedInHistory\] = useState\(\[\]\);/);
-  assert.match(src, /setCheckedInHistory\(\(prev\) => pushRecentActivity\(prev, entry, 50\)\);/);
+  //
+  // checkedInHistory started life as a plain useState ring buffer, which meant
+  // the panel only ever knew about check-ins made in that one browser tab. It
+  // is now derived: the server feed merged with the local buffer. These checks
+  // assert that shape rather than the old internals.
+  assert.match(src, /const checkedInHistory = useMemo\(/);
+  assert.match(src, /mergeCheckinFeed\(serverCheckedIn, localCheckedIn\)/);
+  assert.match(src, /setLocalCheckedIn\(\(prev\) => pushRecentActivity\(prev, entry, CHECKIN_FEED_MAX\)\);/);
   assert.match(src, /<CheckedInListPanel entries=\{checkedInHistory\} \/>/);
   assert.match(src, /function CheckedInListPanel\(/);
   assert.match(src, /function CheckedInRow\(/);
