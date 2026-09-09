@@ -145,7 +145,10 @@ export default function EventsSection({ upcoming, past, metricsByEvent = {} }) {
                   screen readers. */}
               <EventTicketSalesLive
                 eventId={event.id}
-                hasTicketTailor={Boolean(event.tt_event_series_id)}
+                hasTicketing={
+                  event.ticketing_mode === 'internal' ||
+                  Boolean(event.tt_event_series_id)
+                }
                 initialMetrics={metricsByEvent[event.id] || null}
               />
               <div className="flex flex-wrap gap-2 justify-end flex-shrink-0">
