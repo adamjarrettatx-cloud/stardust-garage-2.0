@@ -360,7 +360,19 @@ export default function UnifiedScanClient() {
         setPhase('error');
       } else {
         const firstName = body?.member?.firstName || body?.pass?.firstName || body?.buyer?.firstName || 'Guest';
-        setResult({ kind, ok: true, message: `${firstName} verified` });
+        // If the member-id verify also redeemed a linked ticket, roll
+        // that acknowledgement into the same result card so staff sees
+        // both actions completed in one screen.
+        let message = `${firstName} verified`;
+        if (kind === 'member_id' && body?.ticket) {
+          if (body.ticket.result === 'valid') {
+            const label = body.ticket.product_label ? ` (${body.ticket.product_label})` : '';
+            message = `${firstName} verified + ticket${label} checked in`;
+          } else if (body.ticket.result === 'already_used') {
+            message = `${firstName} verified \u00b7 ticket was already used`;
+          }
+        }
+        setResult({ kind, ok: true, message });
         setPhase('result');
       }
     } catch (err) {
@@ -577,7 +589,7 @@ export default function UnifiedScanClient() {
           {!rejectPickerOpen ? (
             <div style={styles.actionRow}>
               <button style={styles.verifyBtn} onClick={commitVerify} disabled={decisionBusy}>
-                {decisionBusy ? '...' : verifyLabelForKind(preview.kind)}
+                {decisionBusy ? '...' : verifyLabelForPreview(preview)}
               </button>
               <button style={styles.rejectBtn} onClick={() => setRejectPickerOpen(true)} disabled={decisionBusy}>
                 Reject
@@ -689,6 +701,11 @@ function PreviewCard({ preview, activeEvent }) {
       {kind === 'member_id' && person.isActive === false && (
         <div style={styles.inactivePill}>MEMBERSHIP INACTIVE</div>
       )}
+      {kind === 'member_id' && preview?.data?.linked_ticket && (
+        <div style={styles.linkedTicketPill}>
+          + TICKET{preview.data.linked_ticket.product_label ? `: ${preview.data.linked_ticket.product_label}` : ''} · WILL CHECK IN
+        </div>
+      )}
       {kind === 'ticket' && person.isActive === false && (
         <div style={styles.inactivePill}>NOT VALID</div>
       )}
@@ -790,6 +807,15 @@ function labelForKind(kind) {
 function verifyLabelForKind(kind) {
   if (kind === 'trial_pass') return 'Check In';
   return 'Verify';
+}
+
+// Same as verifyLabelForKind but aware of a member-id preview carrying a
+// linked ticket \u2014 in that case one tap does both, so the button label
+// should communicate the combined action.
+function verifyLabelForPreview(preview) {
+  if (!preview) return 'Verify';
+  if (preview.kind === 'member_id' && preview.data?.linked_ticket) return 'Verify + Check In';
+  return verifyLabelForKind(preview.kind);
 }
 
 function labelForReason(kind, code) {
@@ -1015,6 +1041,11 @@ const styles = {
   inactivePill: {
     marginTop: 8, padding: '6px 12px', borderRadius: 999,
     background: '#3a1414', color: '#ff8686', fontSize: 12, letterSpacing: 2, fontWeight: 700,
+  },
+  linkedTicketPill: {
+    marginTop: 8, padding: '6px 12px', borderRadius: 999,
+    background: '#1a1408', color: '#d9c48c', fontSize: 12, letterSpacing: 2, fontWeight: 700,
+    border: '1px solid #d9c48c',
   },
   actionRow: { display: 'flex', gap: 12, marginTop: 20 },
   verifyBtn: {
