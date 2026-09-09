@@ -141,7 +141,7 @@ export async function POST(request) {
   // --- Load event and gate on ticketing_mode + published ------------------
   const { data: event } = await supabaseAdmin
     .from('events')
-    .select('id, title, status, ticketing_mode, booking_fee_cents_default, is_sdg_only, required_membership_tier')
+    .select('id, title, status, ticketing_mode, booking_fee_cents_default, required_membership_tier')
     .eq('id', eventId)
     .maybeSingle();
   if (!event || event.status !== 'published' || event.ticketing_mode !== 'internal') {
@@ -163,18 +163,18 @@ export async function POST(request) {
     .eq('user_id', user.id)
     .maybeSingle();
 
-  // --- Access gate: is_sdg_only + required_membership_tier ---------------
-  // These are the SAME rules used by the notification audience resolver
-  // (lib/notifications/audience.js). Enforcing them here means a direct link
-  // to a member-only checkout can't be used by a Builder to buy an Insider
-  // ticket, or by a non-member to buy an SDG-only ticket.
+  // --- Access gate: required_membership_tier only -------------------------
+  // is_sdg_only is NOT an access gate — it just means SDG is producing the
+  // event without an outside partner. Public SDG-produced events
+  // (is_sdg_only=true, visibility='public', no tier gate) must remain
+  // buyable by guests / free accounts / non-members. That's the whole point
+  // of putting ticketed shows on the site.
   //
-  // Team members bypass both gates — they may legitimately need to test
-  // purchases or comp themselves in. Non-team buyers must be active members
-  // when is_sdg_only=true, and must meet the tier rank when set.
-  if (event.is_sdg_only) {
-    // Look up team-member status by auth user_id (there is no is_team flag
-    // on member_profiles; team membership lives in its own table).
+  // required_membership_tier IS an access gate. When set, only members of
+  // that tier or higher can buy (Insider > Builder > Weekender). Team
+  // members bypass so they can test-purchase or self-comp.
+  if (event.required_membership_tier) {
+    // Team members bypass the tier gate.
     const { data: teamMember } = await supabaseAdmin
       .from('team_members')
       .select('id')
@@ -183,16 +183,11 @@ export async function POST(request) {
 
     if (!teamMember) {
       const isActiveMember = memberProfile?.is_active === true;
-      if (!isActiveMember) {
-        return NextResponse.json(
-          { error: 'This event is for Stardust Garage members only. Sign in with your member account, or visit /members to join.' },
-          { status: 403 }
-        );
-      }
-      if (!memberSatisfiesTierGate(memberProfile.subscription_plan, event.required_membership_tier)) {
+      const memberTier = isActiveMember ? memberProfile.subscription_plan : null;
+      if (!memberSatisfiesTierGate(memberTier, event.required_membership_tier)) {
         return NextResponse.json(
           {
-            error: `This event is reserved for ${membershipTierLabel(event.required_membership_tier)} members. Upgrade at /members to attend.`,
+            error: `This event is reserved for ${membershipTierLabel(event.required_membership_tier)} members. Visit /members to join or upgrade.`,
           },
           { status: 403 }
         );
