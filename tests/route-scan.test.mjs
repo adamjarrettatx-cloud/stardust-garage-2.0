@@ -31,12 +31,78 @@ test('planScanAttempts routes a trial_pass sniff to /api/capacity/trial-pass/sca
   assert.equal(plan.attempts[0].endpoint, '/api/capacity/trial-pass/scan');
 });
 
-test('planScanAttempts routes a ticket sniff to /api/tickets/scan', () => {
+test('planScanAttempts refuses to route a ticket without an event', () => {
+  // Without an event_id the tickets endpoint would just 400. Surface a
+  // clean requiresEvent signal so the caller can render "Start Event first."
   const plan = planScanAttempts({ kind: 'ticket', code: 'ABC-123' });
+  assert.equal(plan.kind, 'ticket');
+  assert.equal(plan.requiresEvent, true);
+  assert.equal(plan.attempts.length, 0);
+});
+
+test('planScanAttempts routes a ticket sniff to /api/tickets/scan with event', () => {
+  const plan = planScanAttempts(
+    { kind: 'ticket', code: 'ABC-123' },
+    { eventId: 'evt-1', doorSessionId: 'ds-1' },
+  );
   assert.equal(plan.kind, 'ticket');
   assert.equal(plan.attempts.length, 1);
   assert.equal(plan.attempts[0].endpoint, '/api/tickets/scan');
-  assert.deepEqual(plan.attempts[0].body, { code: 'ABC-123', mode: 'preview' });
+  assert.equal(plan.attempts[0].body.code, 'ABC-123');
+  assert.equal(plan.attempts[0].body.event_id, 'evt-1');
+  assert.equal(plan.attempts[0].body.door_session_id, 'ds-1');
+  assert.equal(plan.attempts[0].body.mode, 'preview');
+});
+
+test('member_id attempt uses event_id + door_session_id field names', () => {
+  const plan = planScanAttempts(
+    { kind: 'member_id', token: 'abc' },
+    { eventId: 'evt-1', doorSessionId: 'ds-1' },
+  );
+  const body = plan.attempts[0].body;
+  assert.equal(body.event_id, 'evt-1');
+  assert.equal(body.door_session_id, 'ds-1');
+  // trial-pass style camelCase should NOT be present on the member body.
+  assert.equal(body.eventId, undefined);
+});
+
+test('trial_pass attempt uses eventId (camelCase) + door_session_id', () => {
+  // Endpoint field naming is inconsistent between routes — trial-pass reads
+  // camelCase eventId while everyone else reads snake. If this ever gets
+  // "cleaned up" without also updating the route, scans will silently lose
+  // event context. This test is the guardrail.
+  const plan = planScanAttempts(
+    { kind: 'trial_pass', token: 'xyz' },
+    { eventId: 'evt-1', doorSessionId: 'ds-1' },
+  );
+  const body = plan.attempts[0].body;
+  assert.equal(body.eventId, 'evt-1');
+  assert.equal(body.door_session_id, 'ds-1');
+  assert.equal(body.event_id, undefined);
+});
+
+test('ambiguous_token threads context into BOTH attempts', () => {
+  const plan = planScanAttempts(
+    { kind: 'ambiguous_token', token: 'deadbeef' },
+    { eventId: 'evt-1', doorSessionId: 'ds-1' },
+  );
+  assert.equal(plan.attempts.length, 2);
+  assert.equal(plan.attempts[0].body.event_id, 'evt-1');
+  assert.equal(plan.attempts[0].body.door_session_id, 'ds-1');
+  assert.equal(plan.attempts[1].body.eventId, 'evt-1');
+  assert.equal(plan.attempts[1].body.door_session_id, 'ds-1');
+});
+
+test('empty-string eventId / doorSessionId is treated as absent', () => {
+  // Guards against a caller passing an uninitialized state ('') and
+  // accidentally sending eventId: '' on the wire.
+  const plan = planScanAttempts(
+    { kind: 'member_id', token: 'abc' },
+    { eventId: '', doorSessionId: '' },
+  );
+  const body = plan.attempts[0].body;
+  assert.equal(body.event_id, undefined);
+  assert.equal(body.door_session_id, undefined);
 });
 
 test('planScanAttempts queues member first, trial-pass second for ambiguous_token', () => {
