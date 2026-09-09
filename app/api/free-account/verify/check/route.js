@@ -13,7 +13,8 @@ export const dynamic = 'force-dynamic';
 //
 // Public step 2 of free-account signup. A successful Twilio check proves the
 // visitor controls the phone in the submitted profile, so only then do we
-// create (or reconnect) the Supabase identity and its free_accounts row.
+// create a new Supabase identity and its free_accounts row. Existing accounts
+// must sign in rather than being reconciled by this unauthenticated path.
 //
 // The three intake fields are deliberately sent again rather than stored in a
 // cookie between steps. This makes the identity being written here the exact
@@ -75,6 +76,25 @@ export async function POST(request) {
   }
 
   const admin = createAdminClient();
+  const { data: existingFreeAccount, error: existingFreeAccountError } = await admin
+    .from('free_accounts')
+    .select('user_id')
+    .eq('email', data.email_canonical || data.email)
+    .maybeSingle();
+  if (existingFreeAccountError) {
+    console.error('[free-account.verify.check.find-free-account]', existingFreeAccountError);
+    return NextResponse.json({ error: 'Could not create account.' }, { status: 500 });
+  }
+  if (existingFreeAccount) {
+    return NextResponse.json(
+      {
+        error: 'account_exists',
+        message: 'An account with this email already exists. Please sign in instead.',
+      },
+      { status: 409 },
+    );
+  }
+
   const { data: created, error: createError } = await admin.auth.admin.createUser({
     email: data.email,
     password,
