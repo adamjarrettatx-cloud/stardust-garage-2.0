@@ -789,6 +789,7 @@ const KIND_LABEL = {
   guestlist: 'Guest list',
   trial_pass: 'Trial pass',
   member_id: 'Member',
+  ticket: 'Ticket',
 };
 const RESULT_COLOR = {
   admitted: '#7CFC9B',
