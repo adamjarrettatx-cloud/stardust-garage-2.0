@@ -106,6 +106,10 @@ export default function EventForm({
   // contact requirement. An EXISTING event keeps whatever it has — pre-migration
   // rows were backfilled to is_sdg_only = true.
   const [isSdgOnly, setIsSdgOnly] = useState(isEditing ? event.is_sdg_only !== false : false);
+  // Tier gate — restrict this event's notifications AND access to a single
+  // membership tier. null = no tier gate (all members if is_sdg_only, else
+  // public). Values map to member_profiles.subscription_plan.
+  const [requiredTier, setRequiredTier] = useState(event?.required_membership_tier || '');
   const [contactId, setContactId] = useState(event?.contact_id || null);
   // `ttEventSeriesId` is preserved so the two legacy TicketTailor events
   // (ubiyu 9/18, Groove Therapy 9/19) still round-trip their linked series
@@ -193,6 +197,9 @@ export default function EventForm({
       visibility,
       event_type: isInternal ? 'micro_party' : 'standard',
       is_sdg_only: isSdgOnly,
+      // Tier gate only makes sense on member-scoped events. Clear it when
+      // the event isn't SDG-only so we don't ship an inconsistent row.
+      required_membership_tier: isSdgOnly && requiredTier ? requiredTier : null,
       contact_id: isSdgOnly ? null : contactId,
     };
 
@@ -584,6 +591,33 @@ export default function EventForm({
             onContactIdChange={setContactId}
           />
         </section>
+
+        {/* TIER GATE — only meaningful on SDG-only events. Controls who
+            gets the event_published notification (and, downstream, who can
+            RSVP once tier-check is wired into ticket routes). */}
+        {isSdgOnly ? (
+          <section className="rounded-[14px] border p-5" style={cardStyle}>
+            <h3 className={sectionTitle} style={labelStyle}>Member tier gate</h3>
+            <p className="text-[12px] mb-3" style={{ color: 'rgba(255,255,255,0.6)' }}>
+              Restrict this event to a single membership tier. Leave as
+              “All members” for a normal SDG-only drop.
+            </p>
+            <select
+              value={requiredTier}
+              onChange={(e) => setRequiredTier(e.target.value)}
+              className="w-full rounded-[10px] border px-3 py-2 text-[14px]"
+              style={{
+                background: 'rgba(0,0,0,0.35)',
+                borderColor: 'rgba(255,255,255,0.12)',
+                color: '#e6e6e6',
+              }}
+            >
+              <option value="">All members (any tier)</option>
+              <option value="iykyk">The Insider only</option>
+              <option value="cowork">The Builder only</option>
+            </select>
+          </section>
+        ) : null}
 
         {/* LEGACY TICKETTAILOR EVENT SERIES — only rendered for the two legacy
             events that still have a linked series. New events never see this. */}
