@@ -69,6 +69,52 @@ test('category default applies when an event sets no override', () => {
   );
 });
 
+// REGRESSION: the legacy resolver ends in `?? 50`, so any category it didn't
+// recognise granted 50% off. Live event categories include 'internal',
+// 'sdg_party', 'trial_resident_party', 'evening_music_residency', 'other' and
+// 'yoga_residency' — none of them mapped. Charging the buyer has to fail
+// closed instead.
+test('an unrecognised event category earns a paid tier nothing, not 50% off', () => {
+  for (const category of [
+    'internal',
+    'sdg_party',
+    'trial_resident_party',
+    'evening_music_residency',
+    'yoga_residency',
+    undefined,
+    null,
+  ]) {
+    for (const planKey of ['cowork', 'iykyk']) {
+      assert.equal(
+        resolveEntitlementPercent({ id: 'e', category }, { kind: ENTITLEMENT_MEMBER, planKey }),
+        0,
+        `${planKey} on category ${String(category)} should earn 0`,
+      );
+    }
+  }
+});
+
+test('an explicit per-event override still beats the fail-closed default', () => {
+  // This is how a Builder/Insider rate gets set on a category nobody mapped.
+  assert.equal(
+    resolveEntitlementPercent(
+      { id: 'e', category: 'internal', member_discount_percent_cowork: 20 },
+      { kind: ENTITLEMENT_MEMBER, planKey: 'cowork' },
+    ),
+    20,
+  );
+});
+
+test("'other' keeps its explicit 50% because someone chose that number", () => {
+  assert.equal(
+    resolveEntitlementPercent(
+      { id: 'e', category: 'other' },
+      { kind: ENTITLEMENT_MEMBER, planKey: 'iykyk' },
+    ),
+    50,
+  );
+});
+
 // REGRESSION: member_profiles.subscription_plan can literally be 'trial'
 // (there is such a row in production). getDiscountPercentForPlan has no case
 // for it, so without the explicit branch it fell through to the category
