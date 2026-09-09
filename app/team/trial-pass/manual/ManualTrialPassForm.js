@@ -12,7 +12,10 @@ import { useState } from 'react';
 // border and text from the `.auth-theme-root input` rule in globals.css,
 // which is why the `<input>` element itself carries no inline colour styles.
 
-export default function ManualTrialPassForm({ createdByEmail }) {
+// compact=true renders a denser variant used inside the front-desk console
+// where vertical space competes with the roster + recent-activity panels.
+// The regular /team/trial-pass/manual page still gets the roomy layout.
+export default function ManualTrialPassForm({ createdByEmail, compact = false }) {
   const [values, setValues] = useState({ fullName: '', phone: '', email: '' });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -137,8 +140,13 @@ export default function ManualTrialPassForm({ createdByEmail }) {
     );
   }
 
+  const formGap = compact ? 'gap-2.5' : 'gap-4';
+  const buttonClass = compact
+    ? 'mt-1 w-full px-5 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.14em] transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0'
+    : 'mt-2 w-full px-7 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0';
+
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+    <form onSubmit={handleSubmit} className={`flex flex-col ${formGap}`} noValidate>
       <Field
         label="Full legal name"
         name="fullName"
@@ -148,6 +156,7 @@ export default function ManualTrialPassForm({ createdByEmail }) {
         value={values.fullName}
         onChange={update('fullName')}
         bad={badField === 'fullName'}
+        compact={compact}
       />
       <Field
         label="Mobile phone number"
@@ -158,6 +167,7 @@ export default function ManualTrialPassForm({ createdByEmail }) {
         value={values.phone}
         onChange={update('phone')}
         bad={badField === 'phone'}
+        compact={compact}
       />
       <Field
         label="Email address"
@@ -168,12 +178,13 @@ export default function ManualTrialPassForm({ createdByEmail }) {
         value={values.email}
         onChange={update('email')}
         bad={badField === 'email'}
+        compact={compact}
       />
 
       <button
         type="submit"
         disabled={submitting}
-        className="mt-2 w-full px-7 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0"
+        className={buttonClass}
         style={{
           background: 'var(--auth-accent)',
           color: 'var(--auth-accent-text)',
@@ -202,11 +213,20 @@ export default function ManualTrialPassForm({ createdByEmail }) {
   );
 }
 
-function Field({ label, name, type, autoComplete, placeholder, value, onChange, bad }) {
+function Field({ label, name, type, autoComplete, placeholder, value, onChange, bad, compact = false }) {
+  const labelClass = compact
+    ? 'block text-[9px] font-semibold tracking-[0.16em] mb-1'
+    : 'block text-[10px] font-semibold tracking-[0.16em] mb-2';
+  // text-[16px] preserved even in compact mode: iOS Safari zooms the whole
+  // viewport if a focused <input> is under 16px, which would blow up the
+  // scanner layout on iPad.
+  const inputClass = compact
+    ? 'w-full px-3 py-2 rounded-lg text-[16px] outline-none border transition-colors'
+    : 'w-full px-5 py-4 rounded-xl text-[16px] outline-none border transition-colors';
   return (
     <label className="block">
       <span
-        className="block text-[10px] font-semibold tracking-[0.16em] mb-2"
+        className={labelClass}
         style={{ color: 'var(--auth-muted)' }}
       >
         {label.toUpperCase()}
@@ -219,7 +239,7 @@ function Field({ label, name, type, autoComplete, placeholder, value, onChange, 
         placeholder={placeholder}
         autoComplete={autoComplete}
         required
-        className="w-full px-5 py-4 rounded-xl text-[16px] outline-none border transition-colors"
+        className={inputClass}
         // Bad-field indicator uses an outline rather than inline
         // border-color: globals.css pins every input's border to
         // var(--auth-input-border) with !important so an inline
