@@ -8,6 +8,7 @@ import TtLinkPanel from './TtLinkPanel';
 import EventContactFields from './EventContactFields';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import { CONTACT_REQUIRED_MESSAGE, ensureContactTaggedEventOrganizer } from '@/lib/contact-helpers';
+import { uploadEventImage } from '@/lib/event-image-upload';
 
 // Mirrors the calendar legend in app/components/EventsCalendarClient.js so the
 // edit page and the internal calendar share one taxonomy. Legacy values
@@ -143,22 +144,17 @@ export default function EventForm({
     setError('');
     setUploading(true);
 
-    const supabase = createClient();
-    const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('event-images')
-      .upload(fileName, file);
+    // Resize + re-encode client-side before upload — see
+    // lib/event-image-upload.js for the size/quality rationale. Falls
+    // back to the raw file if compression fails so uploads are never
+    // blocked by a compression bug.
+    const { publicUrl, error: uploadError } = await uploadEventImage(createClient(), file);
 
     if (uploadError) {
       setError('Upload failed: ' + uploadError.message);
       setUploading(false);
       return;
     }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('event-images')
-      .getPublicUrl(fileName);
 
     setImageUrl(publicUrl);
     setUploading(false);
