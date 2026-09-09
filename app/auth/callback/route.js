@@ -124,7 +124,7 @@ function fragmentHandoffHtml(allowedReturnTo) {
 (function () {
   var params = new URLSearchParams(window.location.search);
   var next = params.get('next');
-  // SECURITY (C-01): `return_to` is validated SERVER-SIDE against an
+  // SECURITY (C-01): return_to is validated SERVER-SIDE against an
   // allowlist. The server passes the pre-validated value in as
   // ALLOWED_RETURN_TO; if the client-side value ever differs, refuse to
   // forward the fragment.
