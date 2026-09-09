@@ -11,6 +11,8 @@ import {
   buildMemberIdPreview,
   isValidMemberIdRejectReason,
 } from '@/lib/member-id-preview';
+import { findMemberLinkedTicket } from '@/lib/member-id-linked-ticket';
+import { CHECKIN_RESULTS } from '@/lib/tickets/checkin';
 
 // POST /api/scan/member-id
 //
@@ -120,9 +122,33 @@ export async function POST(request) {
   }
 
   // MODE: preview \u2014 pure read + photo signed URL, no writes.
+  //
+  // When an event_id is set (staff picked "scanning for this event") we
+  // also look up whether this member has a redeemable ticket for that
+  // event. If they do, the preview card lets staff see "Ticket: General
+  // Admission \u2014 will be checked in" so one scan does both.
   if (mode === 'preview') {
     const preview = await buildMemberIdPreview(admin, member);
-    return NextResponse.json({ mode: 'preview', member: preview });
+    const linkedTicket = eventId
+      ? await findMemberLinkedTicket(admin, {
+          memberProfileId: member.id,
+          memberEmail: member.email,
+          eventId,
+        })
+      : { ticket: null, productLabel: null, matchedVia: null, candidateCount: 0 };
+    return NextResponse.json({
+      mode: 'preview',
+      member: preview,
+      linked_ticket: linkedTicket.ticket
+        ? {
+            ticket_id: linkedTicket.ticket.id,
+            ticket_code: linkedTicket.ticket.ticket_code,
+            product_label: linkedTicket.productLabel,
+            matched_via: linkedTicket.matchedVia,
+            candidate_count: linkedTicket.candidateCount,
+          }
+        : null,
+    });
   }
 
   // MODE: reject \u2014 log the rejection. Does not change membership state.
@@ -148,8 +174,61 @@ export async function POST(request) {
     return NextResponse.json({ mode: 'reject', result: 'rejected', reject_reason: rejectReason });
   }
 
-  // MODE: verify \u2014 log the verified scan.
+  // MODE: verify \u2014 log the verified member scan AND, if the member has
+  // a ticket for the current event, redeem that ticket in the same call.
+  // One QR, one tap, both credentials cleared.
   const { user } = await getCurrentUser();
+
+  // Look up linked ticket first so we can attempt the atomic ticket flip
+  // BEFORE we log the member scan. This ordering means: if the ticket flip
+  // loses a race (someone else scanned the same buyer at another door),
+  // the member scan still gets logged \u2014 they still walk in on their
+  // member credential \u2014 but we surface a "ticket already used" note so
+  // staff know the redemption didn't happen here.
+  const linkedTicket = eventId
+    ? await findMemberLinkedTicket(admin, {
+        memberProfileId: member.id,
+        memberEmail: member.email,
+        eventId,
+      })
+    : { ticket: null, productLabel: null, matchedVia: null, candidateCount: 0 };
+
+  let ticketOutcome = null; // { result, ticket_id, product_label, matched_via }
+  if (linkedTicket.ticket) {
+    const nowIso = new Date().toISOString();
+    const { data: flipped } = await admin
+      .from('tickets')
+      .update({ status: 'used', used_at: nowIso })
+      .eq('id', linkedTicket.ticket.id)
+      .eq('status', 'valid') // race guard
+      .select('id')
+      .maybeSingle();
+
+    const chosenResult = flipped ? CHECKIN_RESULTS.VALID : CHECKIN_RESULTS.ALREADY_USED;
+
+    // Log the ticket-side check-in in ticket_checkins so the door log
+    // matches what /api/tickets/scan writes for the manual path.
+    await admin.from('ticket_checkins').insert({
+      ticket_id: linkedTicket.ticket.id,
+      event_id: eventId,
+      ticket_code_attempted: linkedTicket.ticket.ticket_code,
+      result: chosenResult,
+      scanned_by: user?.id || null,
+      device_label: deviceLabel,
+      door_session_id: doorSessionId,
+      note: flipped
+        ? `via_member_id (matched=${linkedTicket.matchedVia})`
+        : 'via_member_id lost_race',
+    });
+
+    ticketOutcome = {
+      result: chosenResult,
+      ticket_id: linkedTicket.ticket.id,
+      product_label: linkedTicket.productLabel,
+      matched_via: linkedTicket.matchedVia,
+    };
+  }
+
   const { error } = await admin.from('member_id_scans').insert({
     member_profile_id: member.id,
     event_id: eventId,
@@ -173,5 +252,6 @@ export async function POST(request) {
       firstName: (member.full_name || 'Member').split(/\s+/)[0],
       isActive: Boolean(member.is_active),
     },
+    ticket: ticketOutcome,
   });
 }
