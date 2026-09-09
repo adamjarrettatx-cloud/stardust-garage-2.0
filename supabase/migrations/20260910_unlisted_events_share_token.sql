@@ -4,16 +4,16 @@
 alter table public.events add column if not exists share_token text;
 
 update public.events
-set share_token = encode(gen_random_bytes(24), 'base64url')
+set share_token = translate(encode(gen_random_bytes(24), 'base64'), '+/=', '-_')
 where visibility = 'unlisted' and share_token is null;
 
 -- Public/internal legacy rows must also be non-null before adding the invariant.
 update public.events
-set share_token = encode(gen_random_bytes(24), 'base64url')
+set share_token = translate(encode(gen_random_bytes(24), 'base64'), '+/=', '-_')
 where share_token is null;
 
 alter table public.events
-  alter column share_token set default encode(gen_random_bytes(24), 'base64url'),
+  alter column share_token set default translate(encode(gen_random_bytes(24), 'base64'), '+/=', '-_'),
   alter column share_token set not null;
 
 create unique index if not exists events_share_token_key on public.events (share_token);
