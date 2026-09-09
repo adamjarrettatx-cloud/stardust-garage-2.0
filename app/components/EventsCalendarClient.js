@@ -20,11 +20,11 @@ const MONTHS = [
 // light backgrounds, and the text color used on a fully-filled chip (e.g. the
 // category picker in the modal).
 const CATEGORIES = {
-  internal:                  { label: 'Internal',                  color: '#3b82f6', darkColor: '#1d4ed8', text: '#fff' },
-  team_meeting:              { label: 'Team Meeting',              color: '#8b5cf6', darkColor: '#6d28d9', text: '#fff' },
+  internal:                  { label: 'Internal',                  color: '#d9c48c', darkColor: '#8a5109', text: '#fff' },
+  team_meeting:              { label: 'Team Meeting',              color: '#8a5109', darkColor: '#8a5109', text: '#fff' },
   yoga:                      { label: 'Yoga',                      color: '#10b981', darkColor: '#047857', text: '#fff' },
-  yoga_residency:            { label: 'Yoga Residency',            color: '#14b8a6', darkColor: '#0f766e', text: '#fff' },
-  evening_music_residency:   { label: 'Evening Music Residency',   color: '#a855f7', darkColor: '#7e22ce', text: '#fff' },
+  yoga_residency:            { label: 'Yoga Residency',            color: '#d9c48c', darkColor: '#8a5109', text: '#fff' },
+  evening_music_residency:   { label: 'Evening Music Residency',   color: '#8a5109', darkColor: '#8a5109', text: '#fff' },
   day_party:                 { label: 'Day Party',                 color: '#f59e0b', darkColor: '#92400e', text: '#000' },
   trial_resident_party:      { label: 'Trial Resident Party',      color: '#e11d48', darkColor: '#9f1239', text: '#fff' },
   sdg_party:                 { label: 'SDG Party',                 color: '#dc2626', darkColor: '#991b1b', text: '#fff' },
@@ -846,7 +846,7 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
                 <span className="text-[13px] font-semibold" style={{ color: t.textStrong }}>{name}</span>
                 <span
                   className="text-[13px] font-extrabold min-w-[20px] text-center"
-                  style={{ color: idx === 0 ? '#8b5cf6' : t.mutedStrong }}
+                  style={{ color: idx === 0 ? '#8a5109' : t.mutedStrong }}
                 >
                   {count}
                 </span>
