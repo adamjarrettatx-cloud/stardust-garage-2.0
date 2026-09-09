@@ -45,6 +45,10 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import {
+  RETURN_TO_ALLOWED_SCHEMES,
+  isAllowedReturnTo,
+} from '@/lib/auth-callback-return-to';
 
 // Only allow relative same-origin paths as `next` to prevent open-redirect
 // abuse (a crafted ?next=https://evil.example.com would otherwise send an
@@ -92,7 +96,7 @@ async function makeServerSupabase() {
 // hand the browser a tiny script that reads window.location.hash and
 // bounces to the deep link. Kept intentionally minimal — no React, no
 // framework overhead, no external assets.
-function fragmentHandoffHtml() {
+function fragmentHandoffHtml(allowedReturnTo) {
   const body = `<!doctype html>
 <html lang="en">
 <head>
@@ -120,6 +124,11 @@ function fragmentHandoffHtml() {
 (function () {
   var params = new URLSearchParams(window.location.search);
   var next = params.get('next');
+  // SECURITY (C-01): `return_to` is validated SERVER-SIDE against an
+  // allowlist. The server passes the pre-validated value in as
+  // ALLOWED_RETURN_TO; if the client-side value ever differs, refuse to
+  // forward the fragment.
+  var serverAllowedReturnTo = ALLOWED_RETURN_TO_PLACEHOLDER;
   var returnTo = params.get('return_to');
   var fragment = window.location.hash ? window.location.hash.slice(1) : '';
 
@@ -133,9 +142,11 @@ function fragmentHandoffHtml() {
   }
 
   // Mobile deep-link handoff: forward the fragment (which carries the
-  // tokens) to the app-provided return_to URL.
-  if (fragment && returnTo) {
-    var deepLink = decodeURIComponent(returnTo) + '#' + fragment;
+  // tokens) ONLY when the server validated the return_to against the
+  // allowlist. An attacker-controlled return_to falls through to the
+  // error path below, session tokens are never rendered off-origin.
+  if (fragment && serverAllowedReturnTo && returnTo) {
+    var deepLink = serverAllowedReturnTo + '#' + fragment;
     document.getElementById('status').textContent = 'Returning to app…';
     try { window.location.href = deepLink; } catch (e) {}
     document.getElementById('manual').innerHTML =
@@ -143,11 +154,16 @@ function fragmentHandoffHtml() {
     return;
   }
 
-  // Fragment-only (rare): treat as a same-site session hand-off. Nothing
-  // to exchange, just bounce home (or wherever ?next= says).
+  // Fragment present but return_to missing or unlisted: treat as a
+  // same-site sign-in and bounce home. Do NOT echo the untrusted return_to.
   if (fragment) {
-    document.getElementById('status').textContent = 'Signed in. Redirecting…';
-    setTimeout(function () { window.location.href = safeNext(next); }, 300);
+    if (returnTo && !serverAllowedReturnTo) {
+      document.getElementById('status').textContent =
+        'Sign-in destination not recognized. Returning to Stardust Garage.';
+    } else {
+      document.getElementById('status').textContent = 'Signed in. Redirecting…';
+    }
+    setTimeout(function () { window.location.href = safeNext(next); }, 500);
     return;
   }
 
@@ -157,12 +173,22 @@ function fragmentHandoffHtml() {
 </script>
 </body>
 </html>`;
-  return new NextResponse(body, {
+  // Inject the server-validated return_to as a JSON string literal (safe
+  // against '</script>' injection because it's already a URL that has been
+  // parsed by WHATWG URL — no HTML-significant characters survive).
+  const allowedReturnToJson = allowedReturnTo
+    ? JSON.stringify(allowedReturnTo).replace(/</g, '\\u003c')
+    : 'null';
+  const finalBody = body.replace('ALLOWED_RETURN_TO_PLACEHOLDER', allowedReturnToJson);
+  return new NextResponse(finalBody, {
     status: 200,
     headers: {
       'content-type': 'text/html; charset=utf-8',
       // No caching — this page carries auth-flow context in its URL.
       'cache-control': 'no-store, max-age=0',
+      // Belt-and-braces: never leak URL params (which may include return_to,
+      // ?next=, etc.) via Referer to whatever we bounce to.
+      'referrer-policy': 'no-referrer',
     },
   });
 }
@@ -261,5 +287,14 @@ export async function GET(request) {
   // Fragments never reach the server, so we return an HTML shell whose
   // inline JS forwards to the return_to deep link when the fragment is
   // present client-side.
-  return fragmentHandoffHtml();
+  //
+  // SECURITY (C-01): Validate return_to against the allowlist HERE, not in
+  // client JS. The server passes the validated URL (or null) into the
+  // shell; the client refuses to forward a fragment when return_to is not
+  // on the allowlist. This blocks the open-redirect / session-exfil vector.
+  const rawReturnTo = searchParams.get('return_to');
+  const allowedReturnTo = isAllowedReturnTo(rawReturnTo)
+    ? decodeURIComponent(rawReturnTo)
+    : null;
+  return fragmentHandoffHtml(allowedReturnTo);
 }
