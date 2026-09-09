@@ -113,7 +113,7 @@ export async function POST(request) {
 
   const { data: member } = await admin
     .from('member_profiles')
-    .select('id, full_name, email, profile_photo_path, photo_url, subscription_plan, subscription_status, is_active')
+    .select('id, user_id, full_name, email, profile_photo_path, photo_url, subscription_plan, subscription_status, is_active')
     .eq('id', tokenRow.member_profile_id)
     .maybeSingle();
 
@@ -242,6 +242,23 @@ export async function POST(request) {
   if (error) {
     console.error('[member-id-scan.verify]', error.message);
     return NextResponse.json({ error: 'Failed to log verification' }, { status: 500 });
+  }
+
+  // Fire a silent in-app notification confirming the door check-in. Wrapped
+  // in a try so a notification failure never blocks the door.
+  try {
+    const { notify } = await import('@/lib/notifications/send');
+    if (member.user_id) {
+      await notify(admin, {
+        userId: member.user_id,
+        type: 'door_checkin',
+        title: 'You\u2019re in',
+        body: 'Welcome to Stardust Garage. Have a beautiful night.',
+        data: { event_id: eventId, url: '/notifications' },
+      });
+    }
+  } catch (err) {
+    console.error('[member-id-scan.notify]', err?.message || err);
   }
 
   return NextResponse.json({

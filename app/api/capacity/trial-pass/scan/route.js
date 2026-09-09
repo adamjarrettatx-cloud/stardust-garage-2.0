@@ -319,6 +319,31 @@ export async function POST(request) {
       console.error('[door.trial-pass.scan.activate]', activateError);
     } else if (activated) {
       pass = activated;
+      // If the trial pass is already linked to a user (converted to a
+      // member profile), fire an in-app notification confirming the trial
+      // has started. Wrapped so a notification failure never blocks the
+      // door.
+      try {
+        if (pass.member_profile_id) {
+          const { data: mp } = await admin
+            .from('member_profiles')
+            .select('user_id')
+            .eq('id', pass.member_profile_id)
+            .maybeSingle();
+          if (mp?.user_id) {
+            const { notify } = await import('@/lib/notifications/send');
+            await notify(admin, {
+              userId: mp.user_id,
+              type: 'trial_activated',
+              title: 'Your trial has started',
+              body: `You have ${TRIAL_WINDOW_DAYS} days to explore Stardust Garage. Apply anytime from the members page.`,
+              data: { trial_pass_id: pass.id, url: '/members' },
+            });
+          }
+        }
+      } catch (err) {
+        console.error('[door.trial-pass.scan.notify]', err?.message || err);
+      }
     }
   }
 
