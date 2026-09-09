@@ -225,7 +225,7 @@ export default function UnifiedScanClient() {
         res = await fetch('/api/capacity/trial-pass/scan', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ token: sniff.token, mode: 'preview', door_session_id: sessionId }),
+          body: JSON.stringify({ token: sniff.token, mode: 'preview', eventId: eventId || undefined, door_session_id: sessionId }),
         });
       } else if (sniff.kind === 'member_id') {
         res = await fetch('/api/scan/member-id', {
@@ -261,7 +261,7 @@ export default function UnifiedScanClient() {
           res = await fetch('/api/capacity/trial-pass/scan', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ token: sniff.token, mode: 'preview', door_session_id: sessionId }),
+            body: JSON.stringify({ token: sniff.token, mode: 'preview', eventId: eventId || undefined, door_session_id: sessionId }),
           });
         }
       }
@@ -330,7 +330,7 @@ export default function UnifiedScanClient() {
         res = await fetch('/api/capacity/trial-pass/scan', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ token: payload, mode: 'checkin', door_session_id: sessionId }),
+          body: JSON.stringify({ token: payload, mode: 'checkin', eventId: eventId || undefined, door_session_id: sessionId }),
         });
       } else if (kind === 'member_id') {
         res = await fetch('/api/scan/member-id', {
@@ -364,12 +364,14 @@ export default function UnifiedScanClient() {
         // that acknowledgement into the same result card so staff sees
         // both actions completed in one screen.
         let message = `${firstName} verified`;
-        if (kind === 'member_id' && body?.ticket) {
+        if (kind === 'trial_pass') message = `${firstName} checked in`;
+        if ((kind === 'member_id' || kind === 'trial_pass') && body?.ticket) {
+          const base = kind === 'trial_pass' ? `${firstName} checked in` : `${firstName} verified`;
           if (body.ticket.result === 'valid') {
             const label = body.ticket.product_label ? ` (${body.ticket.product_label})` : '';
-            message = `${firstName} verified + ticket${label} checked in`;
+            message = `${base} + ticket${label} checked in`;
           } else if (body.ticket.result === 'already_used') {
-            message = `${firstName} verified \u00b7 ticket was already used`;
+            message = `${base} \u00b7 ticket was already used`;
           }
         }
         setResult({ kind, ok: true, message });
@@ -395,7 +397,7 @@ export default function UnifiedScanClient() {
         res = await fetch('/api/capacity/trial-pass/scan', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ token: payload, mode: 'reject', reject_reason: reasonCode, note: rejectNote || undefined, door_session_id: sessionId }),
+          body: JSON.stringify({ token: payload, mode: 'reject', reject_reason: reasonCode, note: rejectNote || undefined, eventId: eventId || undefined, door_session_id: sessionId }),
         });
       } else if (kind === 'member_id') {
         res = await fetch('/api/scan/member-id', {
@@ -701,7 +703,7 @@ function PreviewCard({ preview, activeEvent }) {
       {kind === 'member_id' && person.isActive === false && (
         <div style={styles.inactivePill}>MEMBERSHIP INACTIVE</div>
       )}
-      {kind === 'member_id' && preview?.data?.linked_ticket && (
+      {(kind === 'member_id' || kind === 'trial_pass') && preview?.data?.linked_ticket && (
         <div style={styles.linkedTicketPill}>
           + TICKET{preview.data.linked_ticket.product_label ? `: ${preview.data.linked_ticket.product_label}` : ''} · WILL CHECK IN
         </div>
@@ -809,12 +811,13 @@ function verifyLabelForKind(kind) {
   return 'Verify';
 }
 
-// Same as verifyLabelForKind but aware of a member-id preview carrying a
-// linked ticket \u2014 in that case one tap does both, so the button label
-// should communicate the combined action.
+// Same as verifyLabelForKind but aware of a preview carrying a linked
+// ticket \u2014 in that case one tap does both, so the button label should
+// communicate the combined action.
 function verifyLabelForPreview(preview) {
   if (!preview) return 'Verify';
   if (preview.kind === 'member_id' && preview.data?.linked_ticket) return 'Verify + Check In';
+  if (preview.kind === 'trial_pass' && preview.data?.linked_ticket) return 'Check In + Ticket';
   return verifyLabelForKind(preview.kind);
 }
 
