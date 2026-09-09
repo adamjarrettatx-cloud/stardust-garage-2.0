@@ -141,7 +141,7 @@ export async function GET(request) {
       if (orderIds.length > 0) {
         const { data: orders } = await admin
           .from('orders')
-          .select('id, buyer_name, buyer_email')
+          .select('id, buyer_name')
           .in('id', orderIds);
         buyerByOrder = new Map((orders || []).map((o) => [o.id, o]));
       }
@@ -149,7 +149,6 @@ export async function GET(request) {
         const buyer = buyerByOrder.get(orderIdByTicket.get(row.ticket_id)) || {};
         const entry = normalizeTicketRow(row, {
           buyerName: buyer.buyer_name,
-          buyerEmail: buyer.buyer_email,
         });
         if (entry) entries.push(entry);
       }

@@ -4,10 +4,8 @@ import { getRequestUser } from '@/lib/auth-helpers';
 
 export const runtime = 'nodejs';
 
-const PHOTO_PATH_PREFIX = '/storage/v1/object/public/member-photos/';
-
 // POST /api/portal/complete-activation
-// Body: { fullName: string, photoUrl: string }
+// Body: { fullName: string, photoPath: string }
 //
 // Finishes the invite: flips partner_profiles.is_active on and stores the name +
 // photo the invitee just confirmed. Called by /portal/activate once the magic
@@ -27,18 +25,18 @@ export async function POST(request) {
 
     const body = await request.json().catch(() => null);
     const fullName = body?.fullName?.trim();
-    const photoUrl = body?.photoUrl?.trim();
+    const photoPath = body?.photoPath?.trim();
 
     if (!fullName) {
       return NextResponse.json({ error: 'Your name is required.' }, { status: 400 });
     }
     // Same rule approve-member applies to members: no photo, no active profile.
-    if (!photoUrl) {
+    if (!photoPath) {
       return NextResponse.json({ error: 'A profile photo is required.' }, { status: 400 });
     }
-    // photo_url is rendered as an <img src> on staff screens, so only accept a
-    // URL the client actually uploaded to our own public photo bucket.
-    if (!photoUrl.startsWith(`${process.env.NEXT_PUBLIC_SUPABASE_URL}${PHOTO_PATH_PREFIX}`)) {
+    // Accept only a flat filename in the authenticated caller's namespace.
+    // Storage RLS independently ensures only its uploader can read or write it.
+    if (!isOwnedPartnerPhotoPath(photoPath, user.id)) {
       return NextResponse.json({ error: 'That photo could not be verified.' }, { status: 400 });
     }
 
@@ -58,7 +56,7 @@ export async function POST(request) {
       .from('partner_profiles')
       .update({
         full_name: fullName,
-        photo_url: photoUrl,
+        photo_url: photoPath,
         is_active: true,
         activated_at: new Date().toISOString(),
       })
@@ -80,4 +78,11 @@ export async function POST(request) {
       { status: 500 }
     );
   }
+}
+
+
+function isOwnedPartnerPhotoPath(path, userId) {
+  return typeof path === 'string'
+    && path.startsWith(`${userId}/partner-`)
+    && /^[0-9a-f-]{36}\/partner-[A-Za-z0-9][A-Za-z0-9._-]{0,180}$/.test(path);
 }

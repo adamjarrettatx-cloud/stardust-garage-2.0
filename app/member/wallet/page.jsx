@@ -32,7 +32,6 @@ export default async function WalletPage() {
   // just no Member ID card. Same for a member whose token issuance failed —
   // the card degrades to "tap to open your badge" and /member/id will mint
   // one on the fly.
-  let memberTokenRaw = null;
   let memberIsActive = false;
   try {
     const admin = createAdminClient();
@@ -43,14 +42,6 @@ export default async function WalletPage() {
       .maybeSingle();
     if (member?.id) {
       memberIsActive = Boolean(member.is_active);
-      const { data: token } = await admin
-        .from('member_identity_tokens')
-        .select('token_raw, revoked_at')
-        .eq('member_profile_id', member.id)
-        .maybeSingle();
-      if (token?.token_raw && !token.revoked_at) {
-        memberTokenRaw = token.token_raw;
-      }
     }
   } catch (err) {
     console.error('[wallet.member-id]', err?.message || err);
@@ -107,7 +98,7 @@ export default async function WalletPage() {
         </p>
       </header>
 
-      <MemberIdCard tokenRaw={memberTokenRaw} isActive={memberIsActive} />
+      <MemberIdCard isActive={memberIsActive} />
       <WalletClient walletEnabled={isMemberWalletEnabled()} />
     </main>
   );

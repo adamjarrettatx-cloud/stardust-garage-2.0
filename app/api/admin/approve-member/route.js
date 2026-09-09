@@ -2,10 +2,6 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdminMfa } from '@/lib/auth-helpers';
 import { sendMemberWelcome } from '@/lib/email';
-import {
-  generateMemberIdentityToken,
-  hashMemberIdentityToken,
-} from '@/lib/member-identity';
 
 // POST /api/admin/approve-member
 // Body: { applicationId: string }
@@ -167,27 +163,9 @@ export async function POST(request) {
       );
     }
 
-    // Issue an identity token for the new member (PR F). Idempotent — approving
-    // the same member twice does NOT rotate the token, thanks to the
-    // member_profile_id unique constraint. Failure to issue is logged but does
-    // not fail the approval: the backfill script or a later admin action can
-    // recover, and the member's account still works without a badge QR.
-    try {
-      const rawToken = generateMemberIdentityToken();
-      const tokenHash = hashMemberIdentityToken(rawToken);
-      const { error: tokenError } = await supabaseAdmin
-        .from('member_identity_tokens')
-        .insert({
-          member_profile_id: profileRow.id,
-          token_hash: tokenHash,
-          token_raw: rawToken,
-        });
-      if (tokenError && !/duplicate|unique/i.test(tokenError.message || '')) {
-        console.error('[approve-member.identity-token]', tokenError.message);
-      }
-    } catch (err) {
-      console.error('[approve-member.identity-token]', err?.message || err);
-    }
+    // Member ID credentials are issued only when the authenticated member opens
+    // /member/id. The raw token is never stored, so approval cannot pre-mint a
+    // credential that the member can later recover.
 
     // Mark application approved + account_created
     await supabaseAdmin
