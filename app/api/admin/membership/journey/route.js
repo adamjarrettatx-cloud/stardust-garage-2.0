@@ -1,25 +1,21 @@
-// GET /api/admin/membership/journey?range=7d|30d|90d|ytd|all
+// GET /api/admin/membership/journey
 //
-// One-shot aggregator for the Membership Journey hub at /bananas/membership.
-// The hub is the single place Adam runs the human pipeline for the whole
-// membership funnel — QR scan → first visit → application → approved →
-// active paying member — so the API is deliberately one call that returns
-// every number and every actionable row the hub needs. Pushing the joins to
-// the client would double the render latency and mean six spinners on one
-// screen.
+// Backs the tabbed Membership hub at /bananas/membership. Six tabs, each a
+// flat list of the accounts currently in that state:
 //
-// Shape (see JSDoc block at bottom for the full type):
+//   guest             — free_accounts row exists, no trial pass issued yet
+//   trial_ready       — trial pass issued, never used at the door
+//   trial_activated   — activated (came through the door) OR extended, still trialling
+//   weekender         — active paying member on the Weekender plan
+//   builder           — active paying member on the Builder (cowork) plan
+//   insider           — active paying member on the Insider (iykyk) plan
 //
-//   summary            headline KPIs for the top strip
-//   funnel             conversion between six lifecycle stages
-//   stages             the "kanban" — the actual people stuck at each stage
-//   trial              trial-pass rollups (sources, denials, activation)
-//   members            member-side rollups (plan mix, MRR, attention list)
-//   timeseries         daily new trial passes + new active members
-//   next_actions       the top few things Adam should personally do today
+// Deliberately narrower than the old kanban: no funnel chart, no timeseries,
+// no attention column. Applications, approvals, past-due, and cancelling
+// members live in the existing /bananas/applications and /bananas/members
+// surfaces; this hub is purely about "who is at each state right now".
 //
-// Owner-gated (`requireOwner`). Read-only. Money always in integer cents.
-// Days bucketed in America/Chicago via Intl.DateTimeFormat.
+// Owner-gated (`requireOwner`). Read-only. Money in integer cents.
 
 import { NextResponse } from 'next/server';
 import { requireOwner } from '@/lib/auth-helpers';
@@ -29,68 +25,48 @@ import { STRIPE_PRICES, PLAN_DISPLAY } from '@/lib/stripe-prices';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-const SALES_TIME_ZONE = 'America/Chicago';
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// The seven lifecycle stages we track, in the order they appear in the hub.
-// Every account/pass/application/member ends up in exactly one of these based
-// on the ordered rules below.
-//
-// `account` is the earliest stage: a `free_accounts` row exists (user signed
-// up at /pass) but no trial pass has been issued for their user_id yet. As
-// soon as a pass is minted for them (via /api/free-account/redeem-trial),
-// they move to `ready` and are represented by the trial pass row instead.
-const STAGE_ORDER = [
-  'account',      // free_account created, no trial pass issued yet
-  'ready',        // trial pass issued, never used at the door
-  'visited',      // came through the door on trial, not yet applied
-  'applied',      // submitted membership_application, not yet approved
-  'approved',     // application approved, Stripe subscription not yet active
-  'active',       // active paying member — the finish line
-  'attention',    // past-due, cancelling, or expired — needs a nudge
+// The six tabs in journey order. Order here is order rendered.
+const TAB_ORDER = [
+  'guest',
+  'trial_ready',
+  'trial_activated',
+  'weekender',
+  'builder',
+  'insider',
 ];
 
-// ---------------------------------------------------------------------------
-// Range parsing (identical to /api/admin/sales/summary so the two dashboards
-// stay coherent when opened side-by-side)
-// ---------------------------------------------------------------------------
-function parseRange(rangeParam) {
-  const raw = (rangeParam || '30d').toLowerCase();
-  const now = new Date();
-  if (raw === '7d')  return { start: new Date(now.getTime() - 7  * DAY_MS), label: '7d' };
-  if (raw === '30d') return { start: new Date(now.getTime() - 30 * DAY_MS), label: '30d' };
-  if (raw === '90d') return { start: new Date(now.getTime() - 90 * DAY_MS), label: '90d' };
-  if (raw === 'ytd') return { start: new Date(now.getFullYear(), 0, 1), label: 'ytd' };
-  return { start: new Date(0), label: 'all' };
-}
+// Plan slug → tab id. Any active member on a plan not in this map is
+// invisible in the tabbed view (there is intentionally no "other" bucket —
+// the ops surface for that is /bananas/members).
+const PLAN_TO_TAB = {
+  weekender:      'weekender',
+  cowork:         'builder',
+  'cowork-party': 'builder',
+  iykyk:          'insider',
+};
 
-// yyyy-mm-dd in Austin, used to bucket rows into daily columns for the
-// timeseries. Doing this with Intl (not raw UTC math) keeps DST correct.
-function austinDayKey(iso) {
-  if (!iso) return null;
-  const fmt = new Intl.DateTimeFormat('en-CA', {
-    timeZone: SALES_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit',
-  });
-  return fmt.format(new Date(iso));
-}
+// Display metadata for each tab. `hint` is a short subtitle rendered under
+// the tab label when it's selected, so Adam always knows what defines the
+// current filter.
+export const TAB_META = {
+  guest:           { label: 'Guest',            hint: 'Account created, no trial pass yet',        accent: '#d4d4d8' },
+  trial_ready:     { label: 'Trial Ready',      hint: 'Trial pass issued, never used at the door', accent: '#ffb84d' },
+  trial_activated: { label: 'Trial Activated',  hint: 'Came through the door on trial',            accent: '#facc15' },
+  weekender:       { label: 'The Weekender',    hint: 'Active paying member — Weekender plan',     accent: '#a78bfa' },
+  builder:         { label: 'The Builder',      hint: 'Active paying member — Builder plan',       accent: '#c084fc' },
+  insider:         { label: 'The Insider',      hint: 'Active paying member — Insider plan',       accent: '#4ade80' },
+};
 
-function centsToDollars(cents) {
-  if (cents === null || cents === undefined) return null;
-  return Math.round(cents) / 100;
-}
-
-// Given a Stripe plan slug + billing period, look up the cents-per-period from
-// the price catalogue. Returns null when unknown so callers can decide whether
-// to treat "unknown price" as $0 or drop the row from MRR.
 function planPriceCents(plan, period) {
   const p = STRIPE_PRICES?.[plan];
   if (!p) return null;
   return p?.[period]?.cents ?? p?.monthly?.cents ?? null;
 }
 
-// Normalize a period cents to a monthly-recurring cents figure. A quarterly
-// price divided by 3 and an annual price divided by 12. Keeps "MRR" a single
-// comparable number regardless of the billing cadence a member is on.
+// Normalise any billing cadence to monthly cents so MRR-per-tab is
+// comparable across mixed monthly/quarterly/annual members.
 function monthlyRecurringCents(plan, period) {
   const total = planPriceCents(plan, period);
   if (!total) return 0;
@@ -98,62 +74,46 @@ function monthlyRecurringCents(plan, period) {
   return Math.round(total / divisor);
 }
 
-// ---------------------------------------------------------------------------
-// Stage classification for a trial pass row.
-// Every trial pass belongs to exactly one stage — the *most advanced* stage
-// it has reached. The order below matters: it walks from finish line
-// backwards, so the first match wins.
-// ---------------------------------------------------------------------------
-function trialPassStage(pass) {
-  if (pass.converted_at) return 'active'; // handled again by member_profiles
-  if (pass.applied_at)   return 'applied';
-  if (pass.status === 'expired') return 'attention';
-  // "visited" = at least one allowed check-in. We can't tell from just the
-  // trial_passes row — the caller must pass in checkinsByPass. If activated_at
-  // is populated, we already know they came through the door (the check-in
-  // trigger sets that column), so it's a reliable fallback.
-  if (pass.activated_at) return 'visited';
-  return 'ready';
+// A member is considered a "paying, healthy" member when Stripe still bills
+// them AND they haven't scheduled a cancellation. Trialling on Stripe still
+// counts (trial is a paid-plan state). Past-due / cancelling / cancelled
+// are excluded — those are the responsibility of /bananas/members, not this
+// tabbed hub.
+function isPayingHealthy(m) {
+  if (!m.is_active) return false;
+  if (m.cancel_at_period_end) return false;
+  const s = m.subscription_status;
+  return s === 'active' || s === 'trialing';
 }
 
-// ---------------------------------------------------------------------------
-// Handler
-// ---------------------------------------------------------------------------
-export async function GET(request) {
+export async function GET() {
   const { unauthorized } = await requireOwner();
   if (unauthorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { searchParams } = new URL(request.url);
-  const range = parseRange(searchParams.get('range'));
-  const rangeStartIso = range.start.toISOString();
-
   const admin = createAdminClient();
 
-  // One parallel fan-out. All five queries are RLS-bypassing service-role
-  // reads on tables the requireOwner gate already covers.
-  const [passesRes, checkinsRes, appsRes, membersRes, accountsRes] = await Promise.all([
+  // Parallel fan-out over the four sources we cross-link.
+  const [passesRes, checkinsRes, membersRes, accountsRes] = await Promise.all([
     admin
       .from('trial_passes')
       .select(
-        'id, full_name, email, phone, status, signup_source, source, issued_at, expires_at, extended_until, activated_at, signup_expires_at, applied_at, converted_at, phone_verified_at, member_profile_id, application_id, profile_photo_path, user_id'
+        'id, full_name, email, phone, status, signup_source, issued_at, expires_at, extended_until, activated_at, signup_expires_at, applied_at, converted_at, member_profile_id, application_id, profile_photo_path, user_id'
       )
       .order('issued_at', { ascending: false })
       .limit(2000),
     admin
       .from('trial_pass_checkins')
-      .select('trial_pass_id, result, checked_in_at, reject_reason, notes')
+      .select('trial_pass_id, result, checked_in_at')
+      .eq('result', 'allowed')
       .order('checked_in_at', { ascending: false })
       .limit(5000),
     admin
-      .from('membership_applications')
-      .select('id, plan, full_name, preferred_name, email, phone, birthday, status, created_at, account_created, photo_url, profile_photo_path')
-      .order('created_at', { ascending: false })
-      .limit(1000),
-    admin
       .from('member_profiles')
-      .select('id, full_name, email, is_active, created_at, stripe_customer_id, stripe_subscription_id, subscription_status, subscription_plan, subscription_period, current_period_end, cancel_at_period_end, photo_url, profile_photo_path, application_id, trial_pass_code, user_id')
+      .select(
+        'id, full_name, email, is_active, created_at, stripe_customer_id, stripe_subscription_id, subscription_status, subscription_plan, subscription_period, current_period_end, cancel_at_period_end, photo_url, profile_photo_path, application_id, user_id'
+      )
       .order('created_at', { ascending: false })
       .limit(2000),
     admin
@@ -163,311 +123,104 @@ export async function GET(request) {
       .limit(2000),
   ]);
 
-  // We surface a partial payload rather than a 500 when any single source is
-  // missing — the hub still has to render, and empty sections are honest.
   const passes    = passesRes?.data    || [];
   const checkins  = checkinsRes?.data  || [];
-  const apps      = appsRes?.data      || [];
   const members   = membersRes?.data   || [];
   const accounts  = accountsRes?.data  || [];
 
-  // -----------------------------------------------------------------------
-  // Derived per-pass helpers (visited? denied? check-in count?)
-  // -----------------------------------------------------------------------
-  const allowedCheckinsByPass = new Map();
-  const firstCheckinByPass    = new Map();
-  const deniedCount            = { total: 0, reasons: new Map() };
-
+  // Per-pass check-in counts + first visit. Used both to detect activation
+  // and to render a "visited N× · last …" line on trial cards.
+  const allowedByPass = new Map();
+  const firstCheckinByPass = new Map();
   for (const c of checkins) {
-    if (c.result === 'denied') {
-      deniedCount.total++;
-      const reason = c.reject_reason || c.notes || 'unspecified';
-      deniedCount.reasons.set(reason, (deniedCount.reasons.get(reason) || 0) + 1);
-      continue;
-    }
-    if (c.result !== 'allowed') continue;
-    const list = allowedCheckinsByPass.get(c.trial_pass_id) || [];
+    const list = allowedByPass.get(c.trial_pass_id) || [];
     list.push(c.checked_in_at);
-    allowedCheckinsByPass.set(c.trial_pass_id, list);
+    allowedByPass.set(c.trial_pass_id, list);
     const prev = firstCheckinByPass.get(c.trial_pass_id);
     if (!prev || new Date(c.checked_in_at) < new Date(prev)) {
       firstCheckinByPass.set(c.trial_pass_id, c.checked_in_at);
     }
   }
 
-  // -----------------------------------------------------------------------
-  // Cross-linking: an applied trial pass points at a membership_application
-  // via application_id; a converted one points at member_profile_id.
-  // Build lookup maps once so the stages don't do O(n·m) scans.
-  // -----------------------------------------------------------------------
-  const appsById       = new Map(apps.map((a) => [a.id, a]));
-  const membersById    = new Map(members.map((m) => [m.id, m]));
-  const memberByAppId  = new Map(members.filter((m) => m.application_id).map((m) => [m.application_id, m]));
-  const passByAppId    = new Map(passes.filter((p) => p.application_id).map((p) => [p.application_id, p]));
-  const passByMemberId = new Map(passes.filter((p) => p.member_profile_id).map((p) => [p.member_profile_id, p]));
-
-  // Set of user_ids that already own a trial pass, an approved application, or
-  // a member profile — anyone in that set has moved past the `account` stage,
-  // so their free_accounts row should be suppressed from the account column
-  // (they're already represented by a further-along row).
+  // A user_id represented by any pass or paying-member row is NOT a guest —
+  // suppress them from the Guest tab so we don't double-count. Do this only
+  // by user_id; email/phone matching is unreliable.
   const advancedUserIds = new Set();
   for (const p of passes) if (p.user_id) advancedUserIds.add(p.user_id);
   for (const m of members) if (m.user_id) advancedUserIds.add(m.user_id);
 
+  // A trial pass whose owner already became a paying member is NOT a trial
+  // row — suppress it from the trial tabs.
+  const memberUserIds = new Set(members.filter((m) => m.user_id).map((m) => m.user_id));
+
   // -----------------------------------------------------------------------
-  // Build each stage's roster
+  // Build each tab's list
   // -----------------------------------------------------------------------
-  const stages = Object.fromEntries(STAGE_ORDER.map((s) => [s, []]));
+  const tabs = Object.fromEntries(TAB_ORDER.map((t) => [t, []]));
 
-  // Members first — they take precedence for anyone who reached the finish
-  // line. `stripe_status_bucket` folds Stripe statuses into three ops states:
-  // healthy (paying), attention (past_due, cancelling, incomplete), or dead
-  // (canceled/unpaid). Dead+cancelled-at-period-end members stay under
-  // Active until Stripe actually cancels them.
-  const now = Date.now();
-  for (const m of members) {
-    if (!m.is_active) continue;
-    const bucket = stripeBucket(m);
-    const row = shapeMember(m, passByMemberId.get(m.id) || null);
-    if (bucket === 'attention') stages.attention.push(row);
-    else stages.active.push(row);
-  }
-
-  // Add expired but still-uncontacted trial passes to attention — that's the
-  // "your trial just ended, want to apply?" moment.
-  // Also add cancelled/past-due members that we already put in attention.
-
-  // Applications waiting on a decision:
-  for (const a of apps) {
-    // Skip any application that already produced a member profile — that row
-    // is already represented in Active/Attention above.
-    if (memberByAppId.get(a.id)) continue;
-    if (a.status === 'approved' && !a.account_created) {
-      stages.approved.push(shapeApplication(a, passByAppId.get(a.id) || null));
-      continue;
-    }
-    if (a.status === 'rejected') continue; // rejected apps are not part of the live journey
-    // Everything else waiting: new, seen, contacted, pending, approved-but-account-not-created
-    stages.applied.push(shapeApplication(a, passByAppId.get(a.id) || null));
-  }
-
-  // Free accounts with no trial pass yet — the earliest stage. Someone typed
-  // their info into /pass, verified their phone, but hasn't redeemed a trial
-  // pass yet. Adam wants to see these so he knows the signup funnel is
-  // producing intent that isn't yet crossing into pass-issued.
+  // Guest — free_account with no advancement yet.
   for (const acc of accounts) {
     if (advancedUserIds.has(acc.user_id)) continue;
-    stages.account.push(shapeAccount(acc));
+    tabs.guest.push(shapeAccount(acc));
   }
 
-  // Trial passes: "visited" and "ready" columns.
+  // Trial ready / activated — trial passes whose owner is not yet a paying
+  // member, split by whether they've come through the door.
   for (const p of passes) {
-    // Any pass with applied_at is represented by an application row above (or
-    // by a member row if converted). Any pass whose owner became a member is
-    // represented by that member. Skip both to avoid a person showing up in
-    // two columns at once.
-    if (p.member_profile_id && membersById.has(p.member_profile_id)) continue;
-    if (p.application_id && appsById.has(p.application_id)) continue;
+    if (p.user_id && memberUserIds.has(p.user_id)) continue;
+    // A pass that already produced a conversion is represented elsewhere.
+    if (p.converted_at) continue;
 
-    const stage = trialPassStage(p);
-    const allowedCount = (allowedCheckinsByPass.get(p.id) || []).length;
+    const allowedCount = (allowedByPass.get(p.id) || []).length;
     const firstCheckin = firstCheckinByPass.get(p.id) || null;
-    const row = shapeTrialPass(p, { allowedCount, firstCheckin });
+    const activated = Boolean(p.activated_at) || allowedCount > 0;
 
-    if (stage === 'attention' && p.status === 'expired') stages.attention.push(row);
-    else if (stage === 'visited' || allowedCount > 0)     stages.visited.push(row);
-    else if (stage === 'ready')                            stages.ready.push(row);
+    const row = shapeTrialPass(p, { allowedCount, firstCheckin });
+    if (activated) tabs.trial_activated.push(row);
+    else tabs.trial_ready.push(row);
   }
 
-  // Sort each stage most-actionable first (oldest waiting at the top for
-  // decision stages, newest first for reference stages).
-  stages.account   .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  stages.ready     .sort((a, b) => new Date(b.issued_at)   - new Date(a.issued_at));
-  stages.visited   .sort((a, b) => new Date(b.last_visit || b.issued_at) - new Date(a.last_visit || a.issued_at));
-  stages.applied   .sort((a, b) => new Date(a.applied_at || a.created_at) - new Date(b.applied_at || b.created_at));
-  stages.approved  .sort((a, b) => new Date(a.approved_at || a.created_at) - new Date(b.approved_at || b.created_at));
-  stages.active    .sort((a, b) => new Date(b.member_since || 0) - new Date(a.member_since || 0));
-  stages.attention .sort((a, b) => (attentionUrgency(b) - attentionUrgency(a)));
+  // Paying-healthy members bucketed by plan → tab.
+  for (const m of members) {
+    if (!isPayingHealthy(m)) continue;
+    const tab = PLAN_TO_TAB[m.subscription_plan];
+    if (!tab) continue;
+    tabs[tab].push(shapeMember(m));
+  }
 
-  // -----------------------------------------------------------------------
-  // Summary / funnel numbers
-  // -----------------------------------------------------------------------
-  const counts = Object.fromEntries(
-    STAGE_ORDER.map((s) => [s, stages[s].length])
+  // Sort each tab most-recently-relevant first.
+  tabs.guest           .sort((a, b) => new Date(b.created_at)   - new Date(a.created_at));
+  tabs.trial_ready     .sort((a, b) => new Date(b.issued_at)    - new Date(a.issued_at));
+  tabs.trial_activated .sort((a, b) => new Date(b.last_visit || b.activated_at || b.issued_at)
+                                     - new Date(a.last_visit || a.activated_at || a.issued_at));
+  for (const t of ['weekender', 'builder', 'insider']) {
+    tabs[t].sort((a, b) => new Date(b.member_since) - new Date(a.member_since));
+  }
+
+  const counts   = Object.fromEntries(TAB_ORDER.map((t) => [t, tabs[t].length]));
+  const mrrCents = Object.fromEntries(
+    ['weekender', 'builder', 'insider'].map((t) => [
+      t,
+      tabs[t].reduce((sum, r) => sum + (r.monthly_cents || 0), 0),
+    ])
   );
 
-  const funnel = [
-    { key: 'account',  label: 'Account created',         count: accounts.length },
-    { key: 'ready',    label: 'Trial pass issued',        count: passes.length },
-    { key: 'visited',  label: 'Visited at least once',    count: [...new Set(checkins.filter((c) => c.result === 'allowed').map((c) => c.trial_pass_id))].length },
-    { key: 'applied',  label: 'Submitted application',    count: passes.filter((p) => p.applied_at).length + apps.filter((a) => !passByAppId.get(a.id)).length },
-    { key: 'approved', label: 'Approved to join',         count: apps.filter((a) => a.status === 'approved').length },
-    { key: 'active',   label: 'Active paying member',     count: members.filter((m) => m.is_active && stripeBucket(m) === 'healthy').length },
-  ];
-  // Rates between adjacent funnel steps (protect against divide-by-zero).
-  for (let i = 1; i < funnel.length; i++) {
-    const prev = funnel[i - 1].count;
-    funnel[i].rate_of_prev = prev > 0 ? funnel[i].count / prev : 0;
-  }
-  const endToEnd = funnel[0].count > 0 ? funnel[funnel.length - 1].count / funnel[0].count : 0;
-
-  // -----------------------------------------------------------------------
-  // Member-side: plan mix, MRR, attention list
-  // -----------------------------------------------------------------------
-  const planMix = {};
-  let mrrCents = 0;
-  for (const m of members) {
-    if (!m.is_active) continue;
-    if (stripeBucket(m) !== 'healthy') continue;
-    const key = m.subscription_plan || 'unknown';
-    const displayKey = PLAN_DISPLAY[key] || key;
-    planMix[displayKey] = (planMix[displayKey] || 0) + 1;
-    mrrCents += monthlyRecurringCents(m.subscription_plan, m.subscription_period);
-  }
-
-  // -----------------------------------------------------------------------
-  // Trial-pass rollups (source, denial reasons, activation timing)
-  // -----------------------------------------------------------------------
-  const sourceMix = {};
-  for (const p of passes) {
-    const key = p.signup_source || 'unknown';
-    sourceMix[key] = (sourceMix[key] || 0) + 1;
-  }
-
-  const activationDays = { same: 0, '1-3': 0, '4-7': 0, '8-14': 0, '15+': 0 };
-  for (const p of passes) {
-    const first = firstCheckinByPass.get(p.id);
-    if (!first) continue;
-    const days = Math.floor((new Date(first) - new Date(p.issued_at)) / DAY_MS);
-    if (days <= 0) activationDays.same++;
-    else if (days <= 3) activationDays['1-3']++;
-    else if (days <= 7) activationDays['4-7']++;
-    else if (days <= 14) activationDays['8-14']++;
-    else activationDays['15+']++;
-  }
-
-  // -----------------------------------------------------------------------
-  // Daily timeseries for the range: new passes, new applications, new
-  // members. Empty days included so the chart has a continuous x-axis.
-  // -----------------------------------------------------------------------
-  const dayKeys = [];
-  {
-    const start = new Date(range.start);
-    // Clamp start to a year ago for `all`, otherwise the chart becomes a
-    // 5-year sparkline with tiny bars.
-    const capped = range.label === 'all'
-      ? new Date(Date.now() - 90 * DAY_MS)
-      : start;
-    const cursor = new Date(capped);
-    const end = new Date();
-    while (cursor <= end) {
-      dayKeys.push(austinDayKey(cursor.toISOString()));
-      cursor.setUTCDate(cursor.getUTCDate() + 1);
-    }
-  }
-  const daySet = new Set(dayKeys);
-  const timeseries = dayKeys.map((day) => ({ day, accounts: 0, passes: 0, applications: 0, members: 0 }));
-  const byDayIdx = new Map(timeseries.map((row, i) => [row.day, i]));
-
-  for (const acc of accounts) {
-    const key = austinDayKey(acc.created_at);
-    if (daySet.has(key)) timeseries[byDayIdx.get(key)].accounts++;
-  }
-  for (const p of passes) {
-    const key = austinDayKey(p.issued_at);
-    if (daySet.has(key)) timeseries[byDayIdx.get(key)].passes++;
-  }
-  for (const a of apps) {
-    const key = austinDayKey(a.created_at);
-    if (daySet.has(key)) timeseries[byDayIdx.get(key)].applications++;
-  }
-  for (const m of members) {
-    if (!m.is_active) continue;
-    const key = austinDayKey(m.created_at);
-    if (daySet.has(key)) timeseries[byDayIdx.get(key)].members++;
-  }
-
-  // -----------------------------------------------------------------------
-  // Next actions — the top of Adam's "do this today" list.
-  // Two families of action, mixed together and ranked:
-  //   (a) applications waiting the longest without a decision
-  //   (b) members in Stripe attention (past_due / cancelling)
-  // Capped at 6 so the hub can render it as a checklist, not an inbox.
-  // -----------------------------------------------------------------------
-  const nextActions = [];
-  for (const row of stages.applied.slice(0, 8)) {
-    const ageDays = Math.max(0, Math.floor((now - new Date(row.applied_at || row.created_at)) / DAY_MS));
-    nextActions.push({
-      kind: 'review_application',
-      urgency: 100 + ageDays,
-      title: `Review ${row.full_name || 'application'}`,
-      subtitle: `Waiting ${ageDays}d · ${row.plan_display || 'unknown plan'}`,
-      href: `/bananas/applications/${row.id}`,
-    });
-  }
-  for (const row of stages.attention.slice(0, 8)) {
-    nextActions.push({
-      kind: row.kind === 'member' ? 'member_attention' : 'trial_expired',
-      urgency: attentionUrgency(row),
-      title: row.kind === 'member'
-        ? `Follow up with ${row.full_name} (${row.subscription_status})`
-        : `Trial expired: ${row.full_name}`,
-      subtitle: row.kind === 'member'
-        ? (row.cancel_at_period_end ? 'Cancels at period end — offer to save' : 'Payment failed — retry or contact')
-        : 'Nudge them to apply before the trial memory fades',
-      href: row.kind === 'member' ? `/bananas/members/${row.id}` : `/bananas/applications`,
-    });
-  }
-  nextActions.sort((a, b) => b.urgency - a.urgency);
-
-  // -----------------------------------------------------------------------
-  // Compose payload
-  // -----------------------------------------------------------------------
   return NextResponse.json({
     generated_at: new Date().toISOString(),
-    range: range.label,
-    summary: {
-      total_accounts: accounts.length,
-      total_trial_passes: passes.length,
-      active_members: members.filter((m) => m.is_active && stripeBucket(m) === 'healthy').length,
-      attention_count: stages.attention.length,
-      applications_pending: stages.applied.length,
-      approved_pending_signup: stages.approved.length,
-      accounts_awaiting_pass: stages.account.length,
-      mrr_cents: mrrCents,
-      mrr_dollars: centsToDollars(mrrCents),
-    },
+    tab_order: TAB_ORDER,
+    tab_meta: TAB_META,
     counts,
-    funnel: {
-      steps: funnel,
-      end_to_end: endToEnd,
-    },
-    stages,
-    trial: {
-      source_mix: sourceMix,
-      activation_days: activationDays,
-      denied_total: deniedCount.total,
-      denied_reasons: [...deniedCount.reasons.entries()]
-        .map(([reason, count]) => ({ reason, count }))
-        .sort((a, b) => b.count - a.count),
-    },
-    members: {
-      plan_mix: planMix,
-    },
-    timeseries,
-    next_actions: nextActions.slice(0, 6),
+    mrr_cents: mrrCents,
+    tabs,
   });
 }
 
 // ---------------------------------------------------------------------------
-// Row shapers — every stage renders a card with a common shape, so the hub
-// client code doesn't need to know whether the underlying record is a trial
-// pass, an application, or a member.
+// Row shapers — every tab renders a uniform profile card, so the client
+// doesn't branch on kind for layout, only for the small pieces of context
+// text below the name.
 // ---------------------------------------------------------------------------
 
-// A free_account row that has NOT yet redeemed a trial pass. Rendered in the
-// leftmost column of the kanban. The `kind: 'account'` marker distinguishes
-// it from a trial-pass row in the client's per-kind context/badge rendering.
 function shapeAccount(acc) {
   const ageDays = Math.max(0, Math.floor((Date.now() - new Date(acc.created_at)) / DAY_MS));
   return {
@@ -478,12 +231,10 @@ function shapeAccount(acc) {
     email: acc.email,
     phone: acc.phone,
     photo_path: acc.profile_photo_path || null,
-    phone_verified_at: acc.phone_verified_at,
+    phone_verified: Boolean(acc.phone_verified_at),
     created_at: acc.created_at,
     age_days: ageDays,
-    // Free accounts don't have their own admin detail page yet, but the
-    // /pass flow is the canonical place to see what they saw when signing up.
-    href: null,
+    href: null, // free accounts have no admin detail page yet
   };
 }
 
@@ -511,34 +262,11 @@ function shapeTrialPass(p, { allowedCount, firstCheckin }) {
     visits: allowedCount,
     days_left: daysLeft,
     expires_at: effectiveExpiry,
-    href: null, // trial passes don't have their own admin page — the pass id is not routable yet
+    href: null,
   };
 }
 
-function shapeApplication(a, linkedPass) {
-  const displayKey = PLAN_DISPLAY[a.plan] || a.plan || 'unknown';
-  return {
-    kind: 'application',
-    id: a.id,
-    full_name: a.full_name,
-    preferred_name: a.preferred_name,
-    email: a.email,
-    phone: a.phone,
-    photo_path: a.profile_photo_path || null,
-    photo_url: a.photo_url || null,
-    plan: a.plan,
-    plan_display: displayKey,
-    status: a.status || 'new',
-    created_at: a.created_at,
-    applied_at: linkedPass?.applied_at || a.created_at,
-    approved_at: a.status === 'approved' ? a.created_at : null, // best proxy — no explicit column
-    linked_pass_id: linkedPass?.id || null,
-    href: `/bananas/applications/${a.id}`,
-  };
-}
-
-function shapeMember(m, linkedPass) {
-  const bucket = stripeBucket(m);
+function shapeMember(m) {
   return {
     kind: 'member',
     id: m.id,
@@ -548,39 +276,11 @@ function shapeMember(m, linkedPass) {
     photo_url: m.photo_url || null,
     subscription_status: m.subscription_status,
     subscription_plan: m.subscription_plan,
-    subscription_plan_display: PLAN_DISPLAY[m.subscription_plan] || m.subscription_plan || 'unknown',
+    subscription_plan_display: PLAN_DISPLAY[m.subscription_plan] || m.subscription_plan || 'Unknown',
     subscription_period: m.subscription_period,
     current_period_end: m.current_period_end,
-    cancel_at_period_end: Boolean(m.cancel_at_period_end),
     member_since: m.created_at,
     monthly_cents: monthlyRecurringCents(m.subscription_plan, m.subscription_period),
-    stripe_bucket: bucket,
-    linked_pass_id: linkedPass?.id || null,
     href: `/bananas/members/${m.id}`,
   };
-}
-
-// Fold Stripe's rich subscription_status vocabulary into three ops states.
-function stripeBucket(m) {
-  const s = m.subscription_status;
-  if (s === 'active' && !m.cancel_at_period_end) return 'healthy';
-  if (s === 'trialing') return 'healthy';
-  if (s === 'past_due' || s === 'unpaid' || s === 'incomplete') return 'attention';
-  if (m.cancel_at_period_end) return 'attention';
-  if (s === 'canceled' || s === 'incomplete_expired') return 'dead';
-  return 'healthy';
-}
-
-function attentionUrgency(row) {
-  // Higher = more urgent. Past-due members > cancelling members > expired
-  // trials. Age-in-days added on so the oldest ones bubble to the top.
-  const now = Date.now();
-  const base =
-    row.subscription_status === 'past_due' ? 300 :
-    row.cancel_at_period_end               ? 200 :
-    row.status === 'expired'               ? 100 :
-    50;
-  const anchor = row.current_period_end || row.expires_at || row.issued_at || row.created_at;
-  const ageDays = anchor ? Math.floor((now - new Date(anchor)) / DAY_MS) : 0;
-  return base + Math.abs(ageDays);
 }
