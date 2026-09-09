@@ -96,7 +96,7 @@ export default async function TrialPassViewPage({ params }) {
   const passUrl = buildPassUrl(resolveSiteUrl(), token);
   const qrSvg = qrMatrixToSvg(passUrl, { size: 260, dark: '#0a0a0a', light: '#ffffff' });
 
-  const accent = live ? '#4ade80' : '#ff8a8a';
+  const accent = live ? '#d9c48c' : '#ff8a8a';
 
   // Mint a signed URL for the pass photo (if any) so the client PhotoBlock
   // renders the current photo without a follow-up fetch.
@@ -216,7 +216,7 @@ export default async function TrialPassViewPage({ params }) {
           <a
             href="/members"
             className="inline-block mt-6 px-7 py-3.5 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-transform hover:-translate-y-0.5"
-            style={{ background: '#ffb84d', color: '#0a0a0a' }}
+            style={{ background: '#d9c48c', color: '#0a0a0a' }}
           >
             APPLY FOR MEMBERSHIP
           </a>

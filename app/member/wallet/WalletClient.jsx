@@ -183,9 +183,9 @@ function GhostButton({ children, danger = false, ...rest }) {
 
 function StatusPill({ status }) {
   const map = {
-    paid: { label: 'PAID', bg: 'rgba(16,185,129,0.14)', color: '#34d399', border: 'rgba(16,185,129,0.3)' },
+    paid: { label: 'PAID', bg: 'rgba(217,196,140,0.14)', color: '#d9c48c', border: 'rgba(217,196,140,0.3)' },
     refunded: { label: 'REFUNDED', bg: 'rgba(239,68,68,0.14)', color: '#f87171', border: 'rgba(239,68,68,0.3)' },
-    partial_refund: { label: 'PARTIAL REFUND', bg: 'rgba(245,158,11,0.14)', color: '#fbbf24', border: 'rgba(245,158,11,0.3)' },
+    partial_refund: { label: 'PARTIAL REFUND', bg: 'rgba(138,81,9,0.14)', color: '#8a5109', border: 'rgba(245,158,11,0.3)' },
   };
   const s = map[status] || {
     label: (status || '').toUpperCase() || 'PENDING',

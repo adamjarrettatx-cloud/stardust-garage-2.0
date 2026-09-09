@@ -50,7 +50,7 @@ export default async function EventPreviewPage({ params }) {
           <div className="flex items-center gap-2.5 min-w-0">
             <span
               className="text-[10px] font-extrabold tracking-[0.14em] px-2 py-1 rounded-full flex-shrink-0"
-              style={{ background: '#ffb84d', color: '#0a0a0a' }}
+              style={{ background: '#d9c48c', color: '#0a0a0a' }}
             >
               PREVIEW
             </span>

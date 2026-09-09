@@ -20,15 +20,15 @@ const MONTHS = [
 // light backgrounds, and the text color used on a fully-filled chip (e.g. the
 // category picker in the modal).
 const CATEGORIES = {
-  internal:                  { label: 'Internal',                  color: '#3b82f6', darkColor: '#1d4ed8', text: '#fff' },
-  team_meeting:              { label: 'Team Meeting',              color: '#8b5cf6', darkColor: '#6d28d9', text: '#fff' },
-  yoga:                      { label: 'Yoga',                      color: '#10b981', darkColor: '#047857', text: '#fff' },
-  yoga_residency:            { label: 'Yoga Residency',            color: '#14b8a6', darkColor: '#0f766e', text: '#fff' },
-  evening_music_residency:   { label: 'Evening Music Residency',   color: '#a855f7', darkColor: '#7e22ce', text: '#fff' },
-  day_party:                 { label: 'Day Party',                 color: '#f59e0b', darkColor: '#92400e', text: '#000' },
+  internal:                  { label: 'Internal',                  color: '#d9c48c', darkColor: '#8a5109', text: '#fff' },
+  team_meeting:              { label: 'Team Meeting',              color: '#8a5109', darkColor: '#0a0a0a', text: '#fff' },
+  yoga:                      { label: 'Yoga',                      color: '#d9c48c', darkColor: '#8a5109', text: '#fff' },
+  yoga_residency:            { label: 'Yoga Residency',            color: '#d9c48c', darkColor: '#8a5109', text: '#fff' },
+  evening_music_residency:   { label: 'Evening Music Residency',   color: '#8a5109', darkColor: '#0a0a0a', text: '#fff' },
+  day_party:                 { label: 'Day Party',                 color: '#d9c48c', darkColor: '#8a5109', text: '#000' },
   trial_resident_party:      { label: 'Trial Resident Party',      color: '#e11d48', darkColor: '#9f1239', text: '#fff' },
   sdg_party:                 { label: 'SDG Party',                 color: '#dc2626', darkColor: '#991b1b', text: '#fff' },
-  workshop:                  { label: 'Workshop',                  color: '#eab308', darkColor: '#a16207', text: '#000' },
+  workshop:                  { label: 'Workshop',                  color: '#d9c48c', darkColor: '#8a5109', text: '#000' },
 };
 
 // Neutral fallback used when an event has an unknown or removed category (e.g.
@@ -36,20 +36,20 @@ const CATEGORIES = {
 // Keeps rendering safe until the event is re-tagged.
 const FALLBACK_CATEGORY = {
   label: 'Uncategorized',
-  color: '#9ca3af',
-  darkColor: '#4b5563',
+  color: '#a3a3a3',
+  darkColor: '#666',
   text: '#fff',
 };
 
 // PUBLIC / INTERNAL micro-party marker styles, per theme. Light-mode text
 // uses a deeper shade of the same hue so it stays readable on a white chip.
 const PUBLIC_STYLE = {
-  dark:  { color: '#ffb84d', bg: 'rgba(255,184,77,0.12)', border: 'rgba(255,184,77,0.3)' },
-  light: { color: '#8a5109', bg: 'rgba(255,184,77,0.18)', border: 'rgba(184,120,20,0.4)' },
+  dark:  { color: '#d9c48c', bg: 'rgba(217,196,140,0.12)', border: 'rgba(217,196,140,0.3)' },
+  light: { color: '#8a5109', bg: 'rgba(217,196,140,0.18)', border: 'rgba(138,81,9,0.4)' },
 };
 const INTERNAL_STYLE = {
-  dark:  { color: '#f59e0b', bg: 'rgba(245,158,11,0.14)', border: 'rgba(245,158,11,0.4)' },
-  light: { color: '#7c3d0a', bg: 'rgba(245,158,11,0.2)',  border: 'rgba(180,105,10,0.45)' },
+  dark:  { color: '#d9c48c', bg: 'rgba(138,81,9,0.14)', border: 'rgba(138,81,9,0.4)' },
+  light: { color: '#8a5109', bg: 'rgba(138,81,9,0.2)',  border: 'rgba(138,81,9,0.45)' },
 };
 
 // Full page theme palettes.
@@ -78,24 +78,24 @@ const THEMES = {
     chipBorderAlpha: '44',
   },
   light: {
-    panelBg: '#faf9f6',
+    panelBg: '#ffffff',
     panelShadow: '0 24px 64px rgba(0,0,0,0.35)',
-    text: '#1a1a1d',
+    text: '#111',
     textStrong: '#000000',
-    muted: '#5c5c63',
-    mutedStrong: '#3a3a40',
+    muted: '#666',
+    mutedStrong: '#333',
     cellBg: '#ffffff',
-    cellBgOutside: '#efece6',
+    cellBgOutside: '#ffffff',
     gridLine: 'rgba(0,0,0,0.08)',
     border: 'rgba(0,0,0,0.18)',
     borderSoft: 'rgba(0,0,0,0.12)',
     selectedBg: 'rgba(0,0,0,0.06)',
     selectedOutline: '1px solid rgba(0,0,0,0.2)',
-    todayBg: '#1a1a1d',
+    todayBg: '#111',
     todayText: '#ffffff',
-    dayNumOutside: '#c7c4bc',
+    dayNumOutside: '#d4d4d4',
     hoverBg: 'rgba(0,0,0,0.06)',
-    addEventBg: '#1a1a1d',
+    addEventBg: '#111',
     addEventText: '#ffffff',
     chipTintAlpha: '17',
     chipBorderAlpha: '55',
@@ -839,14 +839,14 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
                 key={name}
                 className="flex items-center gap-2 px-4 py-2 rounded-full border"
                 style={{
-                  borderColor: idx === 0 ? 'rgba(139,92,246,0.5)' : t.border,
-                  background: idx === 0 ? 'rgba(139,92,246,0.12)' : 'transparent',
+                  borderColor: idx === 0 ? 'rgba(138,81,9,0.5)' : t.border,
+                  background: idx === 0 ? 'rgba(138,81,9,0.12)' : 'transparent',
                 }}
               >
                 <span className="text-[13px] font-semibold" style={{ color: t.textStrong }}>{name}</span>
                 <span
                   className="text-[13px] font-extrabold min-w-[20px] text-center"
-                  style={{ color: idx === 0 ? '#8b5cf6' : t.mutedStrong }}
+                  style={{ color: idx === 0 ? '#8a5109' : t.mutedStrong }}
                 >
                   {count}
                 </span>

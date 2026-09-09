@@ -51,12 +51,12 @@ const PLAN_TO_TAB = {
 // the tab label when it's selected, so Adam always knows what defines the
 // current filter.
 export const TAB_META = {
-  guest:           { label: 'Guest',            hint: 'Account created, no trial pass yet',        accent: '#d4d4d8' },
-  trial_ready:     { label: 'Trial Ready',      hint: 'Trial pass issued, never used at the door', accent: '#ffb84d' },
-  trial_activated: { label: 'Trial Activated',  hint: 'Came through the door on trial',            accent: '#facc15' },
-  weekender:       { label: 'The Weekender',    hint: 'Active paying member — Weekender plan',     accent: '#a78bfa' },
-  builder:         { label: 'The Builder',      hint: 'Active paying member — Builder plan',       accent: '#c084fc' },
-  insider:         { label: 'The Insider',      hint: 'Active paying member — Insider plan',       accent: '#4ade80' },
+  guest:           { label: 'Guest',            hint: 'Account created, no trial pass yet',        accent: '#d4d4d4' },
+  trial_ready:     { label: 'Trial Ready',      hint: 'Trial pass issued, never used at the door', accent: '#d9c48c' },
+  trial_activated: { label: 'Trial Activated',  hint: 'Came through the door on trial',            accent: '#8a5109' },
+  weekender:       { label: 'The Weekender',    hint: 'Active paying member — Weekender plan',     accent: '#8a5109' },
+  builder:         { label: 'The Builder',      hint: 'Active paying member — Builder plan',       accent: '#8a5109' },
+  insider:         { label: 'The Insider',      hint: 'Active paying member — Insider plan',       accent: '#d9c48c' },
 };
 
 function planPriceCents(plan, period) {

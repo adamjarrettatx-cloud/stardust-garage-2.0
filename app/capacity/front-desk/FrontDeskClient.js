@@ -373,8 +373,8 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
   const capPillColor = {
     none: '#8a8a8a',
     empty: '#8a8a8a',
-    open: '#7CFC9B',
-    near: '#ffb84d',
+    open: '#d9c48c',
+    near: '#d9c48c',
     full: '#ff5c5c',
   }[capStatus] || '#8a8a8a';
   const capPillLabel = {
@@ -403,10 +403,10 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
             >
               Front Desk
             </div>
-            <div className="flex items-center gap-1.5" style={{ color: capacity.connected ? '#7CFC9B' : '#8a8a8a' }}>
+            <div className="flex items-center gap-1.5" style={{ color: capacity.connected ? '#d9c48c' : '#8a8a8a' }}>
               <span
                 className="inline-block w-2 h-2 rounded-full"
-                style={{ background: capacity.connected ? '#7CFC9B' : '#555' }}
+                style={{ background: capacity.connected ? '#d9c48c' : '#555' }}
                 aria-hidden
               />
               <span className="text-[11px] font-semibold tracking-wide">
@@ -476,7 +476,7 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
               </h2>
             </div>
             <div className="text-[12px] tabular-nums" style={{ color: '#8a8a8a' }}>
-              <span style={{ color: '#7CFC9B' }}>{summary.checked_in} in</span>
+              <span style={{ color: '#d9c48c' }}>{summary.checked_in} in</span>
               {' · '}{summary.pending} to come
               {summary.no_show > 0 && (
                 <>{' · '}<span style={{ color: '#ff8a8a' }}>{summary.no_show} no-show</span></>
@@ -529,8 +529,8 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
             <div
               className="mx-5 mt-1 mb-2 px-3 py-2 rounded-lg text-[13px] font-semibold"
               style={{
-                color: rosterError ? '#ff8a8a' : '#7CFC9B',
-                background: rosterError ? 'rgba(255,138,138,0.08)' : 'rgba(124,252,155,0.08)',
+                color: rosterError ? '#ff8a8a' : '#d9c48c',
+                background: rosterError ? 'rgba(255,138,138,0.08)' : 'rgba(217,196,140,0.08)',
               }}
               aria-live="polite"
             >
@@ -711,7 +711,7 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
         }
         :global(.fd-input:focus) {
           outline: none;
-          border-color: rgba(124, 252, 155, 0.5);
+          border-color: rgba(217, 196, 140, 0.5);
         }
       `}</style>
     </main>
@@ -720,7 +720,7 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
 
 const STATUS_META = {
   pending: { label: 'On list', color: '#cfcfcf', bg: 'rgba(255,255,255,0.07)' },
-  checked_in: { label: 'Checked in', color: '#7CFC9B', bg: 'rgba(124,252,155,0.12)' },
+  checked_in: { label: 'Checked in', color: '#d9c48c', bg: 'rgba(217,196,140,0.12)' },
   no_show: { label: 'No show', color: '#ff8a8a', bg: 'rgba(255,138,138,0.12)' },
 };
 
@@ -768,14 +768,14 @@ function EntryRow({ entry, busy, confirmingNoShow, onCheckIn, onNoShow }) {
             className="rounded-md px-2 py-1 text-[11px] font-bold tracking-[0.08em] uppercase"
             style={
               isDiscount
-                ? { background: 'rgba(255,184,77,0.15)', color: '#ffb84d' }
-                : { background: 'rgba(124,252,155,0.12)', color: '#7CFC9B' }
+                ? { background: 'rgba(217,196,140,0.15)', color: '#d9c48c' }
+                : { background: 'rgba(217,196,140,0.12)', color: '#d9c48c' }
             }
           >
             {isDiscount ? 'Discount' : 'Free'}
           </span>
           {isDiscount && (
-            <span className="text-[13px] font-semibold" style={{ color: '#ffb84d' }}>
+            <span className="text-[13px] font-semibold" style={{ color: '#d9c48c' }}>
               {entry.discount_detail || 'No discount detail — ask a manager'}
             </span>
           )}
@@ -845,9 +845,9 @@ const KIND_LABEL = {
   ticket: 'Ticket',
 };
 const RESULT_COLOR = {
-  admitted: '#7CFC9B',
+  admitted: '#d9c48c',
   rejected: '#ff8a8a',
-  denied: '#ffb84d',
+  denied: '#d9c48c',
 };
 const RESULT_LABEL = {
   admitted: 'In',
@@ -1044,10 +1044,10 @@ function DoorSessionBar({ activeSession, activeEvent, busy, error, onStart, onEn
     return (
       <section
         className="rounded-2xl border p-3 flex items-center gap-3"
-        style={{ background: 'rgba(124,252,155,0.06)', borderColor: 'rgba(124,252,155,0.35)' }}
+        style={{ background: 'rgba(217,196,140,0.06)', borderColor: 'rgba(217,196,140,0.35)' }}
       >
         <div className="flex-1 min-w-0">
-          <div className="text-[10px] font-bold tracking-[0.16em] uppercase" style={{ color: '#7CFC9B' }}>
+          <div className="text-[10px] font-bold tracking-[0.16em] uppercase" style={{ color: '#d9c48c' }}>
             Event running
           </div>
           <div className="text-[15px] font-bold truncate leading-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
@@ -1078,10 +1078,10 @@ function DoorSessionBar({ activeSession, activeEvent, busy, error, onStart, onEn
   return (
     <section
       className="rounded-2xl border p-4 flex items-center gap-4"
-      style={{ background: 'rgba(255,184,77,0.06)', borderColor: 'rgba(255,184,77,0.35)' }}
+      style={{ background: 'rgba(217,196,140,0.06)', borderColor: 'rgba(217,196,140,0.35)' }}
     >
       <div className="flex-1 min-w-0">
-        <div className="text-[11px] font-bold tracking-[0.16em] uppercase" style={{ color: '#ffb84d' }}>
+        <div className="text-[11px] font-bold tracking-[0.16em] uppercase" style={{ color: '#d9c48c' }}>
           No event running
         </div>
         <div className="text-[14px]" style={{ color: '#e5e5e5' }}>
@@ -1096,7 +1096,7 @@ function DoorSessionBar({ activeSession, activeEvent, busy, error, onStart, onEn
         onClick={onStart}
         disabled={busy}
         className="rounded-full px-5 py-2 text-[12px] font-bold tracking-[0.12em] uppercase"
-        style={{ background: '#7CFC9B', color: '#0a0a0a' }}
+        style={{ background: '#d9c48c', color: '#0a0a0a' }}
       >
         Start Event
       </button>
@@ -1160,7 +1160,7 @@ function StartEventOverlay({
           <Link
             href="/bananas/events/new"
             className="inline-block rounded-full px-4 py-2 text-[12px] font-bold tracking-[0.12em] uppercase"
-            style={{ background: '#7CFC9B', color: '#0a0a0a' }}
+            style={{ background: '#d9c48c', color: '#0a0a0a' }}
           >
             Create an event →
           </Link>
@@ -1199,7 +1199,7 @@ function StartEventOverlay({
         <Link
           href="/bananas/events/new"
           className="text-[12px] font-bold tracking-[0.12em] uppercase"
-          style={{ color: '#7CFC9B' }}
+          style={{ color: '#d9c48c' }}
         >
           + New event
         </Link>

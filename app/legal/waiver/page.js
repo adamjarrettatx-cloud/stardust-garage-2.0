@@ -139,7 +139,7 @@ export default function WaiverPage() {
           max-width: 780px;
           margin: 0 auto;
           padding: 48px 24px 96px;
-          color: #e8e6e0;
+          color: #ffffff;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
             'Helvetica Neue', Arial, sans-serif;
           font-size: 15px;
@@ -182,7 +182,7 @@ export default function WaiverPage() {
         .meta dd {
           margin: 0;
           font-size: 14px;
-          color: #e8e6e0;
+          color: #ffffff;
         }
         .meta .slug { color: #8a8a8a; font-size: 12px; }
         .meta .hash {

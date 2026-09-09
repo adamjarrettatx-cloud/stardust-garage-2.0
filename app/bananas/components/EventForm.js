@@ -417,13 +417,13 @@ export default function EventForm({
           </div>
         </div>
         {isInternal && (
-          <p className="text-[11px] mt-4" style={{ color: '#f59e0b' }}>
+          <p className="text-[11px] mt-4" style={{ color: '#d9c48c' }}>
             Internal event: never appears on the public events page or member surfaces. It still
             supports contracts, SignNow, financials, and POS imports, and shows on the team calendar.
           </p>
         )}
         {isUnlisted && (
-          <p className="text-[11px] mt-4" style={{ color: '#f59e0b' }}>
+          <p className="text-[11px] mt-4" style={{ color: '#d9c48c' }}>
             Unlisted event: not on /events, /home, or the public calendar, and search engines are
             told not to index it. Anyone with the /events/{slug || '[slug]'} link can open the page
             and buy tickets, so only share the link with people you want at the event.
@@ -678,7 +678,7 @@ export default function EventForm({
               onClick={handleGenerateCodes}
               disabled={generating}
               className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.14em] border transition-colors hover:bg-black/5 disabled:opacity-50 whitespace-nowrap"
-              style={{ color: '#c17800', borderColor: 'rgba(193, 120, 0, 0.35)' }}
+              style={{ color: '#8a5109', borderColor: 'rgba(193, 120, 0, 0.35)' }}
               title="Generate member ticket codes for this event"
             >
               {generating ? 'GENERATING…' : 'MEMBER CODES'}
@@ -698,7 +698,7 @@ export default function EventForm({
         </div>
 
         {generateMessage && (
-          <p className="text-[12px] text-right" style={{ color: '#ffb84d' }}>
+          <p className="text-[12px] text-right" style={{ color: '#d9c48c' }}>
             {generateMessage}
           </p>
         )}

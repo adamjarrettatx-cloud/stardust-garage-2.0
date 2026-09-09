@@ -282,7 +282,7 @@ export default function ProfileClient({ email, contactTypes, contactType, profil
               EDIT NAME &amp; PHOTO
             </button>
             {saved && (
-              <span className="text-[12px]" style={{ color: '#7ac68b' }}>
+              <span className="text-[12px]" style={{ color: '#d9c48c' }}>
                 Saved.
               </span>
             )}

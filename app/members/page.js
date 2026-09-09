@@ -77,22 +77,22 @@ export default function MembersPage() {
           aria-disabled="true"
           className="relative mb-8 rounded-[18px] p-7 md:p-8 border flex flex-col md:flex-row md:items-center gap-6 md:gap-8"
           style={{
-            background: 'linear-gradient(180deg, rgba(201,168,107,0.06), rgba(255,255,255,0.015))',
-            borderColor: 'rgba(201,168,107,0.55)',
-            boxShadow: '0 0 0 1px rgba(201,168,107,0.12), 0 30px 60px -30px rgba(201,168,107,0.20)',
+            background: 'linear-gradient(180deg, rgba(217,196,140,0.06), rgba(255,255,255,0.015))',
+            borderColor: 'rgba(217,196,140,0.55)',
+            boxShadow: '0 0 0 1px rgba(217,196,140,0.12), 0 30px 60px -30px rgba(217,196,140,0.20)',
             cursor: 'not-allowed',
             opacity: 0.75,
           }}
         >
           <div
             className="absolute -top-2.5 left-7 text-[10px] font-semibold tracking-[0.28em] px-2.5 py-1 rounded-full"
-            style={{ background: '#c9a86b', color: '#1a1408' }}
+            style={{ background: '#d9c48c', color: '#111' }}
           >
             COMING SOON
           </div>
 
           <div className="flex-1">
-            <div className="text-[10px] font-semibold tracking-[0.28em] mb-2" style={{ color: 'rgba(201,168,107,0.85)' }}>
+            <div className="text-[10px] font-semibold tracking-[0.28em] mb-2" style={{ color: 'rgba(217,196,140,0.85)' }}>
               TRY US BEFORE YOU JOIN
             </div>
             <h3 className="text-[22px] font-bold -tracking-[0.01em] mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
@@ -115,7 +115,7 @@ export default function MembersPage() {
               style={{
                 background: 'transparent',
                 color: 'rgba(255,255,255,0.55)',
-                border: '1px solid rgba(201,168,107,0.45)',
+                border: '1px solid rgba(217,196,140,0.45)',
                 cursor: 'not-allowed',
               }}
             >
@@ -126,7 +126,7 @@ export default function MembersPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {plans.map((plan) => (
-            <div key={plan.slug} className="relative rounded-[18px] p-9 md:p-10 border flex flex-col" style={{ background: '#141418', borderColor: 'rgba(255,255,255,0.06)', color: '#f5f5f5' }}>
+            <div key={plan.slug} className="relative rounded-[18px] p-9 md:p-10 border flex flex-col" style={{ background: '#111', borderColor: 'rgba(255,255,255,0.06)', color: '#f5f5f5' }}>
               <div className="text-[10px] font-semibold tracking-[0.28em] mb-3" style={{ color: 'rgba(255,255,255,0.5)' }}>{plan.kicker}</div>
               <h3 className="text-[22px] font-bold -tracking-[0.01em] mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{plan.name}</h3>
               <p className="text-[14px] leading-[1.55] mb-7" style={{ color: 'rgba(255,255,255,0.6)' }}>{plan.tagline}</p>
@@ -145,7 +145,7 @@ export default function MembersPage() {
                 ))}
               </ul>
 
-              <Link href={`/members/apply/${plan.slug}`} className="w-full py-3.5 rounded-full text-[12px] font-semibold tracking-[0.2em] transition-all hover:-translate-y-0.5 text-center" style={{ background: '#f5f5f0', color: '#0a0a0a' }}>APPLY</Link>
+              <Link href={`/members/apply/${plan.slug}`} className="w-full py-3.5 rounded-full text-[12px] font-semibold tracking-[0.2em] transition-all hover:-translate-y-0.5 text-center" style={{ background: '#ffffff', color: '#0a0a0a' }}>APPLY</Link>
             </div>
           ))}
         </div>
@@ -154,7 +154,7 @@ export default function MembersPage() {
       {/* THE SPACE — Lockers add-on */}
       <section id="space" className="max-w-[1100px] mx-auto px-6 pb-20 md:pb-28 scroll-mt-24">
         {/* Lockers add-on */}
-        <div className="mt-5 rounded-[18px] p-8 md:p-9 border flex flex-col md:flex-row md:items-center gap-7" style={{ background: '#141418', borderColor: 'rgba(255,255,255,0.06)' }}>
+        <div className="mt-5 rounded-[18px] p-8 md:p-9 border flex flex-col md:flex-row md:items-center gap-7" style={{ background: '#111', borderColor: 'rgba(255,255,255,0.06)' }}>
           <div className="md:w-[260px] flex-shrink-0">
             <div className="text-[10px] font-semibold tracking-[0.24em] mb-2" style={{ color: 'rgba(255,255,255,0.45)' }}>ADD-ON</div>
             <h3 className="text-[22px] font-bold -tracking-[0.01em] mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Lockers</h3>
@@ -169,7 +169,7 @@ export default function MembersPage() {
 
       {/* CLOSING */}
       <section className="max-w-[1100px] mx-auto px-6 pb-24 md:pb-32">
-        <div className="rounded-[20px] border p-10 md:p-14 text-center" style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'radial-gradient(120% 80% at 50% 0%, rgba(180,135,70,0.18) 0%, rgba(20,18,22,0.9) 60%, rgba(10,10,14,1) 100%)' }}>
+        <div className="rounded-[20px] border p-10 md:p-14 text-center" style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'radial-gradient(120% 80% at 50% 0%, rgba(138,81,9,0.18) 0%, rgba(10,10,10,0.9) 60%, rgba(10,10,10,1) 100%)' }}>
           <h2 className="text-[32px] md:text-[44px] font-extrabold -tracking-[0.02em] leading-[1.05] mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Now accepting members.</h2>
           <p className="text-[15px] leading-[1.65] max-w-[480px] mx-auto mb-9" style={{ color: 'rgba(255,255,255,0.6)' }}>
             We accept on a rolling basis as the room has space. Tell us a little about yourself.

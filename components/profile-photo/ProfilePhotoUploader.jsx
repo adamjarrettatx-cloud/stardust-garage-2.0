@@ -226,7 +226,7 @@ export default function ProfilePhotoUploader({
           style={{
             fontSize: 12,
             lineHeight: 1.5,
-            color: status === 'error' ? '#ff8686' : '#8fe0a5',
+            color: status === 'error' ? '#ff8686' : '#d9c48c',
           }}
           role={status === 'error' ? 'alert' : 'status'}
         >

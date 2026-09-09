@@ -35,13 +35,13 @@ export default async function CapacityHub() {
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Tile href="/capacity/front-desk" eyebrow="LAPTOP · FRONT DESK" title="Front Desk" desc="Live capacity, guest list, unified QR scanner (member + trial pass), issue a trial pass" color="#c084fc" />
+        <Tile href="/capacity/front-desk" eyebrow="LAPTOP · FRONT DESK" title="Front Desk" desc="Live capacity, guest list, unified QR scanner (member + trial pass), issue a trial pass" color="#8a5109" />
         <Tile href="/capacity/scan" eyebrow="IPAD · FALLBACK" title="Scan Trial Pass" desc="Standalone trial-pass scanner. Use only if the front-desk laptop is unavailable." color="#8a8a8a" />
-        <Tile href="/capacity/front-door" eyebrow="JELLY2 · FRONT" title="Front Door" desc="Big green check-in button" color="#7CFC9B" />
+        <Tile href="/capacity/front-door" eyebrow="JELLY2 · FRONT" title="Front Door" desc="Big green check-in button" color="#d9c48c" />
         <Tile href="/capacity/exit-door" eyebrow="JELLY2 · EXIT" title="Exit Door" desc="Big red check-out button" color="#ff8a8a" />
-        <Tile href="/capacity/guest-list" eyebrow="TABLET · GUEST LIST" title="Guest List" desc="Find a name, check them in, mark no-shows" color="#8ab4ff" />
+        <Tile href="/capacity/guest-list" eyebrow="TABLET · GUEST LIST" title="Guest List" desc="Find a name, check them in, mark no-shows" color="#d9c48c" />
         {isAdmin && (
-          <Tile href="/capacity/admin" eyebrow="ADMIN" title="Setup & History" desc="Start/end session, set max, reset, audit log" color="#ffb84d" />
+          <Tile href="/capacity/admin" eyebrow="ADMIN" title="Setup & History" desc="Start/end session, set max, reset, audit log" color="#d9c48c" />
         )}
       </div>
     </main>

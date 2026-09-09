@@ -100,7 +100,7 @@ export default async function MemberIdPage({ params }) {
 
   const tierLabel = formatTierLabel(member.subscription_plan);
   const statusLabel = member.is_active ? 'ACTIVE MEMBER' : 'INACTIVE';
-  const statusColor = member.is_active ? '#7CFC9B' : '#ff8686';
+  const statusColor = member.is_active ? '#d9c48c' : '#ff8686';
 
   return (
     <main className="min-h-screen flex items-center justify-center px-5 py-16" style={{ background: '#0a0a0a' }}>

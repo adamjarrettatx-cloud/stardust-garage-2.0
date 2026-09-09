@@ -15,13 +15,13 @@ import { useEffect, useRef, useState } from 'react';
 // if a rejected person was a friend who received a forwarded QR.
 
 const RESULT_COPY = {
-  valid: { label: 'VALID TICKET', color: '#0a7a2f', desc: 'This ticket is valid for entry.' },
-  already_used: { label: 'ALREADY USED', color: '#a55b00', desc: 'This ticket has already been scanned.' },
+  valid: { label: 'VALID TICKET', color: '#8a5109', desc: 'This ticket is valid for entry.' },
+  already_used: { label: 'ALREADY USED', color: '#8a5109', desc: 'This ticket has already been scanned.' },
   refunded: { label: 'REFUNDED', color: '#a00', desc: 'This ticket was refunded.' },
   void: { label: 'VOID', color: '#a00', desc: 'This ticket is void.' },
   wrong_event: { label: 'WRONG EVENT', color: '#a00', desc: 'This ticket is for a different event.' },
   not_found: { label: 'NOT FOUND', color: '#a00', desc: 'Unknown ticket code.' },
-  override: { label: 'OVERRIDDEN', color: '#0a7a2f', desc: 'Admin override — admitted.' },
+  override: { label: 'OVERRIDDEN', color: '#8a5109', desc: 'Admin override — admitted.' },
   rejected: { label: 'REJECTED', color: '#a00', desc: 'Buyer turned away at the door.' },
 };
 
@@ -43,10 +43,10 @@ const TOKENS = {
   muted: '#8a8a8a',
   subdued: '#c9c9c9',
   gold: '#d9c48c',
-  green: '#8fe0a5',
+  green: '#d9c48c',
   red: '#ff8686',
-  greenBg: 'rgba(74,222,128,0.10)',
-  greenBorder: 'rgba(74,222,128,0.35)',
+  greenBg: 'rgba(217,196,140,0.10)',
+  greenBorder: 'rgba(217,196,140,0.35)',
   redBg: 'rgba(255,90,90,0.10)',
   redBorder: 'rgba(255,90,90,0.35)',
   goldBg: 'rgba(217,196,140,0.10)',
@@ -290,7 +290,7 @@ export default function ScannerClient({ prefillCode = '' }) {
                 disabled={!canCheckin || busy}
                 style={{
                   ...bigButton,
-                  background: canCheckin ? '#0a7a2f' : '#333',
+                  background: canCheckin ? '#8a5109' : '#333',
                   color: '#fff',
                   opacity: (!canCheckin || busy) ? 0.6 : 1,
                 }}
@@ -391,7 +391,7 @@ export default function ScannerClient({ prefillCode = '' }) {
                     gap: 12,
                   }}
                 >
-                  <span style={{ color: copy?.color === '#0a7a2f' ? TOKENS.green : copy?.color === '#a00' ? TOKENS.red : TOKENS.gold, fontWeight: 700 }}>
+                  <span style={{ color: copy?.color === '#8a5109' ? TOKENS.green : copy?.color === '#a00' ? TOKENS.red : TOKENS.gold, fontWeight: 700 }}>
                     {copy?.label || h.result}
                   </span>
                   <span style={{ color: TOKENS.muted, textAlign: 'right', minWidth: 0 }}>

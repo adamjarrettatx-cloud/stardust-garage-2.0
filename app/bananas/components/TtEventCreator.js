@@ -298,7 +298,7 @@ export default function TtEventCreator() {
           </div>
         )}
         {note && (
-          <div className="text-[13px] p-3 rounded-[10px] border" style={{ color: '#ffb84d', borderColor: 'rgba(255,184,77,0.3)', background: 'rgba(255,184,77,0.08)' }}>
+          <div className="text-[13px] p-3 rounded-[10px] border" style={{ color: '#d9c48c', borderColor: 'rgba(217,196,140,0.3)', background: 'rgba(217,196,140,0.08)' }}>
             {note}
           </div>
         )}

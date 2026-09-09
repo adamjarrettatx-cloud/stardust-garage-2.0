@@ -471,7 +471,7 @@ export default function UnifiedDoorScanner({
             onClick={toggleTorch}
             className="px-3 py-1.5 rounded-lg text-[12px] font-bold"
             style={{
-              background: torch ? '#ffb84d' : 'rgba(30,30,30,0.85)',
+              background: torch ? '#d9c48c' : 'rgba(30,30,30,0.85)',
               color: torch ? '#0a0a0a' : '#f5f5f5',
             }}
           >
@@ -501,7 +501,7 @@ export default function UnifiedDoorScanner({
                 style={{
                   width: 'min(60%, 320px)',
                   height: 'min(60%, 320px)',
-                  borderColor: 'rgba(124,252,155,0.9)',
+                  borderColor: 'rgba(217,196,140,0.9)',
                   boxShadow: '0 0 0 9999px rgba(0,0,0,0.30)',
                 }}
               />
@@ -545,7 +545,7 @@ export default function UnifiedDoorScanner({
               type="button"
               onClick={() => window.location.reload()}
               className="px-4 py-2 rounded-lg text-[13px] font-bold"
-              style={{ background: '#7CFC9B', color: '#0a0a0a' }}
+              style={{ background: '#d9c48c', color: '#0a0a0a' }}
             >
               Reload
             </button>
@@ -616,7 +616,7 @@ function buildPreviewVM(source, requestBody, json) {
         ? 'No photo on file for the buyer. Verify ID or reject with “no photo on file.”'
         : (!isAllowed ? (json.reason || 'This ticket cannot be checked in.') : null),
       buttonLabel: isAllowed ? 'Check In' : 'Check In (override)',
-      themeAccent: isAllowed ? '#7CFC9B' : '#ff8a8a',
+      themeAccent: isAllowed ? '#d9c48c' : '#ff8a8a',
     };
   }
   if (source === 'member_id') {
@@ -636,7 +636,7 @@ function buildPreviewVM(source, requestBody, json) {
       isAllowed: Boolean(m.isActive), // an inactive member can still be verified for audit; button stays enabled with warning
       warningBanner: m.isActive ? null : 'Membership is not active. Verify ID or reject with “membership inactive.”',
       buttonLabel: 'Verify Member',
-      themeAccent: '#7CFC9B',
+      themeAccent: '#d9c48c',
     };
   }
   // trial_pass
@@ -657,7 +657,7 @@ function buildPreviewVM(source, requestBody, json) {
     isAllowed,
     warningBanner: g.hasPhoto ? null : 'No photo on file. Verify ID or reject with “no photo on file.”',
     buttonLabel: isAllowed ? 'Check In' : 'Check In (denied)',
-    themeAccent: isAllowed ? '#7CFC9B' : '#ff8a8a',
+    themeAccent: isAllowed ? '#d9c48c' : '#ff8a8a',
   };
 }
 
@@ -776,7 +776,7 @@ function PreviewCard({
             </div>
           )}
           {preview.linkedTicketNote && (
-            <div className="text-[12px] mt-1 font-semibold" style={{ color: '#7CFC9B' }}>
+            <div className="text-[12px] mt-1 font-semibold" style={{ color: '#d9c48c' }}>
               {preview.linkedTicketNote}
             </div>
           )}
@@ -847,8 +847,8 @@ function PreviewCard({
             disabled={decisionBusy}
             className="w-full rounded-xl py-3 text-[16px] font-extrabold active:scale-[0.98] transition-transform"
             style={{
-              background: '#7CFC9B',
-              color: '#0a2410',
+              background: '#d9c48c',
+              color: '#0a0a0a',
               fontFamily: "'Plus Jakarta Sans', sans-serif",
               opacity: decisionBusy ? 0.6 : 1,
             }}
@@ -909,7 +909,7 @@ function ResultCard({ result, onNext }) {
       {result.bumpWarning && (
         <div
           className="rounded-lg px-3 py-2 mt-2 text-[12px] font-semibold"
-          style={{ background: 'rgba(255,184,77,0.16)', color: '#ffb84d' }}
+          style={{ background: 'rgba(217,196,140,0.16)', color: '#d9c48c' }}
         >
           {result.bumpWarning}
         </div>
@@ -929,16 +929,16 @@ function ResultCard({ result, onNext }) {
 function themeFor(name) {
   if (name === 'green') {
     return {
-      background: '#0d3d1c', border: 'rgba(124,252,155,0.35)',
-      foreground: '#e8ffe8', accent: '#7CFC9B',
-      buttonBg: '#7CFC9B', buttonFg: '#0a2410',
+      background: '#111', border: 'rgba(217,196,140,0.35)',
+      foreground: '#ffffff', accent: '#d9c48c',
+      buttonBg: '#d9c48c', buttonFg: '#0a0a0a',
     };
   }
   if (name === 'amber') {
     return {
-      background: '#3d2a0d', border: 'rgba(255,184,77,0.35)',
-      foreground: '#fff2d9', accent: '#ffb84d',
-      buttonBg: '#ffb84d', buttonFg: '#2a1c05',
+      background: '#111', border: 'rgba(217,196,140,0.35)',
+      foreground: '#ffffff', accent: '#d9c48c',
+      buttonBg: '#d9c48c', buttonFg: '#0a0a0a',
     };
   }
   return {

@@ -32,7 +32,7 @@ export default function PhotoBlock({ token, initialSignedUrl, nameOrDisplay }) {
     return (
       <div
         className="mt-6 rounded-xl px-4 py-3 text-left"
-        style={{ background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.25)' }}
+        style={{ background: 'rgba(217,196,140,0.08)', border: '1px solid rgba(217,196,140,0.25)' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <ProfileAvatar src={signedUrl} nameOrEmail={nameOrDisplay} size={44} />
@@ -42,7 +42,7 @@ export default function PhotoBlock({ token, initialSignedUrl, nameOrDisplay }) {
                 fontSize: 10,
                 fontWeight: 700,
                 letterSpacing: '0.14em',
-                color: '#4ade80',
+                color: '#d9c48c',
                 marginBottom: 2,
               }}
             >
@@ -80,8 +80,8 @@ export default function PhotoBlock({ token, initialSignedUrl, nameOrDisplay }) {
     <div
       className="mt-6 rounded-xl px-4 py-4 text-left"
       style={{
-        background: signedUrl ? 'rgba(255,255,255,0.04)' : 'rgba(255,184,77,0.08)',
-        border: signedUrl ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,184,77,0.35)',
+        background: signedUrl ? 'rgba(255,255,255,0.04)' : 'rgba(217,196,140,0.08)',
+        border: signedUrl ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(217,196,140,0.35)',
       }}
     >
       {!signedUrl && (
@@ -91,7 +91,7 @@ export default function PhotoBlock({ token, initialSignedUrl, nameOrDisplay }) {
               fontSize: 10,
               fontWeight: 700,
               letterSpacing: '0.14em',
-              color: '#ffb84d',
+              color: '#d9c48c',
               marginBottom: 4,
             }}
           >

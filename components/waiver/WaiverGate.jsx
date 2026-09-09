@@ -170,7 +170,7 @@ function WaiverModal({ waiver, onClose }) {
           maxHeight: "90vh",
           display: "flex",
           flexDirection: "column",
-          color: "#e8e6e0",
+          color: "#ffffff",
         }}
       >
         <header
@@ -209,7 +209,7 @@ function WaiverModal({ waiver, onClose }) {
               background: "transparent",
               border: "1px solid #2a2a2a",
               borderRadius: 6,
-              color: "#e8e6e0",
+              color: "#ffffff",
               cursor: "pointer",
               padding: "6px 10px",
               fontSize: 13,

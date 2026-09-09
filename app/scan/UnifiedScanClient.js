@@ -1006,7 +1006,7 @@ const styles = {
     padding: '14px 16px', borderRadius: 10, border: '1px solid #333',
     background: '#0f0f0f', color: '#f5f5f5', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
   },
-  eventOptionActive: { border: '1px solid #d9c48c', background: '#1a1608' },
+  eventOptionActive: { border: '1px solid #d9c48c', background: '#111' },
   eventOptionTitle: { fontSize: 15, fontWeight: 600 },
   eventOptionMeta: { fontSize: 12, color: '#8a8a8a', marginTop: 4 },
   pickerActions: { display: 'flex', gap: 12, marginTop: 16, justifyContent: 'flex-end' },
@@ -1047,13 +1047,13 @@ const styles = {
   },
   linkedTicketPill: {
     marginTop: 8, padding: '6px 12px', borderRadius: 999,
-    background: '#1a1408', color: '#d9c48c', fontSize: 12, letterSpacing: 2, fontWeight: 700,
+    background: '#111', color: '#d9c48c', fontSize: 12, letterSpacing: 2, fontWeight: 700,
     border: '1px solid #d9c48c',
   },
   actionRow: { display: 'flex', gap: 12, marginTop: 20 },
   verifyBtn: {
     flex: 2, padding: '20px 24px', borderRadius: 12, border: 'none',
-    background: '#155a2a', color: '#7CFC9B', fontSize: 20, fontWeight: 700, cursor: 'pointer',
+    background: '#8a5109', color: '#d9c48c', fontSize: 20, fontWeight: 700, cursor: 'pointer',
   },
   rejectBtn: {
     flex: 1, padding: '20px 16px', borderRadius: 12, border: '1px solid #3a1414',
@@ -1074,7 +1074,7 @@ const styles = {
     padding: '12px', borderRadius: 10, border: '1px solid #333',
     background: 'transparent', color: '#8a8a8a', fontSize: 14, cursor: 'pointer',
   },
-  verifiedTitle: { fontSize: 40, fontWeight: 800, color: '#7CFC9B', textAlign: 'center', letterSpacing: 3 },
+  verifiedTitle: { fontSize: 40, fontWeight: 800, color: '#d9c48c', textAlign: 'center', letterSpacing: 3 },
   rejectedTitle: { fontSize: 40, fontWeight: 800, color: '#ff8686', textAlign: 'center', letterSpacing: 3 },
   errorTitle: { fontSize: 24, fontWeight: 700, color: '#ff8686', textAlign: 'center' },
   warnTitle: { fontSize: 24, fontWeight: 700, color: '#d9c48c', textAlign: 'center' },
@@ -1092,13 +1092,13 @@ const styles = {
   },
   sessionActiveLive: {
     display: 'flex', alignItems: 'center', gap: 8,
-    padding: '8px 14px', borderRadius: 999, background: '#0e2618', border: '1px solid #1f5f3a',
+    padding: '8px 14px', borderRadius: 999, background: '#111', border: '1px solid #8a5109',
   },
-  sessionActiveTitle: { color: '#7CFC9B', fontSize: 13, fontWeight: 700, letterSpacing: 0.5 },
-  sessionActiveMeta:  { color: '#4a8a5e', fontSize: 12 },
+  sessionActiveTitle: { color: '#d9c48c', fontSize: 13, fontWeight: 700, letterSpacing: 0.5 },
+  sessionActiveMeta:  { color: '#888', fontSize: 12 },
   sessionDot: {
-    width: 8, height: 8, borderRadius: '50%', background: '#7CFC9B',
-    boxShadow: '0 0 8px #7CFC9B', animation: 'pulse 1.4s ease-in-out infinite',
+    width: 8, height: 8, borderRadius: '50%', background: '#d9c48c',
+    boxShadow: '0 0 8px #d9c48c', animation: 'pulse 1.4s ease-in-out infinite',
   },
   sessionEndBtn: {
     padding: '8px 12px', borderRadius: 999, border: '1px solid #333',

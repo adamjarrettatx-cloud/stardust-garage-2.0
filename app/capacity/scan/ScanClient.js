@@ -444,7 +444,7 @@ export default function ScanClient() {
               style={{
                 width: 'min(70vmin, 520px)',
                 height: 'min(70vmin, 520px)',
-                borderColor: 'rgba(124,252,155,0.9)',
+                borderColor: 'rgba(217,196,140,0.9)',
                 boxShadow: '0 0 0 9999px rgba(0,0,0,0.35)',
               }}
             />
@@ -455,7 +455,7 @@ export default function ScanClient() {
       {/* Top bar: title + torch */}
       <header className="relative z-10 flex items-start justify-between px-6 pt-[max(1rem,env(safe-area-inset-top))]">
         <div>
-          <div className="text-[11px] font-bold tracking-[0.2em]" style={{ color: '#7CFC9B' }}>
+          <div className="text-[11px] font-bold tracking-[0.2em]" style={{ color: '#d9c48c' }}>
             IPAD · SCAN
           </div>
           <div
@@ -471,7 +471,7 @@ export default function ScanClient() {
             onClick={toggleTorch}
             className="px-4 py-2 rounded-xl text-[13px] font-bold"
             style={{
-              background: torch ? '#ffb84d' : 'rgba(30,30,30,0.85)',
+              background: torch ? '#d9c48c' : 'rgba(30,30,30,0.85)',
               color: torch ? '#0a0a0a' : '#f5f5f5',
             }}
           >
@@ -561,7 +561,7 @@ export default function ScanClient() {
             type="button"
             onClick={() => window.location.reload()}
             className="px-6 py-3 rounded-2xl text-[16px] font-bold"
-            style={{ background: '#7CFC9B', color: '#0a0a0a' }}
+            style={{ background: '#d9c48c', color: '#0a0a0a' }}
           >
             Reload
           </button>
@@ -732,8 +732,8 @@ function PreviewCard({
             disabled={!isAllowed || decisionBusy}
             className="w-full rounded-2xl py-5 text-[20px] font-extrabold active:scale-[0.98] transition-transform"
             style={{
-              background: isAllowed ? '#7CFC9B' : 'rgba(124,252,155,0.25)',
-              color: isAllowed ? '#0a2410' : 'rgba(255,255,255,0.5)',
+              background: isAllowed ? '#d9c48c' : 'rgba(217,196,140,0.25)',
+              color: isAllowed ? '#0a0a0a' : 'rgba(255,255,255,0.5)',
               fontFamily: "'Plus Jakarta Sans', sans-serif",
               opacity: decisionBusy ? 0.6 : 1,
             }}
@@ -833,7 +833,7 @@ function ResultCard({ result, bumpWarning, onNext }) {
       {bumpWarning && (
         <div
           className="rounded-xl px-4 py-2 mt-2 text-[13px] font-semibold"
-          style={{ background: 'rgba(255,184,77,0.16)', color: '#ffb84d' }}
+          style={{ background: 'rgba(217,196,140,0.16)', color: '#d9c48c' }}
         >
           {bumpWarning}
         </div>
@@ -919,13 +919,13 @@ function resultTheme(result) {
 
 function greenTheme() {
   return {
-    background: '#0d3d1c',
-    border: 'rgba(124,252,155,0.35)',
-    foreground: '#e8ffe8',
-    mutedForeground: '#b8e6c1',
-    accent: '#7CFC9B',
-    buttonBg: '#7CFC9B',
-    buttonFg: '#0a2410',
+    background: '#111',
+    border: 'rgba(217,196,140,0.35)',
+    foreground: '#ffffff',
+    mutedForeground: '#d4d4d4',
+    accent: '#d9c48c',
+    buttonBg: '#d9c48c',
+    buttonFg: '#0a0a0a',
   };
 }
 
@@ -943,12 +943,12 @@ function redTheme() {
 
 function amberTheme() {
   return {
-    background: '#3d2a0d',
-    border: 'rgba(255,184,77,0.35)',
-    foreground: '#fff2d9',
-    mutedForeground: '#e6cfa3',
-    accent: '#ffb84d',
-    buttonBg: '#ffb84d',
-    buttonFg: '#2a1c05',
+    background: '#111',
+    border: 'rgba(217,196,140,0.35)',
+    foreground: '#ffffff',
+    mutedForeground: '#d4d4d4',
+    accent: '#d9c48c',
+    buttonBg: '#d9c48c',
+    buttonFg: '#0a0a0a',
   };
 }

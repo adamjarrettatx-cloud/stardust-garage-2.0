@@ -81,7 +81,7 @@ export default function WalletPhotoNudge({
         role="region"
         aria-label="Add your profile photo"
         style={{
-          background: 'linear-gradient(135deg, #1a1408 0%, #241a0e 100%)',
+          background: 'linear-gradient(135deg, #111 0%, #111 100%)',
           border: '1px solid rgba(217,196,140,0.35)',
           borderLeft: '3px solid #d9c48c',
           padding: '14px 16px',

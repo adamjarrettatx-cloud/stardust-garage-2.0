@@ -269,8 +269,8 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
   const HAIRLINE_STRONG = 'rgba(255,255,255,0.18)';
   const TEXT = '#f5f5f5';
   const MUTED = '#8a8a8a';
-  const GOLD = '#ffb84d';
-  const GREEN = '#5ec27b';
+  const GOLD = '#d9c48c';
+  const GREEN = '#d9c48c';
   const DANGER = '#ff6b6b';
 
   // Light-surface tokens for the product ladder rows. The modal shell stays
