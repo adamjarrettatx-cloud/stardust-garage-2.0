@@ -48,8 +48,7 @@ test('checkedInHistory keeps the newest 50 across a busy night', () => {
 
 test('FrontDeskClient wires CheckedInListPanel under the trial-pass panel', () => {
   // The panel has to render inside the AuthenticatedThemeProvider block so
-  // its dark styling matches, and it must receive checkedInHistory, not the
-  // capped recentActivity buffer.
+  // its dark styling matches, and it must receive the merged checked-in list.
   //
   // checkedInHistory started life as a plain useState ring buffer, which meant
   // the panel only ever knew about check-ins made in that one browser tab. It

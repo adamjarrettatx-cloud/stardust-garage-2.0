@@ -147,17 +147,13 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
   const activeEvent = activeSession?.event || null;
   const doorSessionId = activeSession?.id || null;
 
-  // ---- Recent activity (last 5, client-only ring buffer) ------------------
+  // ---- Who is checked in --------------------------------------------------
   //
-  // Kept in memory only. Refreshing the laptop clears it — that's fine, it
-  // exists so the manager can glance and see "we let the last five people in"
-  // without opening the admin audit page. Guest-list check-ins, trial-pass
-  // scans, and member-id verifies all funnel through logActivity() so the
-  // panel renders one unified stream sorted newest-first.
-  const [recentActivity, setRecentActivity] = useState([]);
-  // Local buffer for the chronological check-in list under the trial-pass
-  // panel. Only admitted entries land here; denials + rejects stay in
-  // recentActivity (the top-right "Last 5 admits" strip).
+  // Only admitted entries are tracked. The page used to carry a second
+  // last-five-admits strip that also showed denials and rejects; it was removed
+  // as redundant now that the checked-in list covers the same ground, so a
+  // denial's only surface is the scanner's own result screen at the moment of
+  // the scan.
   //
   // This buffer alone is NOT the list. It used to be, and that was a bug: it
   // starts empty on every page load and only ever knows about check-ins made
@@ -168,7 +164,6 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
   const [localCheckedIn, setLocalCheckedIn] = useState([]);
   const [serverCheckedIn, setServerCheckedIn] = useState([]);
   const logActivity = useCallback((entry) => {
-    setRecentActivity((prev) => pushRecentActivity(prev, entry));
     if (entry?.result === 'admitted') {
       setLocalCheckedIn((prev) => pushRecentActivity(prev, entry, CHECKIN_FEED_MAX));
     }
@@ -616,7 +611,6 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
             onActivity={logActivity}
             getBumpWarning={getScannerBumpWarning}
           />
-          <RecentActivityPanel entries={recentActivity} />
         </div>
 
         {startPickerOpen && (
@@ -801,89 +795,12 @@ function EntryRow({ entry, busy, confirmingNoShow, onCheckIn, onNoShow }) {
   );
 }
 
-function RecentActivityPanel({ entries }) {
-  return (
-    <section
-      className="rounded-2xl border"
-      style={{ background: '#111', borderColor: 'rgba(255,255,255,0.08)' }}
-    >
-      <div
-        className="px-5 py-3 border-b flex items-baseline justify-between gap-2"
-        style={{ borderColor: 'rgba(255,255,255,0.06)' }}
-      >
-        <div>
-          <div className="text-[11px] font-bold tracking-[0.16em] uppercase" style={{ color: '#8a8a8a' }}>
-            Recent
-          </div>
-          <h3 className="text-[15px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Last 5 admits
-          </h3>
-        </div>
-        <div className="text-[11px]" style={{ color: '#8a8a8a' }}>
-          this session
-        </div>
-      </div>
-      {entries.length === 0 ? (
-        <div className="px-5 py-6 text-center text-[13px]" style={{ color: '#8a8a8a' }}>
-          Nobody in yet.
-        </div>
-      ) : (
-        <ul className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-          {entries.map((e) => (
-            <RecentActivityRow key={e.at + ':' + e.id} entry={e} />
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-}
-
 const KIND_LABEL = {
   guestlist: 'Guest list',
   trial_pass: 'Trial pass',
   member_id: 'Member',
   ticket: 'Ticket',
 };
-const RESULT_COLOR = {
-  admitted: '#7CFC9B',
-  rejected: '#ff8a8a',
-  denied: '#ffb84d',
-};
-const RESULT_LABEL = {
-  admitted: 'In',
-  rejected: 'Rejected',
-  denied: 'Denied',
-};
-
-function RecentActivityRow({ entry }) {
-  const color = RESULT_COLOR[entry.result] || '#8a8a8a';
-  return (
-    <li className="px-5 py-3 flex items-center gap-3" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-      <span
-        className="inline-block w-2 h-2 rounded-full shrink-0"
-        style={{ background: color }}
-        aria-hidden
-      />
-      <div className="flex-1 min-w-0">
-        <div className="text-[14px] font-bold truncate" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-          {entry.name}
-        </div>
-        <div className="text-[11px] mt-0.5 truncate" style={{ color: '#8a8a8a' }}>
-          {KIND_LABEL[entry.kind] || 'Door'}
-          {entry.detail ? ` · ${entry.detail}` : ''}
-        </div>
-      </div>
-      <div className="text-right shrink-0">
-        <div className="text-[10px] font-bold tracking-[0.1em] uppercase" style={{ color }}>
-          {RESULT_LABEL[entry.result] || entry.result}
-        </div>
-        <div className="text-[11px] tabular-nums" style={{ color: '#8a8a8a' }}>
-          {formatActivityTime(entry.at)}
-        </div>
-      </div>
-    </li>
-  );
-}
 
 // Chronological check-in list (newest first) rendered under the trial-pass
 // panel. Photo thumbnails come from the short-lived signed URL captured on

@@ -195,3 +195,18 @@ test('the checkins route is team-gated and scoped to a door session', () => {
   assert.ok(route.includes('getActiveDoorSession('), 'scope to the open door session');
   assert.ok(route.includes('door_session_id'), 'ticket and trial rows scope by session');
 });
+
+// The front desk used to carry a second "Last 5 admits" strip under the
+// scanner. Owner: "remove [it] from this page completely as it's not needed /
+// necessary as we already have the 'checked in' area". It was a near-duplicate
+// of the checked-in list, so this guards against it being pasted back in.
+test('the "Last 5 admits" strip stays gone from the front desk', () => {
+  const client = readFileSync(new URL('../app/capacity/front-desk/FrontDeskClient.js', import.meta.url), 'utf8');
+  for (const gone of ['RecentActivityPanel', 'RecentActivityRow', 'Last 5 admits', 'recentActivity', 'RESULT_LABEL']) {
+    assert.ok(!client.includes(gone), `${gone} should no longer exist on the front desk`);
+  }
+  // ...but the checked-in list and its shared label map must survive.
+  assert.ok(client.includes('CheckedInListPanel'));
+  assert.ok(client.includes('KIND_LABEL'));
+  assert.ok(client.includes('formatActivityTime'));
+});
