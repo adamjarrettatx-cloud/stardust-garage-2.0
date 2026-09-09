@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/stub';
 import { validateTrialPassIntake } from '@/lib/trial-pass';
+import { sendGuestAccountWelcomeOnce } from '@/lib/free-account/send-welcome';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -102,6 +103,18 @@ export async function POST(request) {
     console.error('[free-account.create-no-verify.profile]', profileError);
     return NextResponse.json({ error: 'Could not save profile.' }, { status: 500 });
   }
+
+  // Guest-account welcome email. Idempotent per user_id — safe even though
+  // this route can be retried by the client, and safe against the shared
+  // helper being called from the other three account-creation routes for
+  // the same identity. Send failure is deliberately non-fatal: the account
+  // exists and the browser is about to sign in, so we log and continue.
+  await sendGuestAccountWelcomeOnce({
+    admin,
+    userId,
+    email: data.email_canonical || data.email,
+    fullName: data.full_name,
+  });
 
   return NextResponse.json({ ok: true, userId });
 }

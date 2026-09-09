@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { checkVerification, isTwilioVerifyConfigured } from '@/lib/twilio-verify';
+import { sendGuestAccountWelcomeOnce } from '@/lib/free-account/send-welcome';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -91,6 +92,16 @@ export async function POST(request) {
     console.error('[free-account.complete-profile.profile]', profileError);
     return NextResponse.json({ error: 'Could not save profile.' }, { status: 500 });
   }
+
+  // Guest-account welcome email. First-time completion for this OAuth
+  // identity will send; a retry of complete-profile against an already-
+  // stamped free_accounts row is auto-suppressed by the idempotent helper.
+  await sendGuestAccountWelcomeOnce({
+    admin,
+    userId: user.id,
+    email: user.email,
+    fullName,
+  });
 
   return NextResponse.json({ ok: true });
 }
