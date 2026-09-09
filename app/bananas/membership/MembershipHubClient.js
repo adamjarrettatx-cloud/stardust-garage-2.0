@@ -21,6 +21,7 @@ import Link from 'next/link';
 import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
 import { ANALYTICS_THEMES, FINANCIAL_THEMES } from '@/lib/admin-theme';
 import { centsToUsd } from '@/lib/event-analytics';
+import UnderlineTabs from '../components/UnderlineTabs';
 
 const THEMES = {
   dark:  { ...ANALYTICS_THEMES.dark,  ...FINANCIAL_THEMES.dark },
@@ -44,10 +45,6 @@ function fmtWhen(iso) {
 function fmtCents(cents) {
   if (cents === null || cents === undefined) return '—';
   return centsToUsd(cents);
-}
-function fmtNumber(x) {
-  if (x === null || x === undefined) return '—';
-  return Number(x).toLocaleString('en-US');
 }
 
 // -----------------------------------------------------------------------
@@ -141,50 +138,6 @@ function ProfileRow({ row, accent, theme }) {
 }
 
 // -----------------------------------------------------------------------
-// Tab strip — pill-shaped tabs with counts, mobile-scrollable
-// -----------------------------------------------------------------------
-
-function TabStrip({ tabOrder, tabMeta, counts, active, onSelect, theme }) {
-  return (
-    <div
-      className="flex overflow-x-auto -mx-1 px-1 pb-1 mb-4"
-      style={{ scrollbarWidth: 'thin' }}
-    >
-      <div className="flex gap-2">
-        {tabOrder.map((id) => {
-          const meta = tabMeta[id];
-          const isActive = id === active;
-          return (
-            <button
-              key={id}
-              onClick={() => onSelect(id)}
-              className="shrink-0 rounded-full px-4 py-2 text-[12px] font-semibold tracking-[0.04em] transition-colors"
-              style={{
-                background: isActive ? meta.accent : theme.cardBg,
-                color: isActive ? '#0a0a0a' : theme.text,
-                border: `1px solid ${isActive ? meta.accent : theme.cardBorder}`,
-                letterSpacing: '0.02em',
-              }}
-            >
-              <span>{meta.label}</span>
-              <span
-                className="ml-2 rounded-full text-[11px] font-semibold px-2 py-[1px]"
-                style={{
-                  background: isActive ? 'rgba(10,10,10,0.16)' : theme.neutralChipBg,
-                  color: isActive ? '#0a0a0a' : theme.mutedStrong,
-                }}
-              >
-                {fmtNumber(counts?.[id] || 0)}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// -----------------------------------------------------------------------
 // The hub
 // -----------------------------------------------------------------------
 
@@ -273,63 +226,60 @@ export default function MembershipHubClient() {
           </div>
         ) : null}
 
-        {/* Tabs */}
+        {/* Search sits above the tabs — matches the Contacts / Members pattern.
+            The query filters within whichever tab is open, rather than being
+            scoped to one of them. */}
+        <input
+          type="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search name, email or phone"
+          className="w-full max-w-[420px] mb-5 px-5 py-3 rounded-[10px] text-[14px] outline-none border transition-colors focus:border-white/30"
+          style={{
+            background: theme.neutralChipBg,
+            borderColor: theme.cardBorder,
+            color: theme.text,
+          }}
+        />
+
+        {/* Tabs — shared UnderlineTabs so the strip matches every other in-page
+            filter in the admin panel (Members, Applications, Pay Requests, etc). */}
         {tabOrder.length ? (
-          <TabStrip
-            tabOrder={tabOrder}
-            tabMeta={tabMeta}
-            counts={counts}
+          <UnderlineTabs
+            tabs={tabOrder.map((id) => ({
+              id,
+              label: tabMeta[id]?.label,
+              count: counts?.[id] || 0,
+              color: tabMeta[id]?.accent,
+            }))}
             active={active}
-            onSelect={setActive}
-            theme={theme}
+            onChange={setActive}
+            ariaLabel="Filter accounts by lifecycle state"
+            testId="membership-journey"
           />
         ) : null}
 
-        {/* Panel */}
+        {/* One-line context row: what this tab means, plus MRR on paying tiers.
+            Kept intentionally quiet — no coloured panel bar, no card chrome. */}
+        <div className="flex flex-wrap items-baseline justify-between gap-3 mb-4 -mt-4">
+          <div className="text-[13px]" style={{ color: theme.muted }}>
+            {activeMeta?.hint}
+          </div>
+          {showMrr ? (
+            <div className="text-[13px]" style={{ color: theme.mutedStrong }}>
+              <span className="text-[11px] uppercase tracking-[0.14em] mr-2" style={{ color: theme.muted }}>
+                Monthly recurring
+              </span>
+              <span className="font-semibold" style={{ color: theme.text }}>{fmtCents(activeMrr)}</span>
+            </div>
+          ) : null}
+        </div>
+
+        {/* Profile list — single card, uniform rows for every tab. */}
         <div
           className="rounded-[16px] border overflow-hidden"
           style={{ background: theme.cardBg, borderColor: theme.cardBorder }}
         >
-          {/* Panel header — hint + count + search */}
-          <div
-            className="flex flex-wrap items-center gap-3 px-5 py-4 border-b"
-            style={{ borderColor: theme.cardBorder, background: activeMeta ? activeMeta.accent + '10' : 'transparent' }}
-          >
-            <div className="flex-1 min-w-[220px]">
-              <div className="text-[11px] font-semibold tracking-[0.16em] uppercase" style={{ color: activeMeta?.accent }}>
-                {activeMeta?.label}
-              </div>
-              <div className="text-[13px] mt-0.5" style={{ color: theme.mutedStrong }}>
-                {activeMeta?.hint}
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              {showMrr ? (
-                <div className="text-right">
-                  <div className="text-[10px] font-semibold tracking-[0.14em] uppercase" style={{ color: theme.muted }}>
-                    Monthly recurring
-                  </div>
-                  <div className="text-[16px] font-semibold" style={{ color: theme.text, fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
-                    {fmtCents(activeMrr)}
-                  </div>
-                </div>
-              ) : null}
-              <input
-                type="search"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search name, email or phone"
-                className="rounded-full px-4 py-2 text-[13px] outline-none min-w-[240px]"
-                style={{
-                  background: theme.neutralChipBg,
-                  border: `1px solid ${theme.cardBorder}`,
-                  color: theme.text,
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Profile list */}
           {loading && !payload ? (
             <div className="p-10 text-center text-[13px]" style={{ color: theme.muted }}>Loading…</div>
           ) : filtered.length === 0 ? (
