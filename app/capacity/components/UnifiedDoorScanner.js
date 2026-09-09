@@ -51,6 +51,16 @@ const REJECT_REASONS_MEMBER_ID = [
   { code: 'manual',               label: 'Manual reject' },
 ];
 
+// Ticket reject reasons are enumerated at the API layer
+// (lib/tickets/checkin.js REJECT_REASONS). Keep this list in sync with
+// the codes the endpoint accepts — an unknown code 400s.
+const REJECT_REASONS_TICKET = [
+  { code: 'photo_mismatch',       label: 'Photo mismatch' },
+  { code: 'no_photo_on_file',     label: 'No photo on file' },
+  { code: 'id_mismatch',          label: 'ID mismatch' },
+  { code: 'manual',               label: 'Manual reject' },
+];
+
 const RESULT_HOLD_MS = 5000;
 
 // Mutates `body` in place to add the active event + door session identifiers,
@@ -65,6 +75,41 @@ function attachEventContext(body, source, eventId, doorSessionId) {
   }
   if (doorSessionId) body.door_session_id = doorSessionId;
   return body;
+}
+
+// Returns the endpoint URL for a given scan source. Kept as a helper so the
+// two commit paths (admit + reject) can't drift.
+function endpointFor(source) {
+  if (source === 'member_id') return '/api/scan/member-id';
+  if (source === 'ticket') return '/api/tickets/scan';
+  return '/api/capacity/trial-pass/scan'; // trial_pass
+}
+
+// Builds the request body for admit or reject on a given source. The three
+// endpoints have slightly different shapes — tickets use { code, mode: 'checkin'
+// | 'reject' }, the other two use { token, mode: 'verify' | 'checkin' | 'reject' }
+// — so keeping this in one place prevents field-name drift.
+function buildCommitBody({ source, preview, action, reasonCode, rejectNote }) {
+  if (source === 'ticket') {
+    const body = { code: preview.token, mode: action === 'admit' ? 'checkin' : 'reject' };
+    if (action === 'reject') {
+      body.reject_reason = reasonCode;
+      if (rejectNote) body.note = rejectNote.slice(0, 280);
+    }
+    return body;
+  }
+  if (action === 'admit') {
+    return source === 'member_id'
+      ? { token: preview.token, mode: 'verify' }
+      : { token: preview.token, mode: 'checkin' };
+  }
+  // reject (member_id or trial_pass)
+  return {
+    token: preview.token,
+    mode: 'reject',
+    reject_reason: reasonCode,
+    note: rejectNote.slice(0, 280),
+  };
 }
 
 // Props:
@@ -264,12 +309,8 @@ export default function UnifiedDoorScanner({
     setBusyLabel(preview.source === 'member_id' ? 'Verifying…' : 'Checking in…');
     setPhase('busy');
 
-    const endpoint = preview.source === 'member_id'
-      ? '/api/scan/member-id'
-      : '/api/capacity/trial-pass/scan';
-    const body = preview.source === 'member_id'
-      ? { token: preview.token, mode: 'verify' }
-      : { token: preview.token, mode: 'checkin' };
+    const endpoint = endpointFor(preview.source);
+    const body = buildCommitBody({ source: preview.source, preview, action: 'admit' });
     attachEventContext(body, preview.source, eventId, doorSessionId);
 
     try {
@@ -282,18 +323,22 @@ export default function UnifiedDoorScanner({
       if (!res.ok) {
         showResult({
           theme: 'red',
-          headline: preview.source === 'member_id' ? 'Verify failed' : 'Check-in failed',
+          headline: preview.source === 'member_id'
+            ? 'Verify failed'
+            : (preview.source === 'ticket' ? 'Check-in failed' : 'Check-in failed'),
           subhead: json.error || 'Try again.',
           name: preview.name,
         });
         return;
       }
 
-      // Trial-pass 'checkin' returns a full result object like the preview
-      // did; the terminal decision is json.result. Member-id 'verify'
-      // returns {result:'verified'}. Both map to admitted for our purposes.
+      // Trial-pass 'checkin' returns { result: 'allowed' }; member-id 'verify'
+      // returns { result: 'verified' }; ticket 'checkin' returns
+      // { result: 'valid' | 'override' | 'already_used' | 'wrong_event' |
+      // 'not_found' | 'refunded' | 'void' }. Only VALID and OVERRIDE admit.
       const admitted = (preview.source === 'trial_pass' && json.result === 'allowed')
-        || (preview.source === 'member_id' && json.result === 'verified');
+        || (preview.source === 'member_id' && json.result === 'verified')
+        || (preview.source === 'ticket' && (json.result === 'valid' || json.result === 'override'));
 
       let bumpWarning = null;
       if (admitted && getBumpWarning) {
@@ -307,10 +352,12 @@ export default function UnifiedDoorScanner({
 
       const theme = admitted ? 'green' : (json.result?.startsWith('denied') ? 'amber' : 'red');
       const headline = admitted
-        ? (preview.source === 'member_id' ? 'Verified · Member' : 'Allowed')
+        ? (preview.source === 'member_id'
+            ? 'Verified · Member'
+            : (preview.source === 'ticket' ? 'Ticket redeemed' : 'Allowed'))
         : humanDeniedHeadline(json.result);
       const subhead = admitted
-        ? (preview.source === 'member_id' ? 'Wave them in.' : 'Wave them in.')
+        ? 'Wave them in.'
         : (json.reason || 'Denied at the door.');
 
       // Log the activity for the recent panel.
@@ -343,12 +390,14 @@ export default function UnifiedDoorScanner({
     setBusyLabel('Rejecting…');
     setPhase('busy');
 
-    const endpoint = preview.source === 'member_id'
-      ? '/api/scan/member-id'
-      : '/api/capacity/trial-pass/scan';
-    const body = preview.source === 'member_id'
-      ? { token: preview.token, mode: 'reject', reject_reason: reasonCode, note: rejectNote.slice(0, 280) }
-      : { token: preview.token, mode: 'reject', reject_reason: reasonCode, note: rejectNote.slice(0, 280) };
+    const endpoint = endpointFor(preview.source);
+    const body = buildCommitBody({
+      source: preview.source,
+      preview,
+      action: 'reject',
+      reasonCode,
+      rejectNote,
+    });
     attachEventContext(body, preview.source, eventId, doorSessionId);
 
     try {
@@ -529,6 +578,44 @@ export default function UnifiedDoorScanner({
 // ---- View-model + label helpers ----
 
 function buildPreviewVM(source, requestBody, json) {
+  if (source === 'ticket') {
+    // Ticket preview shape: { result, reason, ticket:{id,status,used_at},
+    //   buyer:{displayName, firstName, email, hasPhoto, photoSignedUrl} }
+    // The endpoint's `result` is one of CHECKIN_RESULTS (valid, wrong_event,
+    // already_used, not_found, refunded, void). Only VALID admits without
+    // an override, but we still show the preview card for anything the
+    // endpoint returned — the staff decides.
+    const buyer = json.buyer || {};
+    const ticket = json.ticket || null;
+    const isAllowed = json.result === 'valid';
+    // The scanner tracks `preview.token` as the identifier it will re-post
+    // on commit. For tickets that identifier is the ticket code, not a
+    // token, but the field name in the VM is kept for symmetry with the
+    // other two sources so commitAdmit / commitReject don't need to branch
+    // on shape. buildCommitBody() maps it back to `code` for the ticket
+    // endpoint.
+    return {
+      source: 'ticket',
+      token: requestBody.code,
+      activityId: `ticket:${ticket?.id || requestBody.code}`,
+      name: buyer.displayName || buyer.email || 'Ticket holder',
+      firstName: buyer.firstName || buyer.displayName || 'Guest',
+      subhead: isAllowed
+        ? (buyer.email ? `Buyer: ${buyer.email}` : 'Ticket valid')
+        : (json.reason || 'Ticket not valid for tonight.'),
+      statusLabel: ticket?.status ? ticket.status.toUpperCase() : null,
+      expiresLabel: null,
+      hasPhoto: Boolean(buyer.hasPhoto),
+      photoUrl: buyer.photoSignedUrl || null,
+      linkedTicketNote: null,
+      isAllowed,
+      warningBanner: isAllowed && !buyer.hasPhoto
+        ? 'No photo on file for the buyer. Verify ID or reject with “no photo on file.”'
+        : (!isAllowed ? (json.reason || 'This ticket cannot be checked in.') : null),
+      buttonLabel: isAllowed ? 'Check In' : 'Check In (override)',
+      themeAccent: isAllowed ? '#7CFC9B' : '#ff8a8a',
+    };
+  }
   if (source === 'member_id') {
     const m = json.member || {};
     return {
@@ -577,12 +664,21 @@ function buildActivityDetail(preview, json) {
     if (ticket && ticket.result === 'valid') return `Member · ticket ${ticket.product_label || 'redeemed'}`;
     return preview.subhead || 'Member scan';
   }
+  if (preview.source === 'ticket') {
+    if (json.result === 'valid' || json.result === 'override') return 'Ticket redeemed';
+    return preview.subhead || 'Ticket scan';
+  }
   return preview.statusLabel || preview.expiresLabel || 'Trial pass';
 }
 
+function reasonsFor(source) {
+  if (source === 'member_id') return REJECT_REASONS_MEMBER_ID;
+  if (source === 'ticket') return REJECT_REASONS_TICKET;
+  return REJECT_REASONS_TRIAL_PASS;
+}
+
 function reasonLabel(code, source) {
-  const bank = source === 'member_id' ? REJECT_REASONS_MEMBER_ID : REJECT_REASONS_TRIAL_PASS;
-  return bank.find((r) => r.code === code)?.label || code;
+  return reasonsFor(source).find((r) => r.code === code)?.label || code;
 }
 
 function humanStatusHeadline(source, status) {
@@ -590,6 +686,11 @@ function humanStatusHeadline(source, status) {
     if (status === 400) return 'Not a Member ID';
     if (status === 404) return 'Unknown Member ID';
     if (status === 410) return 'Revoked';
+    if (status === 429) return 'Too many scans';
+  }
+  if (source === 'ticket') {
+    if (status === 400) return 'Bad ticket';
+    if (status === 404) return 'Scanner disabled';
     if (status === 429) return 'Too many scans';
   }
   return 'Scan failed';
@@ -601,6 +702,12 @@ function humanDeniedHeadline(code) {
     case 'denied_ineligible_event': return 'Denied · Wrong event';
     case 'denied_duplicate': return 'Denied · Already used tonight';
     case 'rejected': return 'Rejected';
+    // ticket CHECKIN_RESULTS
+    case 'already_used': return 'Already used';
+    case 'wrong_event': return 'Wrong event';
+    case 'not_found': return 'Ticket not found';
+    case 'refunded': return 'Ticket refunded';
+    case 'void': return 'Ticket void';
     default: return 'Denied';
   }
 }
@@ -611,7 +718,10 @@ function PreviewCard({
   preview, rejectPicker, rejectNote, decisionBusy,
   onCheckIn, onOpenReject, onCancelReject, onReject, onRejectNoteChange, onCancelPreview,
 }) {
-  const bank = preview.source === 'member_id' ? REJECT_REASONS_MEMBER_ID : REJECT_REASONS_TRIAL_PASS;
+  const bank = reasonsFor(preview.source);
+  const previewLabel = preview.source === 'member_id'
+    ? 'Member ID · Preview'
+    : (preview.source === 'ticket' ? 'Ticket · Preview' : 'Trial Pass · Preview');
   return (
     <section
       className="px-5 py-4 border-t"
@@ -621,7 +731,7 @@ function PreviewCard({
         className="text-[11px] font-bold tracking-[0.16em] uppercase mb-2"
         style={{ color: preview.themeAccent }}
       >
-        {preview.source === 'member_id' ? 'Member ID · Preview' : 'Trial Pass · Preview'}
+        {previewLabel}
       </div>
 
       <div className="flex gap-4 items-start mb-3">
