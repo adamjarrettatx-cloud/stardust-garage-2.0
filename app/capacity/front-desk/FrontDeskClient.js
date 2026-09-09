@@ -6,6 +6,8 @@ import { useCapacity } from '../useCapacity';
 import CheckInSheet from '../guest-list/CheckInSheet';
 import ManualTrialPassForm from '@/app/team/trial-pass/manual/ManualTrialPassForm';
 import AuthenticatedThemeProvider from '@/app/components/AuthenticatedThemeProvider';
+import UnifiedDoorScanner from '../components/UnifiedDoorScanner';
+import { pushRecentActivity, formatActivityTime } from '@/lib/scan/recent-activity';
 
 // /capacity/front-desk client
 //
@@ -43,6 +45,18 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
   const [noShowId, setNoShowId] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const searchRef = useRef(null);
+
+  // ---- Recent activity (last 5, client-only ring buffer) ------------------
+  //
+  // Kept in memory only. Refreshing the laptop clears it — that's fine, it
+  // exists so the manager can glance and see "we let the last five people in"
+  // without opening the admin audit page. Guest-list check-ins, trial-pass
+  // scans, and member-id verifies all funnel through logActivity() so the
+  // panel renders one unified stream sorted newest-first.
+  const [recentActivity, setRecentActivity] = useState([]);
+  const logActivity = useCallback((entry) => {
+    setRecentActivity((prev) => pushRecentActivity(prev, entry));
+  }, []);
 
   // Load event picker once. defaultEventId is tonight's event when there is
   // one, so the common case is zero taps.
@@ -126,7 +140,10 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
   // fine for now; the note field carries the distinction as 'front_desk
   // laptop' when we need to slice it later. If we ever add 'front_desk' to
   // the CHECK constraint, swap here and in lib/capacity-utils.js VALID_SOURCES.
-  const bumpCapacity = useCallback(async () => {
+  // bumpCapacityFor(note) — parameterised so a scanned admit and a guest-list
+  // check-in write different audit notes against the same source. Returns
+  // null on success, or a human-readable warning string.
+  const bumpCapacityFor = useCallback(async (note) => {
     try {
       const res = await fetch('/api/capacity/operation', {
         method: 'POST',
@@ -134,22 +151,37 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
         body: JSON.stringify({
           op: 'check_in',
           source: 'front_door',
-          note: 'front_desk laptop (guest-list check-in)',
+          note,
         }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        if (json.code === 'full') return ' At capacity — count not bumped.';
-        if (json.code === 'no_session') return ' No active capacity session — count not bumped.';
-        return ' Count not bumped: ' + (json.error || 'try again from /capacity/admin');
+        if (json.code === 'full') return 'At capacity — count not bumped.';
+        if (json.code === 'no_session') return 'No active capacity session — count not bumped.';
+        return 'Count not bumped: ' + (json.error || 'try again from /capacity/admin');
       }
-      // Force the on-screen count to reflect the new value immediately.
       capacity.refresh?.();
-      return '';
+      return null;
     } catch {
-      return ' Count not bumped (network).';
+      return 'Count not bumped (network).';
     }
   }, [capacity]);
+
+  // Guest-list wrapper: the applyUpdate() consumer expects a leading space
+  // that gets concatenated onto the status message. Preserve that shape.
+  const bumpCapacity = useCallback(async () => {
+    const warning = await bumpCapacityFor('front_desk laptop (guest-list check-in)');
+    return warning ? ` ${warning}` : '';
+  }, [bumpCapacityFor]);
+
+  // Scanner path: called AFTER the scanner has committed the admit. Returned
+  // string (or null) is rendered on the scanner's result card.
+  const getScannerBumpWarning = useCallback(async ({ source }) => {
+    const note = source === 'member_id'
+      ? 'front_desk (member scan)'
+      : 'front_desk (trial-pass scan)';
+    return bumpCapacityFor(note);
+  }, [bumpCapacityFor]);
 
   function applyUpdate(updated, message) {
     setEntries((prev) => prev.map((e) => (e.id === updated.id ? { ...e, ...updated } : e)));
@@ -275,8 +307,8 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
         </div>
       </header>
 
-      {/* ---------- Body: two columns on wide screens, stacked on narrow ---- */}
-      <div className="max-w-[1400px] w-full mx-auto px-6 py-6 grid gap-6 grid-cols-1 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      {/* ---------- Body: three columns on wide screens, stacked on narrow ---- */}
+      <div className="max-w-[1600px] w-full mx-auto px-6 py-6 grid gap-6 grid-cols-1 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1.1fr)_minmax(0,1fr)]">
         {/* ============== LEFT: Guest list check-in =========================== */}
         <section
           className="rounded-2xl border overflow-hidden flex flex-col"
@@ -399,6 +431,15 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
           </div>
         </section>
 
+        {/* ============== CENTER: Door scanner + recent activity ============== */}
+        <div className="flex flex-col gap-6 min-w-0">
+          <UnifiedDoorScanner
+            onActivity={logActivity}
+            getBumpWarning={getScannerBumpWarning}
+          />
+          <RecentActivityPanel entries={recentActivity} />
+        </div>
+
         {/* ============== RIGHT: Issue trial pass ============================= */}
         {/* ManualTrialPassForm expects the --auth-* CSS variables set up by
             AuthenticatedThemeProvider; wrap the panel in the provider (team
@@ -435,6 +476,16 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
             setRosterError(null);
             const suffix = await bumpCapacity();
             applyUpdate(updated, `${message}${suffix}`);
+            // Guest-list check-ins land in the same "last 5" panel as scanned
+            // admits so the manager sees one unified stream.
+            logActivity({
+              id: `guestlist:${updated.id}`,
+              kind: 'guestlist',
+              name: updated.guest_name,
+              detail: updated.partner_name || 'Guest list',
+              result: 'admitted',
+              at: Date.now(),
+            });
           }}
           onConflict={(message) => {
             setActiveEntry(null);
@@ -542,6 +593,89 @@ function EntryRow({ entry, busy, confirmingNoShow, onCheckIn, onNoShow }) {
           {confirmingNoShow ? 'Confirm no-show' : 'No show'}
         </button>
       )}
+    </li>
+  );
+}
+
+function RecentActivityPanel({ entries }) {
+  return (
+    <section
+      className="rounded-2xl border"
+      style={{ background: '#111', borderColor: 'rgba(255,255,255,0.08)' }}
+    >
+      <div
+        className="px-5 py-3 border-b flex items-baseline justify-between gap-2"
+        style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+      >
+        <div>
+          <div className="text-[11px] font-bold tracking-[0.16em] uppercase" style={{ color: '#8a8a8a' }}>
+            Recent
+          </div>
+          <h3 className="text-[15px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            Last 5 admits
+          </h3>
+        </div>
+        <div className="text-[11px]" style={{ color: '#8a8a8a' }}>
+          this session
+        </div>
+      </div>
+      {entries.length === 0 ? (
+        <div className="px-5 py-6 text-center text-[13px]" style={{ color: '#8a8a8a' }}>
+          Nobody in yet.
+        </div>
+      ) : (
+        <ul className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+          {entries.map((e) => (
+            <RecentActivityRow key={e.at + ':' + e.id} entry={e} />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+const KIND_LABEL = {
+  guestlist: 'Guest list',
+  trial_pass: 'Trial pass',
+  member_id: 'Member',
+};
+const RESULT_COLOR = {
+  admitted: '#7CFC9B',
+  rejected: '#ff8a8a',
+  denied: '#ffb84d',
+};
+const RESULT_LABEL = {
+  admitted: 'In',
+  rejected: 'Rejected',
+  denied: 'Denied',
+};
+
+function RecentActivityRow({ entry }) {
+  const color = RESULT_COLOR[entry.result] || '#8a8a8a';
+  return (
+    <li className="px-5 py-3 flex items-center gap-3" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+      <span
+        className="inline-block w-2 h-2 rounded-full shrink-0"
+        style={{ background: color }}
+        aria-hidden
+      />
+      <div className="flex-1 min-w-0">
+        <div className="text-[14px] font-bold truncate" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+          {entry.name}
+        </div>
+        <div className="text-[11px] mt-0.5 truncate" style={{ color: '#8a8a8a' }}>
+          {KIND_LABEL[entry.kind] || 'Door'}
+          {entry.detail ? ` · ${entry.detail}` : ''}
+        </div>
+      </div>
+      <div className="text-right shrink-0">
+        <div className="text-[10px] font-bold tracking-[0.1em] uppercase" style={{ color }}>
+          {RESULT_LABEL[entry.result] || entry.result}
+        </div>
+        <div className="text-[11px] tabular-nums" style={{ color: '#8a8a8a' }}>
+          {formatActivityTime(entry.at)}
+        </div>
+      </div>
     </li>
   );
 }
