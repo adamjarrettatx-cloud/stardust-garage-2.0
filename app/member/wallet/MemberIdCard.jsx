@@ -10,16 +10,10 @@ import Link from 'next/link';
 // wallet fights with the rest of the page. Tapping the card opens the
 // full-screen badge page instead, which is what staff actually scan.
 //
-// Three visual states:
-//   * hasToken + active   \u2014 gold "OPEN MEMBER ID" call to action
-//   * hasToken + inactive \u2014 muted card, "Membership inactive" hint but the
-//     link still works (staff may still want to verify identity)
-//   * no token            \u2014 card links to /member/id which mints one on the
-//     fly. Copy explains why so a member seeing this once (backfill gap)
-//     understands what happened.
-export default function MemberIdCard({ tokenRaw, isActive }) {
-  const hasToken = Boolean(tokenRaw);
-  const href = hasToken ? `/member/id/${tokenRaw}` : '/member/id';
+// The destination mints a short-lived raw URL only after the signed-in member
+// opens it; the database itself retains only a token hash.
+export default function MemberIdCard({ isActive }) {
+  const href = '/member/id';
 
   const accent = isActive ? '#d9c48c' : '#8a8a8a';
   const statusText = isActive ? 'ACTIVE MEMBER' : 'MEMBERSHIP INACTIVE';
@@ -64,9 +58,7 @@ export default function MemberIdCard({ tokenRaw, isActive }) {
               Member ID
             </div>
             <div style={{ fontSize: 13, color: '#8a8a8a', lineHeight: 1.5 }}>
-              {hasToken
-                ? 'Tap to open your badge. Show the QR code at the door.'
-                : 'Tap to generate your badge. You only see this the first time.'}
+              Tap to open your badge. Show the QR code at the door.
             </div>
           </div>
           <div

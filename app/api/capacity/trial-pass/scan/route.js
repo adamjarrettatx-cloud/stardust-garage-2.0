@@ -20,6 +20,7 @@ import {
 import { REJECT_REASONS, isValidRejectReason, CHECKIN_RESULTS } from '@/lib/tickets/checkin.js';
 import { buildTrialPassPreview } from '@/lib/tickets/trial-pass-preview';
 import { findTrialPassLinkedTicket } from '@/lib/trial-pass-linked-ticket';
+import { rateLimit, keyFromRequest } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -93,6 +94,30 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Unauthorized', code: 'forbidden' }, { status: 401 });
     }
     staffUserId = user?.id || null;
+  }
+
+  // A scan can mutate pass, check-in, and ticket state. Limit every request
+  // after its credential is authenticated: ten per IP and thirty per actual
+  // staff user or provisioned door device in each rolling hour.
+  const ipLimit = rateLimit({
+    key: keyFromRequest(request, 'trial_pass_scan'),
+    limit: 10,
+    windowMs: 60 * 60 * 1000,
+  });
+  const credentialLimit = rateLimit({
+    key: `trial_pass_scan_credential:${device?.id || staffUserId}`,
+    limit: 30,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (!ipLimit.ok || !credentialLimit.ok) {
+    const retryAfterSeconds = Math.max(
+      ipLimit.ok ? 0 : ipLimit.retryAfterSeconds,
+      credentialLimit.ok ? 0 : credentialLimit.retryAfterSeconds,
+    );
+    return NextResponse.json(
+      { error: 'Too many scans', code: 'rate_limited' },
+      { status: 429, headers: { 'Retry-After': String(retryAfterSeconds) } },
+    );
   }
 
   let body;

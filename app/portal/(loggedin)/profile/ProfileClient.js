@@ -1,9 +1,9 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { uploadPartnerPhoto, validatePhotoFile } from '@/lib/partner-photo';
+import { PHOTO_BUCKET, uploadPartnerPhoto, validatePhotoFile } from '@/lib/partner-photo';
 import { roleLabel } from '@/lib/role-label';
 
 function partnerSince(invitedAt) {
@@ -29,12 +29,27 @@ export default function ProfileClient({ email, contactTypes, contactType, profil
   const fileInputRef = useRef(null);
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState('');
+  const [storedPhotoUrl, setStoredPhotoUrl] = useState(profile.photoUrl || '');
   const [photoError, setPhotoError] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const since = partnerSince(current.invitedAt);
-  const shownPhoto = photoPreview || current.photoUrl;
+  useEffect(() => {
+    const path = current.photoUrl || '';
+    if (!path || /^https?:\/\//i.test(path)) {
+      setStoredPhotoUrl(path);
+      return undefined;
+    }
+    let cancelled = false;
+    createClient().storage.from(PHOTO_BUCKET).createSignedUrl(path, 300)
+      .then(({ data }) => {
+        if (!cancelled) setStoredPhotoUrl(data?.signedUrl || '');
+      });
+    return () => { cancelled = true; };
+  }, [current.photoUrl]);
+
+  const shownPhoto = photoPreview || storedPhotoUrl;
 
   const startEditing = () => {
     setFullName(current.fullName);
@@ -85,7 +100,7 @@ export default function ProfileClient({ email, contactTypes, contactType, profil
     // Only sent when they picked a new one — an omitted photoUrl leaves the
     // existing photo alone, and the route rejects an empty one outright. The
     // photo stays mandatory after activation, it just can't be cleared here.
-    let photoUrl;
+    let photoPath;
     if (photoFile) {
       const upload = await uploadPartnerPhoto(supabase, photoFile);
       if (upload.error) {
@@ -93,13 +108,13 @@ export default function ProfileClient({ email, contactTypes, contactType, profil
         setPhotoError(upload.error);
         return;
       }
-      photoUrl = upload.url;
+      photoPath = upload.path;
     }
 
     const res = await fetch('/api/portal/profile', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(photoUrl ? { fullName: name, photoUrl } : { fullName: name }),
+      body: JSON.stringify(photoPath ? { fullName: name, photoPath } : { fullName: name }),
     });
     const data = await res.json().catch(() => null);
     setSaving(false);
@@ -110,7 +125,7 @@ export default function ProfileClient({ email, contactTypes, contactType, profil
     }
 
     if (photoPreview) URL.revokeObjectURL(photoPreview);
-    setCurrent((prev) => ({ ...prev, fullName: name, photoUrl: photoUrl || prev.photoUrl }));
+    setCurrent((prev) => ({ ...prev, fullName: name, photoUrl: photoPath || prev.photoUrl }));
     setPhotoFile(null);
     setPhotoPreview('');
     setEditing(false);

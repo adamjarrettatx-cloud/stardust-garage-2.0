@@ -61,11 +61,24 @@ test('checkin mode still fires the application invite path', () => {
 });
 
 test('team gate is still enforced', () => {
-  assert.match(src, /requireTeam\(\)/);
+  assert.match(src, /requireTeam\(request\)/);
 });
 
 test('device-token path still refuses non-front_door devices', () => {
   assert.match(src, /device\.role !== 'front_door'/);
+});
+
+
+test('scan route limits authenticated traffic by IP and credential before parsing the body', () => {
+  assert.match(src, /import \{ rateLimit, keyFromRequest \} from '@\/lib\/rate-limit'/);
+  assert.match(src, /keyFromRequest\(request, 'trial_pass_scan'\)/);
+  assert.match(src, /limit:\s*10/);
+  assert.match(src, /trial_pass_scan_credential:\$\{device\?\.id \|\| staffUserId\}/);
+  assert.match(src, /limit:\s*30/);
+  assert.match(src, /windowMs:\s*60 \* 60 \* 1000/);
+  assert.match(src, /status:\s*429/);
+  assert.ok(src.indexOf("staffUserId = user?.id || null") < src.indexOf("keyFromRequest(request, 'trial_pass_scan')"));
+  assert.ok(src.indexOf("keyFromRequest(request, 'trial_pass_scan')") < src.indexOf('await request.json()'));
 });
 
 test('response payload always includes the mode field', () => {

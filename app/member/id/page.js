@@ -5,6 +5,7 @@ import {
   generateMemberIdentityToken,
   hashMemberIdentityToken,
 } from '@/lib/member-identity';
+import { getOrIssueMemberIdentityToken } from '@/lib/member-identity-token-service.mjs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,14 +14,9 @@ export const dynamic = 'force-dynamic';
 // own /member/id/<token> full-screen badge.
 //
 // Model:
-//   * Every member has exactly one identity token stored in
-//     member_identity_tokens (both raw + hash, service-role readable only).
-//   * Approving a member auto-issues one. This landing recovers it from the
-//     DB and 302s to the tokenized page.
-//   * If a member somehow reaches this page without a token row (approved
-//     pre-backfill AND the backfill script never ran), we mint one on the
-//     fly. Idempotent \u2014 the unique constraint on member_profile_id catches
-//     a race with the backfill script or a concurrent tab.
+//   * The database persists only a SHA-256 hash; raw credentials are returned
+//     once to this signed-in navigation and are never recoverable from the DB.
+//   * Each visit mints a replacement and revokes the prior live credential.
 //
 // The raw token is copied into a redirect URL, so it hits the browser's
 // address bar and history \u2014 same posture as /pass/<token> URLs for trial
@@ -41,43 +37,22 @@ export default async function MemberIdIndexPage() {
   // Not a member \u2014 send them to the general signed-in landing.
   if (!member?.id) redirect('/member/wallet');
 
-  const { data: existing } = await admin
-    .from('member_identity_tokens')
-    .select('token_raw, revoked_at')
-    .eq('member_profile_id', member.id)
-    .maybeSingle();
+  // Raw badge credentials are never persisted. Minting here returns the raw
+  // value once in this redirect while the database retains only its hash.
+  const result = await getOrIssueMemberIdentityToken({
+    admin,
+    userId: user.id,
+    requireActive: false,
+    mintToken: () => {
+      const raw = generateMemberIdentityToken();
+      return { raw, hash: hashMemberIdentityToken(raw) };
+    },
+  });
 
-  // Happy path: token exists and is live.
-  if (existing?.token_raw && !existing.revoked_at) {
-    redirect(`/member/id/${existing.token_raw}`);
-  }
-
-  // Missing (backfill gap) or revoked \u2014 rotate/issue a fresh one. For the
-  // revoked case, upsert overwrites (member_profile_id is unique) and the
-  // hash+raw change together.
-  const raw = generateMemberIdentityToken();
-  const hash = hashMemberIdentityToken(raw);
-  const { error } = await admin
-    .from('member_identity_tokens')
-    .upsert(
-      {
-        member_profile_id: member.id,
-        token_hash: hash,
-        token_raw: raw,
-        rotated_at: existing ? new Date().toISOString() : null,
-        revoked_at: null,
-        revoke_reason: null,
-      },
-      { onConflict: 'member_profile_id' },
-    );
-
-  if (error) {
-    console.error('[member-id.mint]', error.message);
-    // Absolute last resort: send them somewhere useful. The wallet page
-    // will render a \"Member ID unavailable \u2014 contact staff\" card if the
-    // token is missing.
+  if (result.kind !== 'ok') {
+    if (result.kind === 'error') console.error('[member-id.mint]', result.error?.message || result.error);
     redirect('/member/wallet');
   }
 
-  redirect(`/member/id/${raw}`);
+  redirect(`/member/id/${result.token}`);
 }

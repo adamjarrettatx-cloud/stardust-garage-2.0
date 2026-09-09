@@ -118,7 +118,7 @@ export default function ActivateClient() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         fullName: fullName.trim(),
-        photoUrl: upload.url,
+        photoPath: upload.path,
       }),
     });
     const data = await res.json().catch(() => null);

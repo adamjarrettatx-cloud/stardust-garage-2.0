@@ -4,13 +4,10 @@ import { requirePartner } from '@/lib/auth-helpers';
 
 export const runtime = 'nodejs';
 
-const PHOTO_PATH_PREFIX = '/storage/v1/object/public/member-photos/';
-
 // PATCH /api/portal/profile
-// Body: { fullName: string, photoUrl?: string }
+// Body: { fullName: string, photoPath?: string }
 //
-// The only way a partner edits their own record. Two columns, both of which
-// door staff read off a screen on the night.
+// The only way a partner edits their own record. Two columns, both used by staff on the night.
 //
 // SECURITY: this uses the caller's own session rather than the service-role
 // client, and that is the point. Partners hold a column-level UPDATE grant on
@@ -29,7 +26,7 @@ export async function PATCH(request) {
 
     const body = await request.json().catch(() => null);
     const fullName = typeof body?.fullName === 'string' ? body.fullName.trim() : '';
-    const photoUrl = typeof body?.photoUrl === 'string' ? body.photoUrl.trim() : '';
+    const photoPath = typeof body?.photoPath === 'string' ? body.photoPath.trim() : '';
 
     if (!fullName) {
       return NextResponse.json({ error: 'Your name is required.' }, { status: 400 });
@@ -38,19 +35,18 @@ export async function PATCH(request) {
     const updates = { full_name: fullName };
 
     // Activation made the photo mandatory, so editing must not become the back
-    // door to having none: an omitted photoUrl keeps the current one, and an
+    // door to having none: an omitted photoPath keeps the current one, and an
     // empty string is rejected rather than treated as "clear it".
-    if (body?.photoUrl !== undefined) {
-      if (!photoUrl) {
+    if (body?.photoPath !== undefined) {
+      if (!photoPath) {
         return NextResponse.json({ error: 'A profile photo is required.' }, { status: 400 });
       }
-      // photo_url is rendered as an <img src> on staff screens, so only accept a
-      // URL the client actually uploaded to our own public photo bucket. Same
-      // check as /api/portal/complete-activation.
-      if (!photoUrl.startsWith(`${process.env.NEXT_PUBLIC_SUPABASE_URL}${PHOTO_PATH_PREFIX}`)) {
+      // Accept only a flat filename in the authenticated caller's namespace.
+      // Storage RLS independently ensures only its uploader can read or write it.
+      if (!isOwnedPartnerPhotoPath(photoPath, user.id)) {
         return NextResponse.json({ error: 'That photo could not be verified.' }, { status: 400 });
       }
-      updates.photo_url = photoUrl;
+      updates.photo_url = photoPath;
     }
 
     const supabase = await createClient();
@@ -69,4 +65,11 @@ export async function PATCH(request) {
     console.error('[partner profile] route error', err);
     return NextResponse.json({ error: 'Server error.' }, { status: 500 });
   }
+}
+
+
+function isOwnedPartnerPhotoPath(path, userId) {
+  return typeof path === 'string'
+    && path.startsWith(`${userId}/partner-`)
+    && /^[0-9a-f-]{36}\/partner-[A-Za-z0-9][A-Za-z0-9._-]{0,180}$/.test(path);
 }

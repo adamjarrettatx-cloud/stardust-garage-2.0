@@ -53,7 +53,7 @@ test('guest-list row without a check-in time is dropped', () => {
 test('ticket row takes its name from the order buyer', () => {
   const entry = normalizeTicketRow(
     { ticket_id: 't1', result: 'valid', scanned_at: AT },
-    { buyerName: 'Dakota Boyle', buyerEmail: 'info@floppydisko.com' },
+    { buyerName: 'Dakota Boyle' },
   );
   assert.equal(entry.id, 'ticket:t1');
   assert.equal(entry.kind, 'ticket');
@@ -61,12 +61,12 @@ test('ticket row takes its name from the order buyer', () => {
   assert.equal(entry.at, AT_MS);
 });
 
-test('ticket row falls back to the buyer email, then to a placeholder', () => {
+test('ticket row never falls back to buyer email', () => {
   const noName = normalizeTicketRow(
     { ticket_id: 't1', result: 'valid', scanned_at: AT },
     { buyerName: '   ', buyerEmail: 'info@floppydisko.com' },
   );
-  assert.equal(noName.name, 'info@floppydisko.com');
+  assert.equal(noName.name, 'Ticket holder');
   const nothing = normalizeTicketRow({ ticket_id: 't1', result: 'valid', scanned_at: AT }, {});
   assert.equal(nothing.name, 'Ticket holder');
 });
@@ -194,4 +194,5 @@ test('the checkins route is team-gated and scoped to a door session', () => {
   assert.ok(route.includes('requireTeam('), 'door staff only');
   assert.ok(route.includes('getActiveDoorSession('), 'scope to the open door session');
   assert.ok(route.includes('door_session_id'), 'ticket and trial rows scope by session');
+  assert.equal(route.includes('buyer_email'), false, 'the door feed must not fetch buyer email addresses');
 });

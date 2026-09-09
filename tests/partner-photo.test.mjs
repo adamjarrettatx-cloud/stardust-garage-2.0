@@ -9,6 +9,7 @@ import {
   validatePhotoFile,
 } from '../lib/partner-photo.js';
 
+const USER_ID = '11111111-1111-4111-8111-111111111111';
 const file = (overrides = {}) => ({
   name: 'headshot.jpg',
   type: 'image/jpeg',
@@ -16,10 +17,8 @@ const file = (overrides = {}) => ({
   ...overrides,
 });
 
-test('validatePhotoFile accepts the three types the bucket serves', () => {
-  for (const type of ACCEPTED_PHOTO_TYPES) {
-    assert.equal(validatePhotoFile(file({ type })), null);
-  }
+test('validatePhotoFile accepts the three permitted image types', () => {
+  for (const type of ACCEPTED_PHOTO_TYPES) assert.equal(validatePhotoFile(file({ type })), null);
 });
 
 test('validatePhotoFile rejects the wrong type, an oversized file and nothing at all', () => {
@@ -29,26 +28,25 @@ test('validatePhotoFile rejects the wrong type, an oversized file and nothing at
   assert.match(validatePhotoFile(null), /choose a photo/);
 });
 
-// Bucket keys are flat and public, so two partners uploading "photo.jpg" at
-// once must not land on the same object.
-test('partnerPhotoFilename tames the original name and keeps the extension', () => {
+test('partnerPhotoFilename namespaces every object to its authenticated owner', () => {
   assert.equal(
-    partnerPhotoFilename('My Head Shot (2024).JPEG', 1700000000000, 0.5),
-    'partner-1700000000000-i-My-Head-Shot-2024.jpeg'
+    partnerPhotoFilename('My Head Shot (2024).JPEG', USER_ID, 1700000000000, 0.5),
+    `${USER_ID}/partner-1700000000000-i-My-Head-Shot-2024.jpeg`,
   );
+  assert.equal(partnerPhotoFilename('headshot.jpg', null), null);
 });
 
-test('partnerPhotoFilename falls back when there is nothing usable to work from', () => {
-  assert.match(partnerPhotoFilename(''), /^partner-\d+-[a-z0-9]*-photo\.jpg$/);
-  assert.match(partnerPhotoFilename(undefined), /^partner-\d+-[a-z0-9]*-photo\.jpg$/);
-  // A name that is entirely punctuation still has to produce a valid key.
-  assert.match(partnerPhotoFilename('!!!.png'), /-photo\.png$/);
+test('partnerPhotoFilename produces a traversal-safe filename even for hostile input', () => {
+  const path = partnerPhotoFilename('../../!!!.png', USER_ID, 1, 0.1);
+  assert.match(path, new RegExp(`^${USER_ID}/partner-1-[a-z0-9]+-photo\\.png$`));
+  assert.equal(path.includes('..'), false);
 });
 
-function fakeSupabase({ uploadError = null, publicUrl = 'https://cdn.example/photo.jpg' } = {}) {
+function fakeSupabase({ uploadError = null, user = { id: USER_ID }, authError = null } = {}) {
   const calls = {};
   return {
     calls,
+    auth: { getUser: async () => ({ data: { user }, error: authError }) },
     storage: {
       from(bucket) {
         calls.bucket = bucket;
@@ -57,44 +55,35 @@ function fakeSupabase({ uploadError = null, publicUrl = 'https://cdn.example/pho
             calls.upload = { path, body, options };
             return Promise.resolve({ error: uploadError });
           },
-          getPublicUrl(path) {
-            calls.publicUrlPath = path;
-            return { data: publicUrl ? { publicUrl } : null };
-          },
         };
       },
     },
   };
 }
 
-test('uploadPartnerPhoto stores in the shared photo bucket and returns the public URL', async () => {
+test('uploadPartnerPhoto stores a private owner path instead of a public URL', async () => {
   const supabase = fakeSupabase();
   const result = await uploadPartnerPhoto(supabase, file());
 
-  assert.deepEqual(result, { url: 'https://cdn.example/photo.jpg', error: null });
+  assert.equal(result.error, null);
+  assert.match(result.path, new RegExp(`^${USER_ID}/partner-`));
   assert.equal(supabase.calls.bucket, PHOTO_BUCKET);
   assert.equal(supabase.calls.upload.options.contentType, 'image/jpeg');
-  // The URL handed back must describe the object that was actually written.
-  assert.equal(supabase.calls.publicUrlPath, supabase.calls.upload.path);
+  assert.equal(result.url, undefined);
 });
 
-test('uploadPartnerPhoto validates before it uploads anything', async () => {
-  const supabase = fakeSupabase();
-  const result = await uploadPartnerPhoto(supabase, file({ type: 'image/gif' }));
+test('uploadPartnerPhoto validates and authenticates before it uploads anything', async () => {
+  const invalid = await uploadPartnerPhoto(fakeSupabase(), file({ type: 'image/gif' }));
+  assert.equal(invalid.path, null);
+  assert.match(invalid.error, /JPG, PNG or WebP/);
 
-  assert.equal(result.url, null);
-  assert.match(result.error, /JPG, PNG or WebP/);
-  assert.equal(supabase.calls.upload, undefined);
+  const noUser = await uploadPartnerPhoto(fakeSupabase({ user: null }), file());
+  assert.equal(noUser.path, null);
+  assert.match(noUser.error, /sign in again/);
 });
 
 test('uploadPartnerPhoto reports a storage failure in words the partner can act on', async () => {
   const result = await uploadPartnerPhoto(fakeSupabase({ uploadError: new Error('boom') }), file());
-  assert.equal(result.url, null);
-  assert.match(result.error, /Please try again/);
-});
-
-test('uploadPartnerPhoto does not hand back a half-finished upload', async () => {
-  const result = await uploadPartnerPhoto(fakeSupabase({ publicUrl: null }), file());
-  assert.equal(result.url, null);
+  assert.equal(result.path, null);
   assert.match(result.error, /Please try again/);
 });
