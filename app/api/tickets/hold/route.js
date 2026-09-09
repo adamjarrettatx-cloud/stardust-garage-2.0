@@ -10,6 +10,7 @@ import { createTicketCheckoutSession } from '@/lib/tickets/stripe';
 import { findOrCreateStripeCustomer } from '@/lib/stripe/client';
 import { validateAcceptancePayload, recordWaiverAcceptance, evidenceFromRequest }
   from '@/lib/waiver/accept';
+import { memberSatisfiesTierGate, membershipTierLabel } from '@/lib/membership-tiers';
 
 // Waiver gate flag — when true, every hold must carry a validated waiver
 // envelope in the request body OR the request 4xxs before touching
@@ -140,7 +141,7 @@ export async function POST(request) {
   // --- Load event and gate on ticketing_mode + published ------------------
   const { data: event } = await supabaseAdmin
     .from('events')
-    .select('id, title, status, ticketing_mode, booking_fee_cents_default')
+    .select('id, title, status, ticketing_mode, booking_fee_cents_default, is_sdg_only, required_membership_tier')
     .eq('id', eventId)
     .maybeSingle();
   if (!event || event.status !== 'published' || event.ticketing_mode !== 'internal') {
@@ -152,11 +153,53 @@ export async function POST(request) {
   // from the auth.users email (e.g. they applied with one address then
   // switched login providers). For non-members, the auth.users email is the
   // only address we have and is the one Stripe + our confirmation email use.
+  //
+  // subscription_plan + is_active are also loaded here for the SDG-only /
+  // tier-gate check below — we need to know if the buyer is an active member
+  // and what tier they hold BEFORE reserving inventory or hitting Stripe.
   const { data: memberProfile } = await supabaseAdmin
     .from('member_profiles')
-    .select('id, email, full_name, stripe_customer_id')
+    .select('id, email, full_name, stripe_customer_id, subscription_plan, is_active')
     .eq('user_id', user.id)
     .maybeSingle();
+
+  // --- Access gate: is_sdg_only + required_membership_tier ---------------
+  // These are the SAME rules used by the notification audience resolver
+  // (lib/notifications/audience.js). Enforcing them here means a direct link
+  // to a member-only checkout can't be used by a Builder to buy an Insider
+  // ticket, or by a non-member to buy an SDG-only ticket.
+  //
+  // Team members bypass both gates — they may legitimately need to test
+  // purchases or comp themselves in. Non-team buyers must be active members
+  // when is_sdg_only=true, and must meet the tier rank when set.
+  if (event.is_sdg_only) {
+    // Look up team-member status by auth user_id (there is no is_team flag
+    // on member_profiles; team membership lives in its own table).
+    const { data: teamMember } = await supabaseAdmin
+      .from('team_members')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!teamMember) {
+      const isActiveMember = memberProfile?.is_active === true;
+      if (!isActiveMember) {
+        return NextResponse.json(
+          { error: 'This event is for Stardust Garage members only. Sign in with your member account, or visit /members to join.' },
+          { status: 403 }
+        );
+      }
+      if (!memberSatisfiesTierGate(memberProfile.subscription_plan, event.required_membership_tier)) {
+        return NextResponse.json(
+          {
+            error: `This event is reserved for ${membershipTierLabel(event.required_membership_tier)} members. Upgrade at /members to attend.`,
+          },
+          { status: 403 }
+        );
+      }
+    }
+  }
+
   const buyerEmail = (user.email || memberProfile?.email || '').toLowerCase();
   if (!buyerEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail)) {
     return NextResponse.json({ error: 'Your account has no email on file — contact the front desk.' }, { status: 400 });
