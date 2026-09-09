@@ -3,6 +3,8 @@ import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { setEventSeriesStatus, getEventSeries } from '@/lib/tickettailor';
 import { extractSeriesPublicUrl } from '@/lib/tt-event-create';
+import { notifyMany } from '@/lib/notifications/send';
+import { resolveAudience, audienceForEvent } from '@/lib/notifications/audience';
 
 export const runtime = 'nodejs';
 
@@ -122,6 +124,42 @@ export async function POST(request, { params }) {
         { error: 'Failed to publish the website event: ' + updateError.message },
         { status: 500 },
       );
+    }
+
+    // Fan out an event_published notification to the audience derived from
+    // the event's visibility + is_sdg_only + required_membership_tier.
+    //   visibility='internal'         -> team only (silent-ish, team calendar)
+    //   required_membership_tier set  -> that tier only (Insider-only drops)
+    //   is_sdg_only=true              -> all members
+    //   unlisted                      -> nobody (link-only)
+    //   otherwise (public)            -> every account
+    // Wrapped in try/catch — a notification failure must never fail publish.
+    try {
+      if (updated.visibility !== 'unlisted') {
+        const audience = await audienceForEvent(supabase, { event: updated });
+        const userIds = await resolveAudience(supabase, audience);
+        if (userIds.length > 0) {
+          const eventUrl = `/events/${updated.slug || updated.id}`;
+          const dateLabel = updated.event_date
+            ? new Date(`${updated.event_date}T00:00:00`).toLocaleDateString('en-US', {
+                weekday: 'short', month: 'short', day: 'numeric',
+              })
+            : null;
+          await notifyMany(supabase, userIds, {
+            type: 'event_published',
+            title: updated.title || 'New event at Stardust Garage',
+            body: dateLabel ? `${dateLabel} · Tap to view` : 'Tap to view',
+            data: { event_id: updated.id, url: eventUrl, audience },
+          });
+          console.log('[tt-publish] notified', {
+            eventId: updated.id,
+            audience,
+            recipients: userIds.length,
+          });
+        }
+      }
+    } catch (notifyErr) {
+      console.error('[tt-publish] notification fanout failed (non-fatal):', notifyErr?.message || notifyErr);
     }
 
     return NextResponse.json({

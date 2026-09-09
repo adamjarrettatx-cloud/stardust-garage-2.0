@@ -57,19 +57,19 @@ test('memberDiscountCalloutRows returns both tiers when both are set', () => {
     member_discount_percent_iykyk: 60,
   });
   assert.deepEqual(rows, [
-    { key: 'cowork', label: 'The Weekender', percent: 25 },
-    { key: 'iykyk',  label: 'Experience Member', percent: 60 },
+    { key: 'cowork', label: 'The Builder', percent: 25 },
+    { key: 'iykyk',  label: 'The Insider', percent: 60 },
   ]);
 });
 
 test('memberDiscountCalloutRows returns only the tier that is set', () => {
   assert.deepEqual(
     memberDiscountCalloutRows({ member_discount_percent_cowork: 25 }),
-    [{ key: 'cowork', label: 'The Weekender', percent: 25 }],
+    [{ key: 'cowork', label: 'The Builder', percent: 25 }],
   );
   assert.deepEqual(
     memberDiscountCalloutRows({ member_discount_percent_iykyk: 60 }),
-    [{ key: 'iykyk', label: 'Experience Member', percent: 60 }],
+    [{ key: 'iykyk', label: 'The Insider', percent: 60 }],
   );
 });
 
@@ -80,7 +80,7 @@ test('memberDiscountCalloutRows ignores legacy when any tier is set', () => {
     member_discount_percent: 50,
     member_discount_percent_cowork: 25,
   });
-  assert.deepEqual(rows, [{ key: 'cowork', label: 'The Weekender', percent: 25 }]);
+  assert.deepEqual(rows, [{ key: 'cowork', label: 'The Builder', percent: 25 }]);
 });
 
 test('memberDiscountCalloutRows falls back to legacy when no tier is set', () => {
@@ -106,7 +106,7 @@ test('memberDiscountCalloutRows accepts numeric strings for tier columns', () =>
     member_discount_percent_iykyk: ' 60 ',
   });
   assert.deepEqual(rows, [
-    { key: 'cowork', label: 'The Weekender', percent: 25 },
-    { key: 'iykyk',  label: 'Experience Member', percent: 60 },
+    { key: 'cowork', label: 'The Builder', percent: 25 },
+    { key: 'iykyk',  label: 'The Insider', percent: 60 },
   ]);
 });
