@@ -98,9 +98,9 @@ Retention periods can be extended for a legal hold, active dispute, investigatio
 
 ## 7. Your choices and privacy rights
 
-Depending on where you live and applicable law, you may have the right to request access to, correction of, deletion of, or a portable copy of certain personal information we hold about you. You may also object to or ask us to limit certain processing where the law provides that right. To make a request, email admin@sdgatx.com from the address associated with your account. We may need to verify your identity before acting on a request and may retain or decline to delete information where the law permits or requires us to do so, including waiver, payment, tax, safety, fraud-prevention, and legal-claim records.
+Depending on where you live and applicable law, you may have the right to request access to, correction of, deletion of, or a portable copy of certain personal information we hold about you. You may also object to or ask us to limit certain processing where the law provides that right. To make a request, email hello@sdgatx.com from the address associated with your account. We may need to verify your identity before acting on a request and may retain or decline to delete information where the law permits or requires us to do so, including waiver, payment, tax, safety, fraud-prevention, and legal-claim records.
 
-**In-app account deletion.** You can request deletion of your SDG Mobile account through the in-app account-deletion control. The same request can be made through the web account settings when available or by emailing admin@sdgatx.com. Account deletion removes account access and deletes or anonymizes personal information as described above, subject to records we must retain for legal, accounting, safety, and fraud-prevention purposes. Deleting your account does not cancel an active membership automatically; contact us to cancel any recurring membership before requesting deletion.
+**In-app account deletion.** You can request deletion of your SDG Mobile account through the in-app account-deletion control. The same request can be made through the web account settings when available or by emailing hello@sdgatx.com. Account deletion removes account access and deletes or anonymizes personal information as described above, subject to records we must retain for legal, accounting, safety, and fraud-prevention purposes. Deleting your account does not cancel an active membership automatically; contact us to cancel any recurring membership before requesting deletion.
 
 **Marketing email.** You can opt out of marketing email using the unsubscribe link in the message or by contacting us. We may still send non-marketing messages about your account, tickets, transactions, membership, security, or legal notices.
 
@@ -114,7 +114,7 @@ We use reasonable administrative, technical, and organizational safeguards desig
 
 ## 9. Children and age restrictions
 
-The Services are not directed to children under 18, and users must be at least 18 to create an account or access the venue unless Stardust Garage expressly designates an all-ages event and a parent or legal guardian completes any required minor waiver. We do not knowingly collect personal information from children under 13. If you believe a child has provided us personal information in violation of this Policy, contact us at admin@sdgatx.com.
+The Services are not directed to children under 18, and users must be at least 18 to create an account or access the venue unless Stardust Garage expressly designates an all-ages event and a parent or legal guardian completes any required minor waiver. We do not knowingly collect personal information from children under 13. If you believe a child has provided us personal information in violation of this Policy, contact us at hello@sdgatx.com.
 
 ## 10. International users
 
@@ -130,7 +130,7 @@ For privacy questions or requests, contact:
 
 Simple Boring Office LLC d/b/a Stardust Garage
 Austin, Texas
-admin@sdgatx.com
+hello@sdgatx.com
 `;
 
 function formatInline(text) {
@@ -168,14 +168,14 @@ export default function PrivacyPage() {
         <div className="legal-meta" aria-label="Document information">
           <span><strong>Effective:</strong> 2026-09-10</span>
           <span><strong>Operator:</strong> Simple Boring Office LLC d/b/a Stardust Garage</span>
-          <span><strong>Contact:</strong> <a href="mailto:admin@sdgatx.com">admin@sdgatx.com</a></span>
+          <span><strong>Contact:</strong> <a href="mailto:hello@sdgatx.com">hello@sdgatx.com</a></span>
         </div>
       </header>
       <article aria-label="Privacy Policy"><LegalBody source={content} /></article>
       <nav className="legal-links" aria-label="Related legal pages">
         <Link href="/terms">Terms of Service</Link>
         <Link href="/legal/waiver">Liability Waiver</Link>
-        <a href="mailto:admin@sdgatx.com">Contact Stardust Garage</a>
+        <a href="mailto:hello@sdgatx.com">Contact Stardust Garage</a>
       </nav>
       <style>{`
         .legal-page { width: min(100%, 900px); margin: 0 auto; padding: 76px 24px 112px; color: #e8e6e0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 15px; line-height: 1.72; }
