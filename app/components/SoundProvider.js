@@ -5,23 +5,23 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 /**
  * Global background-sound context.
  *
- * - Default state on very first visit: ON (soundOn = true), so the site's
- *   background track fires up as soon as the browser lets us play it.
+ * - Default state on very first visit: OFF (soundOn = false). Visitors have
+ *   to opt in via the SOUND ON/OFF toggle before the background track plays.
  * - Once the user makes an explicit choice (toggles the button on any page),
  *   we persist that choice in localStorage and honor it on every subsequent
  *   page + visit until they toggle again.
  * - One <audio> element lives at the root of the app and keeps playing across
  *   client-side route changes, so navigating from the splash into the site
- *   doesn't restart or interrupt the track.
+ *   doesn't restart or interrupt the track once a returning visitor with
+ *   sound turned on lands on the page.
  *
  * Browser autoplay policies: most browsers block audible autoplay until the
- * user has interacted with the page. We still *try* to auto-play on load
- * when soundOn is true (some environments allow it — e.g. returning visitors
- * with a media engagement score, or after any prior interaction). If the
- * browser blocks it, we keep soundOn = true in state and start playback on
- * the first user gesture (click / keydown / touchstart) anywhere on the page.
- * The visible "SOUND ON / OFF" label always reflects the user's intent, not
- * the browser's autoplay verdict.
+ * user has interacted with the page. When a returning visitor has previously
+ * opted in (soundOn = true from localStorage) we still *try* to auto-play on
+ * load; if the browser blocks it, we keep soundOn = true in state and start
+ * playback on the first user gesture (click / keydown / touchstart) anywhere
+ * on the page. The visible "SOUND ON / OFF" label always reflects the user's
+ * intent, not the browser's autoplay verdict.
  */
 
 const AUDIO_SRC =
@@ -30,7 +30,7 @@ const AUDIO_SRC =
 const STORAGE_KEY = 'sdg:soundOn';
 
 const SoundContext = createContext({
-  soundOn: true,
+  soundOn: false,
   toggleSound: () => {},
   ready: false,
 });
@@ -40,10 +40,10 @@ export function useSound() {
 }
 
 export default function SoundProvider({ children }) {
-  // Default to ON. We flip this from localStorage once mounted if the user
-  // previously chose OFF. We keep the SSR default as `true` so the initial
-  // markup matches the "start with sound on" intent.
-  const [soundOn, setSoundOn] = useState(true);
+  // Default to OFF. We flip this from localStorage once mounted if the user
+  // previously chose ON. We keep the SSR default as `false` so first-time
+  // visitors never hear an auto-playing track.
+  const [soundOn, setSoundOn] = useState(false);
   const [ready, setReady] = useState(false);
   const audioRef = useRef(null);
   const userHasChosenRef = useRef(false);
@@ -59,7 +59,7 @@ export default function SoundProvider({ children }) {
         setSoundOn(true);
         userHasChosenRef.current = true;
       }
-      // If nothing stored → first visit → keep default true.
+      // If nothing stored → first visit → keep default false (opt-in).
     } catch {
       // localStorage unavailable — fall through with default.
     }
