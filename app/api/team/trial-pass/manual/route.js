@@ -19,6 +19,13 @@ export const dynamic = 'force-dynamic';
 // row so the admin trial list can distinguish vouched-for-by-staff from
 // SMS-verified.
 //
+// Account creation (createAccount: true) is what makes a staff-issued pass
+// worth anything at checkout. The trial discount on Weekend Music Experiences
+// is granted from a trial_passes lookup keyed on user_id
+// (lib/tickets/entitlement-lookup.js), so a pass with user_id = null gets the
+// guest through the door and nothing else. The self-serve QR path does NOT
+// opt in — it still expects the guest to redeem their own pass.
+//
 // Uniqueness rules still apply — a manual signup for a phone that is
 // already in the table returns the existing pass with a rotated token,
 // same as the self-serve path. So this cannot be used to farm trials
@@ -51,6 +58,7 @@ export async function POST(request) {
     signupSource: TRIAL_PASS_SOURCE_MANUAL,
     phoneVerified: false,
     createdBy: user.id,
+    createAccount: true,
   });
   if (!issued.ok) {
     return NextResponse.json({ error: issued.error, field: issued.field }, { status: issued.status || 500 });
@@ -59,6 +67,10 @@ export async function POST(request) {
   // Staff view sees the pass URL directly so they can open it on the
   // guest's phone or read the code out for the guest to type. Email still
   // goes out from issueTrialPass, so the guest gets a durable record.
+  //
+  // account*/inviteEmailed are reported rather than enforced: account
+  // provisioning and the invite email are best-effort around a pass that has
+  // already been issued, and the form tells staff exactly which parts landed.
   return NextResponse.json({
     ok: true,
     existing: issued.existing,
@@ -69,5 +81,9 @@ export async function POST(request) {
     expiresAt: issued.pass.expires_at,
     expiresLabel: issued.expiresLabel,
     emailed: issued.emailed,
+    accountCreated: issued.accountCreated,
+    accountReused: issued.accountReused,
+    accountLinked: issued.accountLinked,
+    inviteEmailed: issued.inviteEmailed,
   });
 }
