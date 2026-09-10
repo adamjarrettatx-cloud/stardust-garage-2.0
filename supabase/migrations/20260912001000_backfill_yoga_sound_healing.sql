@@ -71,7 +71,9 @@ begin
   update public.tickets set event_id = v_new_id where event_id = v_old_id;
   update public.trial_pass_checkins set event_id = v_new_id where event_id = v_old_id;
   update public.tt_discovered_events set local_event_id = v_new_id where local_event_id = v_old_id;
-  update public.waiver_acceptances set event_id = v_new_id where event_id = v_old_id;
+  -- waiver_acceptances intentionally left pointing at the original row: rows are immutable
+  -- by design (see waiver_acceptances_no_mutate trigger). Legal evidence is preserved via
+  -- order_id + version hash on each acceptance row.
 
   insert into public.event_series (
     title, slug, recurrence_freq, recurrence_weekday, starts_on, template_event_id
