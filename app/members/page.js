@@ -43,7 +43,7 @@ const plans = [
       'Everything in The Builder + The Weekender',
       'Up to 60% off SDG event tickets',
       'Insider-only hours and experiences',
-      'The Insider only access line to shows',
+      'The Insider only access line',
       'Priority access to Space Rentals',
       'Exclusive Studio Rental Access',
       'Unlisted benefits',
