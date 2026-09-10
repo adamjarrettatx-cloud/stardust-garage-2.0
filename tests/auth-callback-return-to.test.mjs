@@ -13,6 +13,18 @@ test('allows Expo Go / EAS dev-client schemes', () => {
   assert.equal(isAllowedReturnTo('exp+sdg-mobile://expo-development-client'), true);
 });
 
+test('rejects Expo Go / EAS dev-client schemes in production', () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = 'production';
+  try {
+    assert.equal(isAllowedReturnTo('exp://attacker.example/--/auth'), false);
+    assert.equal(isAllowedReturnTo('exp+sdg-mobile://expo-development-client'), false);
+  } finally {
+    if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = originalNodeEnv;
+  }
+});
+
 test('BLOCKS arbitrary https origins (the C-01 exploit)', () => {
   assert.equal(isAllowedReturnTo('https://evil.example.com/collect'), false);
   assert.equal(isAllowedReturnTo('https://sdgatx.com/'), false); // even our own origin

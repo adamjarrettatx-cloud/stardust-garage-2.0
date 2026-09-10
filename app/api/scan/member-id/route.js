@@ -156,7 +156,7 @@ export async function POST(request) {
     if (!isValidMemberIdRejectReason(rejectReason)) {
       return NextResponse.json({ error: 'Invalid reject reason' }, { status: 400 });
     }
-    const { user } = await getCurrentUser();
+    const { user } = await getCurrentUser(request);
     const { error } = await admin.from('member_id_scans').insert({
       member_profile_id: member.id,
       event_id: eventId,
@@ -177,7 +177,7 @@ export async function POST(request) {
   // MODE: verify \u2014 log the verified member scan AND, if the member has
   // a ticket for the current event, redeem that ticket in the same call.
   // One QR, one tap, both credentials cleared.
-  const { user } = await getCurrentUser();
+  const { user } = await getCurrentUser(request);
 
   // Look up linked ticket first so we can attempt the atomic ticket flip
   // BEFORE we log the member scan. This ordering means: if the ticket flip

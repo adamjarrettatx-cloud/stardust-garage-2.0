@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { isInternalTicketingEnabled } from '@/lib/feature-flags';
 import { requireAdmin } from '@/lib/auth-helpers';
+import { UNLISTED_VISIBILITY } from '@/lib/event-visibility';
 import {
   selectActiveTier,
   isProductOnSale,
@@ -10,7 +11,7 @@ import {
   TEXAS_SALES_TAX_RATE_BPS,
 } from '@/lib/tickets/pricing';
 
-// GET /api/tickets/availability?event_id=<uuid>&codes=CODE1,CODE2
+// GET /api/tickets/availability?event_id=<uuid>&codes=CODE1,CODE2&share_token=<token>
 //
 // Public, read-only endpoint that returns the products, active price tier,
 // booking fee, and coarse availability for an event on internal ticketing.
@@ -28,6 +29,7 @@ export async function GET(request) {
   }
   const { searchParams } = new URL(request.url);
   const eventId = searchParams.get('event_id');
+  const shareToken = searchParams.get('share_token');
   if (!eventId) {
     return NextResponse.json({ error: 'Missing event_id' }, { status: 400 });
   }
@@ -57,11 +59,20 @@ export async function GET(request) {
 
   const { data: event, error: eventErr } = await supabaseAdmin
     .from('events')
-    .select('id, title, status, ticketing_mode, booking_fee_cents_default')
+    .select('id, title, status, visibility, share_token, ticketing_mode, booking_fee_cents_default')
     .eq('id', eventId)
     .maybeSingle();
   if (eventErr) return NextResponse.json({ error: 'Event lookup failed' }, { status: 500 });
   if (!event || event.ticketing_mode !== 'internal') {
+    return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+  }
+  // Unlisted events are only discoverable by their opaque share token. Match
+  // /api/tickets/hold but return 404 here so this public read endpoint does
+  // not disclose that an unlisted event exists.
+  if (
+    event.visibility === UNLISTED_VISIBILITY
+    && (!shareToken || event.share_token !== shareToken)
+  ) {
     return NextResponse.json({ error: 'Event not found' }, { status: 404 });
   }
   if (event.status !== 'published' && !previewAuthorized) {

@@ -46,7 +46,7 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import {
-  RETURN_TO_ALLOWED_SCHEMES,
+  isExpoReturnTo,
   isAllowedReturnTo,
 } from '@/lib/auth-callback-return-to';
 
@@ -293,6 +293,11 @@ export async function GET(request) {
   // shell; the client refuses to forward a fragment when return_to is not
   // on the allowlist. This blocks the open-redirect / session-exfil vector.
   const rawReturnTo = searchParams.get('return_to');
+  if (process.env.NODE_ENV === 'production' && isExpoReturnTo(rawReturnTo)) {
+    // Rejection stays hard in isAllowedReturnTo(); keep this signal so a
+    // misconfigured mobile client or a probing attempt is observable.
+    console.warn('[auth.callback] rejected Expo return_to in production');
+  }
   const allowedReturnTo = isAllowedReturnTo(rawReturnTo)
     ? decodeURIComponent(rawReturnTo)
     : null;
