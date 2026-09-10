@@ -111,7 +111,7 @@ export default function EventForm({
   // public). Values map to member_profiles.subscription_plan.
   const [requiredTier, setRequiredTier] = useState(event?.required_membership_tier || '');
   // Weekender-tier flagship benefit: 25% off any event flagged as a Weekend
-  // Music Experience (Fri–Sun music events). Admin sets this manually per
+  // Music Experience. Admin sets this manually per
   // event — we don't auto-derive from category+date because a Friday yoga
   // class isn't a music event and a Wednesday DJ night isn't a weekend one.
   const [contactId, setContactId] = useState(event?.contact_id || null);

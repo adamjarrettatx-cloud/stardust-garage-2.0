@@ -290,7 +290,7 @@ export default function TrialPassForm() {
         </a>
 
         <p className="text-[11px] mt-5 leading-[1.6]" style={{ color: 'rgba(255,255,255,0.4)' }}>
-          Your pass is checked automatically when scanned. It covers Friday through Sunday music events.
+          Your pass is checked automatically when scanned. It covers our Weekend Music Experiences.
         </p>
       </div>
     );
@@ -429,7 +429,7 @@ export default function TrialPassForm() {
           Get your trial pass.
         </h1>
         <p className="text-[14px] leading-[1.6]" style={{ color: 'rgba(255,255,255,0.65)' }}>
-          Three questions, 30 days of access to Friday through Sunday music events, and a code that
+          Three questions, 30 days of access to our Weekend Music Experiences, and a code that
           gets you through the door faster.
         </p>
       </div>

@@ -389,11 +389,11 @@ test('a missing flag denies rather than admits', () => {
 
 // --- The door decision ------------------------------------------------------
 
+// A covered night is now defined by the manual Weekend Music Experience
+// checkbox, not by weekday-plus-category. The category and date are kept on the
+// fixture purely to prove they no longer influence the decision.
 const MUSIC_FRIDAY = {
-  id: 'e1',
-  event_date: '2026-08-21',
-  category: 'music',
-  title: 'Friday Night',
+  id: 'e1', event_date: '2026-08-21', category: 'music', title: 'Friday Night',
   is_weekend_music_experience: true,
 };
 
@@ -419,12 +419,16 @@ test('an expired pass denies even on a perfectly covered night', () => {
   assert.equal(decision.result, DOOR_RESULTS.denied_expired);
 });
 
-test('a live pass on the wrong night denies with the reason', () => {
-  const wednesday = { id: 'e2', event_date: '2026-08-19', category: 'music', is_weekend_music_experience: false };
-  const decision = evaluateDoorScan({ pass: makePass(), event: wednesday, now: at(5) });
+test('a live pass at an unflagged event denies with the reason', () => {
+  const unflagged = { id: 'e2', event_date: '2026-08-19', category: 'music' };
+  const decision = evaluateDoorScan({ pass: makePass(), event: unflagged, now: at(5) });
   assert.equal(decision.allowed, false);
   assert.equal(decision.result, DOOR_RESULTS.denied_ineligible_event);
-  assert.match(decision.staffAction, /Friday-Sunday/);
+  // The message must not name weekdays. It used to say "Friday-Sunday", which
+  // on an unflagged Friday would deny the guest while claiming Fridays are
+  // covered -- staff cannot defend that at the door.
+  assert.match(decision.staffAction, /Weekend Music Experiences/);
+  assert.doesNotMatch(decision.staffAction, /Friday|Sunday/);
 });
 
 test('no event context means the pass is judged on its dates alone', () => {
@@ -493,8 +497,8 @@ test('expired passes report expired, not no-photo, even without a photo', () => 
 
 test('ineligible-event denials report the night, not no-photo', () => {
   const pass = makePass({ profile_photo_path: null });
-  const wednesday = { id: 'e-wed', event_date: '2026-08-05', category: 'music', is_weekend_music_experience: false };
-  const decision = evaluateDoorScan({ pass, event: wednesday, now: at(4) });
+  const unflagged = { id: 'e-wed', event_date: '2026-08-05', category: 'music' };
+  const decision = evaluateDoorScan({ pass, event: unflagged, now: at(4) });
   assert.equal(decision.result, DOOR_RESULTS.denied_ineligible_event);
 });
 

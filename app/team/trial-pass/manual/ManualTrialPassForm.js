@@ -89,6 +89,7 @@ export default function ManualTrialPassForm({ createdByEmail, compact = false })
             </span>
             {result.emailed ? ' · pass emailed' : ' · email failed to send'}
           </div>
+          <AccountStatusLines result={result} />
         </div>
 
         <div
@@ -210,6 +211,71 @@ export default function ManualTrialPassForm({ createdByEmail, compact = false })
         This bypasses SMS verification. Only use for guests who genuinely can&apos;t receive a code.
       </p>
     </form>
+  );
+}
+
+// What staff needs to be able to say out loud, honestly, while the guest is
+// still standing there. Account provisioning and the invite email are
+// best-effort around the pass — the API issues the pass either way — so the
+// partial-failure case is a real outcome and gets its own line rather than
+// being hidden behind the happy path.
+//
+// 13px, not the 10–11px used for the labels above: this is copy staff has to
+// read at a glance under front-desk lighting, and it can carry an instruction.
+// Nothing in here goes below 12px.
+function AccountStatusLines({ result }) {
+  // A response from before this change (or a client cached across a deploy)
+  // carries none of these keys. Render nothing rather than reporting a
+  // failure that never happened.
+  const hasAccountInfo = 'accountLinked' in result
+    || 'accountCreated' in result
+    || 'inviteEmailed' in result;
+  if (!hasAccountInfo) return null;
+
+  let accountLine;
+  let accountOk = true;
+  if (result.accountCreated) {
+    accountLine = 'Account created and linked to this pass.';
+  } else if (result.accountLinked) {
+    accountLine = result.accountReused
+      ? 'Linked to the existing account for this email.'
+      : 'Linked to an account.';
+  } else {
+    accountOk = false;
+    accountLine = 'No account linked. The pass works at the door, but no ticket discount until it is.';
+  }
+
+  let inviteLine = null;
+  if (result.accountCreated) {
+    inviteLine = result.inviteEmailed
+      ? 'Sign-in link emailed — ask them to finish their profile.'
+      : 'Sign-in link did not send. They can sign in with this email from the site.';
+  } else if (result.accountReused) {
+    inviteLine = 'No sign-in link sent — they already have an account to sign in with.';
+  }
+
+  const inviteFailed = Boolean(result.accountCreated) && !result.inviteEmailed;
+
+  return (
+    <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--auth-success-border)' }}>
+      <div
+        className="text-[13px] leading-[1.5]"
+        style={{ color: accountOk ? 'var(--auth-text-strong)' : 'var(--auth-danger)' }}
+      >
+        {accountLine}
+      </div>
+      {inviteLine ? (
+        <div
+          className="text-[13px] leading-[1.5] mt-1"
+          style={{ color: inviteFailed ? 'var(--auth-danger)' : 'var(--auth-muted)' }}
+        >
+          {inviteLine}
+        </div>
+      ) : null}
+      <div className="text-[12px] leading-[1.5] mt-2" style={{ color: 'var(--auth-muted)' }}>
+        Trial accounts get up to 25% off Weekend Music Experience tickets while signed in.
+      </div>
+    </div>
   );
 }
 
