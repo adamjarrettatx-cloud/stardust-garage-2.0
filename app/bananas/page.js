@@ -30,10 +30,16 @@ export default async function AdminDashboard() {
     adminPageGate(),
   ]);
 
-  const [{ data: events }, calendar] = await Promise.all([
+  const [{ data: events }, calendar, { data: seriesRows }] = await Promise.all([
     supabase.from('events').select('*').order('event_date', { ascending: true }),
     loadEventsCalendarData(supabase),
+    supabase.from('event_series').select('id, recurrence_freq'),
   ]);
+  const seriesById = Object.fromEntries((seriesRows || []).map((series) => [series.id, series]));
+  const eventsWithSeries = (events || []).map((event) => ({
+    ...event,
+    series: event.series_id ? seriesById[event.series_id] || null : null,
+  }));
 
   // The Events list now shows live ticket sales beside each row (where the
   // per-event ARTIST PAY button used to sit — that section moved to its own
@@ -49,7 +55,7 @@ export default async function AdminDashboard() {
   // Free-only or unticketed events skip the query entirely and render no
   // sales block — a "0 sold" beside an internal-only micro party would be
   // technically true and completely uninformative.
-  const ticketedEventIds = (events || [])
+  const ticketedEventIds = eventsWithSeries
     .filter((e) => e.ticketing_mode === 'internal' || Boolean(e.tt_event_series_id))
     .map((e) => e.id);
   const { data: metricsRows } = ticketedEventIds.length
@@ -67,8 +73,8 @@ export default async function AdminDashboard() {
 
   return (
     <EventsTabPanel
-      upcoming={(events || []).filter((e) => e.event_date >= today)}
-      past={(events || []).filter((e) => e.event_date < today).reverse()}
+      upcoming={eventsWithSeries.filter((e) => e.event_date >= today)}
+      past={eventsWithSeries.filter((e) => e.event_date < today).reverse()}
       calendar={calendar}
       isOwner={isOwner}
       metricsByEvent={metricsByEvent}

@@ -96,6 +96,16 @@ export default function EventsSection({ upcoming, past, metricsByEvent = {} }) {
                 </div>
                 <div className="flex items-center gap-2 min-w-0">
                   <h3 className="text-[17px] font-bold truncate" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{event.title}</h3>
+                  {event.series_id && (
+                    <Link
+                      href={`/bananas/series/${event.series_id}`}
+                      className="flex-shrink-0 text-[10px] font-semibold tracking-[0.12em] px-2 py-0.5 rounded-full border"
+                      style={{ color: 'var(--auth-accent)', borderColor: 'var(--auth-card-border)' }}
+                      title="View series financial rollup"
+                    >
+                      {(event.series?.recurrence_freq === 'biweekly' ? 'BI-WEEKLY' : 'WEEKLY')} · #{event.recurrence_position || '—'}
+                    </Link>
+                  )}
                   {event.status === 'draft' && (
                     <span
                       className="flex-shrink-0 text-[10px] font-semibold tracking-[0.12em] px-2 py-0.5 rounded-full"

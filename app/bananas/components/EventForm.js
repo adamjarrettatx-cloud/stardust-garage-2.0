@@ -129,6 +129,10 @@ export default function EventForm({
   const [error, setError] = useState('');
   const [generating, setGenerating] = useState(false);
   const [generateMessage, setGenerateMessage] = useState('');
+  const [recurrenceFreq, setRecurrenceFreq] = useState(event?.series?.recurrence_freq || 'none');
+  const [recurrenceStartsOn, setRecurrenceStartsOn] = useState(event?.series?.starts_on || event?.event_date || '');
+  const [recurrenceEndsOn, setRecurrenceEndsOn] = useState(event?.series?.ends_on || '');
+  const showRecurrence = !isEditing || Boolean(event?.series_id);
 
   // (Previously fetched /api/admin/tt-event-series to populate a picker on the
   // form. That picker was removed — no new events link a TicketTailor series.)
@@ -171,6 +175,14 @@ export default function EventForm({
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (isEditing && eventDate !== event.event_date && Number(metrics?.orders_count || 0) > 0) {
+      const count = Number(metrics.orders_count);
+      const confirmed = window.confirm(
+        `This event has ${count} paid order${count === 1 ? '' : 's'}. Changing the date will move those orders and their check-ins with it. If this is a recurring event, create the next occurrence from the series instead.`
+      );
+      if (!confirmed) return;
+    }
 
     // Every event either names the outside partner it belongs to or is flagged
     // SDG-only. Blocked here, revalidated by the DB CHECK constraint.
@@ -222,6 +234,26 @@ export default function EventForm({
       setError('Save failed: ' + saveError.message);
       setSaving(false);
       return;
+    }
+
+    if (recurrenceFreq !== 'none') {
+      try {
+        const recurrenceResponse = await fetch(`/api/admin/events/${saved.id}/series`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recurrence_freq: recurrenceFreq,
+            starts_on: recurrenceStartsOn,
+            ends_on: recurrenceEndsOn || null,
+          }),
+        });
+        const recurrenceBody = await recurrenceResponse.json();
+        if (!recurrenceResponse.ok) throw new Error(recurrenceBody?.error || 'Failed to save recurrence');
+      } catch (recurrenceError) {
+        setError(recurrenceError.message);
+        setSaving(false);
+        return;
+      }
     }
 
     // Tag the linked contact as event_organizer so the Contracts panel and
@@ -534,7 +566,11 @@ export default function EventForm({
               <input
                 type="date"
                 value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
+                onChange={(e) => {
+                  const nextDate = e.target.value;
+                  setEventDate(nextDate);
+                  if (!isEditing) setRecurrenceStartsOn(nextDate);
+                }}
                 required
                 className={inputClass}
                 style={inputStyle}
@@ -572,6 +608,35 @@ export default function EventForm({
             the Member pricing panel below.
           </p>
         </section>
+
+        {/* A series describes scheduling only: an occurrence edit never cascades
+            to later rows, because those rows can already have their own sales. */}
+        {showRecurrence && (
+          <section className="rounded-[14px] border p-5" style={cardStyle}>
+            <h3 className={sectionTitle} style={labelStyle}>Recurrence</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className={labelClass} style={labelStyle}>Cadence</label>
+                <select value={recurrenceFreq} onChange={(e) => setRecurrenceFreq(e.target.value)} className={inputClass} style={inputStyle}>
+                  <option value="none">None</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="biweekly">Bi-weekly</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelClass} style={labelStyle}>First occurrence</label>
+                <input type="date" value={recurrenceStartsOn} onChange={(e) => setRecurrenceStartsOn(e.target.value)} disabled={recurrenceFreq === 'none'} className={inputClass} style={inputStyle} />
+              </div>
+              <div>
+                <label className={labelClass} style={labelStyle}>End date <span className="normal-case tracking-normal">(optional)</span></label>
+                <input type="date" value={recurrenceEndsOn} onChange={(e) => setRecurrenceEndsOn(e.target.value)} disabled={recurrenceFreq === 'none'} min={recurrenceStartsOn || undefined} className={inputClass} style={inputStyle} />
+              </div>
+            </div>
+            <p className="text-[11px] mt-3" style={helperStyle}>
+              The weekday is taken from the first occurrence. New occurrences are generated as drafts for review. Changes here apply to this occurrence only.
+            </p>
+          </section>
+        )}
 
         {/* DESCRIPTION */}
         <section className="rounded-[14px] border p-5" style={cardStyle}>

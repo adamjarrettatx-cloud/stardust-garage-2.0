@@ -9,8 +9,8 @@ const dropRaw = migration('20260911_drop_token_raw.sql');
 
 test('member-photos becomes private with owner/team reads and owner-only traversal-safe writes', () => {
   assert.match(photos, /update storage\.buckets[\s\S]*?set public = false[\s\S]*?'member-photos'/);
-  assert.match(photos, /for select to authenticated[\s\S]*?owner_id = auth\.uid\(\) or public\.is_team\(\)/);
-  assert.match(photos, /for insert to authenticated[\s\S]*?owner_id = auth\.uid\(\)[\s\S]*?name ~ \('\^' \|\| auth\.uid\(\)::text/);
+  assert.match(photos, /for select to authenticated[\s\S]*?owner_id = auth\.uid\(\)(?:::\w+)? or public\.is_team\(\)/);
+  assert.match(photos, /for insert to authenticated[\s\S]*?owner_id = auth\.uid\(\)(?:::\w+)?[\s\S]*?name ~ \('\^' \|\| auth\.uid\(\)::text/);
   assert.match(photos, /for update to authenticated[\s\S]*?owner_id = auth\.uid\(\)/);
   assert.match(photos, /for delete to authenticated[\s\S]*?owner_id = auth\.uid\(\)/);
   assert.doesNotMatch(photos, /to anon/);

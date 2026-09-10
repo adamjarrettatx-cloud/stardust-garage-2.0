@@ -32,10 +32,16 @@ export default async function EditEventPage({ params }) {
   let metrics = null;
   const metricsRes = await supabase
     .from('event_ticket_metrics')
-    .select('status, fetched_at, source')
+    .select('status, fetched_at, source, orders_count')
     .eq('event_id', id)
     .maybeSingle();
   if (!metricsRes.error) metrics = metricsRes.data || null;
+
+  let series = null;
+  if (event.series_id) {
+    const { data } = await supabase.from('event_series').select('id, recurrence_freq, starts_on, ends_on').eq('id', event.series_id).maybeSingle();
+    series = data || null;
+  }
 
   // The event's counterparty profile, so the editor can link straight to the
   // Event Organizer it belongs to. Read through the caller's session (RLS), and
@@ -53,7 +59,7 @@ export default async function EditEventPage({ params }) {
 
   return (
     <EventForm
-      event={event}
+      event={{ ...event, series }}
       metrics={metrics}
       headerActions={(
         <>
@@ -68,6 +74,15 @@ export default async function EditEventPage({ params }) {
                   the full name is in the title attribute and on the panel below. */}
               ORGANIZER: {(organizerDisplayLabel(organizer) || '').toUpperCase().slice(0, 28)}
               {organizerDisplayLabel(organizer).length > 28 ? '…' : ''}
+            </Link>
+          )}
+          {event.series_id && (
+            <Link
+              href={`/bananas/series/${event.series_id}`}
+              className="auth-theme-border-button px-4 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
+              style={{ color: 'var(--auth-accent)' }}
+            >
+              VIEW SERIES ROLLUP
             </Link>
           )}
           <Link
