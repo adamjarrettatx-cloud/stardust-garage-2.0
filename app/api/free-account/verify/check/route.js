@@ -108,26 +108,17 @@ export async function POST(request) {
   if (createError) {
     const existingUser = createError.code === 'user_already_exists'
       || createError.message?.toLowerCase().includes('already registered');
-    if (!existingUser) {
-      console.error('[free-account.verify.check.create-user]', createError);
-      return NextResponse.json({ error: 'Could not create account.' }, { status: 500 });
+    if (existingUser) {
+      return NextResponse.json(
+        {
+          error: 'account_exists',
+          message: 'An account with this email already exists. Please sign in instead.',
+        },
+        { status: 409 },
+      );
     }
-
-    const { data: users, error: listUsersError } = await admin.auth.admin.listUsers({
-      page: 1,
-      perPage: 200,
-    });
-    if (listUsersError) {
-      console.error('[free-account.verify.check.find-user]', listUsersError);
-      return NextResponse.json({ error: 'Could not create account.' }, { status: 500 });
-    }
-    userId = users?.users?.find(
-      (user) => user.email?.toLowerCase() === data.email_canonical,
-    )?.id || null;
-    if (!userId) {
-      console.error('[free-account.verify.check.find-user] existing user not found', data.email_canonical);
-      return NextResponse.json({ error: 'Could not create account.' }, { status: 500 });
-    }
+    console.error('[free-account.verify.check.create-user]', createError);
+    return NextResponse.json({ error: 'Could not create account.' }, { status: 500 });
   }
 
   if (!userId) {

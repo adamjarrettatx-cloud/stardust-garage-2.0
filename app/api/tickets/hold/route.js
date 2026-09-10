@@ -12,6 +12,7 @@ import { validateAcceptancePayload, recordWaiverAcceptance, evidenceFromRequest 
   from '@/lib/waiver/accept';
 import { memberSatisfiesTierGate, membershipTierLabel } from '@/lib/membership-tiers';
 import { resolveWaiverGateEnabled } from '@/lib/waiver-gate';
+import { UNLISTED_VISIBILITY } from '@/lib/event-visibility';
 
 // Waiver gate — fails CLOSED in production. See lib/waiver-gate.js for
 // the full policy + why. Resolved at module load so a request can never
@@ -93,6 +94,7 @@ export async function POST(request) {
   let body;
   try { body = await request.json(); } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
   const eventId = body?.event_id;
+  const shareToken = body?.share_token || null;
   const selections = Array.isArray(body?.selections) ? body.selections : [];
   const unlockedCodes = Array.isArray(body?.access_codes) ? body.access_codes.map(String) : [];
   const discountCodeInput = typeof body?.discount_code === 'string'
@@ -140,11 +142,19 @@ export async function POST(request) {
   // --- Load event and gate on ticketing_mode + published ------------------
   const { data: event } = await supabaseAdmin
     .from('events')
-    .select('id, title, status, ticketing_mode, booking_fee_cents_default, required_membership_tier')
+    .select('id, title, status, visibility, share_token, ticketing_mode, booking_fee_cents_default, required_membership_tier')
     .eq('id', eventId)
     .maybeSingle();
   if (!event || event.status !== 'published' || event.ticketing_mode !== 'internal') {
     return NextResponse.json({ error: 'Event not available for purchase' }, { status: 404 });
+  }
+  if (event.visibility === UNLISTED_VISIBILITY) {
+    if (!shareToken) {
+      return NextResponse.json({ error: 'Share token required for unlisted event' }, { status: 403 });
+    }
+    if (event.share_token !== shareToken) {
+      return NextResponse.json({ error: 'Invalid share token' }, { status: 403 });
+    }
   }
 
   // --- Resolve buyer email from the authenticated identity ---------------

@@ -17,6 +17,7 @@
 // No secrets. Server enforces price + inventory + code rules.
 
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { WaiverGate } from '@/components/waiver/WaiverGate';
 
 function formatMoney(cents, currency = 'usd') {
@@ -36,6 +37,7 @@ function formatMoney(cents, currency = 'usd') {
 // authenticated identity (see app/api/tickets/hold/route.js). Asking
 // for it again in the modal was redundant and confusing.
 export default function InternalTicketPurchase({ eventId, isMember = false, preview = false }) {
+  const shareToken = useSearchParams().get('t');
   const [state, setState] = useState({ loading: true, event: null, products: [], taxRateBps: 0, error: null });
   const [quantities, setQuantities] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -233,6 +235,7 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
       };
       if (appliedAccessCodes.length) body.access_codes = appliedAccessCodes;
       if (discount?.code) body.discount_code = discount.code;
+      if (shareToken) body.share_token = shareToken;
 
       const res = await fetch('/api/tickets/hold', {
         method: 'POST',
