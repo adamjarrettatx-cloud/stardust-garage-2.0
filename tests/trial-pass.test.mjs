@@ -349,20 +349,41 @@ test('event weekday comes from the event date, never the server clock', () => {
   assert.equal(eventWeekday(null), null);
 });
 
-test('the trial covers Friday through Sunday music events only', () => {
-  assert.equal(isEventTrialEligible({ event_date: '2026-08-21', category: 'music' }), true);
-  assert.equal(isEventTrialEligible({ event_date: '2026-08-23', category: 'Live Music' }), true);
+test('the trial covers exactly the events flagged as Weekend Music Experiences', () => {
+  // The manual checkbox is the only source of truth. This test used to assert a
+  // derived rule (Fri-Sun AND category matching /music/i) which disagreed with
+  // the checkbox that pricing reads, in both directions.
+  assert.equal(isEventTrialEligible({ is_weekend_music_experience: true }), true);
+  assert.equal(isEventTrialEligible({ is_weekend_music_experience: false }), false);
+});
+
+test('category and weekday no longer affect door eligibility', () => {
+  // A flagged event gets in whatever it is tagged as and whatever day it lands
+  // on -- tomorrow's two parties are category='internal' on a Fri/Sat, and the
+  // old rule refused them while still discounting their tickets.
   assert.equal(
-    isEventTrialEligible({ event_date: '2026-08-19', category: 'music' }),
-    false,
-    'a Wednesday music night is not covered',
+    isEventTrialEligible({ event_date: '2026-09-11', category: 'internal', is_weekend_music_experience: true }),
+    true,
+    "a flagged party tagged 'internal' still gets in",
   );
   assert.equal(
-    isEventTrialEligible({ event_date: '2026-08-22', category: 'private_event' }),
-    false,
-    'a Saturday private buyout is not covered',
+    isEventTrialEligible({ event_date: '2026-09-16', category: 'internal', is_weekend_music_experience: true }),
+    true,
+    'a flagged event on a Wednesday gets in, because the checkbox says so',
   );
-  assert.equal(isEventTrialEligible({ event_date: '2026-08-22', category: null }), false);
+  assert.equal(
+    isEventTrialEligible({ event_date: '2026-09-18', category: 'evening_music_residency', is_weekend_music_experience: false }),
+    false,
+    'an unflagged music residency does NOT get in, even though it matches /music/i',
+  );
+});
+
+test('a missing flag denies rather than admits', () => {
+  // If a query forgets to select the column it reads undefined, and that must
+  // fail closed -- an over-permissive door is worse than a false denial.
+  assert.equal(isEventTrialEligible({ event_date: '2026-09-11', category: 'internal' }), false);
+  assert.equal(isEventTrialEligible({ is_weekend_music_experience: 'true' }), false, 'strict true only');
+  assert.equal(isEventTrialEligible({}), false);
   assert.equal(isEventTrialEligible(null), false);
 });
 

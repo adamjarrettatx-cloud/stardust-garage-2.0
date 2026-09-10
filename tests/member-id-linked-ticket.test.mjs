@@ -67,7 +67,9 @@ test('verify mode still logs the member scan even when no ticket is linked', () 
   const verifyBlock = sliceBetween(routeSrc, '// MODE: verify', '  return NextResponse.json({');
   const memberInsertIdx = verifyBlock.indexOf("from('member_id_scans')");
   const linkedTicketIdx = verifyBlock.indexOf('if (linkedTicket.ticket)');
-  const linkedTicketEnd = verifyBlock.indexOf('  }\n\n  const { error }');
+  // Matched on the destructuring of the member_id_scans insert, which now also
+  // pulls out the inserted row id so the door feed can key the scan.
+  const linkedTicketEnd = verifyBlock.indexOf('  }\n\n  const { data: verifyRow, error }');
   assert.ok(memberInsertIdx > 0);
   assert.ok(linkedTicketIdx > 0);
   assert.ok(linkedTicketEnd > 0);

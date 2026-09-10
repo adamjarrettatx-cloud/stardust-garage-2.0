@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { fetchPriorDenials, fetchDoorSessionStart } from '@/lib/capacity/denial-lookup';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/stub';
 import { requireTeam } from '@/lib/auth-helpers';
@@ -169,7 +170,9 @@ export async function POST(request) {
   if (eventId) {
     const { data: eventRow, error: eventError } = await admin
       .from('events')
-      .select('id, title, event_date, category')
+      // is_weekend_music_experience is what decides door eligibility. Leaving
+      // it out reads as undefined and denies every trial pass.
+      .select('id, title, event_date, category, is_weekend_music_experience')
       .eq('id', eventId)
       .maybeSingle();
     if (eventError) {
@@ -219,12 +222,26 @@ export async function POST(request) {
             eventId,
           })
         : { ticket: null, productLabel: null, matchedVia: null, candidateCount: 0 };
+    // Prior denials for the PERSON, all-time. Wrapped so a failed history read
+    // can never stop the door from admitting someone.
+    let priorDenials = [];
+    let sessionStartedAt = null;
+    try {
+      [priorDenials, sessionStartedAt] = await Promise.all([
+        fetchPriorDenials(admin, { kind: 'trial_pass', trialPassId: pass.id }),
+        fetchDoorSessionStart(admin, doorSessionId),
+      ]);
+    } catch (err) {
+      console.error('[door.trial-pass.scan.priorDenials]', err?.message || err);
+    }
     return NextResponse.json({
       ok: decision.allowed,
       mode: 'preview',
       result: decision.result,
       reason: decision.reason,
       staffAction: decision.staffAction || null,
+      prior_denials: priorDenials,
+      session_started_at: sessionStartedAt,
       guest: {
         // First name only. Enough for the attendant to greet them and match
         // the face to the phone; not a contact record handed to a door device.
@@ -263,16 +280,19 @@ export async function POST(request) {
       );
     }
 
-    const { error: rejectLogError } = await admin.from('trial_pass_checkins').insert({
-      trial_pass_id: pass.id,
-      event_id: eventId,
-      result: 'rejected',
-      reject_reason: rejectReason,
-      checked_in_by: staffUserId,
-      door_device_id: device?.id || null,
-      door_session_id: doorSessionId,
-      notes: rejectNote || null,
-    });
+    // `.select('id')` so the feed can key this denial on the SCAN rather than
+    // the pass -- the same pass rejected twice is two facts, not one.
+    const { data: rejectRow, error: rejectLogError } = await admin
+      .from('trial_pass_checkins').insert({
+        trial_pass_id: pass.id,
+        event_id: eventId,
+        result: 'rejected',
+        reject_reason: rejectReason,
+        checked_in_by: staffUserId,
+        door_device_id: device?.id || null,
+        door_session_id: doorSessionId,
+        notes: rejectNote || null,
+      }).select('id').maybeSingle();
     if (rejectLogError) {
       console.error('[door.trial-pass.scan.reject-log]', rejectLogError);
     }
@@ -282,6 +302,7 @@ export async function POST(request) {
       mode: 'reject',
       result: 'rejected',
       reject_reason: rejectReason,
+      checkin_id: rejectRow?.id || null,
       reason: rejectReasonLabel(rejectReason),
     });
   }
@@ -293,14 +314,14 @@ export async function POST(request) {
   // that the trial window is too short, or that people keep turning up on
   // nights the pass does not cover.
   // --------------------------------------------------------------------------
-  const { error: logError } = await admin.from('trial_pass_checkins').insert({
+  const { data: checkinRow, error: logError } = await admin.from('trial_pass_checkins').insert({
     trial_pass_id: pass.id,
     event_id: eventId,
     result: decision.result,
     checked_in_by: staffUserId,
     door_device_id: device?.id || null,
     door_session_id: doorSessionId,
-  });
+  }).select('id').maybeSingle();
   if (logError && logError.code !== '23505') {
     // 23505 is the one-allowed-scan-per-event unique index doing its job under
     // a double-tap; the decision above stands either way.
@@ -508,6 +529,7 @@ export async function POST(request) {
     mode: 'checkin',
     result: decision.result,
     reason: decision.reason,
+    checkin_id: checkinRow?.id || null,
     staffAction: decision.staffAction || null,
     guest: {
       firstName: String(pass.full_name || '').split(' ')[0] || null,
