@@ -139,9 +139,21 @@ test('a local entry with no server counterpart keeps its own timestamp', () => {
   assert.equal(out[0].at, 999);
 });
 
-test('merge drops anything that was not admitted', () => {
-  const denied = { id: 'x', kind: 'ticket', name: 'X', result: 'denied', at: 500 };
+test('merge keeps denials alongside admits', () => {
+  // This test previously asserted the opposite -- that anything not admitted
+  // was dropped. That was the behaviour that left a refusal with no surface on
+  // the front desk once the scanner's result card cleared, so the door log now
+  // carries both. Denials arrive scan-keyed, admits subject-keyed.
+  const denied = { id: 'scan:x', kind: 'ticket', name: 'X', result: 'denied', at: 500 };
   const out = mergeCheckinFeed([server('a', 100)], [denied]);
+  assert.deepEqual(out.map((e) => e.id), ['scan:x', 'a']);
+});
+
+test('merge still drops rows with no recognisable result', () => {
+  // Only admitted/denied/rejected are real door outcomes; anything else is a
+  // malformed row and must not reach the list.
+  const junk = { id: 'j', kind: 'ticket', name: 'J', result: 'pending', at: 500 };
+  const out = mergeCheckinFeed([server('a', 100)], [junk]);
   assert.deepEqual(out.map((e) => e.id), ['a']);
 });
 

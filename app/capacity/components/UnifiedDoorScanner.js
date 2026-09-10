@@ -63,6 +63,11 @@ const REJECT_REASONS_TICKET = [
 
 const RESULT_HOLD_MS = 5000;
 
+// How many prior denials to spell out under the banner before collapsing the
+// rest into a count. Three is enough to show a pattern without pushing the
+// Check In button off a phone screen.
+const PRIOR_DENIAL_ROWS = 3;
+
 // Mutates `body` in place to add the active event + door session identifiers,
 // using the field-name convention each endpoint expects. See lib/scan/route-
 // scan.js for the same mapping used on the preview attempts. Kept as a helper
@@ -363,12 +368,21 @@ export default function UnifiedDoorScanner({
       // Log the activity for the recent panel + check-in history. photoUrl
       // is a short-lived signed URL from the preview call; it powers the
       // photo thumbnails in the chronological check-in list.
+      const activityResult = admitted
+        ? 'admitted'
+        : (json.result === 'rejected' ? 'rejected' : 'denied');
       onActivity?.({
-        id: preview.activityId,
+        // Admits are keyed by subject (one admit per ticket, ever). Denials are
+        // keyed by the scan row, because the same subject can be turned away
+        // repeatedly and each attempt is its own line in the history. See the
+        // id contract in lib/capacity/checkin-feed.js.
+        id: activityResult === 'admitted'
+          ? preview.activityId
+          : denialActivityId(json.checkin_id, preview.activityId),
         kind: preview.source,
         name: preview.name,
         detail: buildActivityDetail(preview, json),
-        result: admitted ? 'admitted' : (json.result === 'rejected' ? 'rejected' : 'denied'),
+        result: activityResult,
         at: Date.now(),
         photoUrl: preview.photoUrl || null,
       });
@@ -420,7 +434,7 @@ export default function UnifiedDoorScanner({
         return;
       }
       onActivity?.({
-        id: preview.activityId,
+        id: denialActivityId(json.checkin_id, preview.activityId),
         kind: preview.source,
         name: preview.name,
         detail: `Rejected · ${reasonLabel(reasonCode, preview.source)}`,
@@ -601,6 +615,7 @@ function buildPreviewVM(source, requestBody, json) {
       source: 'ticket',
       token: requestBody.code,
       activityId: `ticket:${ticket?.id || requestBody.code}`,
+      priorDenials: Array.isArray(json.prior_denials) ? json.prior_denials : [],
       name: buyer.displayName || buyer.email || 'Ticket holder',
       firstName: buyer.firstName || buyer.displayName || 'Guest',
       subhead: isAllowed
@@ -625,6 +640,7 @@ function buildPreviewVM(source, requestBody, json) {
       source: 'member_id',
       token: requestBody.token,
       activityId: `member:${m.memberProfileId || requestBody.token}`,
+      priorDenials: Array.isArray(json.prior_denials) ? json.prior_denials : [],
       name: m.fullName || m.firstName || 'Member',
       firstName: m.firstName || 'Member',
       subhead: (m.isActive ? 'Active' : 'Inactive') + (m.tierLabel ? ` · ${m.tierLabel}` : ''),
@@ -646,6 +662,7 @@ function buildPreviewVM(source, requestBody, json) {
     source: 'trial_pass',
     token: requestBody.token,
     activityId: `trial:${g.passId || requestBody.token}`,
+    priorDenials: Array.isArray(json.prior_denials) ? json.prior_denials : [],
     name: g.firstName || 'Guest',
     firstName: g.firstName || 'Guest',
     subhead: json.reason || (isAllowed ? 'Wave them in.' : 'Denied at the door.'),
@@ -661,6 +678,46 @@ function buildPreviewVM(source, requestBody, json) {
   };
 }
 
+// PriorDenials — every time this person has been turned away, ever.
+//
+// Deliberately louder than the photo/ineligible warning above it and placed
+// directly above the decision buttons, because it is the one piece of context
+// the door person cannot get any other way: the guest is standing there being
+// agreeable, and the reason they were refused an hour ago is not on their face.
+// Renders nothing when there is no history, so a normal scan is unchanged.
+function PriorDenials({ denials }) {
+  const summary = summarizeDenialHistory(denials);
+  if (!summary) return null;
+  const now = Date.now();
+  const shown = [...denials].sort((a, b) => b.at - a.at).slice(0, PRIOR_DENIAL_ROWS);
+  const hidden = summary.total - shown.length;
+  return (
+    <div
+      className="rounded-lg px-3 py-2.5 mb-3"
+      style={{ background: 'rgba(255,138,138,0.13)', border: '1px solid rgba(255,138,138,0.4)' }}
+    >
+      <div className="text-[12px] font-bold mb-1.5" style={{ color: '#ff8a8a' }}>
+        {priorDenialBanner(summary, now)}
+      </div>
+      <ul className="space-y-1">
+        {shown.map((d) => (
+          <li key={d.id} className="text-[11.5px] leading-snug" style={{ color: 'rgba(255,255,255,0.72)' }}>
+            <span style={{ color: 'rgba(255,255,255,0.5)' }}>{relativeAge(d.at, now)}</span>
+            {' · '}
+            {d.label}
+            {d.eventTitle ? <span style={{ color: 'rgba(255,255,255,0.45)' }}>{` · ${d.eventTitle}`}</span> : null}
+          </li>
+        ))}
+      </ul>
+      {hidden > 0 && (
+        <div className="text-[11px] mt-1.5" style={{ color: 'rgba(255,255,255,0.45)' }}>
+          {`+ ${hidden} older`}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function buildActivityDetail(preview, json) {
   if (preview.source === 'member_id') {
     const ticket = json.ticket;
@@ -672,6 +729,18 @@ function buildActivityDetail(preview, json) {
     return preview.subhead || 'Ticket scan';
   }
   return preview.statusLabel || preview.expiresLabel || 'Trial pass';
+}
+
+// denialActivityId(checkinId, fallbackSubjectId)
+//
+// Denials must never dedupe against each other, so the scan row id is the key.
+// When the endpoint could not return one (an older deploy, or the insert's
+// `.select()` came back empty) we synthesize a unique id rather than falling
+// back to the subject id -- a subject-keyed denial would silently overwrite the
+// guest's previous refusal, which is the one thing this feature exists to stop.
+function denialActivityId(checkinId, fallbackSubjectId) {
+  if (checkinId) return `scan:${checkinId}`;
+  return `scan:local:${fallbackSubjectId}:${Date.now()}`;
 }
 
 function reasonsFor(source) {
@@ -791,6 +860,8 @@ function PreviewCard({
           {preview.warningBanner}
         </div>
       )}
+
+      <PriorDenials denials={preview.priorDenials} />
 
       {rejectPicker ? (
         <div>

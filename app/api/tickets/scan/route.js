@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { fetchPriorDenials } from '@/lib/capacity/denial-lookup';
 import { createClient } from '@supabase/supabase-js';
 import { requireTeam } from '@/lib/auth-helpers';
 import { isTicketScannerEnabled, isInternalTicketingEnabled } from '@/lib/feature-flags';
@@ -105,6 +106,19 @@ export async function POST(request) {
   // ------------------------------------------------------------------
   if (mode === 'preview') {
     const buyer = await buildBuyerPreview(supabaseAdmin, ticket);
+    // Prior denials for the PERSON, all-time, so the door sees "turned away
+    // twice tonight" before deciding. Never allowed to fail the scan: a
+    // history read that throws degrades to no history at all.
+    let priorDenials = [];
+    if (ticket?.id) {
+      try {
+        priorDenials = await fetchPriorDenials(supabaseAdmin, {
+          kind: 'ticket', ticketId: ticket.id,
+        });
+      } catch (err) {
+        console.error('[tickets.scan.priorDenials]', err?.message || err);
+      }
+    }
     return NextResponse.json({
       mode: 'preview',
       result: decision.result,
@@ -113,6 +127,7 @@ export async function POST(request) {
         ? { id: ticket.id, status: ticket.status, used_at: ticket.used_at }
         : null,
       buyer,
+      prior_denials: priorDenials,
     });
   }
 
@@ -122,7 +137,10 @@ export async function POST(request) {
   // reject the person, not the ticket.
   // ------------------------------------------------------------------
   if (mode === 'reject') {
-    await supabaseAdmin.from('ticket_checkins').insert({
+    // `.select('id')` so the response can carry the row id. The front-desk
+    // feed keys denial entries on the SCAN, not the ticket -- two rejections of
+    // the same ticket are two separate facts and must not collapse into one row.
+    const { data: rejectRow } = await supabaseAdmin.from('ticket_checkins').insert({
       ticket_id: ticket?.id || null,
       event_id: eventId,
       ticket_code_attempted: code,
@@ -132,11 +150,12 @@ export async function POST(request) {
       device_label: deviceLabel,
       door_session_id: doorSessionId,
       note,
-    });
+    }).select('id').maybeSingle();
     return NextResponse.json({
       mode: 'reject',
       result: CHECKIN_RESULTS.REJECTED,
       reject_reason: rejectReason,
+      checkin_id: rejectRow?.id || null,
       ticket: ticket ? { id: ticket.id, status: ticket.status } : null,
     });
   }
@@ -149,7 +168,7 @@ export async function POST(request) {
     effective = CHECKIN_RESULTS.OVERRIDE;
   }
 
-  await supabaseAdmin.from('ticket_checkins').insert({
+  const { data: checkinRow } = await supabaseAdmin.from('ticket_checkins').insert({
     ticket_id: ticket?.id || null,
     event_id: eventId,
     ticket_code_attempted: code,
@@ -158,7 +177,8 @@ export async function POST(request) {
     device_label: deviceLabel,
     door_session_id: doorSessionId,
     note,
-  });
+  }).select('id').maybeSingle();
+  let checkinId = checkinRow?.id || null;
 
   if (effective === CHECKIN_RESULTS.VALID) {
     const { data: flipped } = await supabaseAdmin
@@ -169,7 +189,7 @@ export async function POST(request) {
       .select('id')
       .maybeSingle();
     if (!flipped) {
-      await supabaseAdmin.from('ticket_checkins').insert({
+      const { data: raceRow } = await supabaseAdmin.from('ticket_checkins').insert({
         ticket_id: ticket.id,
         event_id: eventId,
         ticket_code_attempted: code,
@@ -178,11 +198,15 @@ export async function POST(request) {
         device_label: deviceLabel,
         door_session_id: doorSessionId,
         note: 'lost_race',
-      });
+      }).select('id').maybeSingle();
+      // The already-used row is the one that describes what happened at the
+      // door, so it -- not the optimistic row above -- is what the feed shows.
+      if (raceRow?.id) checkinId = raceRow.id;
       return NextResponse.json({
         mode: 'checkin',
         result: CHECKIN_RESULTS.ALREADY_USED,
         reason: 'LOST_RACE',
+        checkin_id: checkinId,
       });
     }
   }
@@ -229,6 +253,7 @@ export async function POST(request) {
     mode: 'checkin',
     result: effective,
     reason: decision.reason,
+    checkin_id: checkinId,
     ticket: ticket
       ? {
           id: ticket.id,

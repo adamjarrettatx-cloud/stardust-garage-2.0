@@ -147,13 +147,13 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
   const activeEvent = activeSession?.event || null;
   const doorSessionId = activeSession?.id || null;
 
-  // ---- Who is checked in --------------------------------------------------
+  // ---- Who came to the door ------------------------------------------------
   //
-  // Only admitted entries are tracked. The page used to carry a second
-  // last-five-admits strip that also showed denials and rejects; it was removed
-  // as redundant now that the checked-in list covers the same ground, so a
-  // denial's only surface is the scanner's own result screen at the moment of
-  // the scan.
+  // Admits AND denials. The page used to carry a second last-five-admits strip
+  // that also showed denials; removing it left a denial with no surface but the
+  // scanner's own result card, which clears after five seconds. So the list is
+  // now the full door record: if someone is refused and comes back later, the
+  // next person on the door can see it happened and why.
   //
   // This buffer alone is NOT the list. It used to be, and that was a bug: it
   // starts empty on every page load and only ever knows about check-ins made
@@ -164,9 +164,12 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
   const [localCheckedIn, setLocalCheckedIn] = useState([]);
   const [serverCheckedIn, setServerCheckedIn] = useState([]);
   const logActivity = useCallback((entry) => {
-    if (entry?.result === 'admitted') {
-      setLocalCheckedIn((prev) => pushRecentActivity(prev, entry, CHECKIN_FEED_MAX));
-    }
+    // Denials arrive scan-keyed (`scan:<id>`) so two refusals of the same
+    // person stack instead of overwriting; admits stay subject-keyed. The
+    // buffer itself does not care which -- it just must not drop denials, as
+    // it did when this only accepted 'admitted'.
+    if (!entry?.result) return;
+    setLocalCheckedIn((prev) => pushRecentActivity(prev, entry, CHECKIN_FEED_MAX));
   }, []);
 
   // The list the panel renders: server truth first, local entries layered on
@@ -802,12 +805,18 @@ const KIND_LABEL = {
   ticket: 'Ticket',
 };
 
-// Chronological check-in list (newest first) rendered under the trial-pass
-// panel. Photo thumbnails come from the short-lived signed URL captured on
-// the preview call; if none is available (guest-list check-ins or a scan
-// with no photo on file) we fall back to a monogram avatar so the row still
-// reads at a glance. Only entries with result === 'admitted' land here.
+// Chronological door log (newest first) rendered under the trial-pass panel.
+// Photo thumbnails come from the short-lived signed URL captured on the preview
+// call; if none is available (guest-list check-ins or a scan with no photo on
+// file) we fall back to a monogram avatar so the row still reads at a glance.
+//
+// Admits and denials share one list on purpose rather than living in two tabs.
+// The question the door actually asks is "what has happened tonight, in order",
+// and a guest who was refused at 10:04 and admitted at 10:40 only makes sense
+// as two adjacent rows.
 function CheckedInListPanel({ entries }) {
+  const admitted = entries.filter((e) => e.result === 'admitted').length;
+  const denied = entries.length - admitted;
   return (
     <section
       className="rounded-2xl border"
@@ -821,17 +830,19 @@ function CheckedInListPanel({ entries }) {
           <div className="text-[10px] font-bold tracking-[0.16em] uppercase" style={{ color: '#8a8a8a' }}>
             Tonight
           </div>
-          <h3 className="text-[14px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Checked in
+          <h3 className="text-[15px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            Door activity
           </h3>
         </div>
-        <div className="text-[11px] tabular-nums" style={{ color: '#8a8a8a' }}>
-          {entries.length}
+        <div className="text-[12px] tabular-nums font-semibold flex items-center gap-2">
+          <span style={{ color: '#7CFC9B' }}>{`${admitted} in`}</span>
+          {denied > 0 && <span style={{ color: '#8a8a8a' }}>·</span>}
+          {denied > 0 && <span style={{ color: '#ff8a8a' }}>{`${denied} turned away`}</span>}
         </div>
       </div>
       {entries.length === 0 ? (
-        <div className="px-4 py-8 text-center text-[12px]" style={{ color: '#8a8a8a' }}>
-          Nobody in yet.
+        <div className="px-4 py-8 text-center text-[13px]" style={{ color: '#9a9a9a' }}>
+          Nobody at the door yet.
         </div>
       ) : (
         <ul
@@ -858,10 +869,21 @@ function monogram(name) {
 
 function CheckedInRow({ entry }) {
   const initials = monogram(entry.name);
+  // Anything that is not an admit is a denial for display purposes: the feed
+  // carries both 'denied' (the rules refused it) and 'rejected' (a person
+  // refused it), and the door does not need that distinction in a list row --
+  // the reason text already says which.
+  const denied = entry.result !== 'admitted';
+  const accent = denied ? '#ff8a8a' : '#7CFC9B';
   return (
     <li
       className="px-4 py-2.5 flex items-center gap-3"
-      style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+      style={{
+        borderColor: 'rgba(255,255,255,0.05)',
+        // A tinted gutter rather than a tinted row: enough to pick denials out
+        // when scanning the column, not enough to fight the photo thumbnails.
+        boxShadow: denied ? 'inset 3px 0 0 #ff8a8a' : 'inset 3px 0 0 rgba(124,252,155,0.55)',
+      }}
     >
       {entry.photoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -869,15 +891,18 @@ function CheckedInRow({ entry }) {
           src={entry.photoUrl}
           alt=""
           className="w-10 h-10 rounded-full object-cover shrink-0"
-          style={{ background: '#000', border: '1px solid rgba(255,255,255,0.1)' }}
+          style={{
+            background: '#000',
+            border: `1px solid ${denied ? 'rgba(255,138,138,0.55)' : 'rgba(255,255,255,0.1)'}`,
+          }}
         />
       ) : (
         <div
           className="w-10 h-10 rounded-full shrink-0 flex items-center justify-center text-[11px] font-bold tracking-[0.05em]"
           style={{
-            background: 'rgba(217,196,140,0.15)',
-            color: '#d9c48c',
-            border: '1px solid rgba(217,196,140,0.3)',
+            background: denied ? 'rgba(255,138,138,0.15)' : 'rgba(217,196,140,0.15)',
+            color: denied ? '#ff8a8a' : '#d9c48c',
+            border: `1px solid ${denied ? 'rgba(255,138,138,0.35)' : 'rgba(217,196,140,0.3)'}`,
             fontFamily: "'Plus Jakarta Sans', sans-serif",
           }}
           aria-hidden
@@ -886,20 +911,36 @@ function CheckedInRow({ entry }) {
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <div
-          className="text-[13px] font-bold truncate leading-tight"
-          style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-        >
-          {entry.name}
+        <div className="flex items-center gap-2 min-w-0">
+          <div
+            className="text-[14px] font-bold truncate leading-tight"
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+          >
+            {entry.name}
+          </div>
+          {denied && (
+            // A word, not just a colour. The gutter and the red text both fail
+            // for a colourblind door person; "DENIED" does not.
+            <span
+              className="text-[9.5px] font-bold tracking-[0.12em] uppercase px-1.5 py-0.5 rounded shrink-0"
+              style={{ background: 'rgba(255,138,138,0.18)', color: '#ff8a8a' }}
+            >
+              Denied
+            </span>
+          )}
         </div>
-        <div className="text-[10px] mt-0.5 truncate" style={{ color: '#8a8a8a' }}>
+        <div
+          className="text-[12px] mt-0.5 truncate"
+          style={{ color: denied ? 'rgba(255,180,180,0.85)' : '#9a9a9a' }}
+        >
           {KIND_LABEL[entry.kind] || 'Door'}
           {entry.detail ? ` · ${entry.detail}` : ''}
+          {entry.eventTitle ? ` · ${entry.eventTitle}` : ''}
         </div>
       </div>
       <div
-        className="text-[10px] tabular-nums shrink-0"
-        style={{ color: '#8a8a8a' }}
+        className="text-[11.5px] tabular-nums shrink-0"
+        style={{ color: '#9a9a9a' }}
       >
         {formatActivityTime(entry.at)}
       </div>

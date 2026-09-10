@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { fetchPriorDenials } from '@/lib/capacity/denial-lookup';
 import { createClient } from '@supabase/supabase-js';
 import { requireTeam, getCurrentUser } from '@/lib/auth-helpers';
 import { isInternalTicketingEnabled } from '@/lib/feature-flags';
@@ -136,9 +137,17 @@ export async function POST(request) {
           eventId,
         })
       : { ticket: null, productLabel: null, matchedVia: null, candidateCount: 0 };
+    // Prior denials for the PERSON, all-time. Never allowed to fail the scan.
+    let priorDenials = [];
+    try {
+      priorDenials = await fetchPriorDenials(admin, { kind: 'member_id', memberProfileId: member.id });
+    } catch (err) {
+      console.error('[member-id-scan.priorDenials]', err?.message || err);
+    }
     return NextResponse.json({
       mode: 'preview',
       member: preview,
+      prior_denials: priorDenials,
       linked_ticket: linkedTicket.ticket
         ? {
             ticket_id: linkedTicket.ticket.id,
@@ -157,7 +166,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid reject reason' }, { status: 400 });
     }
     const { user } = await getCurrentUser(request);
-    const { error } = await admin.from('member_id_scans').insert({
+    // `.select('id')` so the feed keys this denial on the SCAN, not the member.
+    const { data: rejectRow, error } = await admin.from('member_id_scans').insert({
       member_profile_id: member.id,
       event_id: eventId,
       result: 'rejected',
@@ -166,12 +176,17 @@ export async function POST(request) {
       scanned_by: user?.id || null,
       door_device_id: deviceLabel,
       door_session_id: doorSessionId,
-    });
+    }).select('id').maybeSingle();
     if (error) {
       console.error('[member-id-scan.reject]', error.message);
       return NextResponse.json({ error: 'Failed to log rejection' }, { status: 500 });
     }
-    return NextResponse.json({ mode: 'reject', result: 'rejected', reject_reason: rejectReason });
+    return NextResponse.json({
+      mode: 'reject',
+      result: 'rejected',
+      reject_reason: rejectReason,
+      checkin_id: rejectRow?.id || null,
+    });
   }
 
   // MODE: verify \u2014 log the verified member scan AND, if the member has
@@ -229,7 +244,7 @@ export async function POST(request) {
     };
   }
 
-  const { error } = await admin.from('member_id_scans').insert({
+  const { data: verifyRow, error } = await admin.from('member_id_scans').insert({
     member_profile_id: member.id,
     event_id: eventId,
     result: 'verified',
@@ -238,7 +253,7 @@ export async function POST(request) {
     scanned_by: user?.id || null,
     door_device_id: deviceLabel,
     door_session_id: doorSessionId,
-  });
+  }).select('id').maybeSingle();
   if (error) {
     console.error('[member-id-scan.verify]', error.message);
     return NextResponse.json({ error: 'Failed to log verification' }, { status: 500 });
@@ -264,6 +279,7 @@ export async function POST(request) {
   return NextResponse.json({
     mode: 'verify',
     result: 'verified',
+    checkin_id: verifyRow?.id || null,
     member: {
       memberProfileId: member.id,
       firstName: (member.full_name || 'Member').split(/\s+/)[0],
