@@ -3,7 +3,11 @@ import { afterAll, describe, expect, it, vi } from 'vitest';
 vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn() }));
 vi.mock('@/lib/tickets/hydrate-fees', () => ({ hydrateTicketOrderFees: vi.fn() }));
 vi.mock('@/lib/email', () => ({ sendDiscountCode: vi.fn(), sendTrialPassReminder: vi.fn() }));
-vi.mock('@/lib/tickettailor', () => ({ getEventSeriesTicketTypes: vi.fn() }));
+vi.mock('@/lib/tickettailor', () => ({
+  getEventSeriesTicketTypes: vi.fn(),
+  getEventSeries: vi.fn(),
+  setEventSeriesStatus: vi.fn(),
+}));
 vi.mock('@/lib/discountCodeUtils', () => ({
   QUALIFYING_CATEGORIES: [],
   getEligibleMembers: vi.fn(),
