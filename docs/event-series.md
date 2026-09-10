@@ -8,7 +8,11 @@ Create the first event normally, then choose Weekly or Bi-weekly in the Recurren
 
 ## Generation
 
-`/api/cron/generate-series-occurrences` runs daily at 06:30 UTC. When the latest occurrence reaches its date, it creates one next occurrence as `draft`, cloning the template event and its ticket products, price tiers, and inventory capacity. It never publishes generated events. `series_generation_log` records each generated occurrence.
+The next draft is created immediately when an occurrence is published, rather than overnight. It clones the canonical template event and its ticket products, price tiers, and inventory capacity; `series_generation_log` records every generated occurrence. `/api/cron/generate-series-occurrences` still runs daily at 06:30 UTC as an idempotent safety net.
+
+`/api/cron/publish-due-series-drafts` runs every five minutes. It auto-publishes a draft only once its immediately preceding occurrence has ended according to `computeEventListingCutoff` — the same rule public listings use to hide a finished event. It uses the America/Chicago date-only end-of-day fallback when times cannot be parsed, never publishes position 1, ignores inactive series, and has a safety cap of five publication attempts per run.
+
+For already-existing active series, an admin can run `POST /api/admin/series/backfill-next-drafts` once after deployment. The MFA-gated endpoint uses the same generation helper and is safe to run again; it creates at most the next draft after each latest published occurrence.
 
 ## Financial rollup
 

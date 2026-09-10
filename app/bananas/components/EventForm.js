@@ -178,8 +178,11 @@ export default function EventForm({
 
     if (isEditing && eventDate !== event.event_date && Number(metrics?.orders_count || 0) > 0) {
       const count = Number(metrics.orders_count);
+      const seriesDateNote = event.series_id
+        ? ' Moving this date only shifts this single occurrence. The rest of the series stays on schedule.'
+        : ' If this is a recurring event, create the next occurrence from the series instead.';
       const confirmed = window.confirm(
-        `This event has ${count} paid order${count === 1 ? '' : 's'}. Changing the date will move those orders and their check-ins with it. If this is a recurring event, create the next occurrence from the series instead.`
+        `This event has ${count} paid order${count === 1 ? '' : 's'}. Changing the date will move those orders and their check-ins with it.${seriesDateNote}`
       );
       if (!confirmed) return;
     }
