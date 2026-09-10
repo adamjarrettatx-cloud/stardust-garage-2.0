@@ -21,6 +21,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/publish-due-series-drafts",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/hydrate-ticket-fees",
       "schedule": "12 6 * * *"
     },
