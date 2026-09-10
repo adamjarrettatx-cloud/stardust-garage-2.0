@@ -49,3 +49,67 @@ revoke all on function public.update_own_member_profile_display(text, text, json
 grant execute on function public.update_own_member_profile_display(text, text, jsonb, text) to authenticated;
 
 commit;
+
+begin;
+
+-- ---------------------------------------------------------------------------
+-- DB-02: free-account creation/display edits cannot manufacture verification.
+-- ---------------------------------------------------------------------------
+drop policy if exists free_accounts_self_insert on public.free_accounts;
+drop policy if exists free_accounts_self_update on public.free_accounts;
+alter table public.free_accounts alter column phone_verified_at drop default;
+
+create or replace function public.create_own_free_account(
+  p_full_name text,
+  p_phone text,
+  p_email text
+) returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'authentication required' using errcode = '42501';
+  end if;
+
+  if exists (select 1 from public.free_accounts where user_id = auth.uid()) then
+    raise exception 'free account already exists' using errcode = '23505';
+  end if;
+
+  -- Verification is deliberately not caller-controlled. Only the verified
+  -- server flow may set a timestamp after Twilio confirms the claimed phone.
+  insert into public.free_accounts (user_id, full_name, phone, email, phone_verified_at)
+  values (auth.uid(), p_full_name, p_phone, p_email, null);
+end;
+$$;
+
+create or replace function public.update_own_free_account_display(
+  p_full_name text,
+  p_email text,
+  p_profile_photo_path text
+) returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'authentication required' using errcode = '42501';
+  end if;
+
+  -- Do not add phone, phone_verified_at, role, or entitlement columns here.
+  update public.free_accounts
+     set full_name = p_full_name,
+         email = p_email,
+         profile_photo_path = p_profile_photo_path
+   where user_id = auth.uid();
+end;
+$$;
+
+revoke all on function public.create_own_free_account(text, text, text) from public;
+revoke all on function public.update_own_free_account_display(text, text, text) from public;
+grant execute on function public.create_own_free_account(text, text, text) to authenticated;
+grant execute on function public.update_own_free_account_display(text, text, text) to authenticated;
+
+commit;
