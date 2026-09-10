@@ -23,6 +23,10 @@
     {
       "path": "/api/cron/hydrate-ticket-fees",
       "schedule": "12 6 * * *"
+    },
+    {
+      "path": "/api/cron/generate-series-occurrences",
+      "schedule": "30 6 * * *"
     }
   ]
 }
