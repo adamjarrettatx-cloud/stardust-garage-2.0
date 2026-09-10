@@ -19,7 +19,7 @@ We may refuse entry, service, or access for any lawful reason, including age, id
 
 ## 3. Accounts and security
 
-You are responsible for providing accurate account information and keeping it current. Keep your login credentials, device, ticket credentials, and QR codes secure. Do not share your account or use another person's account without permission. Promptly notify us at admin@sdgatx.com if you suspect unauthorized access or a security incident involving your account.
+You are responsible for providing accurate account information and keeping it current. Keep your login credentials, device, ticket credentials, and QR codes secure. Do not share your account or use another person's account without permission. Promptly notify us at hello@sdgatx.com if you suspect unauthorized access or a security incident involving your account.
 
 You are responsible for activity that occurs through your account to the extent caused by your failure to protect it. We may suspend or protect an account if we reasonably believe it has been compromised, is being misused, or presents a safety or legal risk.
 
@@ -122,7 +122,7 @@ To the maximum extent permitted by law, you will defend, indemnify, and hold har
 
 ### Informal resolution first
 
-Before starting arbitration or a court action, the party with a dispute must send the other party a written notice describing the dispute and requested relief. Send notices to Stardust Garage at admin@sdgatx.com. We will send notices to the email address associated with your account or another reasonable contact method. The parties will try in good faith to resolve the dispute informally for 30 days after notice.
+Before starting arbitration or a court action, the party with a dispute must send the other party a written notice describing the dispute and requested relief. Send notices to Stardust Garage at hello@sdgatx.com. We will send notices to the email address associated with your account or another reasonable contact method. The parties will try in good faith to resolve the dispute informally for 30 days after notice.
 
 ### Binding individual arbitration
 
@@ -140,7 +140,7 @@ If a court determines that applicable law prevents enforcement of the class, col
 
 ### 30-day opt-out
 
-You may opt out of this arbitration agreement within 30 days after first accepting these Terms that contain it. To opt out, send a written notice to admin@sdgatx.com with the subject line "Arbitration Opt-Out" and include your full name, the email address associated with your account, and a clear statement that you wish to opt out. Opting out of arbitration does not affect any other part of these Terms. If you do not opt out on time, this arbitration agreement will apply to you.
+You may opt out of this arbitration agreement within 30 days after first accepting these Terms that contain it. To opt out, send a written notice to hello@sdgatx.com with the subject line "Arbitration Opt-Out" and include your full name, the email address associated with your account, and a clear statement that you wish to opt out. Opting out of arbitration does not affect any other part of these Terms. If you do not opt out on time, this arbitration agreement will apply to you.
 
 ## 17. Governing law
 
@@ -160,7 +160,7 @@ Questions about these Terms should be sent to:
 
 Simple Boring Office LLC d/b/a Stardust Garage
 Austin, Texas
-admin@sdgatx.com
+hello@sdgatx.com
 `;
 
 function formatInline(text) {
@@ -198,14 +198,14 @@ export default function TermsPage() {
         <div className="legal-meta" aria-label="Document information">
           <span><strong>Effective:</strong> 2026-09-10</span>
           <span><strong>Operator:</strong> Simple Boring Office LLC d/b/a Stardust Garage</span>
-          <span><strong>Contact:</strong> <a href="mailto:admin@sdgatx.com">admin@sdgatx.com</a></span>
+          <span><strong>Contact:</strong> <a href="mailto:hello@sdgatx.com">hello@sdgatx.com</a></span>
         </div>
       </header>
       <article aria-label="Terms of Service"><LegalBody source={content} /></article>
       <nav className="legal-links" aria-label="Related legal pages">
         <Link href="/privacy">Privacy Policy</Link>
         <Link href="/legal/waiver">Liability Waiver</Link>
-        <a href="mailto:admin@sdgatx.com">Contact Stardust Garage</a>
+        <a href="mailto:hello@sdgatx.com">Contact Stardust Garage</a>
       </nav>
       <style>{`
         .legal-page { width: min(100%, 900px); margin: 0 auto; padding: 76px 24px 112px; color: #e8e6e0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 15px; line-height: 1.72; }
