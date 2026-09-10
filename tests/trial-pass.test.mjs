@@ -389,7 +389,13 @@ test('a missing flag denies rather than admits', () => {
 
 // --- The door decision ------------------------------------------------------
 
-const MUSIC_FRIDAY = { id: 'e1', event_date: '2026-08-21', category: 'music', title: 'Friday Night' };
+const MUSIC_FRIDAY = {
+  id: 'e1',
+  event_date: '2026-08-21',
+  category: 'music',
+  title: 'Friday Night',
+  is_weekend_music_experience: true,
+};
 
 test('a live pass on a covered night is allowed', () => {
   const decision = evaluateDoorScan({ pass: makePass(), event: MUSIC_FRIDAY, now: at(10) });
@@ -414,7 +420,7 @@ test('an expired pass denies even on a perfectly covered night', () => {
 });
 
 test('a live pass on the wrong night denies with the reason', () => {
-  const wednesday = { id: 'e2', event_date: '2026-08-19', category: 'music' };
+  const wednesday = { id: 'e2', event_date: '2026-08-19', category: 'music', is_weekend_music_experience: false };
   const decision = evaluateDoorScan({ pass: makePass(), event: wednesday, now: at(5) });
   assert.equal(decision.allowed, false);
   assert.equal(decision.result, DOOR_RESULTS.denied_ineligible_event);
@@ -450,7 +456,7 @@ test('an extended pass gets in during its extra week', () => {
     status: 'extended',
     extended_until: addDays(addDays(ISSUED, TRIAL_WINDOW_DAYS), TRIAL_EXTENSION_DAYS).toISOString(),
   });
-  const sunday = { id: 'e3', event_date: '2026-09-06', category: 'music' };
+  const sunday = { id: 'e3', event_date: '2026-09-06', category: 'music', is_weekend_music_experience: true };
   assert.equal(evaluateDoorScan({ pass, event: sunday, now: at(34) }).allowed, true);
 });
 
@@ -487,7 +493,7 @@ test('expired passes report expired, not no-photo, even without a photo', () => 
 
 test('ineligible-event denials report the night, not no-photo', () => {
   const pass = makePass({ profile_photo_path: null });
-  const wednesday = { id: 'e-wed', event_date: '2026-08-05', category: 'music' };
+  const wednesday = { id: 'e-wed', event_date: '2026-08-05', category: 'music', is_weekend_music_experience: false };
   const decision = evaluateDoorScan({ pass, event: wednesday, now: at(4) });
   assert.equal(decision.result, DOOR_RESULTS.denied_ineligible_event);
 });

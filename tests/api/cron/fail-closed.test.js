@@ -28,6 +28,7 @@ const routes = await Promise.all([
   import('../../../app/api/cron/send-discount-codes/route.js'),
   import('../../../app/api/cron/sweep-ticket-holds/route.js'),
   import('../../../app/api/cron/trial-pass-reminders/route.js'),
+  import('../../../app/api/cron/publish-due-series-drafts/route.js'),
 ]);
 
 function attackerRequest() {
@@ -47,6 +48,7 @@ describe('cron routes fail closed without CRON_SECRET', () => {
     ['send-discount-codes', routes[1].GET],
     ['sweep-ticket-holds', routes[2].GET],
     ['trial-pass-reminders', routes[3].GET],
+    ['publish-due-series-drafts', routes[4].GET],
   ])('%s rejects Bearer undefined', async (_name, handler) => {
     delete process.env.CRON_SECRET;
 
