@@ -114,7 +114,6 @@ export default function EventForm({
   // Music Experience (Fri–Sun music events). Admin sets this manually per
   // event — we don't auto-derive from category+date because a Friday yoga
   // class isn't a music event and a Wednesday DJ night isn't a weekend one.
-  const [isWeekendMusic, setIsWeekendMusic] = useState(!!event?.is_weekend_music_experience);
   const [contactId, setContactId] = useState(event?.contact_id || null);
   // `ttEventSeriesId` is preserved so the two legacy TicketTailor events
   // (ubiyu 9/18, Groove Therapy 9/19) still round-trip their linked series
@@ -205,7 +204,6 @@ export default function EventForm({
       // Tier gate only makes sense on member-scoped events. Clear it when
       // the event isn't SDG-only so we don't ship an inconsistent row.
       required_membership_tier: isSdgOnly && requiredTier ? requiredTier : null,
-      is_weekend_music_experience: isWeekendMusic,
       contact_id: isSdgOnly ? null : contactId,
     };
 
@@ -569,22 +567,9 @@ export default function EventForm({
               </select>
             </div>
           </div>
-          <label className="flex items-start gap-3 mt-4 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isWeekendMusic}
-              onChange={(e) => setIsWeekendMusic(e.target.checked)}
-              className="mt-[3px] w-4 h-4 accent-white cursor-pointer"
-            />
-            <span className="text-[13px]" style={{ color: '#e6e6e6' }}>
-              Weekend Music Experience
-              <span className="block text-[11px] mt-0.5" style={helperStyle}>
-                Fri–Sun music event. When checked, The Weekender members get 25% off tickets.
-              </span>
-            </span>
-          </label>
           <p className="text-[11px] mt-4" style={helperStyle}>
-            The Builder / The Insider discounts are configured on the Ticketing panel below.
+            Membership pricing \u2014 including whether this is a Weekend Music Experience \u2014 is set in
+            the Member pricing panel below.
           </p>
         </section>
 

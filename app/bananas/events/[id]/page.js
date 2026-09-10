@@ -96,8 +96,8 @@ export default async function EditEventPage({ params }) {
             initialTicketUrl={event.ticket_url}
             initialTtSeriesId={event.tt_event_series_id}
             initialBookingFeeCentsDefault={event.booking_fee_cents_default ?? 295}
-            initialMemberDiscountPercentCowork={event.member_discount_percent_cowork ?? null}
             initialMemberDiscountPercentIykyk={event.member_discount_percent_iykyk ?? null}
+            initialIsWeekendMusicExperience={!!event.is_weekend_music_experience}
             // Event start date + free-text start time. The ticketing panel uses
             // these to render the 'Ticket Sales End … hours after doors open'
             // dropdown and to compute the persisted `sales_end_at` timestamp.

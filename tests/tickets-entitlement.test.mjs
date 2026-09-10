@@ -7,6 +7,7 @@ import {
   pickDiscountCents,
   entitlementLabel,
   clampPercent,
+  INSIDER_MAX_DISCOUNT_PERCENT,
   TRIAL_WEEKEND_MUSIC_DISCOUNT_PERCENT,
   ENTITLEMENT_MEMBER,
   ENTITLEMENT_TRIAL,
@@ -48,39 +49,97 @@ test('Weekender keeps its 25% weekend-music-only deal', () => {
   assert.equal(resolveEntitlementPercent(WEEKNIGHT, ent), 0);
 });
 
-test('per-plan and per-event overrides still win for Builder and Insider', () => {
-  const event = { ...WEEKNIGHT, member_discount_percent_iykyk: 70, member_discount_percent: 45 };
+// --- The Builder gets nothing (owner, 2026-09-09) -------------------------
+
+test('The Builder never gets a ticket discount, even with a percent on the event', () => {
+  // The column is still written by the legacy TicketTailor generator, so a
+  // stale or hand-entered value must not leak into what the buyer is charged.
+  for (const event of [
+    WEEKEND_MUSIC,
+    WEEKNIGHT,
+    { ...WEEKNIGHT, member_discount_percent_cowork: 40 },
+    { ...WEEKEND_MUSIC, member_discount_percent_cowork: 100 },
+    { ...WEEKNIGHT, member_discount_percent: 45 },
+    { ...WEEKNIGHT, category: 'party' },
+  ]) {
+    assert.equal(
+      resolveEntitlementPercent(event, { kind: ENTITLEMENT_MEMBER, planKey: 'cowork' }),
+      0,
+    );
+  }
+});
+
+// --- The Insider: up to 60%, only where we set it -------------------------
+
+test('The Insider gets nothing until a percent is set on the event', () => {
+  // "tickets that we decide their discount on" — no event-wide default, and
+  // no category default either.
+  assert.equal(resolveEntitlementPercent(WEEKEND_MUSIC, { kind: ENTITLEMENT_MEMBER, planKey: 'iykyk' }), 0);
+  assert.equal(resolveEntitlementPercent(WEEKNIGHT, { kind: ENTITLEMENT_MEMBER, planKey: 'iykyk' }), 0);
   assert.equal(
-    resolveEntitlementPercent(event, { kind: ENTITLEMENT_MEMBER, planKey: 'iykyk' }),
-    70,
-  );
-  // cowork has no per-plan override here, so it falls to the legacy shared one.
-  assert.equal(
-    resolveEntitlementPercent(event, { kind: ENTITLEMENT_MEMBER, planKey: 'cowork' }),
-    45,
+    resolveEntitlementPercent({ category: 'party' }, { kind: ENTITLEMENT_MEMBER, planKey: 'iykyk' }),
+    0,
   );
 });
 
-test('category default applies when an event sets no override', () => {
-  // 'party' defaults to 60.
+test('The Insider takes the percent set on the event', () => {
   assert.equal(
-    resolveEntitlementPercent(WEEKNIGHT, { kind: ENTITLEMENT_MEMBER, planKey: 'cowork' }),
-    60,
+    resolveEntitlementPercent(
+      { ...WEEKNIGHT, member_discount_percent_iykyk: 40 },
+      { kind: ENTITLEMENT_MEMBER, planKey: 'iykyk' },
+    ),
+    40,
+  );
+});
+
+test('The Insider is capped at 60% however high the stored value goes', () => {
+  assert.equal(INSIDER_MAX_DISCOUNT_PERCENT, 60);
+  for (const stored of [61, 70, 100, 400]) {
+    assert.equal(
+      resolveEntitlementPercent(
+        { ...WEEKNIGHT, member_discount_percent_iykyk: stored },
+        { kind: ENTITLEMENT_MEMBER, planKey: 'iykyk' },
+      ),
+      60,
+      `stored ${stored} should clamp to 60`,
+    );
+  }
+});
+
+test('The Insider falls back to the legacy shared column for older events', () => {
+  assert.equal(
+    resolveEntitlementPercent(
+      { ...WEEKNIGHT, member_discount_percent: 30 },
+      { kind: ENTITLEMENT_MEMBER, planKey: 'iykyk' },
+    ),
+    30,
+  );
+  // ...but the per-tier column wins when both are present.
+  assert.equal(
+    resolveEntitlementPercent(
+      { ...WEEKNIGHT, member_discount_percent: 30, member_discount_percent_iykyk: 50 },
+      { kind: ENTITLEMENT_MEMBER, planKey: 'iykyk' },
+    ),
+    50,
   );
 });
 
 // REGRESSION: the legacy resolver ends in `?? 50`, so any category it didn't
 // recognise granted 50% off. Live event categories include 'internal',
 // 'sdg_party', 'trial_resident_party', 'evening_music_residency', 'other' and
-// 'yoga_residency' — none of them mapped. Charging the buyer has to fail
-// closed instead.
-test('an unrecognised event category earns a paid tier nothing, not 50% off', () => {
+// 'yoga_residency'. Charging the buyer has to fail closed instead — there is
+// now no category-driven discount at all.
+test('no event category grants an automatic discount to any paid tier', () => {
   for (const category of [
     'internal',
     'sdg_party',
     'trial_resident_party',
     'evening_music_residency',
     'yoga_residency',
+    'other',
+    'party',
+    'workshop',
+    'yoga',
     undefined,
     null,
   ]) {
@@ -94,24 +153,13 @@ test('an unrecognised event category earns a paid tier nothing, not 50% off', ()
   }
 });
 
-test('an explicit per-event override still beats the fail-closed default', () => {
-  // This is how a Builder/Insider rate gets set on a category nobody mapped.
+test('an unknown plan key earns nothing rather than guessing', () => {
   assert.equal(
     resolveEntitlementPercent(
-      { id: 'e', category: 'internal', member_discount_percent_cowork: 20 },
-      { kind: ENTITLEMENT_MEMBER, planKey: 'cowork' },
+      { ...WEEKEND_MUSIC, member_discount_percent: 60 },
+      { kind: ENTITLEMENT_MEMBER, planKey: 'founder' },
     ),
-    20,
-  );
-});
-
-test("'other' keeps its explicit 50% because someone chose that number", () => {
-  assert.equal(
-    resolveEntitlementPercent(
-      { id: 'e', category: 'other' },
-      { kind: ENTITLEMENT_MEMBER, planKey: 'iykyk' },
-    ),
-    50,
+    0,
   );
 });
 
@@ -133,10 +181,10 @@ test('an admin-entered override cannot exceed 100% or go negative', () => {
   assert.equal(clampPercent(24.9), 24);
   assert.equal(
     resolveEntitlementPercent(
-      { ...WEEKNIGHT, member_discount_percent: 400 },
-      { kind: ENTITLEMENT_MEMBER, planKey: 'cowork' },
+      { ...WEEKNIGHT, member_discount_percent_iykyk: 400 },
+      { kind: ENTITLEMENT_MEMBER, planKey: 'iykyk' },
     ),
-    100,
+    60,
   );
 });
 

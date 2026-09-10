@@ -24,6 +24,12 @@ import { createClient } from '@/lib/supabase/client';
 import ProductEditor from '@/components/ticketing/ProductEditor';
 import PrivateSpacesManager from '@/components/ticketing/PrivateSpacesManager';
 import DiscountCodesManager from '@/components/ticketing/DiscountCodesManager';
+import {
+  MEMBERSHIP_TIER_LIST,
+  TICKET_DISCOUNT_POLICY,
+  WEEKEND_MUSIC_FIXED_PERCENT,
+  INSIDER_MAX_DISCOUNT_PERCENT,
+} from '@/lib/membership-tiers';
 
 const UI_MODES = [
   {
@@ -63,14 +69,50 @@ function ticketTailorUrl(seriesId) {
   return `https://www.tickettailor.com/events/stardustgarage/${seriesId}`;
 }
 
+const memberCellStyle = {
+  padding: '14px 12px 14px 0',
+  borderBottom: '1px solid rgba(255,255,255,0.06)',
+  fontSize: 13,
+  verticalAlign: 'top',
+};
+
+const memberNoteStyle = {
+  display: 'block',
+  fontSize: 11,
+  opacity: 0.5,
+  marginTop: 3,
+  lineHeight: 1.4,
+  maxWidth: 230,
+};
+
+// Whether a tier is getting anything on this event, said in words rather than
+// left for the reader to infer from an empty input.
+function MemberPricingStatus({ percent, reason }) {
+  const on = percent > 0;
+  return (
+    <span
+      style={{
+        display: 'inline-block', fontSize: 10.5, letterSpacing: '0.07em',
+        textTransform: 'uppercase', padding: '3px 9px', borderRadius: 20,
+        whiteSpace: 'nowrap',
+        border: `1px solid ${on ? 'rgba(143,211,154,0.35)' : 'var(--auth-border, #333)'}`,
+        color: on ? '#8fd39a' : 'rgba(255,255,255,0.42)',
+        background: on ? 'rgba(143,211,154,0.07)' : 'transparent',
+      }}
+    >
+      {on ? `${percent}% off` : `No \u2014 ${reason}`}
+    </span>
+  );
+}
+
 export default function TicketingPanel({
   eventId,
   initialMode,
   initialTicketUrl,
   initialTtSeriesId,
   initialBookingFeeCentsDefault = 295,
-  initialMemberDiscountPercentCowork = null,
   initialMemberDiscountPercentIykyk = null,
+  initialIsWeekendMusicExperience = false,
   // Event start (date + free-text time) — forwarded to ProductEditor so its
   // 'Ticket Sales End … hours after doors open' control can compute the
   // persisted `sales_end_at` timestamp relative to doors.
@@ -99,28 +141,40 @@ export default function TicketingPanel({
   // placeholder value on tier fee inputs.
   const bookingFeeCents = initialBookingFeeCentsDefault ?? 295;
 
-  // Per-membership discount percents. Empty string means "no override" (falls
-  // back to legacy events.member_discount_percent → category default).
-  const [memberDiscountCowork, setMemberDiscountCowork] = useState(
-    initialMemberDiscountPercentCowork != null ? String(initialMemberDiscountPercentCowork) : ''
-  );
+  // --- Member pricing -----------------------------------------------------
+  //
+  // Every membership rule for this event lives in one section. Which tiers get
+  // a discount at all is declared in lib/membership-tiers.js, not here, so the
+  // panel and the checkout resolver cannot drift:
+  //
+  //   The Weekender + Trial SDG Pass -> fixed 25%, weekend music only. Follows
+  //     the toggle below; not a per-event number.
+  //   The Builder                    -> no ticket discount at all.
+  //   The Insider                    -> whatever is set here, capped at 60%.
+  //     Nothing set means no discount.
+  //
+  // The Weekend Music Experience toggle used to live on the main event form,
+  // one page away from the percent inputs, which made it impossible to see the
+  // whole picture. It was also never switched on for a single event.
+  const [isWeekendMusic, setIsWeekendMusic] = useState(!!initialIsWeekendMusicExperience);
+  const [savedIsWeekendMusic, setSavedIsWeekendMusic] = useState(!!initialIsWeekendMusicExperience);
   const [memberDiscountIykyk, setMemberDiscountIykyk] = useState(
     initialMemberDiscountPercentIykyk != null ? String(initialMemberDiscountPercentIykyk) : ''
   );
-  const [savedMemberDiscountCowork, setSavedMemberDiscountCowork] = useState(memberDiscountCowork);
   const [savedMemberDiscountIykyk, setSavedMemberDiscountIykyk] = useState(memberDiscountIykyk);
   const [savingMemberDiscounts, setSavingMemberDiscounts] = useState(false);
   const [memberDiscountError, setMemberDiscountError] = useState(null);
   const memberDiscountsDirty =
-    memberDiscountCowork !== savedMemberDiscountCowork ||
-    memberDiscountIykyk !== savedMemberDiscountIykyk;
+    memberDiscountIykyk !== savedMemberDiscountIykyk || isWeekendMusic !== savedIsWeekendMusic;
 
-  function parsePercentOrNull(v) {
+  // Clamped to the tier's ceiling rather than 100. Typing 80 in the Insider
+  // box and having checkout silently charge 60 would be worse than refusing it.
+  function parsePercentOrNull(v, max = 100) {
     const s = String(v || '').trim();
     if (s === '') return null;
     const n = Number(s);
-    if (!Number.isFinite(n)) throw new Error('Percent must be a number 0–100');
-    if (n < 0 || n > 100) throw new Error('Percent must be between 0 and 100');
+    if (!Number.isFinite(n)) throw new Error('Percent must be a number');
+    if (n < 0 || n > max) throw new Error(`Percent must be between 0 and ${max}`);
     return Math.round(n);
   }
 
@@ -129,18 +183,60 @@ export default function TicketingPanel({
     setMemberDiscountError(null);
     try {
       const patch = {
-        member_discount_percent_cowork: parsePercentOrNull(memberDiscountCowork),
-        member_discount_percent_iykyk: parsePercentOrNull(memberDiscountIykyk),
+        member_discount_percent_iykyk: parsePercentOrNull(
+          memberDiscountIykyk,
+          INSIDER_MAX_DISCOUNT_PERCENT,
+        ),
+        is_weekend_music_experience: isWeekendMusic,
       };
       const { error } = await supabase.from('events').update(patch).eq('id', eventId);
       if (error) throw error;
-      setSavedMemberDiscountCowork(memberDiscountCowork);
       setSavedMemberDiscountIykyk(memberDiscountIykyk);
+      setSavedIsWeekendMusic(isWeekendMusic);
     } catch (e) {
       setMemberDiscountError(String(e.message || e));
     } finally {
       setSavingMemberDiscounts(false);
     }
+  }
+
+  // What each tier actually earns on THIS event, resolved the same way
+  // lib/tickets/entitlement.js resolves it at checkout.
+  function percentForTier(tier) {
+    const policy = tier.ticketDiscount;
+    if (!policy || policy.policy === TICKET_DISCOUNT_POLICY.NONE) return 0;
+    if (policy.policy === TICKET_DISCOUNT_POLICY.WEEKEND_MUSIC_FIXED) {
+      return isWeekendMusic ? policy.percent : 0;
+    }
+    const n = Number(String(memberDiscountIykyk || '').trim());
+    if (!Number.isFinite(n) || n <= 0) return 0;
+    return Math.min(policy.maxPercent ?? 100, Math.floor(n));
+  }
+
+  const trialPassPercent = isWeekendMusic ? WEEKEND_MUSIC_FIXED_PERCENT : 0;
+
+  // Every active price on the event, flattened. The discount comes off the
+  // whole subtotal, so a private-space rental sold on the same event is
+  // discounted too \u2014 which is exactly why the preview lists products by name
+  // rather than just quoting one number.
+  const previewLines = (products || [])
+    .flatMap((p) =>
+      (p.tiers || [])
+        .filter((t) => t.is_active !== false)
+        .map((t) => ({
+          product: p.name || 'Tickets',
+          tier: t.name || '\u2014',
+          cents: Number(t.price_cents) || 0,
+          order: (p.display_order ?? 0) * 100 + (t.display_order ?? 0),
+        }))
+    )
+    .filter((l) => l.cents > 0)
+    .sort((a, b) => a.order - b.order);
+
+  const multiProduct = new Set(previewLines.map((l) => l.product)).size > 1;
+
+  function money(cents) {
+    return `$${(cents / 100).toFixed(2)}`;
   }
 
   async function loadProducts() {
@@ -291,80 +387,202 @@ export default function TicketingPanel({
         )}
       </div>
 
-      {/* Per-membership discount percents. Hidden when this event is free
-          (no ticket price to discount) OR external (buyer checks out on a
-          third-party site we don't control — our member codes can't apply
-          there). Shown for internal ticketing and for the two legacy
-          TicketTailor events, which both drive member-code generation. */}
-      {/* Downstream sections (Member discounts, Tickets, Private spaces,
-          Discount codes) mirror the LIVE selection, not the persisted one, so
-          clicking External / Free / Default immediately reveals or hides the
-          right controls without waiting for a Save Ticketing round-trip. */}
+      {/* MEMBER PRICING \u2014 every membership rule for this event in one place.
+          Hidden when the event is free (no price to discount) or external
+          (the buyer checks out somewhere we don't control). */}
       {uiMode !== 'free' && uiMode !== 'external' && (
       <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--auth-border, #333)' }}>
-        <h3 style={{ margin: 0, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Member discounts</h3>
-        <p style={{ margin: '4px 0 12px 0', fontSize: 12, opacity: 0.7 }}>
-          Percent off tickets for each active membership. Leave blank to fall back to the category default. Applied when member codes are generated for this event.
+        <h3 style={{ margin: 0, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Member pricing</h3>
+        <p style={{ margin: '5px 0 18px 0', fontSize: 12, opacity: 0.7, lineHeight: 1.5 }}>
+          Who gets a discount on this event, and how much. Nothing is discounted unless it is switched on here.
         </p>
-        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 12, opacity: 0.75, marginBottom: 4 }}>
-              The Weekender (%)
-            </label>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              step="1"
-              value={memberDiscountCowork}
-              onChange={(e) => setMemberDiscountCowork(e.target.value)}
-              disabled={savingMemberDiscounts}
-              placeholder="e.g. 40"
-              style={{
-                padding: '6px 8px',
-                background: 'transparent',
-                color: 'inherit',
-                border: '1px solid var(--auth-border, #333)',
-                borderRadius: 4,
-                fontSize: 13,
-                width: 110,
-              }}
-            />
+
+        <label
+          style={{
+            display: 'flex', gap: 11, alignItems: 'flex-start', cursor: 'pointer',
+            padding: '13px 14px', borderRadius: 8, marginBottom: 20,
+            border: `1px solid ${isWeekendMusic ? 'var(--auth-accent, #7cf)' : 'var(--auth-border, #333)'}`,
+            background: isWeekendMusic ? 'rgba(119,204,255,0.06)' : 'transparent',
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={isWeekendMusic}
+            onChange={(e) => setIsWeekendMusic(e.target.checked)}
+            disabled={savingMemberDiscounts}
+            style={{ marginTop: 2, width: 16, height: 16, cursor: 'pointer' }}
+          />
+          <span style={{ fontSize: 13 }}>
+            <b style={{ fontWeight: 600 }}>Weekend Music Experience</b>
+            <span style={{ display: 'block', fontSize: 11.5, opacity: 0.65, marginTop: 3, lineHeight: 1.45 }}>
+              Fri&ndash;Sun music night. Turning this on gives The Weekender and Trial SDG Pass holders{' '}
+              {WEEKEND_MUSIC_FIXED_PERCENT}% off &mdash; that is the whole of their ticket benefit.
+            </span>
+          </span>
+        </label>
+
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              {['Membership', 'Discount', 'On this event'].map((h, i) => (
+                <th
+                  key={h}
+                  style={{
+                    textAlign: 'left', fontSize: 10.5, letterSpacing: '0.1em',
+                    textTransform: 'uppercase', opacity: 0.55, fontWeight: 600,
+                    padding: '0 12px 9px 0', borderBottom: '1px solid var(--auth-border, #333)',
+                    width: i === 0 ? 190 : i === 1 ? 165 : 'auto',
+                  }}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {/* The trial pass is not a membership tier, but it earns the same
+                weekend-music rate, so it belongs in the same table rather than
+                being invisible to whoever is pricing the event. */}
+            <tr>
+              <td style={memberCellStyle}>
+                <b style={{ fontWeight: 600 }}>Trial SDG Pass</b>
+                <span style={memberNoteStyle}>Any live trial pass, no code needed</span>
+              </td>
+              <td style={memberCellStyle}>
+                {WEEKEND_MUSIC_FIXED_PERCENT}%
+                <span style={memberNoteStyle}>Fixed by the pass</span>
+              </td>
+              <td style={memberCellStyle}>
+                <MemberPricingStatus percent={trialPassPercent} reason="weekend music only" />
+              </td>
+            </tr>
+
+            {MEMBERSHIP_TIER_LIST.map((tier) => {
+              const policy = tier.ticketDiscount || { policy: TICKET_DISCOUNT_POLICY.NONE };
+              const none = policy.policy === TICKET_DISCOUNT_POLICY.NONE;
+              const perEvent = policy.policy === TICKET_DISCOUNT_POLICY.PER_EVENT;
+              return (
+                <tr key={tier.key}>
+                  <td style={{ ...memberCellStyle, opacity: none ? 0.5 : 1 }}>
+                    <b style={{ fontWeight: 600 }}>{tier.label}</b>
+                    <span style={memberNoteStyle}>
+                      {tier.priceLabel}
+                      {none ? ' \u2014 coworking tier' : ''}
+                    </span>
+                  </td>
+                  <td style={memberCellStyle}>
+                    {none && (
+                      <>
+                        <span style={{ opacity: 0.5 }}>None</span>
+                        <span style={memberNoteStyle}>No ticket discount at this time</span>
+                      </>
+                    )}
+                    {policy.policy === TICKET_DISCOUNT_POLICY.WEEKEND_MUSIC_FIXED && (
+                      <>
+                        {policy.percent}%
+                        <span style={memberNoteStyle}>Fixed by the tier</span>
+                      </>
+                    )}
+                    {perEvent && (
+                      <>
+                        <input
+                          type="number"
+                          min="0"
+                          max={policy.maxPercent ?? 100}
+                          step="1"
+                          value={memberDiscountIykyk}
+                          onChange={(e) => setMemberDiscountIykyk(e.target.value)}
+                          disabled={savingMemberDiscounts}
+                          placeholder="0"
+                          aria-label={`${tier.label} discount percent`}
+                          style={{
+                            width: 62, padding: '6px 8px', background: 'transparent',
+                            color: 'inherit', border: '1px solid var(--auth-accent, #7cf)',
+                            borderRadius: 4, fontSize: 13, textAlign: 'right',
+                          }}
+                        />
+                        {' %'}
+                        <span style={{ ...memberNoteStyle, display: 'inline', marginLeft: 7 }}>
+                          max {policy.maxPercent}
+                        </span>
+                      </>
+                    )}
+                  </td>
+                  <td style={memberCellStyle}>
+                    {none ? (
+                      <MemberPricingStatus percent={0} reason="not offered" />
+                    ) : (
+                      <MemberPricingStatus
+                        percent={percentForTier(tier)}
+                        reason={perEvent ? 'no percent set' : 'weekend music only'}
+                      />
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        {/* WHAT A MEMBER ACTUALLY PAYS \u2014 resolved against this event's real
+            prices so nobody has to do percentage arithmetic in their head, and
+            so a discounted non-ticket product (a private-space rental sold on
+            the same event) is impossible to miss. */}
+        {previewLines.length > 0 && (
+          <div style={{ marginTop: 22, paddingTop: 18, borderTop: '1px solid var(--auth-border, #333)' }}>
+            <div style={{ fontSize: 10.5, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.55, fontWeight: 600, marginBottom: 10 }}>
+              What a member actually pays
+            </div>
+            {[
+              { label: 'Trial pass / Weekender', percent: trialPassPercent },
+              { label: 'The Insider', percent: percentForTier(MEMBERSHIP_TIER_LIST.find((t) => t.key === 'iykyk')) },
+              { label: 'The Builder / guest', percent: 0 },
+            ].map((row) => (
+              <div key={row.label} style={{ display: 'flex', gap: 14, fontSize: 12.5, marginBottom: 8, lineHeight: 1.7 }}>
+                <span style={{ minWidth: 168, flex: '0 0 auto', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.5 }}>
+                  {row.label}
+                </span>
+                {/* One line per price when more than one product is on sale,
+                    so a rental's before/after can't wrap away from its name. */}
+                <span style={{ minWidth: 0 }}>
+                  {previewLines.map((l, i) => (
+                    <span key={`${l.product}-${l.tier}-${i}`} style={multiProduct ? { display: 'block' } : undefined}>
+                      {i > 0 && !multiProduct && <span style={{ opacity: 0.3 }}>{' \u00b7 '}</span>}
+                      <span style={{ opacity: 0.9 }}>
+                        {multiProduct ? `${l.product} \u2013 ${l.tier}` : l.tier}
+                      </span>{' '}
+                      {row.percent > 0 ? (
+                        <>
+                          <span style={{ opacity: 0.55 }}>{money(l.cents)}</span>
+                          <span style={{ opacity: 0.35 }}>{' \u2192 '}</span>
+                          <b style={{ color: '#8fd39a', fontWeight: 600 }}>
+                            {money(l.cents - Math.floor((l.cents * row.percent) / 100))}
+                          </b>
+                        </>
+                      ) : (
+                        <span style={{ opacity: 0.55 }}>{money(l.cents)}</span>
+                      )}
+                    </span>
+                  ))}
+                </span>
+              </div>
+            ))}
+            <p style={{ margin: '10px 0 0 0', fontSize: 11, opacity: 0.5, lineHeight: 1.5 }}>
+              Discounts come off the ticket price only, never the booking fee, and they never stack with a
+              discount code &mdash; a buyer with both gets whichever is worth more.
+            </p>
           </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 12, opacity: 0.75, marginBottom: 4 }}>
-              Experience Member (%)
-            </label>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              step="1"
-              value={memberDiscountIykyk}
-              onChange={(e) => setMemberDiscountIykyk(e.target.value)}
-              disabled={savingMemberDiscounts}
-              placeholder="e.g. 60"
-              style={{
-                padding: '6px 8px',
-                background: 'transparent',
-                color: 'inherit',
-                border: '1px solid var(--auth-border, #333)',
-                borderRadius: 4,
-                fontSize: 13,
-                width: 110,
-              }}
-            />
-          </div>
-          <button
-            type="button"
-            onClick={saveMemberDiscounts}
-            disabled={!memberDiscountsDirty || savingMemberDiscounts}
-            className="auth-theme-border-button px-3 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border"
-            style={{ opacity: memberDiscountsDirty ? 1 : 0.5 }}
-          >
-            {savingMemberDiscounts ? 'SAVING…' : memberDiscountsDirty ? 'SAVE MEMBER DISCOUNTS' : 'SAVED'}
-          </button>
-        </div>
+        )}
+
+        <button
+          type="button"
+          onClick={saveMemberDiscounts}
+          disabled={!memberDiscountsDirty || savingMemberDiscounts}
+          className="auth-theme-border-button px-3 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border"
+          style={{ marginTop: 22, opacity: memberDiscountsDirty ? 1 : 0.5 }}
+        >
+          {savingMemberDiscounts ? 'SAVING\u2026' : memberDiscountsDirty ? 'SAVE MEMBER PRICING' : 'SAVED'}
+        </button>
         {memberDiscountError && (
           <div style={{ color: '#f66', marginTop: 8, fontSize: 13 }}>{memberDiscountError}</div>
         )}
