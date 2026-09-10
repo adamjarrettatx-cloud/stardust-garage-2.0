@@ -82,7 +82,7 @@ export async function POST(request, { params }) {
         paymentIntentId: order.stripe_payment_intent_id,
         amountCents: amountCents,
         reason: body.reason || 'requested_by_customer',
-        metadata: { order_id: order.id, admin_user_id: gate.user.id },
+        orderId: order.id,
       });
 
       const refunded = Number(refund.amount) || 0;

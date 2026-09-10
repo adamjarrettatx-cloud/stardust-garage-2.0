@@ -43,7 +43,13 @@ function builder(table) {
 
 const admin = {
   from: (table) => builder(table),
-  storage: { from: () => ({ remove: (paths) => { state.calls.push({ table: 'profile-photos', action: 'remove', paths }); return Promise.resolve({ error: null }); } }) },
+  storage: { from: (table) => ({
+    list: (prefix) => {
+      state.calls.push({ table, action: 'list', prefix });
+      return Promise.resolve({ data: table === 'member-photos' ? [{ name: 'legacy-avatar.jpg' }] : [], error: null });
+    },
+    remove: (paths) => { state.calls.push({ table, action: 'remove', paths }); return Promise.resolve({ error: null }); },
+  }) },
   auth: { admin: {
     signOut: (id) => { state.calls.push({ table: 'auth.users', action: 'signOut', id }); return Promise.resolve({ error: null }); },
     deleteUser: (id) => { state.calls.push({ table: 'auth.users', action: 'deleteUser', id }); return Promise.resolve({ error: null }); },
@@ -108,6 +114,9 @@ describe('POST /api/account/delete', () => {
       expect.objectContaining({ table: 'auth.users', action: 'signOut', id: userId }),
       expect.objectContaining({ table: 'member_identity_tokens', action: 'update', values: expect.objectContaining({ revoke_reason: 'account_deleted' }) }),
       expect.objectContaining({ table: 'orders', action: 'update', values: { buyer_email: `deleted-user-${userId}@removed`, buyer_name: 'Deleted User', user_id: null } }),
+      expect.objectContaining({ table: 'waiver_acceptances', action: 'update', values: { user_id: null, deleted_user_email: `${userId}@example.test` } }),
+      expect.objectContaining({ table: 'ticket_holds', action: 'update', values: expect.objectContaining({ buyer_email: `deleted-user-${userId}@removed`, stripe_checkout_session_id: null }) }),
+      expect.objectContaining({ table: 'member-photos', action: 'remove', paths: [`${userId}/legacy-avatar.jpg`] }),
       expect.objectContaining({ table: 'member_profiles', action: 'delete' }),
       expect.objectContaining({ table: 'account_deletions', action: 'insert', values: expect.objectContaining({ deleted_user_id: userId, deleted_email: `${userId}@example.test`, reason: 'No longer using it' }) }),
       expect.objectContaining({ table: 'auth.users', action: 'deleteUser', id: userId }),
