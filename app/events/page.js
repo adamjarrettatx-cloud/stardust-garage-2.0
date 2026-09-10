@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { isEventStillListable } from '@/lib/events/is-event-listable';
 
 export const revalidate = 0;
 
@@ -28,16 +29,13 @@ export default async function EventsPage() {
 
   const eventList = events || [];
 
-  // Compute "today" in Austin/Central Time, not UTC.
-  const todayInAustin = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Chicago',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
-  const today = new Date(todayInAustin + 'T00:00:00');
-
-  const upcoming = eventList.filter((e) => new Date(e.event_date + 'T00:00:00') >= today);
+  // Time-aware cutoff (see lib/events/is-event-listable.js):
+  //  * If the row has a specific end time, hide it once that end has passed.
+  //  * If the end is missing/LATE/TBD, hide N hours after the start —
+  //    6h if start >= 9:55 PM CT, otherwise 8h.
+  //  * If neither is parseable, fall back to the end of the event day in CT.
+  const now = new Date();
+  const upcoming = eventList.filter((e) => isEventStillListable(e, now));
 
   return (
     <main className="max-w-[1180px] mx-auto px-4 md:px-6 py-12 md:py-16">

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { isEventStillListable } from '@/lib/events/is-event-listable';
 import Wordmark from '../components/Wordmark';
 import PortalTile from '../components/PortalTile';
 import EventsTile from '../components/EventsTile';
@@ -14,11 +15,10 @@ export default async function HomePage() {
   // internal micro-party events (visibility = 'internal') must not surface here.
   const { data: allEvents } = await supabase.from('events').select('*').eq('status', 'published').eq('visibility', 'public').order('event_date', { ascending: true });
 
-  const today = new Date();
-  const todayInAustin = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(today);
-  const todayDate = new Date(todayInAustin + 'T00:00:00');
-
-  const events = (allEvents || []).filter((e) => new Date(e.event_date + 'T00:00:00') >= todayDate).slice(0, 3);
+  // Time-aware cutoff (see lib/events/is-event-listable.js) — hides events
+  // after their end time, or after start + 6h/8h when the end is vague.
+  const now = new Date();
+  const events = (allEvents || []).filter((e) => isEventStillListable(e, now)).slice(0, 3);
 
   return (
     <>
