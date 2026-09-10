@@ -113,3 +113,38 @@ grant execute on function public.create_own_free_account(text, text, text) to au
 grant execute on function public.update_own_free_account_display(text, text, text) to authenticated;
 
 commit;
+
+begin;
+
+-- ---------------------------------------------------------------------------
+-- DB-03: unlisted event products and tiers are never anonymously enumerable.
+-- ---------------------------------------------------------------------------
+drop policy if exists ticket_products_public_read on public.ticket_products;
+create policy ticket_products_public_read on public.ticket_products
+  for select using (
+    is_active = true
+    and exists (
+      select 1 from public.events e
+      where e.id = ticket_products.event_id
+        and e.status = 'published'
+        and e.ticketing_mode = 'internal'
+        and e.visibility = 'public'
+    )
+  );
+
+drop policy if exists ticket_price_tiers_public_read on public.ticket_price_tiers;
+create policy ticket_price_tiers_public_read on public.ticket_price_tiers
+  for select using (
+    is_active = true
+    and exists (
+      select 1 from public.ticket_products p
+      join public.events e on e.id = p.event_id
+      where p.id = ticket_price_tiers.product_id
+        and p.is_active = true
+        and e.status = 'published'
+        and e.ticketing_mode = 'internal'
+        and e.visibility = 'public'
+    )
+  );
+
+commit;
