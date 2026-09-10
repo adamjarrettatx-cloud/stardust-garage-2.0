@@ -177,3 +177,46 @@ test('addDays handles month boundaries', () => {
   assert.equal(addDays('2026-12-31', 1), '2027-01-01');
   assert.equal(addDays('2026-03-07', 1), '2026-03-08');
 });
+
+test('required direct-route listability boundaries', () => {
+  const endedYesterday = {
+    event_date: '2026-09-09',
+    event_time: '6 PM',
+    event_end_time: '8 PM',
+  };
+  assert.equal(isEventStillListable(endedYesterday, CT('2026-09-10', 12)), false);
+
+  const endingInTwoHours = {
+    event_date: '2026-09-10',
+    event_time: '6 PM',
+    event_end_time: '10 PM',
+  };
+  assert.equal(isEventStillListable(endingInTwoHours, CT('2026-09-10', 20)), true);
+
+  const vagueEndTonight = {
+    event_date: '2026-09-10',
+    event_time: '6 PM',
+    event_end_time: 'LATE',
+  };
+  assert.equal(isEventStillListable(vagueEndTonight, CT('2026-09-11', 1, 59)), true);
+  assert.equal(isEventStillListable(vagueEndTonight, CT('2026-09-11', 2, 0)), false);
+
+  const tomorrow = {
+    event_date: '2026-09-11',
+    event_time: '6 PM',
+    event_end_time: '8 PM',
+  };
+  assert.equal(isEventStillListable(tomorrow, CT('2026-09-10', 12)), true);
+});
+
+test('DST fall-back math keeps events listable until their elapsed-time cutoff', () => {
+  const event = {
+    event_date: '2026-10-31',
+    event_time: '10 PM - LATE',
+    event_end_time: null,
+  };
+  // 10 PM CDT + 6 elapsed hours crosses the Nov. 1 fall-back transition and
+  // expires at 3 AM CST, rather than 4 AM by naive wall-clock arithmetic.
+  assert.equal(isEventStillListable(event, CT('2026-11-01', 2, 59)), true);
+  assert.equal(isEventStillListable(event, CT('2026-11-01', 3, 0)), false);
+});

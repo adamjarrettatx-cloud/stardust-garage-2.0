@@ -50,8 +50,9 @@ async function emailCodeRow(supabaseAdmin, row) {
 // Daily Vercel cron. Sends codes scheduled for today and catches new members.
 export async function GET(request) {
   try {
+    const cronSecret = process.env.CRON_SECRET;
     const authHeader = request.headers.get('authorization');
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

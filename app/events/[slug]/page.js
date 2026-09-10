@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import EventDetail from '../_components/EventDetail';
 import { isUnlistedEvent } from '@/lib/event-visibility';
+import { isEventStillListable } from '@/lib/events/is-event-listable';
 
 export const revalidate = 0;
 
@@ -49,6 +50,7 @@ export default async function EventPage({ params, searchParams }) {
   const event = await getPublicOrSharedEvent(supabase, slug, token, '*');
 
   if (!event) notFound();
+  if (!isEventStillListable(event)) notFound();
   const unlisted = isUnlistedEvent(event);
 
   return (
