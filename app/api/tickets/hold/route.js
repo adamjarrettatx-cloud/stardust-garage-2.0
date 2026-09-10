@@ -144,7 +144,16 @@ export async function POST(request) {
   // --- Load event and gate on ticketing_mode + published ------------------
   const { data: event } = await supabaseAdmin
     .from('events')
-    .select('id, title, status, visibility, share_token, ticketing_mode, booking_fee_cents_default, required_membership_tier')
+    // The member-pricing columns and the weekend-music flag are part of this
+    // select because resolveEntitlementPercent() reads them off this row. Left
+    // out, every buyer silently resolves to 0% off and the feature is inert.
+    .select(
+      'id, title, status, visibility, share_token, ticketing_mode, ' +
+      'booking_fee_cents_default, required_membership_tier, ' +
+      'is_weekend_music_experience, member_discount_percent_trial, ' +
+      'member_discount_percent_weekender, member_discount_percent_cowork, ' +
+      'member_discount_percent_iykyk'
+    )
     .eq('id', eventId)
     .maybeSingle();
   if (!event || event.status !== 'published' || event.ticketing_mode !== 'internal') {
@@ -381,7 +390,11 @@ export async function POST(request) {
   if (shareTokenErr) {
     console.error('ticket hold share token update failed:', shareTokenErr);
     await supabaseAdmin.rpc('release_ticket_hold', { p_hold_id: holdId }).catch(() => {});
-    if (discountCode) {
+    // Only roll the counter back if the code was actually the discount that
+    // got applied. When an automatic entitlement beat the typed code, its
+    // redemption was never incremented, so "restoring" it here would hand out
+    // a free extra use of the code.
+    if (codeWasApplied) {
       await supabaseAdmin
         .from('ticket_discount_codes')
         .update({ redemptions_count: discountCode.redemptions_count })

@@ -96,7 +96,14 @@ export default async function EditEventPage({ params }) {
             initialTicketUrl={event.ticket_url}
             initialTtSeriesId={event.tt_event_series_id}
             initialBookingFeeCentsDefault={event.booking_fee_cents_default ?? 295}
-            initialMemberDiscountPercentIykyk={event.member_discount_percent_iykyk ?? null}
+            // Keyed by column name so the panel can seed one box per
+            // membership straight from lib/membership-tiers.js.
+            initialMemberDiscounts={{
+              member_discount_percent_trial: event.member_discount_percent_trial ?? null,
+              member_discount_percent_weekender: event.member_discount_percent_weekender ?? null,
+              member_discount_percent_cowork: event.member_discount_percent_cowork ?? null,
+              member_discount_percent_iykyk: event.member_discount_percent_iykyk ?? null,
+            }}
             initialIsWeekendMusicExperience={!!event.is_weekend_music_experience}
             // Event start date + free-text start time. The ticketing panel uses
             // these to render the 'Ticket Sales End … hours after doors open'

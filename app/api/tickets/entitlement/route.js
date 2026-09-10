@@ -30,7 +30,7 @@ export async function GET(request) {
 
   const { data: event } = await admin
     .from('events')
-    .select('id, category, is_weekend_music_experience, member_discount_percent, member_discount_percent_cowork, member_discount_percent_iykyk')
+    .select('id, is_weekend_music_experience, member_discount_percent_trial, member_discount_percent_weekender, member_discount_percent_cowork, member_discount_percent_iykyk')
     .eq('id', eventId)
     .maybeSingle();
   if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
