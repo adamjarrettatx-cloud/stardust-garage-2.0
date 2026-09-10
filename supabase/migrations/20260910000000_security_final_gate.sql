@@ -148,3 +148,42 @@ create policy ticket_price_tiers_public_read on public.ticket_price_tiers
   );
 
 commit;
+
+begin;
+
+-- ---------------------------------------------------------------------------
+-- DB-04: only server-side service-role work may consume a discount redemption.
+-- ---------------------------------------------------------------------------
+create or replace function public.increment_discount_code_redemption(
+  p_code_id uuid
+) returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  updated int;
+begin
+  if auth.role() is distinct from 'service_role' then
+    raise exception 'permission denied for function increment_discount_code_redemption'
+      using errcode = '42501';
+  end if;
+
+  update public.ticket_discount_codes
+     set redemptions_count = redemptions_count + 1,
+         updated_at = now()
+   where id = p_code_id
+     and is_active = true
+     and (max_redemptions is null or redemptions_count < max_redemptions);
+
+  get diagnostics updated = row_count;
+  if updated = 0 then
+    raise exception 'DISCOUNT_CODE_UNAVAILABLE';
+  end if;
+end;
+$$;
+
+revoke all on function public.increment_discount_code_redemption(uuid) from public, anon, authenticated;
+grant execute on function public.increment_discount_code_redemption(uuid) to service_role;
+
+commit;
