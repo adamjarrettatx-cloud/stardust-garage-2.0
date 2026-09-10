@@ -64,6 +64,7 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
     const qs = new URLSearchParams({ event_id: eventId });
     const list = Array.isArray(codes) ? codes : [];
     if (list.length) qs.set('codes', list.join(','));
+    if (shareToken) qs.set('share_token', shareToken);
     if (preview) qs.set('preview', '1');
     const res = await fetch(`/api/tickets/availability?${qs.toString()}`, { cache: 'no-store' });
     if (!res.ok) throw new Error(`Availability lookup failed (${res.status})`);

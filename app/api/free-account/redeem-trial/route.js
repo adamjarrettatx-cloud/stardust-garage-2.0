@@ -51,6 +51,9 @@ export async function POST(request) {
       { status: 400 },
     );
   }
+  if (!freeAccount.phone_verified_at) {
+    return NextResponse.json({ error: 'PHONE_NOT_VERIFIED' }, { status: 403 });
+  }
 
   const data = validateTrialPassIntake({
     fullName: freeAccount.full_name,
@@ -65,7 +68,7 @@ export async function POST(request) {
     data: data.data,
     siteUrl: resolveSiteUrl(request),
     signupSource: TRIAL_PASS_SOURCE_SELF_SERVE,
-    phoneVerified: true,
+    phoneVerified: !!freeAccount.phone_verified_at,
   });
   if (!issued.ok) {
     return NextResponse.json({ error: issued.error, field: issued.field }, { status: issued.status || 500 });
