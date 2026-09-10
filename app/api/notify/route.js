@@ -1,39 +1,55 @@
 import { NextResponse } from 'next/server';
 import {
   sendInternalNotification,
-  sendUserConfirmation,
 } from '@/lib/email';
+import { keyFromRequest, rateLimit } from '@/lib/rate-limit';
 
 // POST /api/notify
-// Body: { formType: string, data: object, email?: string }
+// Body: { formType: string, data: object }
 //
 // formType — one of: 'signup', 'membership_application',
 //   'venue_inquiry', 'micro_party_inquiry', 'collaboration'
 // data — the form data (used in the internal notification email)
-// email — the submitter's email (used to send them a confirmation)
-//
-// Sends both emails in parallel. Returns 200 even if one fails — we
-// don't want a missed email to break the user's success state. Errors
-// are logged for the team to inspect.
-export async function POST(request) {
-  try {
-    const { formType, data, email } = await request.json();
+// This endpoint only sends the internal notification to the fixed admin inbox
+// in lib/email.js. It never sends to a caller-controlled email address.
+const ALLOWED_FORM_TYPES = new Set([
+  'signup',
+  'membership_application',
+  'venue_inquiry',
+  'micro_party_inquiry',
+  'collaboration',
+]);
 
-    if (!formType) {
-      return NextResponse.json({ error: 'Missing formType' }, { status: 400 });
+export async function POST(request) {
+  const limit = rateLimit({
+    key: keyFromRequest(request, 'notify'),
+    limit: 5,
+    windowMs: 60 * 1000,
+  });
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } },
+    );
+  }
+
+  try {
+    const { formType, data } = await request.json();
+
+    if (!ALLOWED_FORM_TYPES.has(formType)) {
+      return NextResponse.json({ error: 'Invalid formType' }, { status: 400 });
     }
 
-    const results = await Promise.allSettled([
-      sendInternalNotification({ formType, data: data || {} }),
-      email ? sendUserConfirmation({ formType, email }) : Promise.resolve(null),
-    ]);
+    const results = await Promise.allSettled([sendInternalNotification({
+      formType,
+      data: data && typeof data === 'object' && !Array.isArray(data) ? data : {},
+    })]);
 
     // Log failures but don't fail the request — the form submission
     // already saved to Supabase. Email failures are a soft error.
-    results.forEach((r, i) => {
+    results.forEach((r) => {
       if (r.status === 'rejected') {
-        const which = i === 0 ? 'internal notification' : 'user confirmation';
-        console.error(`Email send failed (${which}):`, r.reason?.message || r.reason);
+        console.error('Email send failed (internal notification):', r.reason?.message || r.reason);
       }
     });
 

@@ -18,7 +18,7 @@ function loadFreeAccountPost(deps) {
     .replace('export async function POST', 'async function POST');
   return new Function(
     'NextResponse', 'createAdminClient', 'isSupabaseConfigured', 'validateTrialPassIntake',
-    'checkVerification', 'isTwilioVerifyConfigured',
+    'checkVerification', 'isTwilioVerifyConfigured', 'rateLimit', 'keyFromRequest', 'hashRateLimitKey',
     `${source}\nreturn POST;`,
   )(
     { json: (body, init = {}) => ({ body, status: init.status || 200 }) },
@@ -27,10 +27,13 @@ function loadFreeAccountPost(deps) {
     validateTrialPassIntake,
     deps.checkVerification || (async () => ({ ok: true, approved: true })),
     () => true,
+    () => ({ ok: true, retryAfterSeconds: 1 }),
+    () => 'test-rate-limit-key',
+    (value) => `hash-${value}`,
   );
 }
 
-test('H-05: an existing free-account email returns 409 and never upserts attacker data', async () => {
+test('M-02: an existing free-account email returns the same success shape and never upserts attacker data', async () => {
   let upsertCalls = 0;
   let createUserCalls = 0;
   const freeAccountsQuery = {
@@ -54,11 +57,8 @@ test('H-05: an existing free-account email returns 409 and never upserts attacke
     }),
   });
 
-  assert.equal(response.status, 409);
-  assert.deepEqual(response.body, {
-    error: 'account_exists',
-    message: 'An account with this email already exists. Please sign in instead.',
-  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body, { ok: true });
   assert.equal(createUserCalls, 0, 'existing-account path must not reconnect auth identity');
   assert.equal(upsertCalls, 0, 'existing-account path must not update free_accounts');
 });
@@ -99,7 +99,7 @@ test('tt-publish has per-event and per-admin limits, replay guard, and attempt a
 
 test('H-01 migration makes unlisted rows token-only and public table reads public-only', () => {
   assert.match(tokenMigration, /share_token text/i);
-  assert.match(tokenMigration, /encode\(gen_random_bytes\(24\), 'base64url'\)/i);
+  assert.match(tokenMigration, /encode\(gen_random_bytes\(24\), 'base64'\)/i);
   assert.match(tokenMigration, /where visibility = 'unlisted' and share_token is null/i);
   assert.match(tokenMigration, /visibility = 'public'/i);
   assert.doesNotMatch(tokenMigration, /visibility in \('public', 'unlisted'\)/i);

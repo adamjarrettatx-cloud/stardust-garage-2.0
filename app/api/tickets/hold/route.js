@@ -346,6 +346,25 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Could not reserve tickets' }, { status: 500 });
   }
 
+  // Stamp the authorization capability before any network call to Stripe.
+  // This closes the public -> unlisted transition window even while Checkout
+  // Session creation is still in flight.
+  const { error: shareTokenErr } = await supabaseAdmin
+    .from('ticket_holds')
+    .update({ share_token: shareToken })
+    .eq('id', holdId);
+  if (shareTokenErr) {
+    console.error('ticket hold share token update failed:', shareTokenErr);
+    await supabaseAdmin.rpc('release_ticket_hold', { p_hold_id: holdId }).catch(() => {});
+    if (discountCode) {
+      await supabaseAdmin
+        .from('ticket_discount_codes')
+        .update({ redemptions_count: discountCode.redemptions_count })
+        .eq('id', discountCode.id);
+    }
+    return NextResponse.json({ error: 'Could not secure ticket hold' }, { status: 500 });
+  }
+
   // Re-load the hold so we can pass a full row to the Stripe helper.
   const { data: hold } = await supabaseAdmin
     .from('ticket_holds')

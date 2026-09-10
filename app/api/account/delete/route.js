@@ -177,6 +177,48 @@ export async function POST(request) {
       memberProfileIds,
     });
 
+    // 4. Preserve waiver evidence while disconnecting its auth FK. This must
+    // happen before deleting auth.users; the migration permits only this
+    // narrowly-scoped immutable-record anonymization.
+    await required(
+      'waiver acceptance anonymization',
+      admin
+        .from('waiver_acceptances')
+        .update({ user_id: null, deleted_user_email: user.email })
+        .eq('user_id', user.id),
+    );
+
+    // Holds can retain a buyer email and Stripe Checkout session identifier
+    // even if the user never completed payment. Scrub both lookup paths.
+    await required(
+      'ticket hold anonymization by user',
+      admin
+        .from('ticket_holds')
+        .update({
+          buyer_email: anonymousEmail,
+          user_id: null,
+          stripe_checkout_session_id: null,
+        })
+        .eq('user_id', user.id),
+    );
+    await required(
+      'ticket hold anonymization by email',
+      admin
+        .from('ticket_holds')
+        .update({ buyer_email: anonymousEmail, stripe_checkout_session_id: null })
+        .eq('buyer_email', user.email.toLowerCase()),
+    );
+    // Orders are accounting records, so retain their anonymized row but remove
+    // the stored Checkout Session reference. There are no checkout-session
+    // identifiers stored only in Stripe metadata in this application.
+    await required(
+      'order checkout session scrubbing',
+      admin
+        .from('orders')
+        .update({ stripe_checkout_session_id: null })
+        .or(ordersFilter),
+    );
+
     // Remove profile photos from storage while their paths are still known.
     const profilePhotoPaths = [
       ...memberProfiles.map((profile) => profile.profile_photo_path),
@@ -187,11 +229,35 @@ export async function POST(request) {
       await required('profile photo deletion', admin.storage.from('profile-photos').remove(profilePhotoPaths));
     }
 
-    // 4. Delete personal records. Deleting member_profiles intentionally
+    // Legacy partner profile photos use the member-photos bucket and are
+    // always namespaced at <auth-user-id>/. List and remove the full prefix so
+    // orphaned historical uploads do not survive account deletion.
+    const memberPhotoBucket = admin.storage.from('member-photos');
+    let memberPhotoOffset = 0;
+    let memberPhotoObjects;
+    do {
+      const { data, error: memberPhotoListError } = await memberPhotoBucket.list(user.id, {
+        limit: 1000,
+        offset: memberPhotoOffset,
+      });
+      if (memberPhotoListError) {
+        throw new Error(`member photo listing: ${memberPhotoListError.message || String(memberPhotoListError)}`);
+      }
+      memberPhotoObjects = data || [];
+      const memberPhotoPaths = memberPhotoObjects
+        .filter((entry) => entry?.name)
+        .map((entry) => `${user.id}/${entry.name}`);
+      if (memberPhotoPaths.length) {
+        await required('member photo deletion', memberPhotoBucket.remove(memberPhotoPaths));
+      }
+      memberPhotoOffset += memberPhotoObjects.length;
+    } while (memberPhotoObjects.length === 1000);
+
+    // 5. Delete personal records. Deleting member_profiles intentionally
     // cascades remaining member-scoped data such as identity-token rows.
     await deleteOwnedRecords({ admin, userId: user.id, memberProfileIds });
 
-    // 5. The service-role-only audit row is created before the auth record is
+    // 6. The service-role-only audit row is created before the auth record is
     // removed, retaining a minimal immutable compliance record.
     const { data: auditRow, error: auditError } = await admin
       .from('account_deletions')
@@ -206,14 +272,14 @@ export async function POST(request) {
     if (auditError) throw new Error(`account deletion audit: ${auditError.message || String(auditError)}`);
     deletedAt = auditRow.completed_at;
 
-    // 6. Auth identity is the final irreversible database operation.
+    // 7. Auth identity is the final irreversible database operation.
     const { error: deleteUserError } = await admin.auth.admin.deleteUser(user.id);
     if (deleteUserError) throw new Error(`auth user deletion: ${deleteUserError.message || String(deleteUserError)}`);
   } catch (error) {
     return failure('deletion workflow', error);
   }
 
-  // 7. Email only after successful auth deletion. A provider outage is logged
+  // 8. Email only after successful auth deletion. A provider outage is logged
   // but cannot turn an already-completed deletion into a misleading 500.
   try {
     await sendAccountDeletionConfirmation({ email: user.email });

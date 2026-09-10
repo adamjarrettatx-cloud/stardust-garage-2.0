@@ -3,9 +3,21 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/stub';
 import { validateTrialPassIntake } from '@/lib/trial-pass';
 import { checkVerification, isTwilioVerifyConfigured } from '@/lib/twilio-verify';
+import { hashRateLimitKey, keyFromRequest, rateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+const IP_RATE_LIMIT = Object.freeze({ limit: 10, windowMs: 60 * 1000 });
+const PHONE_RATE_LIMIT = Object.freeze({ limit: 5, windowMs: 60 * 60 * 1000 });
+const EMAIL_RATE_LIMIT = Object.freeze({ limit: 5, windowMs: 60 * 60 * 1000 });
+
+function limitedResponse(result) {
+  return NextResponse.json(
+    { error: 'Too many attempts. Please try again later.' },
+    { status: 429, headers: { 'Retry-After': String(result.retryAfterSeconds) } },
+  );
+}
 
 // POST /api/free-account/verify/check
 // Body: { fullName, phone, email, password, code }
@@ -25,6 +37,12 @@ export const dynamic = 'force-dynamic';
 // already have an authenticated Supabase session and finish verification at
 // /api/free-account/complete-profile instead.
 export async function POST(request) {
+  const ipLimit = rateLimit({
+    key: keyFromRequest(request, 'free-account-verify-check'),
+    ...IP_RATE_LIMIT,
+  });
+  if (!ipLimit.ok) return limitedResponse(ipLimit);
+
   let body;
   try {
     body = await request.json();
@@ -46,6 +64,20 @@ export async function POST(request) {
   if (password.length < 8) {
     return NextResponse.json({ error: 'Password must be at least 8 characters.', field: 'password' }, { status: 400 });
   }
+
+  // This in-memory limiter is intentionally only a per-instance guardrail.
+  // Move these buckets to Redis/Upstash before relying on them across multiple
+  // serverless instances.
+  const phoneLimit = rateLimit({
+    key: `free-account-verify-check:phone:${hashRateLimitKey(data.phone)}`,
+    ...PHONE_RATE_LIMIT,
+  });
+  if (!phoneLimit.ok) return limitedResponse(phoneLimit);
+  const emailLimit = rateLimit({
+    key: `free-account-verify-check:email:${hashRateLimitKey(data.email_canonical || data.email)}`,
+    ...EMAIL_RATE_LIMIT,
+  });
+  if (!emailLimit.ok) return limitedResponse(emailLimit);
 
   if (!isTwilioVerifyConfigured()) {
     console.error('[free-account.verify.check] TWILIO_* env not set');
@@ -86,13 +118,9 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Could not create account.' }, { status: 500 });
   }
   if (existingFreeAccount) {
-    return NextResponse.json(
-      {
-        error: 'account_exists',
-        message: 'An account with this email already exists. Please sign in instead.',
-      },
-      { status: 409 },
-    );
+    // Keep a successful verification indistinguishable from a new signup.
+    // This route must never act as an account-email oracle.
+    return NextResponse.json({ ok: true });
   }
 
   const { data: created, error: createError } = await admin.auth.admin.createUser({
@@ -109,13 +137,9 @@ export async function POST(request) {
     const existingUser = createError.code === 'user_already_exists'
       || createError.message?.toLowerCase().includes('already registered');
     if (existingUser) {
-      return NextResponse.json(
-        {
-          error: 'account_exists',
-          message: 'An account with this email already exists. Please sign in instead.',
-        },
-        { status: 409 },
-      );
+      // A race with another signup (or an existing auth-only identity) gets
+      // the same response as a newly created free account.
+      return NextResponse.json({ ok: true });
     }
     console.error('[free-account.verify.check.create-user]', createError);
     return NextResponse.json({ error: 'Could not create account.' }, { status: 500 });
@@ -140,5 +164,5 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Could not save profile.' }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, userId });
+  return NextResponse.json({ ok: true });
 }
