@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchPriorDenials } from '@/lib/capacity/denial-lookup';
+import { fetchPriorDenials, fetchDoorSessionStart } from '@/lib/capacity/denial-lookup';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/stub';
 import { requireTeam } from '@/lib/auth-helpers';
@@ -170,7 +170,9 @@ export async function POST(request) {
   if (eventId) {
     const { data: eventRow, error: eventError } = await admin
       .from('events')
-      .select('id, title, event_date, category')
+      // is_weekend_music_experience is what decides door eligibility. Leaving
+      // it out reads as undefined and denies every trial pass.
+      .select('id, title, event_date, category, is_weekend_music_experience')
       .eq('id', eventId)
       .maybeSingle();
     if (eventError) {
@@ -223,8 +225,12 @@ export async function POST(request) {
     // Prior denials for the PERSON, all-time. Wrapped so a failed history read
     // can never stop the door from admitting someone.
     let priorDenials = [];
+    let sessionStartedAt = null;
     try {
-      priorDenials = await fetchPriorDenials(admin, { kind: 'trial_pass', trialPassId: pass.id });
+      [priorDenials, sessionStartedAt] = await Promise.all([
+        fetchPriorDenials(admin, { kind: 'trial_pass', trialPassId: pass.id }),
+        fetchDoorSessionStart(admin, doorSessionId),
+      ]);
     } catch (err) {
       console.error('[door.trial-pass.scan.priorDenials]', err?.message || err);
     }
@@ -235,6 +241,7 @@ export async function POST(request) {
       reason: decision.reason,
       staffAction: decision.staffAction || null,
       prior_denials: priorDenials,
+      session_started_at: sessionStartedAt,
       guest: {
         // First name only. Enough for the attendant to greet them and match
         // the face to the phone; not a contact record handed to a door device.

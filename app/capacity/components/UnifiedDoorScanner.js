@@ -616,6 +616,8 @@ function buildPreviewVM(source, requestBody, json) {
       token: requestBody.code,
       activityId: `ticket:${ticket?.id || requestBody.code}`,
       priorDenials: Array.isArray(json.prior_denials) ? json.prior_denials : [],
+    sessionStartedAt: Number.isFinite(json.session_started_at) ? json.session_started_at : null,
+      sessionStartedAt: Number.isFinite(json.session_started_at) ? json.session_started_at : null,
       name: buyer.displayName || buyer.email || 'Ticket holder',
       firstName: buyer.firstName || buyer.displayName || 'Guest',
       subhead: isAllowed
@@ -641,6 +643,8 @@ function buildPreviewVM(source, requestBody, json) {
       token: requestBody.token,
       activityId: `member:${m.memberProfileId || requestBody.token}`,
       priorDenials: Array.isArray(json.prior_denials) ? json.prior_denials : [],
+    sessionStartedAt: Number.isFinite(json.session_started_at) ? json.session_started_at : null,
+      sessionStartedAt: Number.isFinite(json.session_started_at) ? json.session_started_at : null,
       name: m.fullName || m.firstName || 'Member',
       firstName: m.firstName || 'Member',
       subhead: (m.isActive ? 'Active' : 'Inactive') + (m.tierLabel ? ` · ${m.tierLabel}` : ''),
@@ -663,6 +667,7 @@ function buildPreviewVM(source, requestBody, json) {
     token: requestBody.token,
     activityId: `trial:${g.passId || requestBody.token}`,
     priorDenials: Array.isArray(json.prior_denials) ? json.prior_denials : [],
+    sessionStartedAt: Number.isFinite(json.session_started_at) ? json.session_started_at : null,
     name: g.firstName || 'Guest',
     firstName: g.firstName || 'Guest',
     subhead: json.reason || (isAllowed ? 'Wave them in.' : 'Denied at the door.'),
@@ -685,8 +690,11 @@ function buildPreviewVM(source, requestBody, json) {
 // the door person cannot get any other way: the guest is standing there being
 // agreeable, and the reason they were refused an hour ago is not on their face.
 // Renders nothing when there is no history, so a normal scan is unchanged.
-function PriorDenials({ denials }) {
-  const summary = summarizeDenialHistory(denials);
+function PriorDenials({ denials, sessionStartedAt = null }) {
+  // sessionStartedAt is what separates "twice tonight" from "twice before".
+  // Null (no open door session, or the lookup failed) falls back to all-time
+  // wording rather than claiming old denials happened tonight.
+  const summary = summarizeDenialHistory(denials, { sessionStartMs: sessionStartedAt });
   if (!summary) return null;
   const now = Date.now();
   const shown = [...denials].sort((a, b) => b.at - a.at).slice(0, PRIOR_DENIAL_ROWS);
@@ -861,7 +869,7 @@ function PreviewCard({
         </div>
       )}
 
-      <PriorDenials denials={preview.priorDenials} />
+      <PriorDenials denials={preview.priorDenials} sessionStartedAt={preview.sessionStartedAt} />
 
       {rejectPicker ? (
         <div>

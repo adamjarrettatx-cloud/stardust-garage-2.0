@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchPriorDenials } from '@/lib/capacity/denial-lookup';
+import { fetchPriorDenials, fetchDoorSessionStart } from '@/lib/capacity/denial-lookup';
 import { createClient } from '@supabase/supabase-js';
 import { requireTeam } from '@/lib/auth-helpers';
 import { isTicketScannerEnabled, isInternalTicketingEnabled } from '@/lib/feature-flags';
@@ -110,11 +110,13 @@ export async function POST(request) {
     // twice tonight" before deciding. Never allowed to fail the scan: a
     // history read that throws degrades to no history at all.
     let priorDenials = [];
+    let sessionStartedAt = null;
     if (ticket?.id) {
       try {
-        priorDenials = await fetchPriorDenials(supabaseAdmin, {
-          kind: 'ticket', ticketId: ticket.id,
-        });
+        [priorDenials, sessionStartedAt] = await Promise.all([
+          fetchPriorDenials(supabaseAdmin, { kind: 'ticket', ticketId: ticket.id }),
+          fetchDoorSessionStart(supabaseAdmin, doorSessionId),
+        ]);
       } catch (err) {
         console.error('[tickets.scan.priorDenials]', err?.message || err);
       }
@@ -128,6 +130,7 @@ export async function POST(request) {
         : null,
       buyer,
       prior_denials: priorDenials,
+      session_started_at: sessionStartedAt,
     });
   }
 

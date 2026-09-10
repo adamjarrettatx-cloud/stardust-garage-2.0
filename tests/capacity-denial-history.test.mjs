@@ -348,7 +348,7 @@ test('a failed history lookup can never block the door', () => {
   ]) {
     const src = readFileSync(new URL(path, import.meta.url), 'utf8');
     // The call site, not the import at the top of the file.
-    const idx = src.indexOf('await fetchPriorDenials');
+    const idx = src.lastIndexOf('fetchPriorDenials(');
     assert.ok(idx > 0, `${path} must call fetchPriorDenials`);
     const before = src.slice(Math.max(0, idx - 400), idx);
     assert.ok(/try \{/.test(before), `${path} must wrap fetchPriorDenials in try/catch`);
@@ -367,4 +367,72 @@ test('the checkins feed reads denials from all three scan tables', () => {
   ]) {
     assert.ok(src.includes(list), `feed must include ${list} in its result filter`);
   }
+});
+
+// ---- "tonight" wording ---------------------------------------------------
+//
+// The banner counted correctly from the start but said "twice before" when it
+// meant "twice tonight", because the scan routes never told the client when the
+// door session opened. These guard the wiring that fixed it.
+
+test('all three preview modes return the door session start', () => {
+  for (const path of [
+    '../app/api/tickets/scan/route.js',
+    '../app/api/capacity/trial-pass/scan/route.js',
+    '../app/api/scan/member-id/route.js',
+  ]) {
+    const src = readFileSync(new URL(path, import.meta.url), 'utf8');
+    assert.ok(src.includes('session_started_at'), `${path} must return session_started_at`);
+    assert.ok(
+      src.includes('fetchDoorSessionStart'),
+      `${path} must look the session start up`,
+    );
+  }
+});
+
+test('the scanner feeds the session start into the summary', () => {
+  const src = readFileSync(new URL('../app/capacity/components/UnifiedDoorScanner.js', import.meta.url), 'utf8');
+  assert.ok(
+    src.includes('sessionStartMs: sessionStartedAt'),
+    'summarizeDenialHistory must receive the session start, or it can never say "tonight"',
+  );
+  assert.ok(src.includes('json.session_started_at'), 'the value comes from the scan response');
+});
+
+test('the banner says tonight once a session start is known', () => {
+  const now = Date.now();
+  const rows = [
+    { at: now - 20 * 60000, label: 'Wrong event' },
+    { at: now - 70 * 60000, label: 'Rejected · Photo mismatch' },
+  ];
+  // Same rows, with and without the session start. This is the exact bug: the
+  // count was 2 either way, only the wording was wrong.
+  const withSession = summarizeDenialHistory(rows, { sessionStartMs: now - 4 * HOUR });
+  const without = summarizeDenialHistory(rows);
+  assert.equal(withSession.total, without.total, 'the count never changed');
+  assert.match(priorDenialBanner(withSession, now), /2 times tonight/);
+  assert.match(priorDenialBanner(without, now), /2 times before/);
+});
+
+// ---- Trial pass door eligibility ----------------------------------------
+//
+// Pricing reads events.is_weekend_music_experience; door access used to read a
+// category regex. They disagreed in both directions.
+
+test('door eligibility reads the manual flag, not the category', () => {
+  const src = readFileSync(new URL('../lib/trial-pass.js', import.meta.url), 'utf8');
+  assert.ok(
+    src.includes('is_weekend_music_experience === true'),
+    'eligibility must key on the manual checkbox, strictly',
+  );
+  assert.ok(
+    !src.includes('TRIAL_ELIGIBLE_CATEGORY_PATTERN'),
+    'the category regex must be gone, not merely unused',
+  );
+});
+
+test('the door query actually selects the flag it now depends on', () => {
+  // Forgetting this column would read undefined and deny every trial pass.
+  const src = readFileSync(new URL('../app/api/capacity/trial-pass/scan/route.js', import.meta.url), 'utf8');
+  assert.match(src, /select\('id, title, event_date, category, is_weekend_music_experience'\)/);
 });

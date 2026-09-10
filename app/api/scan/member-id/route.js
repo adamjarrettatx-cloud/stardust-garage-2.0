@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchPriorDenials } from '@/lib/capacity/denial-lookup';
+import { fetchPriorDenials, fetchDoorSessionStart } from '@/lib/capacity/denial-lookup';
 import { createClient } from '@supabase/supabase-js';
 import { requireTeam, getCurrentUser } from '@/lib/auth-helpers';
 import { isInternalTicketingEnabled } from '@/lib/feature-flags';
@@ -139,8 +139,12 @@ export async function POST(request) {
       : { ticket: null, productLabel: null, matchedVia: null, candidateCount: 0 };
     // Prior denials for the PERSON, all-time. Never allowed to fail the scan.
     let priorDenials = [];
+    let sessionStartedAt = null;
     try {
-      priorDenials = await fetchPriorDenials(admin, { kind: 'member_id', memberProfileId: member.id });
+      [priorDenials, sessionStartedAt] = await Promise.all([
+        fetchPriorDenials(admin, { kind: 'member_id', memberProfileId: member.id }),
+        fetchDoorSessionStart(admin, doorSessionId),
+      ]);
     } catch (err) {
       console.error('[member-id-scan.priorDenials]', err?.message || err);
     }
@@ -148,6 +152,7 @@ export async function POST(request) {
       mode: 'preview',
       member: preview,
       prior_denials: priorDenials,
+      session_started_at: sessionStartedAt,
       linked_ticket: linkedTicket.ticket
         ? {
             ticket_id: linkedTicket.ticket.id,
