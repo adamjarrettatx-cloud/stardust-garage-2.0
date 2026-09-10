@@ -223,7 +223,7 @@ export default async function TrialPassViewPage({ params }) {
         )}
 
         <p className="text-[11px] mt-6 leading-[1.6]" style={{ color: 'rgba(255,255,255,0.4)' }}>
-          Covers Friday through Sunday music events. A ticket is still required for ticketed nights.
+          Covers our Weekend Music Experiences. A ticket is still required for ticketed nights.
         </p>
       </div>
     </main>

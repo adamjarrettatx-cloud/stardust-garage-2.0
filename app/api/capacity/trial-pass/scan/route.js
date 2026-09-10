@@ -164,7 +164,7 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, result: 'not_a_pass', reason: 'This pass is no longer valid.' });
   }
 
-  // Event context, when the door passed one. Used for the Friday–Sunday music
+  // Event context, when the door passed one. Used for the Weekend Music
   // rule and for the one-scan-per-event guard.
   let event = null;
   if (eventId) {
