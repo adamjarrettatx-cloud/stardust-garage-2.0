@@ -59,12 +59,16 @@ test('the per-event ARTIST PAY button is gone from the event row', () => {
 });
 
 test('live ticket sales for the event render where the button used to sit', () => {
-  // The component is imported and mounted for every event row, with the
-  // event id and the tt-linked flag so it can decide whether to render.
+  // The component is imported and mounted for every event row. The
+  // "can this event show live sales?" flag now covers BOTH providers:
+  // internal-ticketing (first-party Stripe checkout) and TicketTailor.
+  // A free-only micro party still renders nothing.
   assert.match(EVENTS_SECTION, /import EventTicketSalesLive from '\.\/EventTicketSalesLive'/);
   assert.match(EVENTS_SECTION, /<EventTicketSalesLive/);
   assert.match(EVENTS_SECTION, /eventId=\{event\.id\}/);
-  assert.match(EVENTS_SECTION, /hasTicketTailor=\{Boolean\(event\.tt_event_series_id\)\}/);
+  assert.match(EVENTS_SECTION, /hasTicketing=\{/);
+  assert.match(EVENTS_SECTION, /event\.ticketing_mode === 'internal'/);
+  assert.match(EVENTS_SECTION, /Boolean\(event\.tt_event_series_id\)/);
   assert.match(EVENTS_SECTION, /initialMetrics=\{metricsByEvent\[event\.id\] \|\| null\}/);
 });
 
@@ -94,9 +98,13 @@ test('label halves ship in the markup, so no width guess is needed', () => {
 // --- The live ticket sales component ---------------------------------------
 
 test('the live sales component renders nothing for non-ticketed events', () => {
-  // Internal micro parties never had ticket sales, so a "0 sold" beside one
-  // would be technically true and completely uninformative.
-  assert.match(TICKETS_LIVE, /if \(!hasTicketTailor\) return null/);
+  // A free-only micro party never had ticket sales, so a "0 sold" beside
+  // one would be technically true and completely uninformative. The gate
+  // now accepts either the provider-agnostic `hasTicketing` prop or the
+  // legacy `hasTicketTailor` fallback, so we assert the empty-state test
+  // on the resolved flag instead of the raw prop.
+  assert.match(TICKETS_LIVE, /if \(!canShow\) return null/);
+  assert.match(TICKETS_LIVE, /hasTicketing/);
 });
 
 test('the live sales component reads sold and gross from the cached row', () => {
@@ -129,7 +137,9 @@ test('the sales component surfaces a not-configured status honestly', () => {
 test('the dashboard page loads cached metrics for every ticketed event', () => {
   assert.match(DASHBOARD_PAGE, /event_ticket_metrics/);
   assert.match(DASHBOARD_PAGE, /tickets_sold, gross_cents/);
-  // Scoped by tt_event_series_id so internal events do not trigger the query.
+  // The scope now covers BOTH ticketing providers so the widget shows up
+  // for internal-ticketing events too. Free-only events are still skipped.
+  assert.match(DASHBOARD_PAGE, /ticketing_mode === 'internal'/);
   assert.match(DASHBOARD_PAGE, /tt_event_series_id/);
   // The metrics map flows into the panel that renders the list.
   assert.match(DASHBOARD_PAGE, /metricsByEvent=\{metricsByEvent\}/);

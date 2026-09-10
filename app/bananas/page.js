@@ -38,21 +38,24 @@ export default async function AdminDashboard() {
   // The Events list now shows live ticket sales beside each row (where the
   // per-event ARTIST PAY button used to sit — that section moved to its own
   // MONEY sidebar tab). We read the cached per-event snapshot from
-  // public.event_ticket_metrics rather than hitting TicketTailor here: the
+  // public.event_ticket_metrics rather than hitting the provider here: the
   // cache is kept warm by the scheduled refresh (/api/admin/refresh-event-
   // metrics) and by the per-row refresh button in EventTicketSalesLive, so
   // the initial render is instant and always shows real numbers.
   //
-  // Only events with a TT series can have real numbers, so scope the query
-  // to those ids to keep it cheap; internal-only events skip it entirely and
-  // render no sales block on the row.
+  // Two ticketing providers feed the same cache and the same widget:
+  //   * ticketing_mode='internal'   — first-party Stripe checkout (source='internal')
+  //   * tt_event_series_id present  — TicketTailor            (source='tickettailor')
+  // Free-only or unticketed events skip the query entirely and render no
+  // sales block — a "0 sold" beside an internal-only micro party would be
+  // technically true and completely uninformative.
   const ticketedEventIds = (events || [])
-    .filter((e) => Boolean(e.tt_event_series_id))
+    .filter((e) => e.ticketing_mode === 'internal' || Boolean(e.tt_event_series_id))
     .map((e) => e.id);
   const { data: metricsRows } = ticketedEventIds.length
     ? await supabase
         .from('event_ticket_metrics')
-        .select('event_id, tickets_sold, gross_cents, fees_cents, status, fetched_at, error_detail')
+        .select('event_id, tickets_sold, gross_cents, fees_cents, status, source, fetched_at, error_detail')
         .in('event_id', ticketedEventIds)
     : { data: [] };
   const metricsByEvent = Object.fromEntries(

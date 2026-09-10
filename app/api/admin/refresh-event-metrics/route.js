@@ -2,17 +2,52 @@ import { NextResponse } from 'next/server';
 import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { listOrders, listIssuedTickets } from '@/lib/tickettailor';
-import { buildMetricsSnapshot, buildPlaceholderMetricsRow } from '@/lib/event-analytics';
+import {
+  buildMetricsSnapshot,
+  buildInternalMetricsSnapshot,
+  buildPlaceholderMetricsRow,
+} from '@/lib/event-analytics';
 import { classifyCronAuth } from '@/lib/event-metrics-auth';
 
 export const runtime = 'nodejs';
 
-// Core refresh routine. READ-ONLY against TicketTailor: it only ever GETs via
-// listOrders()/listIssuedTickets(). Events without a TT series are recorded as
-// `not_configured` so we never guess or write fabricated numbers. The only
-// writes are upserts into our own public.event_ticket_metrics cache.
+// Core refresh routine. Two providers feed the same public.event_ticket_metrics
+// cache:
+//   * TicketTailor — READ-ONLY external API pull via lib/tickettailor.js
+//   * Internal ticketing — local aggregation over public.orders / public.tickets
+// The Events list on /bananas reads that cache, so both providers surface the
+// live sold/gross widget in the same spot. Events with neither provider are
+// recorded as `not_configured` so a real zero is never confused with a guess.
+// The only writes are upserts into public.event_ticket_metrics.
+
+// Aggregate an internal-ticketing event's live sales directly from our own
+// public.orders / public.tickets tables. Uses the admin (service-role) client
+// that the refresh route already runs with, so RLS on those tables does not
+// block the read. Returns the same cache-row shape as the TicketTailor path
+// so both providers upsert together in one batch.
+async function buildInternalRow(supabase, event, fetchedAt) {
+  const [ordersRes, ticketsRes] = await Promise.all([
+    supabase
+      .from('orders')
+      .select('status, total_cents, fees_cents, refunded_cents')
+      .eq('event_id', event.id),
+    supabase.from('tickets').select('status').eq('event_id', event.id),
+  ]);
+  if (ordersRes.error) throw new Error('orders read failed: ' + ordersRes.error.message);
+  if (ticketsRes.error) throw new Error('tickets read failed: ' + ticketsRes.error.message);
+  return buildInternalMetricsSnapshot({
+    eventId: event.id,
+    orders: ordersRes.data || [],
+    tickets: ticketsRes.data || [],
+    fetchedAt,
+  });
+}
+
 async function refreshMetrics(supabase, { eventId = null } = {}) {
-  let query = supabase.from('events').select('id, title, tt_event_series_id');
+  // ticketing_mode drives the source choice below: 'internal' events roll up
+  // from our own orders/tickets, everything else falls through to the existing
+  // TicketTailor pull (or a placeholder when the event is not TT-linked).
+  let query = supabase.from('events').select('id, title, tt_event_series_id, ticketing_mode');
   // Optional single-event scope. Used by the per-event "Refresh metrics" button
   // so an admin can update one row without re-pulling the whole portfolio.
   query = eventId
@@ -29,6 +64,30 @@ async function refreshMetrics(supabase, { eventId = null } = {}) {
   let failed = 0;
 
   for (const event of events || []) {
+    // Internal (first-party) ticketing — aggregate live sales from our own
+    // public.orders / public.tickets. No external API call, so this always
+    // works even without a TicketTailor key, and there is no rate limit to
+    // worry about on the per-row refresh button.
+    if (event.ticketing_mode === 'internal') {
+      try {
+        rows.push(await buildInternalRow(supabase, event, fetchedAt));
+        refreshed++;
+      } catch (err) {
+        rows.push(
+          buildPlaceholderMetricsRow({
+            eventId: event.id,
+            ttEventSeriesId: null,
+            status: 'error',
+            source: 'internal',
+            errorDetail: String(err?.message || err).slice(0, 500),
+            fetchedAt,
+          }),
+        );
+        failed++;
+      }
+      continue;
+    }
+
     // No TT series → we cannot pull real numbers. Record a clear, honest
     // placeholder rather than guessing.
     if (!event.tt_event_series_id) {

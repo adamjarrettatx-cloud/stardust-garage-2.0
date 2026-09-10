@@ -7,17 +7,19 @@ import { adminFetch } from '@/lib/admin-fetch';
 // Live ticket sales + gross for one event, rendered inline on the Events list.
 //
 // Why this lives on the row: the owner wants to see how a ticketed event is
-// doing without leaving the dashboard for TicketTailor or the analytics page.
-// The initial number is server-rendered from the cached
-// public.event_ticket_metrics row (see app/bananas/page.js), so the list is
-// never blank waiting on a fetch. The refresh button posts to the existing
-// scoped route (/api/admin/refresh-event-metrics with { eventId }), which
-// re-pulls TicketTailor for that one event and re-upserts the cache. We then
-// call router.refresh() so the server component re-reads the cache and the
-// new number replaces the old one in place.
+// doing without leaving the dashboard for TicketTailor, the internal ticketing
+// dashboard, or the analytics page. The initial number is server-rendered
+// from the cached public.event_ticket_metrics row (see app/bananas/page.js),
+// so the list is never blank waiting on a fetch. The refresh button posts to
+// the existing scoped route (/api/admin/refresh-event-metrics with { eventId }),
+// which re-computes that event's row — from TicketTailor for TT-linked events,
+// from public.orders + public.tickets for internal-ticketing events — and
+// re-upserts the cache. We then call router.refresh() so the server component
+// re-reads the cache and the new number replaces the old one in place.
 //
-// Non-ticketed events (no tt_event_series_id) render nothing at all, so an
-// internal-only micro party never shows a misleading "0 sold" beside it.
+// Non-ticketed events (no internal-ticketing mode AND no TicketTailor series)
+// render nothing at all, so a free-only micro party never shows a misleading
+// "0 sold" beside it.
 
 function formatCents(cents) {
   if (cents == null) return '$0';
@@ -45,15 +47,24 @@ function formatFetchedAt(iso) {
   return `${days}d ago`;
 }
 
-export default function EventTicketSalesLive({ eventId, hasTicketTailor, initialMetrics }) {
+export default function EventTicketSalesLive({
+  eventId,
+  hasTicketing,
+  // Legacy prop name from the TicketTailor-only era; still accepted so any
+  // stale caller (or an in-flight PR) keeps rendering while it migrates.
+  hasTicketTailor,
+  initialMetrics,
+}) {
   const router = useRouter();
   const [state, setState] = useState('idle'); // idle | busy | done | error
   const [errorMsg, setErrorMsg] = useState(null);
 
   // Nothing to show for an event that never had ticketed sales in the first
-  // place. Rendering "0 tickets · $0" beside an internal micro party would be
-  // technically true and completely uninformative.
-  if (!hasTicketTailor) return null;
+  // place. Rendering "0 tickets · $0" beside a free-only micro party would be
+  // technically true and completely uninformative. Accept either the new
+  // provider-agnostic prop or the legacy TicketTailor-only one.
+  const canShow = hasTicketing !== undefined ? hasTicketing : hasTicketTailor;
+  if (!canShow) return null;
 
   const metrics = initialMetrics || null;
   const sold = Number(metrics?.tickets_sold || 0);
