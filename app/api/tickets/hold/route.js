@@ -5,6 +5,8 @@ import { resolveSiteUrl } from '@/lib/site-url';
 import { isInternalTicketingEnabled } from '@/lib/feature-flags';
 import { rateLimit, keyFromRequest } from '@/lib/rate-limit';
 import { selectActiveTier, isProductOnSale, computeHoldSnapshot } from '@/lib/tickets/pricing';
+import { resolveBuyerEntitlement } from '@/lib/tickets/entitlement-lookup';
+import { resolveEntitlementPercent, entitlementLabel } from '@/lib/tickets/entitlement';
 import { generateHoldToken } from '@/lib/tickets/codes';
 import { createTicketCheckoutSession } from '@/lib/tickets/stripe';
 import { findOrCreateStripeCustomer } from '@/lib/stripe/client';
@@ -142,7 +144,16 @@ export async function POST(request) {
   // --- Load event and gate on ticketing_mode + published ------------------
   const { data: event } = await supabaseAdmin
     .from('events')
-    .select('id, title, status, visibility, share_token, ticketing_mode, booking_fee_cents_default, required_membership_tier')
+    // The member-pricing columns and the weekend-music flag are part of this
+    // select because resolveEntitlementPercent() reads them off this row. Left
+    // out, every buyer silently resolves to 0% off and the feature is inert.
+    .select(
+      'id, title, status, visibility, share_token, ticketing_mode, ' +
+      'booking_fee_cents_default, required_membership_tier, ' +
+      'is_weekend_music_experience, member_discount_percent_trial, ' +
+      'member_discount_percent_weekender, member_discount_percent_cowork, ' +
+      'member_discount_percent_iykyk'
+    )
     .eq('id', eventId)
     .maybeSingle();
   if (!event || event.status !== 'published' || event.ticketing_mode !== 'internal') {
@@ -283,6 +294,24 @@ export async function POST(request) {
     discountCode = dc;
   }
 
+  // --- Resolve the buyer's automatic entitlement --------------------------
+  // An active member tier or a live Trial SDG Pass earns a price without the
+  // buyer holding a code. Resolved server-side and never accepted from the
+  // request body: the client may not name its own discount. memberProfile is
+  // passed through because it was already loaded above for the access gates.
+  let entitlement = null;
+  let entitlementPercent = 0;
+  try {
+    entitlement = await resolveBuyerEntitlement(supabaseAdmin, user.id, { memberProfile });
+    entitlementPercent = resolveEntitlementPercent(event, entitlement);
+  } catch (err) {
+    // Never block a sale on this. Worst case the buyer pays list price, which
+    // is recoverable by support; a 500 here loses the sale outright.
+    console.error('[tickets.hold.entitlement]', err?.message || err);
+    entitlement = null;
+    entitlementPercent = 0;
+  }
+
   // --- Compute the authoritative snapshot ---------------------------------
   let snapshot;
   try {
@@ -292,6 +321,7 @@ export async function POST(request) {
       activeTierByProduct,
       event,
       discountCode,
+      entitlementPercent,
     });
   } catch (err) {
     return NextResponse.json({ error: err.message || 'Invalid selection' }, { status: 400 });
@@ -300,7 +330,11 @@ export async function POST(request) {
   // --- Increment discount redemption BEFORE reserving inventory so we
   //     can back it out if the hold fails. Atomic RPC guards against races
   //     and max-redemptions overflow. --------------------------------------
-  if (discountCode) {
+  // Only burn a redemption if the code is actually what the buyer is paying
+  // under. When a bigger entitlement wins, the code did nothing to this order
+  // and must stay available for its next use.
+  const codeWasApplied = Boolean(discountCode) && snapshot.discountSource === 'code';
+  if (codeWasApplied) {
     const { error: incErr } = await supabaseAdmin.rpc('increment_discount_code_redemption', {
       p_code_id: discountCode.id,
     });
@@ -333,7 +367,7 @@ export async function POST(request) {
 
   if (holdErr) {
     // Roll back the discount redemption on inventory failure.
-    if (discountCode) {
+    if (codeWasApplied) {
       await supabaseAdmin
         .from('ticket_discount_codes')
         .update({ redemptions_count: discountCode.redemptions_count })
@@ -356,7 +390,11 @@ export async function POST(request) {
   if (shareTokenErr) {
     console.error('ticket hold share token update failed:', shareTokenErr);
     await supabaseAdmin.rpc('release_ticket_hold', { p_hold_id: holdId }).catch(() => {});
-    if (discountCode) {
+    // Only roll the counter back if the code was actually the discount that
+    // got applied. When an automatic entitlement beat the typed code, its
+    // redemption was never incremented, so "restoring" it here would hand out
+    // a free extra use of the code.
+    if (codeWasApplied) {
       await supabaseAdmin
         .from('ticket_discount_codes')
         .update({ redemptions_count: discountCode.redemptions_count })
@@ -452,7 +490,7 @@ export async function POST(request) {
   } catch (err) {
     console.error('Ticket checkout session create failed:', err);
     await supabaseAdmin.rpc('release_ticket_hold', { p_hold_id: hold.id }).catch(() => {});
-    if (discountCode) {
+    if (codeWasApplied) {
       await supabaseAdmin
         .from('ticket_discount_codes')
         .update({ redemptions_count: discountCode.redemptions_count })
@@ -498,7 +536,7 @@ export async function POST(request) {
       // Roll back: release the hold so inventory frees up immediately,
       // and refuse to hand the buyer a Stripe URL.
       await supabaseAdmin.rpc('release_ticket_hold', { p_hold_id: hold.id }).catch(() => {});
-      if (discountCode) {
+      if (codeWasApplied) {
         await supabaseAdmin
           .from('ticket_discount_codes')
           .update({ redemptions_count: discountCode.redemptions_count })
@@ -519,6 +557,9 @@ export async function POST(request) {
     totals: {
       subtotal_cents: snapshot.subtotalCents,
       discount_cents: snapshot.discountCents,
+      discount_source: snapshot.discountSource,
+      entitlement_percent: snapshot.entitlementPercent,
+      entitlement_label: entitlementLabel(entitlement, snapshot.entitlementPercent),
       booking_fee_cents: snapshot.bookingFeeCents,
       tax_cents: snapshot.taxCents,
       tax_rate_bps: snapshot.taxRateBps,

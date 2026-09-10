@@ -19,6 +19,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { WaiverGate } from '@/components/waiver/WaiverGate';
+import { entitlementDiscountCents, pickDiscountCents } from '@/lib/tickets/entitlement';
 
 function formatMoney(cents, currency = 'usd') {
   if (typeof cents !== 'number' || Number.isNaN(cents)) return '';
@@ -54,6 +55,12 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
   const [appliedAccessCodes, setAppliedAccessCodes] = useState([]);
   const [accessCodeError, setAccessCodeError] = useState(null);
 
+  // Automatic entitlement (active member tier or a live Trial SDG Pass).
+  // { entitled, percent, label, kind } from /api/tickets/entitlement, or null
+  // while it's still loading / for a signed-out buyer. No code to type: if the
+  // buyer has standing, the price just reflects it.
+  const [entitlement, setEntitlement] = useState(null);
+
   // Discount code state
   const [discountInput, setDiscountInput] = useState('');
   const [discount, setDiscount] = useState(null); // { code, discount_cents, discount_type, discount_value }
@@ -87,6 +94,20 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId]);
+
+  // Resolve the buyer's automatic entitlement. Runs on mount; by this point
+  // InternalTicketModal's AccountGate has established a session, so the cookie
+  // this reads is present. Soft-fails to "no entitlement" — the hold route
+  // re-resolves it server-side and is what actually sets the price, so a miss
+  // here costs a preview line, not the discount.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/tickets/entitlement?event_id=${encodeURIComponent(eventId)}`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (!cancelled && data?.entitled) setEntitlement(data); })
+      .catch(() => { /* soft-fail: buyer simply sees list price in the preview */ });
+    return () => { cancelled = true; };
   }, [eventId]);
 
   // Fetch the current active waiver payload once on mount.
@@ -158,7 +179,16 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
     return sum + qty * (p.price.booking_fee_cents || 0);
   }, 0);
 
-  const discountCents = discount?.discount_cents || 0;
+  // What the buyer pays under: their entitlement or a typed code, whichever is
+  // worth more. pickDiscountCents() is the same helper computeHoldSnapshot uses
+  // server-side, so this preview and the Stripe total agree.
+  const codeDiscountCents = discount?.discount_cents || 0;
+  const entDiscountCents = entitlementDiscountCents(subtotalCents, entitlement?.percent || 0);
+  const { discountCents, source: discountSource } = pickDiscountCents({
+    codeCents: codeDiscountCents,
+    entitlementCents: entDiscountCents,
+    codeType: discount?.discount_type || null,
+  });
   const preTaxCents = Math.max(0, subtotalCents - discountCents) + bookingFeeCents;
   // Texas sales tax (8.25%) is the platform-wide rate; server is the source
   // of truth via availability.tax_rate_bps.
@@ -623,6 +653,14 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
       <details style={{ marginTop: 8, fontSize: 13 }}>
         <summary style={{ cursor: 'pointer', color: MUTED, listStyle: 'none' }}>
           {discount ? `Discount applied: ${discount.code}` : 'Have a discount code?'}
+          {discountSource === 'entitlement' && codeDiscountCents > 0 && (
+            /* The buyer typed a code but their own standing was worth more.
+               Say so plainly rather than silently ignoring what they entered. */
+            <div style={{ color: MUTED, fontSize: 11, marginTop: 4, fontWeight: 400 }}>
+              Your {entitlement?.label ? entitlement.label.split(' — ')[0] : 'member'} discount is
+              better, so we kept that one.
+            </div>
+          )}
         </summary>
         {!discount ? (
           <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
@@ -684,7 +722,14 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
         </div>
         {discountCents > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', color: GREEN }}>
-            <span>Discount ({discount.code})</span>
+            {/* Names whichever discount actually won. `discount` is null when
+                the buyer's entitlement beat (or replaced) a code, so this must
+                not reach for discount.code unconditionally. */}
+            <span>
+              {discountSource === 'entitlement'
+                ? entitlement?.label || 'Member discount'
+                : `Discount (${discount?.code || 'applied'})`}
+            </span>
             <span>−{formatMoney(discountCents, currency)}</span>
           </div>
         )}

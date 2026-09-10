@@ -164,3 +164,55 @@ test('isProductOnSale respects sales window', () => {
   assert.equal(isProductOnSale({ is_active: true, sales_end_at: '2026-09-06T11:00:00Z' }, now), false);
   assert.equal(isProductOnSale({ is_active: true, sales_start_at: '2026-09-01', sales_end_at: '2026-09-30' }, now), true);
 });
+
+// A membership discount must never come off a private-space rental. Rentals
+// are rows in ticket_products with kind = 'private_space', so they ride in the
+// same cart and the same subtotal as tickets. The live event
+// 'testy testy testy' is exactly this shape: a $1 ticket plus a $500
+// "Outer Space - Green Room" rental.
+test('an entitlement discount applies to ticket lines only, never to a rental', () => {
+  const productsById = new Map([
+    ['tix', { id: 'tix', kind: 'tickets', is_active: true }],
+    ['room', { id: 'room', kind: 'private_space', is_active: true }],
+  ]);
+  const activeTierByProduct = new Map([
+    ['tix', { id: 't1', price_cents: 2000, currency: 'usd' }],
+    ['room', { id: 't2', price_cents: 50000, currency: 'usd' }],
+  ]);
+  const snap = computeHoldSnapshot({
+    selections: [{ product_id: 'tix', quantity: 1 }, { product_id: 'room', quantity: 1 }],
+    productsById,
+    activeTierByProduct,
+    entitlementPercent: 60,
+  });
+
+  assert.equal(snap.subtotalCents, 52000);
+  // Only the $20 ticket is discountable.
+  assert.equal(snap.entitlementBaseCents, 2000);
+  assert.equal(snap.entitlementDiscountCents, 1200);
+  assert.equal(snap.discountCents, 1200);
+  // The rental is charged in full.
+  assert.equal(snap.subtotalCents - snap.discountCents, 50800);
+});
+
+test('a cart of nothing but a rental earns no entitlement discount at all', () => {
+  const snap = computeHoldSnapshot({
+    selections: [{ product_id: 'room', quantity: 1 }],
+    productsById: new Map([['room', { id: 'room', kind: 'private_space', is_active: true }]]),
+    activeTierByProduct: new Map([['room', { id: 't2', price_cents: 50000, currency: 'usd' }]]),
+    entitlementPercent: 60,
+  });
+  assert.equal(snap.entitlementBaseCents, 0);
+  assert.equal(snap.discountCents, 0);
+});
+
+test('a product with no kind set is treated as tickets and stays discountable', () => {
+  const snap = computeHoldSnapshot({
+    selections: [{ product_id: 'legacy', quantity: 1 }],
+    productsById: new Map([['legacy', { id: 'legacy', is_active: true }]]),
+    activeTierByProduct: new Map([['legacy', { id: 't', price_cents: 2000, currency: 'usd' }]]),
+    entitlementPercent: 25,
+  });
+  assert.equal(snap.entitlementBaseCents, 2000);
+  assert.equal(snap.discountCents, 500);
+});
