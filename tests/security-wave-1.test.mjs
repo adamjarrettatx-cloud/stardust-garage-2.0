@@ -7,6 +7,7 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 const freeAccountRoute = read('app/api/free-account/verify/check/route.js');
 const broadcastRoute = read('app/api/admin/notifications/broadcast/route.js');
 const publishRoute = read('app/api/admin/events/[id]/tt-publish/route.js');
+const publishPrimitive = read('lib/publish-event.js');
 const eventPage = read('app/events/[slug]/page.js');
 const notificationMigration = read('supabase/migrations/20260910_notification_broadcasts.sql');
 const tokenMigration = read('supabase/migrations/20260910_unlisted_events_share_token.sql');
@@ -85,16 +86,17 @@ test('H-06 migration creates a locked-down durable broadcast ledger and tt times
 });
 
 test('tt-publish has per-event and per-admin limits, replay guard, and attempt audit', () => {
-  assert.match(publishRoute, /tt_publish:event:\$\{id\}/);
-  assert.match(publishRoute, /limit: 3/);
-  assert.match(publishRoute, /tt_publish:admin:\$\{user\.id\}/);
-  assert.match(publishRoute, /limit: 10/);
-  assert.match(publishRoute, /tt_last_published_at/);
-  assert.match(publishRoute, /force=1/);
-  assert.match(publishRoute, /status: 409/);
-  assert.match(publishRoute, /notification_broadcasts/);
-  assert.match(publishRoute, /Event publish blocked/);
-  assert.match(publishRoute, /sent_count: sentCount/);
+  assert.match(publishRoute, /publishEvent/);
+  assert.match(publishPrimitive, /tt_publish:event:\$\{eventId\}/);
+  assert.match(publishPrimitive, /limit: 3/);
+  assert.match(publishPrimitive, /tt_publish:admin:\$\{actorUserId\}/);
+  assert.match(publishPrimitive, /limit: 10/);
+  assert.match(publishPrimitive, /tt_last_published_at/);
+  assert.match(publishPrimitive, /force=1/);
+  assert.match(publishPrimitive, /status: 409/);
+  assert.match(publishPrimitive, /notification_broadcasts/);
+  assert.match(publishPrimitive, /Event publish blocked/);
+  assert.match(publishPrimitive, /sent_count: sentCount/);
 });
 
 test('H-01 migration makes unlisted rows token-only and public table reads public-only', () => {
