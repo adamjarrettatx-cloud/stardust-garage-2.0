@@ -4,11 +4,14 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   MAX_GUEST_NAME_LENGTH,
+  MAX_GUEST_EMAIL_LENGTH,
   addableCompTypes,
   canRemoveEntry,
   compTypeLabel,
   entryStatusLabel,
   grantUsage,
+  isValidGuestEmail,
+  normalizeGuestEmail,
   normalizeGuestName,
 } from '@/lib/guestlist-helpers';
 import { formatGrantDate } from '../format';
@@ -37,6 +40,7 @@ function StatusBadge({ status }) {
 export default function GrantEntriesClient({ grant, initialEntries }) {
   const [entries, setEntries] = useState(initialEntries);
   const [guestName, setGuestName] = useState('');
+  const [guestEmail, setGuestEmail] = useState('');
   const [compType, setCompType] = useState(null);
   const [adding, setAdding] = useState(false);
   const [removingId, setRemovingId] = useState(null);
@@ -58,8 +62,21 @@ export default function GrantEntriesClient({ grant, initialEntries }) {
     setError('');
 
     const name = normalizeGuestName(guestName);
+    const email = normalizeGuestEmail(guestEmail);
     if (!name) {
       setError("Please enter your guest's name.");
+      return;
+    }
+    // Email is a hard requirement now — every guest gets an invite email with
+    // a /g/<token> link so they can finish their profile and get the app
+    // before the door. The server rejects a missing email too, but we stop
+    // here so we can point the error at the field.
+    if (!email) {
+      setError("Please enter your guest's email.");
+      return;
+    }
+    if (!isValidGuestEmail(email)) {
+      setError("That email doesn't look right.");
       return;
     }
     if (!selectedCompType) {
@@ -71,7 +88,12 @@ export default function GrantEntriesClient({ grant, initialEntries }) {
     const res = await fetch('/api/portal/guestlist/entries', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ grantId: grant.id, guestName: name, compType: selectedCompType }),
+      body: JSON.stringify({
+        grantId: grant.id,
+        guestName: name,
+        guestEmail: email,
+        compType: selectedCompType,
+      }),
     });
     const data = await res.json().catch(() => null);
     setAdding(false);
@@ -84,8 +106,10 @@ export default function GrantEntriesClient({ grant, initialEntries }) {
     setEntries((prev) => [...prev, data.entry]);
     // The comp type is deliberately kept: partners add guests in runs, and
     // re-picking "discount" for each of five names is friction for nothing. If
-    // that type fills up, the selector collapses to whatever is left.
+    // that type fills up, the selector collapses to whatever is left. Name and
+    // email are cleared because those are per-guest.
     setGuestName('');
+    setGuestEmail('');
   };
 
   const handleRemove = async (entry) => {
@@ -209,6 +233,34 @@ export default function GrantEntriesClient({ grant, initialEntries }) {
                 />
               </div>
 
+              <div>
+                <label
+                  htmlFor="guest-email"
+                  className="block text-[12px] font-semibold tracking-[0.14em] mb-2"
+                  style={{ color: '#8a8a8a' }}
+                >
+                  GUEST EMAIL
+                </label>
+                <input
+                  id="guest-email"
+                  type="email"
+                  autoComplete="off"
+                  inputMode="email"
+                  value={guestEmail}
+                  onChange={(e) => setGuestEmail(e.target.value)}
+                  maxLength={MAX_GUEST_EMAIL_LENGTH}
+                  placeholder="guest@email.com"
+                  className="w-full px-5 py-3.5 rounded-full text-[15px] outline-none border transition-colors focus:border-white/30"
+                  style={{ background: '#0f0f0f', borderColor: 'rgba(255,255,255,0.1)', color: '#f5f5f5' }}
+                />
+                {/* Explains the requirement so partners don't wonder why we
+                    are asking. Copy stays low-key — this is a door list, not
+                    a marketing signup. */}
+                <p className="mt-2 text-[12px] leading-[1.5]" style={{ color: '#6a6a6a' }}>
+                  We’ll email them a link to finish their profile and get the app before doors.
+                </p>
+              </div>
+
               {showCompTypeChoice && (
                 <fieldset>
                   <legend className="text-[12px] font-semibold tracking-[0.14em] mb-2" style={{ color: '#8a8a8a' }}>
@@ -257,7 +309,7 @@ export default function GrantEntriesClient({ grant, initialEntries }) {
 
               <button
                 type="submit"
-                disabled={adding || !guestName.trim()}
+                disabled={adding || !guestName.trim() || !isValidGuestEmail(guestEmail)}
                 className="w-full sm:w-auto px-8 py-3.5 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0"
                 style={{ background: '#ffffff', color: '#0a0a0a' }}
               >

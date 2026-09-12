@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { requirePartner } from '@/lib/auth-helpers';
+import { createRequestScopedClient, requirePartner } from '@/lib/auth-helpers';
 import { auditGuestlist, canRemoveEntry } from '@/lib/guestlist-helpers';
 
 export const runtime = 'nodejs';
@@ -23,7 +22,8 @@ export const runtime = 'nodejs';
 // this partner's own entries. Another partner's id reads back as "not found".
 export async function DELETE(request, { params }) {
   try {
-    const { user, unauthorized } = await requirePartner();
+    // Bearer-aware so the same DELETE serves the mobile app's Remove button.
+    const { user, unauthorized } = await requirePartner(request);
     if (unauthorized) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -33,7 +33,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Which guest?' }, { status: 400 });
     }
 
-    const supabase = await createClient();
+    const supabase = await createRequestScopedClient(request);
 
     // The partner's own session, so the select policy already limits this to
     // entries under their grants — an id belonging to another partner reads
