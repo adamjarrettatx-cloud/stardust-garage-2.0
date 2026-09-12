@@ -526,7 +526,7 @@ function OverviewTab({ data, theme }) {
                       <span style={{ color: theme.muted }}>{r.title}</span>
                     ) : (
                       <Link
-                        href={`/bananas/tickets/${r.event_id}`}
+                        href={`/bananas/events/${r.event_id}`}
                         className="font-semibold hover:underline"
                         style={{ color: theme.textStrong }}
                       >
@@ -631,7 +631,7 @@ function OrdersTab({ data, theme }) {
                   <Td theme={theme}>
                     {o.event_id ? (
                       <Link
-                        href={`/bananas/tickets/${o.event_id}`}
+                        href={`/bananas/events/${o.event_id}`}
                         className="hover:underline"
                         style={{ color: theme.textStrong }}
                       >
