@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useDoorScanner } from './useDoorScanner';
 import { sniffScan } from '@/lib/scan/sniff';
 import { planScanAttempts, shouldFallThroughAmbiguous } from '@/lib/scan/route-scan';
+import { summarizeDenialHistory, priorDenialBanner, relativeAge } from '@/lib/capacity/denial-history';
 
 // UnifiedDoorScanner — the embedded scanner panel used at /capacity/front-desk.
 //
