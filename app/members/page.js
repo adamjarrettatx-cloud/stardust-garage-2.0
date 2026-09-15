@@ -11,7 +11,7 @@ const plans = [
     tagline: 'Your access pass to Stardust Garage for Weekend Music Experiences.',
     benefits: [
       'Your access pass to Stardust Garage for Weekend Music Experiences',
-      '20% off weeknight experiences (Wellness Wednesday and more)',
+      '20% off weeknight experiences (Wellness Wednesday, Movie Night, and more)',
     ],
   },
   {
@@ -26,7 +26,7 @@ const plans = [
       'Cowork access, 8AM – 5PM, Mon–Fri',
       'Gigabit fiber, refreshments, curated room',
       '3 guest passes per month',
-      '20% off weeknight experiences (Wellness Wednesday and more)',
+      '20% off weeknight experiences (Wellness Wednesday, Movie Night, and more)',
       'A community of artists, builders, and culturally aligned people',
     ],
   },
@@ -44,7 +44,7 @@ const plans = [
     benefits: [
       'Everything in The Builder + The Weekender',
       'Up to 60% off SDG event tickets',
-      '20% off weeknight experiences (Wellness Wednesday and more)',
+      '20% off weeknight experiences (Wellness Wednesday, Movie Night, and more)',
       'Insider-only hours and experiences',
       'The Insider only access line',
       'Priority access to Space Rentals',
