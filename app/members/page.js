@@ -10,7 +10,7 @@ const plans = [
     kicker: 'FOR THE WEEKEND CROWD',
     tagline: 'Your entry to music experiences Friday thru Sunday — for less.',
     benefits: [
-      '25% off Music & Party tickets, every weekend',
+      'Your access pass to Stardust Garage for Weekend Music Experiences',
     ],
   },
   {
