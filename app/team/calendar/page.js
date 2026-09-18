@@ -23,6 +23,9 @@ export default async function EventsCalendarPage() {
   const data = await loadEventsCalendarData(supabase);
 
   if (!data) redirect('/login');
+  // Admins land on the calendar embedded in the /bananas dashboard.
+  // calendar_viewer never gets redirected here — they stay on this page in a
+  // hard-locked read-only mode (see 20260918_calendar_viewer_role.sql).
   if (data.isAdmin) redirect('/bananas?tab=events');
 
   return <EventsCalendarClient variant="page" {...data} />;

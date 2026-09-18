@@ -160,6 +160,21 @@ export async function middleware(request) {
 
   const teamRole = tm?.role || null;
   const isAdmin = teamRole === 'admin' || Boolean(user.user_metadata?.is_admin);
+  // calendar_viewer is a hard-locked read-only role (see
+  // 20260918_calendar_viewer_role.sql). They are ALLOWED on /team/calendar
+  // and NOWHERE else that this middleware guards. Do this check before every
+  // other role branch below so they can never fall through into /portal,
+  // /member, /bananas, or the rest of /team/*.
+  const isCalendarViewer = teamRole === 'calendar_viewer';
+  if (isCalendarViewer) {
+    if (pathname === '/team/calendar') {
+      return supabaseResponse;
+    }
+    const url = request.nextUrl.clone();
+    url.pathname = '/team/calendar';
+    url.search = '';
+    return NextResponse.redirect(url);
+  }
 
   // Partner status is only needed for the mutual-exclusion checks below, and
   // staff can never be partners, so skip the extra round trip for them. The

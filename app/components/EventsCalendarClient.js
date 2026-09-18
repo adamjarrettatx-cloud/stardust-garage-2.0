@@ -169,7 +169,18 @@ function parseLocalDate(str) {
 const CONTRACT_STRIPE_COLOR = { light: '#0a0a0a', dark: '#ffffff' };
 const CONTRACT_STRIPE_LABEL = 'Signed contract on file';
 
-export default function EventsCalendarClient({ publicEvents, teamEvents: initialTeamEvents, publicEventsWithSignedContract = [], isAdmin, currentUserId, currentUserName, creatorNames = {}, chatUnreadCount = 0, variant = 'page' }) {
+export default function EventsCalendarClient({ publicEvents, teamEvents: initialTeamEvents, publicEventsWithSignedContract = [], isAdmin, isCalendarViewer = false, currentUserId, currentUserName, creatorNames = {}, chatUnreadCount = 0, variant = 'page' }) {
+  // ---------------------------------------------------------------------------
+  // Read-only lockdown for the calendar_viewer role.
+  // ---------------------------------------------------------------------------
+  // Adam introduced this role on 2026-09-18 to strip a specific team_members
+  // row (David) down to a single surface: the Events Calendar, read-only. RLS
+  // + middleware are the authoritative gates (see 20260918_calendar_viewer_role.sql
+  // and middleware.js). This client flag is UI-only: it hides every create/
+  // edit affordance so a viewer never sees a modal button they can't use,
+  // never sees the CHAT/TASKS/SOPS shortcuts they can't open, and never gets
+  // the chat-unread badge that would suggest one exists.
+  const readOnly = isCalendarViewer;
   const router = useRouter();
   const supabase = createClient();
   const today = new Date();
@@ -219,7 +230,10 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
   }, [publicEvents, teamEvents]);
 
   // Admins can edit any team event; team members can only edit their own.
-  const canEdit = useCallback((evt) => isAdmin || evt.created_by === currentUserId, [isAdmin, currentUserId]);
+  const canEdit = useCallback(
+    (evt) => !readOnly && (isAdmin || evt.created_by === currentUserId),
+    [isAdmin, currentUserId, readOnly],
+  );
 
   // Display name for whoever created a team event. Populated for every role
   // via the team_creator_names() RPC (see page.js) — falls back gracefully
@@ -254,6 +268,7 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
   };
 
   const handleDayDoubleClick = (date) => {
+    if (readOnly) return;
     setModalState({ mode: 'create', date });
   };
 
@@ -344,7 +359,9 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
           <p className="text-[14px] mt-1" style={{ color: t.muted }}>
             {isAdmin
               ? 'Everything on the books · click a day to view · double-click to add'
-              : `Welcome, ${currentUserName} · click a day to view · double-click to add`}
+              : readOnly
+                ? `Welcome, ${currentUserName} · click a day to view`
+                : `Welcome, ${currentUserName} · click a day to view · double-click to add`}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -354,7 +371,7 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
           {!inShell && (
             <AuthenticatedThemeToggleControl theme={theme} onToggle={toggleTheme} />
           )}
-          {isAdmin ? null : (
+          {isAdmin || readOnly ? null : (
             <>
               <Link
                 href="/team/chat"
@@ -398,13 +415,15 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
               {signingOut ? 'SIGNING OUT...' : 'SIGN OUT'}
             </button>
           )}
-          <button
-            onClick={() => setModalState({ mode: 'create', date: today })}
-            className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5"
-            style={{ background: t.addEventBg, color: t.addEventText }}
-          >
-            + ADD TO CALENDAR
-          </button>
+          {!readOnly && (
+            <button
+              onClick={() => setModalState({ mode: 'create', date: today })}
+              className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5"
+              style={{ background: t.addEventBg, color: t.addEventText }}
+            >
+              + ADD TO CALENDAR
+            </button>
+          )}
         </div>
       </div>
       )}
@@ -773,15 +792,17 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
               </div>
             )}
 
-            <button
-              onClick={() => setModalState({ mode: 'create', date: selectedDay })}
-              className="w-full mt-4 py-2.5 rounded-full text-[12px] font-semibold tracking-[0.12em] border transition-colors"
-              style={{ borderColor: t.border, color: t.text, background: 'transparent' }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-            >
-              + ADD TO THIS DAY
-            </button>
+            {!readOnly && (
+              <button
+                onClick={() => setModalState({ mode: 'create', date: selectedDay })}
+                className="w-full mt-4 py-2.5 rounded-full text-[12px] font-semibold tracking-[0.12em] border transition-colors"
+                style={{ borderColor: t.border, color: t.text, background: 'transparent' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              >
+                + ADD TO THIS DAY
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -799,7 +820,7 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
             <span style={{ color: t.mutedStrong }}>{cat.label}</span>
           </span>
         ))}
-        {!isAdmin && (
+        {!isAdmin && !readOnly && (
           <span className="flex items-center gap-1.5 text-[12px] ml-auto">
             <span className="w-2.5 h-2.5 rounded-full border" style={{ borderColor: t.border }} />
             <span style={{ color: t.muted }}>Tap your own events to edit</span>
