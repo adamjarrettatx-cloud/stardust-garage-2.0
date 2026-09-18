@@ -143,6 +143,27 @@ function parseLocalDate(str) {
   return new Date(y, m - 1, d);
 }
 
+// Rolling-window rendering. The calendar always starts on today and shows
+// forward, capped at ROLLING_WINDOW_DAYS visible days at once. Dates before
+// today never appear — the grid begins on the Sunday of today's week and
+// the pre-today cells in that first row render as empty spacers so the
+// weekday columns stay aligned. When a week straddles a month boundary a
+// month header row is inserted immediately before it so the transition is
+// visually obvious. Anything past the window's last day is out of view; we
+// only render up to and including the last window day, trimming any trailing
+// out-of-window days in the final week.
+const ROLLING_WINDOW_DAYS = 60;
+
+function startOfDay(d) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function addDays(d, n) {
+  const nd = new Date(d);
+  nd.setDate(nd.getDate() + n);
+  return nd;
+}
+
 // The Events Calendar — the venue's programming calendar. Everything we are
 // doing or plan to do as a business, in calendar view: published website
 // events (read-only here) plus internal entries the team adds themselves.
@@ -193,8 +214,12 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
     [publicEventsWithSignedContract]
   );
 
-  const [year, setYear] = useState(today.getFullYear());
-  const [month, setMonth] = useState(today.getMonth()); // 0-indexed
+  // We used to track a viewed month/year with prev/next navigation. The
+  // calendar is now a rolling forward window anchored on today; the month
+  // state remains only as an input to the monthly scorecard below the grid,
+  // which reads today's month to show "who added what this month".
+  const year = today.getFullYear();
+  const month = today.getMonth(); // 0-indexed
   const [teamEvents, setTeamEvents] = useState(initialTeamEvents);
   const [modalState, setModalState] = useState(null); // null | { mode:'create', date } | { mode:'edit', event }
   const [selectedDay, setSelectedDay] = useState(null);
@@ -202,26 +227,82 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
 
   const t = THEMES[theme];
 
-  // Build calendar grid
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+  // Rolling-window grid. Anchor on midnight-today so time-of-day doesn't
+  // shift the window mid-render. Start the grid on the Sunday of today's
+  // week (grid always shows Sun–Sat rows). End on the last day of the last
+  // week that still contains an in-window date, so the grid renders whole
+  // weeks. We split the whole span into month-segments and render each
+  // segment as its own labelled sub-grid, which is what gives the "scrolling
+  // forward, new month clearly separated" look.
+  const todayStart = useMemo(() => startOfDay(today), [today]);
+  const windowEnd = useMemo(
+    () => addDays(todayStart, ROLLING_WINDOW_DAYS - 1),
+    [todayStart]
+  );
+  const gridStart = useMemo(
+    () => addDays(todayStart, -todayStart.getDay()),
+    [todayStart]
+  );
+  const gridEnd = useMemo(
+    () => addDays(windowEnd, 6 - windowEnd.getDay()),
+    [windowEnd]
+  );
 
-  const prevMonth = () => {
-    if (month === 0) { setMonth(11); setYear(y => y - 1); }
-    else setMonth(m => m - 1);
-    setSelectedDay(null);
-  };
-  const nextMonth = () => {
-    if (month === 11) { setMonth(0); setYear(y => y + 1); }
-    else setMonth(m => m + 1);
-    setSelectedDay(null);
-  };
-  const goToday = () => {
-    setYear(today.getFullYear());
-    setMonth(today.getMonth());
-    setSelectedDay(null);
-  };
+  // Group the [gridStart, gridEnd] span into consecutive segments, one per
+  // calendar month. Each segment carries its own header + 7-column grid.
+  const monthSegments = useMemo(() => {
+    const segments = [];
+    let cursor = new Date(gridStart);
+    while (cursor <= gridEnd) {
+      const segYear = cursor.getFullYear();
+      const segMonth = cursor.getMonth();
+      // Sunday of the first week that touches this month within our window.
+      const segStart = new Date(cursor);
+      // Last day of this month, then walk forward to Saturday of that week.
+      const lastOfMonth = new Date(segYear, segMonth + 1, 0);
+      const clampedEnd = lastOfMonth < gridEnd ? lastOfMonth : gridEnd;
+      const segEnd = addDays(clampedEnd, 6 - clampedEnd.getDay());
+      // But segEnd should never overshoot gridEnd, and it must not spill
+      // into a week whose Sunday is already in the next month — that week
+      // belongs to the next segment.
+      const finalEnd = segEnd > gridEnd ? gridEnd : segEnd;
+      const cells = [];
+      let d = new Date(segStart);
+      while (d <= finalEnd) {
+        // A cell belongs to this segment if the containing week has any day
+        // in this month. Concretely: for each week (7 cells starting Sunday),
+        // if the Sunday is already past this month AND the Saturday is also
+        // past this month, the whole week has moved on — stop.
+        cells.push(new Date(d));
+        d = addDays(d, 1);
+      }
+      // Trim trailing complete weeks that don't include any day of this month.
+      // Walk back one week at a time.
+      while (cells.length >= 7) {
+        const lastWeek = cells.slice(-7);
+        const anyInMonth = lastWeek.some(
+          (c) => c.getMonth() === segMonth && c.getFullYear() === segYear
+        );
+        if (anyInMonth) break;
+        cells.length -= 7;
+      }
+      if (cells.length > 0) {
+        segments.push({ year: segYear, month: segMonth, cells });
+        // Advance cursor to the Sunday after this segment's last cell.
+        cursor = addDays(cells[cells.length - 1], 1);
+        // Snap forward to Sunday if we're not there (defensive; we should
+        // already be on Sunday because each segment ends on a Saturday).
+        if (cursor.getDay() !== 0) {
+          cursor = addDays(cursor, (7 - cursor.getDay()) % 7);
+        }
+      } else {
+        // Nothing landed in this month — shouldn't happen inside the window,
+        // but jump to the first of next month to avoid an infinite loop.
+        cursor = new Date(segYear, segMonth + 1, 1);
+      }
+    }
+    return segments;
+  }, [gridStart, gridEnd]);
 
   const getEventsForDate = useCallback((date) => {
     const pub = publicEvents.filter(e => isSameDay(parseLocalDate(e.event_date), date));
@@ -428,84 +509,106 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
       </div>
       )}
 
-      {/* Month nav */}
-      <div className="flex items-center gap-4 mb-4">
-        <button
-          onClick={prevMonth}
-          className="w-9 h-9 rounded-full border flex items-center justify-center transition-colors text-[16px]"
-          style={{ borderColor: t.border, color: t.text, background: 'transparent' }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-        >
-          ‹
-        </button>
+      {/* Rolling-window header. The calendar always starts on today and
+          rolls forward ROLLING_WINDOW_DAYS. There's no prev/next month
+          navigation anymore — past events don't clog the screen, and the
+          new-month boundary is shown inline as a labelled segment below. */}
+      <div className="flex items-baseline flex-wrap gap-x-4 gap-y-1 mb-4">
         <h2
-          className="text-[22px] font-extrabold -tracking-[0.01em] min-w-[220px] text-center"
+          className="text-[22px] font-extrabold -tracking-[0.01em]"
           style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.textStrong }}
         >
-          {MONTHS[month]} {year}
+          Next {ROLLING_WINDOW_DAYS} days
         </h2>
-        <button
-          onClick={nextMonth}
-          className="w-9 h-9 rounded-full border flex items-center justify-center transition-colors text-[16px]"
-          style={{ borderColor: t.border, color: t.text, background: 'transparent' }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-        >
-          ›
-        </button>
-        <button
-          onClick={goToday}
-          className="ml-2 px-4 py-1.5 rounded-full text-[12px] font-semibold tracking-[0.12em] border transition-colors"
-          style={{ borderColor: t.border, color: t.mutedStrong, background: 'transparent' }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-        >
-          TODAY
-        </button>
+        <p className="text-[13px]" style={{ color: t.muted }}>
+          {todayStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          {' \u2013 '}
+          {windowEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+        </p>
       </div>
 
       <div className="flex gap-5">
-        {/* Calendar Grid */}
-        <div className="flex-1 min-w-0">
-          {/* Day headers */}
-          <div className="grid grid-cols-7 mb-1">
-            {DAYS.map(d => (
-              <div
-                key={d}
-                className="text-center text-[12px] font-semibold tracking-[0.12em] py-2"
-                style={{ color: t.muted }}
+        {/* Calendar Grid — one sub-grid per calendar month in the rolling
+            window. The Sun–Sat weekday row is repeated above each segment
+            so the new-month break reads clearly even after scrolling.
+
+            The frame is height-capped so the calendar never spans the whole
+            page: about eight weeks of grid are visible at once, and anything
+            past that scrolls inside the frame. Content is still bounded to
+            ROLLING_WINDOW_DAYS days total — the scroll only exists to keep
+            the frame short; there is nothing past day 60 to reveal. */}
+        <div
+          className="flex-1 min-w-0 space-y-8 overflow-y-auto pr-2"
+          style={{ maxHeight: 'min(78vh, 920px)' }}
+        >
+          {monthSegments.map((seg) => (
+          <div key={`${seg.year}-${seg.month}`}>
+            {/* Month header — the visible "scroll boundary" between months. */}
+            <div
+              className="flex items-baseline gap-3 mb-3 pb-2 border-b"
+              style={{ borderColor: t.borderSoft }}
+            >
+              <h3
+                className="text-[18px] font-extrabold -tracking-[0.01em]"
+                style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.textStrong }}
               >
-                {d}
-              </div>
-            ))}
-          </div>
+                {MONTHS[seg.month]}
+              </h3>
+              <span className="text-[12px] font-semibold tracking-[0.12em]" style={{ color: t.muted }}>
+                {seg.year}
+              </span>
+            </div>
+            {/* Day headers */}
+            <div className="grid grid-cols-7 mb-1">
+              {DAYS.map(d => (
+                <div
+                  key={d}
+                  className="text-center text-[12px] font-semibold tracking-[0.12em] py-2"
+                  style={{ color: t.muted }}
+                >
+                  {d}
+                </div>
+              ))}
+            </div>
 
           {/* Grid cells */}
           <div className="grid grid-cols-7 gap-px" style={{ background: t.gridLine }}>
-            {Array.from({ length: totalCells }).map((_, i) => {
-              const dayNum = i - firstDay + 1;
-              const isCurrentMonth = dayNum >= 1 && dayNum <= daysInMonth;
-              const cellDate = new Date(year, month, dayNum);
-              const isToday = isCurrentMonth && isSameDay(cellDate, today);
-              const isSelected = selectedDay && isCurrentMonth && isSameDay(cellDate, selectedDay);
-              const { pub, team } = isCurrentMonth ? getEventsForDate(cellDate) : { pub: [], team: [] };
+            {seg.cells.map((cellDate, i) => {
+              // A cell participates in this segment when it is in the same
+              // month/year, is on or after today, and is within the
+              // rolling-window end. Anything else renders as an empty
+              // placeholder so the weekday columns stay aligned but no
+              // stale/out-of-window content appears.
+              const isSegMonth = cellDate.getMonth() === seg.month && cellDate.getFullYear() === seg.year;
+              const isPast = cellDate < todayStart;
+              const isBeyondWindow = cellDate > windowEnd;
+              const isActive = isSegMonth && !isPast && !isBeyondWindow;
+              const dayNum = cellDate.getDate();
+              const isToday = isActive && isSameDay(cellDate, today);
+              const isSelected = selectedDay && isActive && isSameDay(cellDate, selectedDay);
+              const { pub, team } = isActive ? getEventsForDate(cellDate) : { pub: [], team: [] };
               const hasEvents = pub.length + team.length > 0;
+              // Keep the isCurrentMonth name below since every downstream
+              // reference expects it; it now means "the cell is active in
+              // this rolling-window segment and should render as a real day".
+              const isCurrentMonth = isActive;
 
               return (
                 <div
                   key={i}
                   onClick={() => isCurrentMonth && handleDayClick(cellDate)}
                   onDoubleClick={() => isCurrentMonth && handleDayDoubleClick(cellDate)}
-                  className="min-h-[108px] p-2 cursor-pointer transition-colors"
+                  className="min-h-[108px] p-2 transition-colors"
                   style={{
                     background: isSelected
                       ? t.selectedBg
                       : isCurrentMonth ? t.cellBg : t.cellBgOutside,
                     outline: isSelected ? t.selectedOutline : 'none',
+                    cursor: isCurrentMonth ? 'pointer' : 'default',
                   }}
                 >
-                  {/* Date number */}
+                  {/* Date number — only rendered for active cells so past
+                      and out-of-window spacers stay visually empty. */}
                   <div className="flex items-center justify-between mb-1.5">
                     <span
                       className="text-[14px] font-bold w-7 h-7 flex items-center justify-center rounded-full"
@@ -632,6 +735,8 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
               );
             })}
           </div>
+          </div>
+          ))}
         </div>
 
         {/* Day Detail Panel */}
