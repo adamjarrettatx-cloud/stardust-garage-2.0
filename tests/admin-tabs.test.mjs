@@ -885,15 +885,18 @@ test('the legend and the scorecard read after the calendar, not before it', () =
   // Both summarise the grid, so above it they were two rows of preamble
   // between the section heading and the thing you came to look at.
   const src = read('app/components/EventsCalendarClient.js');
-  const monthNav = src.indexOf('{/* Month nav */}');
+  // The month nav (prev/next month buttons) was retired when the calendar
+  // became a rolling forward window; a window header now sits above the
+  // grid in its place.
+  const windowHeader = src.indexOf('{/* Rolling-window header.');
   const grid = src.indexOf('{/* Grid cells */}');
   const legend = src.indexOf('{/* Legend */}');
   const scorecard = src.indexOf('{/* Monthly Scorecard');
 
-  for (const [name, at] of [['month nav', monthNav], ['grid', grid], ['legend', legend], ['scorecard', scorecard]]) {
+  for (const [name, at] of [['window header', windowHeader], ['grid', grid], ['legend', legend], ['scorecard', scorecard]]) {
     assert.ok(at > 0, `the calendar lost its ${name}`);
   }
-  assert.ok(monthNav < grid, 'the month nav belongs above the grid');
+  assert.ok(windowHeader < grid, 'the window header belongs above the grid');
   assert.ok(grid < legend, 'the legend must follow the grid');
   assert.ok(legend < scorecard, 'the scorecard reads after the legend');
 });
