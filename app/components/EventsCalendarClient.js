@@ -144,15 +144,15 @@ function parseLocalDate(str) {
 }
 
 // Rolling-window rendering. The calendar always starts on today and shows
-// forward, capped at ROLLING_WINDOW_DAYS visible days at once. Dates before
-// today never appear — the grid begins on the Sunday of today's week and
-// the pre-today cells in that first row render as empty spacers so the
-// weekday columns stay aligned. When a week straddles a month boundary a
-// month header row is inserted immediately before it so the transition is
-// visually obvious. Anything past the window's last day is out of view; we
-// only render up to and including the last window day, trimming any trailing
-// out-of-window days in the final week.
-const ROLLING_WINDOW_DAYS = 60;
+// forward, up to ROLLING_WINDOW_DAYS in the future. Dates before today
+// never appear — the grid begins on the Sunday of today's week and the
+// pre-today cells in that first row render as empty spacers so the weekday
+// columns stay aligned. Each calendar month becomes its own labelled
+// segment so month boundaries are hard visual breaks, not subtle shifts.
+// The whole span sits inside a fixed-height scroll frame further down
+// (see maxHeight below) so the calendar never spans the whole page; the
+// year of content scrolls inside that frame.
+const ROLLING_WINDOW_DAYS = 365;
 
 function startOfDay(d) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -518,7 +518,7 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
           className="text-[22px] font-extrabold -tracking-[0.01em]"
           style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.textStrong }}
         >
-          Next {ROLLING_WINDOW_DAYS} days
+          Next 12 months
         </h2>
         <p className="text-[13px]" style={{ color: t.muted }}>
           {todayStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
