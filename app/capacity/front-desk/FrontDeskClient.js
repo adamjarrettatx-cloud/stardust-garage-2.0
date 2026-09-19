@@ -10,6 +10,7 @@ import AuthenticatedThemeProvider from '@/app/components/AuthenticatedThemeProvi
 import UnifiedDoorScanner from '../components/UnifiedDoorScanner';
 import { pushRecentActivity, formatActivityTime } from '@/lib/scan/recent-activity';
 import { mergeCheckinFeed, CHECKIN_FEED_MAX } from '@/lib/capacity/checkin-feed';
+import TonightSignInsPanel from './TonightSignInsPanel';
 
 // /capacity/front-desk client
 //
@@ -456,7 +457,8 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
 
       {/* ---------- Body: three columns on wide screens, stacked on narrow ---- */}
       <div className="max-w-[1600px] w-full mx-auto px-6 py-6 grid gap-6 grid-cols-1 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1.1fr)_minmax(0,1fr)]">
-        {/* ============== LEFT: Guest list check-in =========================== */}
+        {/* ============== LEFT: Guest list check-in + tonight's sign-ins ====== */}
+        <div className="flex flex-col gap-6 min-w-0">
         <section
           className="rounded-2xl border overflow-hidden flex flex-col"
           style={{ background: '#111', borderColor: 'rgba(255,255,255,0.08)', minHeight: 520 }}
@@ -577,6 +579,11 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
             )}
           </div>
         </section>
+
+        {/* Tonight's Trial Pass sign-ins -- chronological list the door
+            attendant scans to confirm a walk-up filled out the QR form. */}
+        <TonightSignInsPanel />
+        </div>
 
         {/* ============== CENTER: Door scanner + recent activity ============== */}
         <div className="flex flex-col gap-6 min-w-0">
