@@ -85,3 +85,53 @@ test('panel is wired into the Front Desk left column', () => {
     'FrontDeskClient must import the panel from its co-located module',
   );
 });
+
+test('roster check-in bumps venue capacity through the shared primitive', () => {
+  // Row clicks call parent-supplied onCheckIn. Parent must route that
+  // through bumpCapacityFor -- the same primitive the Guest List uses --
+  // so the audit log shape stays identical to the tablet flow.
+  assert.ok(
+    /onCheckIn=\{[\s\S]*?bumpCapacityFor\(/.test(frontDeskSrc),
+    'FrontDeskClient must wire onCheckIn -> bumpCapacityFor',
+  );
+  assert.ok(
+    /trial-pass roster check-in/.test(frontDeskSrc),
+    'Roster check-ins must be distinguishable in the capacity_events note',
+  );
+  assert.ok(
+    /onCheckIn/.test(clientSrc) && /handleToggle/.test(clientSrc),
+    'Panel must accept onCheckIn and expose a toggle handler',
+  );
+});
+
+test('roster check-in survives a mid-shift refresh without double-bumping', () => {
+  // The checked-in set is namespaced by Chicago calendar day so tomorrow's
+  // shift starts clean, and persisted so a refresh does not re-arm the
+  // checkboxes and bump the count a second time when reloaded.
+  assert.ok(
+    /localStorage/.test(clientSrc),
+    'Checked-in state must be persisted so a refresh does not re-arm the checkboxes',
+  );
+  assert.ok(
+    /America\/Chicago/.test(clientSrc),
+    'Storage namespace must be scoped to the venue-local calendar day',
+  );
+  assert.ok(
+    /sdg\.front-desk\.trial-roster-checked-in\./.test(clientSrc),
+    'Storage key prefix must be stable and namespaced',
+  );
+});
+
+test('roster row disables its checkbox after a successful check-in', () => {
+  // Once a guest is admitted, the row must stop being interactive so a
+  // second click cannot re-fire the capacity bump. The button carries
+  // both `disabled` and `aria-pressed` for accessibility.
+  assert.ok(
+    /disabled=\{isIn \|\| isBusy\}/.test(clientSrc),
+    'Checkbox must be disabled once the guest is checked in or while busy',
+  );
+  assert.ok(
+    /aria-pressed=\{isIn\}/.test(clientSrc),
+    'Checkbox must expose aria-pressed for screen readers',
+  );
+});

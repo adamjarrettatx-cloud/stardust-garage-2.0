@@ -581,8 +581,15 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
         </section>
 
         {/* Tonight's Trial Pass sign-ins -- chronological list the door
-            attendant scans to confirm a walk-up filled out the QR form. */}
-        <TonightSignInsPanel />
+            attendant scans to confirm a walk-up filled out the QR form.
+            Each check-in click bumps venue capacity by one, same primitive
+            as the Guest List check-in; note field distinguishes it in the
+            audit log. */}
+        <TonightSignInsPanel
+          onCheckIn={async () => {
+            return bumpCapacityFor('front_desk laptop (trial-pass roster check-in)');
+          }}
+        />
         </div>
 
         {/* ============== CENTER: Door scanner + recent activity ============== */}
