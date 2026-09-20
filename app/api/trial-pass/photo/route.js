@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/stub';
-import { hashPassToken, isWellFormedPassToken, isPassLive, effectiveExpiry } from '@/lib/trial-pass';
+import { hashPassToken, isWellFormedPassToken, isPassLive } from '@/lib/trial-pass';
 import {
   PROFILE_PHOTO_BUCKET,
   MAX_PROFILE_PHOTO_BYTES,
@@ -9,6 +9,18 @@ import {
   extForMime,
   createProfilePhotoSignedUrl,
 } from '@/lib/profile-photo';
+
+// Statuses that mean "the guest still legitimately owns this pass and might
+// reasonably want to add/replace a photo". Unactivated passes ('active' with
+// activated_at=null) count: the whole point of asking for a photo up front is
+// so it's on file BEFORE the guest walks in and activates.
+const PHOTO_UPLOAD_ELIGIBLE_STATUSES = new Set([
+  'pending',
+  'issued',
+  'active',
+  'applied',
+  'converted',
+]);
 
 // POST /api/trial-pass/photo
 // Body: multipart form-data with:
@@ -75,7 +87,7 @@ export async function POST(request) {
   const tokenHash = hashPassToken(token);
   const { data: pass, error: readError } = await admin
     .from('trial_passes')
-    .select('id, status, expires_at, extended_until, profile_photo_path')
+    .select('id, status, activated_at, expires_at, extended_until, signup_expires_at, profile_photo_path')
     .eq('qr_token_hash', tokenHash)
     .maybeSingle();
   if (readError || !pass) {
@@ -83,13 +95,24 @@ export async function POST(request) {
     // the pass row is missing versus vice versa.
     return NextResponse.json({ error: 'Invalid pass link.' }, { status: 400 });
   }
+
   // Reject expired or revoked passes so we don't waste a storage write on a
-  // pass the guest can't use anyway. Note: a `pending` pass (issued but
-  // not yet activated) is fine — the whole point is to have the photo
-  // ready before the guest walks in.
-  const expiry = effectiveExpiry(pass);
-  const stillLive = isPassLive({ status: pass.status, expires_at: expiry });
-  if (!stillLive && pass.status !== 'pending' && pass.status !== 'issued') {
+  // pass the guest can't use anyway. A pass is eligible for photo upload if:
+  //   1. Its status is in PHOTO_UPLOAD_ELIGIBLE_STATUSES (not 'expired' /
+  //      'revoked' / anything terminal), AND
+  //   2. Either it hasn't been activated yet (still inside the sign-up
+  //      window — expires_at is null until first door scan), OR the live
+  //      30-day activation window is still open.
+  //
+  // Historical bug: this used to call isPassLive() which returns false when
+  // expires_at is null, silently rejecting every unactivated pass with
+  // "This pass is no longer active." — the exact state every guest is in
+  // when they first receive the QR and try to add their photo.
+  const statusEligible = PHOTO_UPLOAD_ELIGIBLE_STATUSES.has(pass.status);
+  const activated = Boolean(pass.activated_at);
+  const stillLive = isPassLive(pass);
+  const signupWindowOpen = !activated;
+  if (!statusEligible || (!stillLive && !signupWindowOpen)) {
     return NextResponse.json({ error: 'This pass is no longer active.' }, { status: 410 });
   }
 
