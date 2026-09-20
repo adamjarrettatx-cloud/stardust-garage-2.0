@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { requireTeam } from '@/lib/auth-helpers';
+import { requireFrontDeskOrTeam } from '@/lib/auth-helpers';
 import { createClient } from '@/lib/supabase/server';
 import FrontDeskClient from './FrontDeskClient';
 
@@ -33,7 +33,12 @@ export const metadata = {
 // The attendant is a logged-in team member; the page is chrome-free (no admin
 // shell) because it lives in the /capacity area with the other station pages.
 export default async function FrontDeskPage() {
-  const { user, unauthorized } = await requireTeam();
+  // /capacity/front-desk is the ONE authenticated surface the hard-locked
+  // front_desk role is allowed on. Every other /capacity/* page still uses
+  // requireTeam() (or requireAdmin() for /capacity/admin), so this role
+  // cannot fall through to the door kiosks, guest-list tablet, scan page,
+  // or capacity admin. The middleware bounces it back here if it tries.
+  const { user, unauthorized } = await requireFrontDeskOrTeam();
   if (unauthorized) redirect('/team/login');
 
   // Small nicety: show which team member is on shift in the header so the

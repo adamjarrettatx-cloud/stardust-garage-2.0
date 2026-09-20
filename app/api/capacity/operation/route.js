@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireTeam, requireAdmin } from '@/lib/auth-helpers';
+import { requireTeam, requireAdmin, requireFrontDeskOrTeam } from '@/lib/auth-helpers';
 import { createClient } from '@/lib/supabase/server';
 import {
   CAPACITY_OPERATIONS,
@@ -37,8 +37,15 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Unknown operation', code: 'bad_input' }, { status: 400 });
   }
 
-  // Route-level role gate matching the RPC's required role.
-  const gate = config.role === 'admin' ? await requireAdmin() : await requireTeam();
+  // Route-level role gate matching the RPC's required role. Note that
+  // `front_desk` is a WIDER gate than `team` (it also admits the hard-locked
+  // front_desk role), used only on the check_in / check_out ops that the
+  // /capacity/front-desk page taps. Every other op still requires team or
+  // admin, and the underlying RPC re-checks the caller's role.
+  let gate;
+  if (config.role === 'admin') gate = await requireAdmin();
+  else if (config.role === 'front_desk') gate = await requireFrontDeskOrTeam();
+  else gate = await requireTeam();
   if (gate.unauthorized) {
     return NextResponse.json({ error: 'Unauthorized', code: 'forbidden' }, { status: 401 });
   }

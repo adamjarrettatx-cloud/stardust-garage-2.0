@@ -47,7 +47,10 @@ test('checkin mode still uses the atomic status="valid" WHERE guard', () => {
 });
 
 test('team-only gate is still enforced', () => {
-  assert.match(src, /requireTeam\(/);
+  // The route is gated by requireFrontDeskOrTeam(request) so that door staff
+  // signed in as team, admin, OR the hard-locked front_desk role can scan
+  // tickets. calendar_viewer and unauthenticated callers are still refused.
+  assert.match(src, /require(Team|FrontDeskOrTeam)\(/);
   assert.match(src, /gate\.unauthorized/);
 });
 

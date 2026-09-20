@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/stub';
-import { requireTeam } from '@/lib/auth-helpers';
+import { requireFrontDeskOrTeam } from '@/lib/auth-helpers';
 import { getActiveDoorSession } from '@/lib/door-session';
 import {
   CHECKIN_FEED_MAX,
@@ -54,13 +54,13 @@ export const dynamic = 'force-dynamic';
 // WHY THE SERVICE-ROLE CLIENT. ticket_checkins, trial_passes and orders are
 // admin-only under RLS, but the door is worked by team members who are not
 // admins -- a user-scoped read would silently return an empty list for them,
-// which is the exact bug this endpoint fixes. requireTeam() gates the route and
+// which is the exact bug this endpoint fixes. requireFrontDeskOrTeam() gates the route and
 // only the narrow display fields below are ever returned. Door staff already
 // see these names on the scanner as each guest walks up.
 const FALLBACK_WINDOW_MS = 12 * 60 * 60 * 1000;
 
 export async function GET(request) {
-  const { unauthorized } = await requireTeam();
+  const { unauthorized } = await requireFrontDeskOrTeam();
   if (unauthorized) {
     return NextResponse.json({ error: 'Not authorized' }, { status: 401 });
   }

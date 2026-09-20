@@ -61,7 +61,9 @@ test('checkin mode still fires the application invite path', () => {
 });
 
 test('team gate is still enforced', () => {
-  assert.match(src, /requireTeam\(request\)/);
+  // Route admits admin/team/front_desk via requireFrontDeskOrTeam(request);
+  // the legacy requireTeam(request) shape is also accepted here.
+  assert.match(src, /require(Team|FrontDeskOrTeam)\(request\)/);
 });
 
 test('device-token path still refuses non-front_door devices', () => {

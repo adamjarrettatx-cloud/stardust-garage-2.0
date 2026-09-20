@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { fetchPriorDenials, fetchDoorSessionStart } from '@/lib/capacity/denial-lookup';
 import { createClient } from '@supabase/supabase-js';
-import { requireTeam } from '@/lib/auth-helpers';
+import { requireFrontDeskOrTeam } from '@/lib/auth-helpers';
 import { isTicketScannerEnabled, isInternalTicketingEnabled } from '@/lib/feature-flags';
 import { rateLimit, keyFromRequest } from '@/lib/rate-limit';
 import { normalizeTicketCode } from '@/lib/tickets/codes';
@@ -59,7 +59,7 @@ export async function POST(request) {
     );
   }
 
-  const gate = await requireTeam(request);
+  const gate = await requireFrontDeskOrTeam(request);
   if (gate.unauthorized) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { user, isAdmin } = gate;
 

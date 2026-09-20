@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { fetchPriorDenials, fetchDoorSessionStart } from '@/lib/capacity/denial-lookup';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/stub';
-import { requireTeam } from '@/lib/auth-helpers';
+import { requireFrontDeskOrTeam } from '@/lib/auth-helpers';
 import { resolveDeviceFromToken } from '@/lib/capacity-device-auth';
 import { extractDeviceToken } from '@/lib/capacity-device-utils';
 import { resolveSiteUrl } from '@/lib/site-url';
@@ -90,7 +90,7 @@ export async function POST(request) {
       );
     }
   } else {
-    const { user, unauthorized } = await requireTeam(request);
+    const { user, unauthorized } = await requireFrontDeskOrTeam(request);
     if (unauthorized) {
       return NextResponse.json({ error: 'Unauthorized', code: 'forbidden' }, { status: 401 });
     }

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireTeam } from '@/lib/auth-helpers';
+import { requireFrontDeskOrTeam } from '@/lib/auth-helpers';
 import { openDoorSession } from '@/lib/door-session';
 
 // POST /api/door-session/start
@@ -17,7 +17,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
-  const { user, unauthorized } = await requireTeam();
+  const { user, unauthorized } = await requireFrontDeskOrTeam();
   if (unauthorized || !user) {
     return NextResponse.json({ error: 'Not authorized' }, { status: 401 });
   }

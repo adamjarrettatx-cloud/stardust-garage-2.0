@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireTeam } from '@/lib/auth-helpers';
+import { requireFrontDeskOrTeam } from '@/lib/auth-helpers';
 import { isSupabaseConfigured } from '@/lib/supabase/stub';
 import { resolveSiteUrl } from '@/lib/site-url';
 import { validateTrialPassIntake } from '@/lib/trial-pass';
@@ -31,7 +31,7 @@ export const dynamic = 'force-dynamic';
 // same as the self-serve path. So this cannot be used to farm trials
 // either: same number = same pass, just a different way of getting there.
 export async function POST(request) {
-  const { user, unauthorized } = await requireTeam();
+  const { user, unauthorized } = await requireFrontDeskOrTeam();
   if (unauthorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
