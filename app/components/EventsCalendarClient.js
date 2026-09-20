@@ -249,60 +249,55 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
   );
 
   // Group the [gridStart, gridEnd] span into consecutive segments, one per
-  // calendar month. Each segment carries its own header + 7-column grid.
+  // calendar month that has at least one visible in-window day. Each segment
+  // carries its own header + 7-column grid.
+  //
+  // Cell rules per segment:
+  //   • Start on the Sunday of the week containing the 1st of that month
+  //     (or gridStart if that Sunday is before it). If the 1st isn't a
+  //     Sunday, the leading cells are days-of-previous-month, rendered as
+  //     empty spacers so weekday columns stay aligned.
+  //   • End on the Saturday of the week containing the last day of that
+  //     month (or gridEnd if that Saturday is after it). Trailing cells
+  //     that fall in the next month render as empty spacers, so the next
+  //     month's segment can start cleanly on its own row.
+  //
+  // Consecutive segments can share a transition week: e.g. if Nov 30 is a
+  // Monday, November's segment ends Sat Dec 5 (with Dec 1–5 shown as empty
+  // spacers), and December's segment starts Sun Nov 29 (with Nov 29–30
+  // shown as empty spacers). Every calendar date in the window appears in
+  // exactly one active cell — the one under its own month header.
   const monthSegments = useMemo(() => {
     const segments = [];
-    let cursor = new Date(gridStart);
-    while (cursor <= gridEnd) {
-      const segYear = cursor.getFullYear();
-      const segMonth = cursor.getMonth();
-      // Sunday of the first week that touches this month within our window.
-      const segStart = new Date(cursor);
-      // Last day of this month, then walk forward to Saturday of that week.
+    // Determine the set of (year, month) pairs the window touches by
+    // walking today → windowEnd month-by-month. This is far simpler than
+    // the previous cursor-based scan and cannot skip a month.
+    const months = [];
+    let m = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1);
+    const endMonth = new Date(windowEnd.getFullYear(), windowEnd.getMonth(), 1);
+    while (m <= endMonth) {
+      months.push({ year: m.getFullYear(), month: m.getMonth() });
+      m = new Date(m.getFullYear(), m.getMonth() + 1, 1);
+    }
+    for (const { year: segYear, month: segMonth } of months) {
+      const firstOfMonth = new Date(segYear, segMonth, 1);
       const lastOfMonth = new Date(segYear, segMonth + 1, 0);
-      const clampedEnd = lastOfMonth < gridEnd ? lastOfMonth : gridEnd;
-      const segEnd = addDays(clampedEnd, 6 - clampedEnd.getDay());
-      // But segEnd should never overshoot gridEnd, and it must not spill
-      // into a week whose Sunday is already in the next month — that week
-      // belongs to the next segment.
-      const finalEnd = segEnd > gridEnd ? gridEnd : segEnd;
+      // Sunday of the week containing the 1st.
+      let segStart = addDays(firstOfMonth, -firstOfMonth.getDay());
+      if (segStart < gridStart) segStart = new Date(gridStart);
+      // Saturday of the week containing the last day.
+      let segEnd = addDays(lastOfMonth, 6 - lastOfMonth.getDay());
+      if (segEnd > gridEnd) segEnd = new Date(gridEnd);
       const cells = [];
-      let d = new Date(segStart);
-      while (d <= finalEnd) {
-        // A cell belongs to this segment if the containing week has any day
-        // in this month. Concretely: for each week (7 cells starting Sunday),
-        // if the Sunday is already past this month AND the Saturday is also
-        // past this month, the whole week has moved on — stop.
+      for (let d = new Date(segStart); d <= segEnd; d = addDays(d, 1)) {
         cells.push(new Date(d));
-        d = addDays(d, 1);
-      }
-      // Trim trailing complete weeks that don't include any day of this month.
-      // Walk back one week at a time.
-      while (cells.length >= 7) {
-        const lastWeek = cells.slice(-7);
-        const anyInMonth = lastWeek.some(
-          (c) => c.getMonth() === segMonth && c.getFullYear() === segYear
-        );
-        if (anyInMonth) break;
-        cells.length -= 7;
       }
       if (cells.length > 0) {
         segments.push({ year: segYear, month: segMonth, cells });
-        // Advance cursor to the Sunday after this segment's last cell.
-        cursor = addDays(cells[cells.length - 1], 1);
-        // Snap forward to Sunday if we're not there (defensive; we should
-        // already be on Sunday because each segment ends on a Saturday).
-        if (cursor.getDay() !== 0) {
-          cursor = addDays(cursor, (7 - cursor.getDay()) % 7);
-        }
-      } else {
-        // Nothing landed in this month — shouldn't happen inside the window,
-        // but jump to the first of next month to avoid an infinite loop.
-        cursor = new Date(segYear, segMonth + 1, 1);
       }
     }
     return segments;
-  }, [gridStart, gridEnd]);
+  }, [todayStart, windowEnd, gridStart, gridEnd]);
 
   const getEventsForDate = useCallback((date) => {
     const pub = publicEvents.filter(e => isSameDay(parseLocalDate(e.event_date), date));
