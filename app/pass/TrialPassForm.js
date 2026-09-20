@@ -1,7 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { qrMatrixToSvg } from '@/lib/qr-code';
+import { useState } from 'react';
 import ProfilePhotoUploader from '@/components/profile-photo/ProfilePhotoUploader';
 
 // The three-question intake form behind the printed QR codes in the venue,
@@ -43,13 +42,12 @@ export default function TrialPassForm() {
   const [pass, setPass] = useState(null); // { passUrl, expiresLabel, emailed, fullName, token }
   const [photoSignedUrl, setPhotoSignedUrl] = useState(null);
 
-  // Drawn from the returned pass URL, client-side. Light modules stay pure
-  // white and dark ones near-black regardless of the page's dark background —
-  // a scanner needs the contrast, and an inverted QR does not read.
-  const qrSvg = useMemo(
-    () => (pass?.passUrl ? qrMatrixToSvg(pass.passUrl, { size: 260, dark: '#0a0a0a', light: '#ffffff' }) : null),
-    [pass?.passUrl],
-  );
+  // Note: the QR image itself is rendered server-side at /pass/[token]. We
+  // deliberately do NOT encode a QR in this client component — pulling the
+  // `qrcode` package into the trial-pass form bundle historically pushed the
+  // page over some mobile browsers' JS budget, producing a client-side
+  // application-error crash on the STEP_PASS transition. The success screen
+  // now sends the guest straight to their (server-rendered) pass URL.
 
   const update = (name) => (event) => {
     setValues((prev) => ({ ...prev, [name]: event.target.value }));
@@ -250,24 +248,9 @@ export default function TrialPassForm() {
           {pass.emailed ? ' We also sent it to your email in case you need it later.' : ''}
         </p>
 
-        {qrSvg ? (
-          <div className="flex flex-col items-center">
-            <div
-              className="rounded-2xl p-4"
-              style={{ background: '#ffffff' }}
-              aria-label="Your Trial SDG Pass QR code"
-              dangerouslySetInnerHTML={{ __html: qrSvg }}
-            />
-          </div>
-        ) : (
-          <p className="text-[13px]" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            Open your pass at{' '}
-            <a href={pass.passUrl} className="underline" style={{ color: '#ffffff' }}>
-              this link
-            </a>
-            .
-          </p>
-        )}
+        <p className="text-[14px] leading-[1.6]" style={{ color: 'rgba(255,255,255,0.75)' }}>
+          {'Tap below to open your pass. Your QR code lives there — show it at the door.'}
+        </p>
 
         <div
           className="mt-7 rounded-xl px-5 py-4 text-left"
@@ -286,7 +269,7 @@ export default function TrialPassForm() {
           className="inline-block mt-6 px-7 py-3.5 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-transform hover:-translate-y-0.5"
           style={{ background: '#ffffff', color: '#0a0a0a' }}
         >
-          SAVE MY PASS
+          OPEN MY PASS
         </a>
 
         <p className="text-[11px] mt-5 leading-[1.6]" style={{ color: 'rgba(255,255,255,0.4)' }}>
