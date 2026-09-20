@@ -21,20 +21,63 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 // Each row has a check box the attendant clicks the moment they let the
 // guest in. That click bumps the venue capacity by one -- same primitive
 // (bumpCapacityFor) the Guest List uses. The set of admitted ids is kept
-// in localStorage keyed by tonight's calendar day so a laptop refresh mid
+// in localStorage keyed by tonight's *shift day* so a laptop refresh mid
 // shift does not re-arm the checkboxes and double-bump the count.
+//
+// Shift day, not calendar day: a nightlife shift routinely crosses midnight,
+// and if the key rolled at 12:00 AM every checkbox on the roster suddenly
+// went blank mid-rush (the exact bug this file's earlier version shipped
+// with -- see PR history). We anchor the day to 6 AM America/Chicago so a
+// single shift owns one key from open through last call.
 
 const POLL_MS = 15000;
 
-// Chicago-local calendar day string (YYYY-MM-DD). Used as the localStorage
-// namespace so tomorrow's shift starts with a clean set of checkboxes.
-function chicagoDayKey() {
+// Hour of day (America/Chicago) the shift-day key rolls over. 6 AM comfortably
+// clears every conceivable close time; nothing on the roster tonight belongs
+// to tomorrow's shift until then.
+const SHIFT_DAY_ROLLOVER_HOUR = 6;
+
+// Chicago-local shift-day string (YYYY-MM-DD). Between midnight and 6 AM
+// the key still reports the previous calendar date, so late-night check-ins
+// keep their checkmark instead of vanishing at 12:00 AM.
+function chicagoShiftDayKey(now = new Date()) {
   try {
+    // Fetch the individual y/m/d/h parts in America/Chicago so we can subtract
+    // a shifted-back day when we're still in the pre-rollover window.
     const parts = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'America/Chicago',
       year: 'numeric', month: '2-digit', day: '2-digit',
-    }).format(new Date());
-    return parts; // en-CA yields YYYY-MM-DD
+      hour: '2-digit', hour12: false,
+    }).formatToParts(now);
+    const map = Object.fromEntries(
+      parts.filter((p) => p.type !== 'literal').map((p) => [p.type, p.value]),
+    );
+    // Intl 'hour: 2-digit + hour12: false' can emit '24' at midnight in some
+    // runtimes -- treat that as hour 0 of the *next* calendar day, which is
+    // what the y/m/d fields already reflect.
+    const hourNum = Number(map.hour) % 24;
+    const isoBase = `${map.year}-${map.month}-${map.day}`;
+    if (hourNum >= SHIFT_DAY_ROLLOVER_HOUR) return isoBase;
+    // Before the rollover hour: still on last night's shift. Roll the date
+    // back one day. Parse as UTC to avoid the local-tz DST bounce, then emit
+    // YYYY-MM-DD.
+    const prev = new Date(`${isoBase}T00:00:00Z`);
+    prev.setUTCDate(prev.getUTCDate() - 1);
+    return prev.toISOString().slice(0, 10);
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
+}
+
+// Same-day calendar key, kept only so we can migrate an already-populated
+// midnight-rolled entry into the shift-day key without the attendant having
+// to re-check every guest. Safe to remove after one full weekend has cycled.
+function chicagoCalendarDayKey(now = new Date()) {
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Chicago',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(now);
   } catch {
     return new Date().toISOString().slice(0, 10);
   }
@@ -65,14 +108,39 @@ export default function TonightSignInsPanel({ onCheckIn }) {
   const [busyId, setBusyId] = useState(null);
   const [rowNote, setRowNote] = useState(null); // { id, message, tone }
   const previousIds = useRef(new Set());
-  const storageKey = useMemo(() => STORAGE_PREFIX + chicagoDayKey(), []);
+  const storageKey = useMemo(() => STORAGE_PREFIX + chicagoShiftDayKey(), []);
 
   // Rehydrate the checked-in set for tonight so a laptop refresh does not
-  // re-arm every checkbox and re-bump the count.
+  // re-arm every checkbox and re-bump the count. Falls back to the calendar
+  // day key one time so any check-ins that got written under the old
+  // midnight-rolling scheme survive the switch to shift-day keys.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
-      const raw = window.localStorage.getItem(storageKey);
+      let raw = window.localStorage.getItem(storageKey);
+      if (!raw) {
+        // Migration path: read from the legacy calendar-day key AND from
+        // yesterday's calendar-day key. Between midnight and 6 AM the two
+        // are different, and the bug we just patched wrote yesterday's
+        // check-ins under yesterday's calendar key.
+        const calToday = STORAGE_PREFIX + chicagoCalendarDayKey();
+        const legacy = window.localStorage.getItem(calToday);
+        if (legacy) {
+          raw = legacy;
+          window.localStorage.setItem(storageKey, legacy);
+        } else {
+          // Also try yesterday's calendar-day key, in case a shift is
+          // resuming after the midnight roll.
+          const y = new Date();
+          y.setDate(y.getDate() - 1);
+          const calYesterday = STORAGE_PREFIX + chicagoCalendarDayKey(y);
+          const legacyYesterday = window.localStorage.getItem(calYesterday);
+          if (legacyYesterday) {
+            raw = legacyYesterday;
+            window.localStorage.setItem(storageKey, legacyYesterday);
+          }
+        }
+      }
       if (!raw) return;
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) setCheckedIn(new Set(parsed));
