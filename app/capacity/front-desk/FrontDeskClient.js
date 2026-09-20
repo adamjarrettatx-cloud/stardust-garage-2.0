@@ -486,18 +486,37 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
       </header>
 
       {/* ---------- Body: three columns on wide screens, stacked on narrow ---- */}
-      {/* Column widths rebalanced so the roster (now on the right) breathes
-          and the scanner (center) sits tighter -- Event running moved into
-          the topbar so the scanner column no longer needs headroom for it.
-          Issue Trial SDG Pass lives at the bottom of the left column so the
-          right column stays roster-focused and doesn't feel cluttered. */}
-      <div className="max-w-[1600px] w-full mx-auto px-6 py-6 grid gap-6 grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        {/* ============== LEFT: Guest list check-in + Issue Trial Pass ======== */}
+      {/* Laptop-fit layout: three roughly equal columns, tight gaps, each
+          column owns its own scroll. Left = Issue Trial Pass (top) + Guest
+          List. Center = Scanner + Tonight Door Activity. Right = Trial Pass
+          Roster full-height so more names are visible on a 13" screen. */}
+      <div className="max-w-[1600px] w-full mx-auto px-4 py-4 grid gap-4 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)_minmax(0,1fr)]">
+        {/* ============== LEFT: Issue Trial Pass (top) + Guest List ========== */}
         <AuthenticatedThemeProvider scope="team">
-        <div className="flex flex-col gap-4 min-w-0">
+        <div className="flex flex-col gap-3 min-w-0">
+        {/* Issue Trial SDG Pass sits at the top of the left column so it's
+            reachable without scrolling on a small laptop. */}
+        <section
+          className="rounded-2xl border p-3"
+          style={{ background: '#111', borderColor: 'rgba(255,255,255,0.08)' }}
+        >
+          <div className="mb-2">
+            <div className="text-[10px] font-bold tracking-[0.16em] uppercase" style={{ color: '#8a8a8a' }}>
+              Trial Pass · Override
+            </div>
+            <h2 className="text-[15px] font-bold leading-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              Issue a Trial SDG Pass
+            </h2>
+            <p className="text-[11px] mt-0.5 leading-snug" style={{ color: '#8a8a8a' }}>
+              For guests who can&apos;t receive the SMS code. Bypasses verification and logs you as the issuer.
+            </p>
+          </div>
+          <ManualTrialPassForm createdByEmail={staffEmail} compact />
+        </section>
+
         <section
           className="rounded-2xl border overflow-hidden flex flex-col"
-          style={{ background: '#111', borderColor: 'rgba(255,255,255,0.08)', minHeight: 520 }}
+          style={{ background: '#111', borderColor: 'rgba(255,255,255,0.08)', minHeight: 320, maxHeight: 560 }}
         >
           <div
             className="px-5 py-4 border-b flex items-baseline justify-between gap-3 flex-wrap"
@@ -616,36 +635,14 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
           </div>
         </section>
 
-        {/* Issue Trial SDG Pass sits under the guest list on the left so the
-            right column stays roster-focused. AuthenticatedThemeProvider
-            wraps the whole left column so the manual pass form (which uses
-            team-scoped theming) resolves correctly. */}
-        <section
-          className="rounded-2xl border p-4"
-          style={{ background: '#111', borderColor: 'rgba(255,255,255,0.08)' }}
-        >
-          <div className="mb-3">
-            <div className="text-[10px] font-bold tracking-[0.16em] uppercase" style={{ color: '#8a8a8a' }}>
-              Trial Pass · Override
-            </div>
-            <h2 className="text-[16px] font-bold leading-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-              Issue a Trial SDG Pass
-            </h2>
-            <p className="text-[11px] mt-1 leading-snug" style={{ color: '#8a8a8a' }}>
-              For guests who can&apos;t receive the SMS code. Bypasses verification and logs you as the issuer.
-            </p>
-          </div>
-          <ManualTrialPassForm createdByEmail={staffEmail} compact />
-        </section>
         </div>
         </AuthenticatedThemeProvider>
 
-        {/* ============== CENTER: Door scanner (Event running lives in the
-            topbar now, so this column is just the scanner and its recent
-            activity feed). Wrapped in a max-width so the 4:3 camera stage
-            no longer dominates the page on a small laptop. */}
-        <div className="flex flex-col gap-6 min-w-0">
-          <div className="w-full mx-auto" style={{ maxWidth: 420 }}>
+        {/* ============== CENTER: Door scanner + Tonight Door Activity ======= */}
+        {/* Scanner on top, activity feed beneath it so the door attendant
+            sees the last few admits without leaving the center column. */}
+        <div className="flex flex-col gap-3 min-w-0">
+          <div className="w-full mx-auto" style={{ maxWidth: 380 }}>
             <UnifiedDoorScanner
               activeEvent={activeEvent}
               doorSessionId={doorSessionId}
@@ -653,6 +650,7 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
               getBumpWarning={getScannerBumpWarning}
             />
           </div>
+          <CheckedInListPanel entries={checkedInHistory} />
         </div>
 
         {startPickerOpen && (
@@ -676,20 +674,18 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
           />
         )}
 
-        {/* ============== RIGHT: Trial Pass roster + Recent Activity ========== */}
-        {/* Right column stays roster-focused: the sign-in list the door
-            attendant reads most, followed by the chronological check-in
-            activity feed. Issue Trial Pass moved to the left column so this
-            side isn't visually cluttered. */}
-        <div className="flex flex-col gap-4 min-w-0">
+        {/* ============== RIGHT: Trial Pass roster (full column) ============== */}
+        {/* Roster spans the whole right column so the sign-in list has room
+            for many names on a small laptop screen. Recent activity moved to
+            the center column beneath the scanner. The wrapper stretches the
+            roster section to fill the column so its internal list scroll
+            has room to breathe. */}
+        <div className="flex flex-col min-w-0 [&>section]:flex-1" style={{ minHeight: 560 }}>
           <TonightSignInsPanel
             onCheckIn={async () => {
               return bumpCapacityFor('front_desk laptop (trial-pass roster check-in)');
             }}
           />
-
-          {/* Chronological check-in list — photo + name + kind + time. */}
-          <CheckedInListPanel entries={checkedInHistory} />
         </div>
       </div>
 
@@ -873,7 +869,7 @@ function CheckedInListPanel({ entries }) {
       ) : (
         <ul
           className="divide-y overflow-y-auto"
-          style={{ borderColor: 'rgba(255,255,255,0.05)', maxHeight: 380 }}
+          style={{ borderColor: 'rgba(255,255,255,0.05)', maxHeight: 220 }}
         >
           {entries.map((e) => (
             // Key on id alone: the merge can revise a row's timestamp from
