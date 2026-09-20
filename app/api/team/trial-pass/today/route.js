@@ -8,8 +8,10 @@ export const dynamic = 'force-dynamic';
 
 // GET /api/team/trial-pass/today
 //
-// The chronological "who signed up tonight" feed powering the Front Desk
-// Tonight's Sign-Ins panel. Rolling 12-hour window matches the same
+// The "who signed up tonight" feed powering the Front Desk Tonight's
+// Sign-Ins panel. Most recent sign-up first: the person who just walked up
+// to the front desk is who staff needs to see, without scrolling to the
+// bottom of a long list. Rolling 12-hour window matches the same
 // convention /api/capacity/checkins falls back to when no door session is
 // open: it captures the current evening without replaying yesterday's guests.
 //
@@ -42,7 +44,7 @@ export async function GET() {
     .from('trial_passes')
     .select('id, full_name, issued_at, activated_at, status')
     .gte('issued_at', since)
-    .order('issued_at', { ascending: true })
+    .order('issued_at', { ascending: false })
     .limit(MAX_ROWS);
 
   if (error) {
