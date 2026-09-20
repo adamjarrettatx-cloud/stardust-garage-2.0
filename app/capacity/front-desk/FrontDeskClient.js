@@ -443,6 +443,36 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
             )}
           </div>
 
+          {/* Event running chip -- moved into the topbar so the door
+              attendant sees the active event next to the capacity count
+              without scrolling on a small laptop. Full copy stays: title,
+              open time, Start/End action. */}
+          <TopbarEventChip
+            activeSession={activeSession}
+            activeEvent={activeEvent}
+            busy={sessionBusy}
+            error={sessionError}
+            onStart={() => {
+              setSessionError('');
+              setStartPickerOpen(true);
+              setPickerEventsError('');
+              setPickerEventsLoading(true);
+              fetch('/api/capacity/guestlist/events?include_all=1', { cache: 'no-store' })
+                .then((res) => res.json().then((json) => ({ ok: res.ok, json })))
+                .then(({ ok, json }) => {
+                  if (!ok) {
+                    setPickerEventsError(json?.error || 'Could not load events.');
+                    setPickerEvents([]);
+                  } else {
+                    setPickerEvents(json?.events || []);
+                  }
+                })
+                .catch(() => setPickerEventsError('Network error loading events.'))
+                .finally(() => setPickerEventsLoading(false));
+            }}
+            onEnd={() => { setSessionError(''); setConfirmEndOpen(true); }}
+          />
+
           <div className="flex-1" />
           <div className="text-right">
             <div className="text-[10px] font-bold tracking-[0.16em] uppercase" style={{ color: '#8a8a8a' }}>
@@ -456,9 +486,11 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
       </header>
 
       {/* ---------- Body: three columns on wide screens, stacked on narrow ---- */}
-      <div className="max-w-[1600px] w-full mx-auto px-6 py-6 grid gap-6 grid-cols-1 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1.1fr)_minmax(0,1fr)]">
-        {/* ============== LEFT: Guest list check-in + tonight's sign-ins ====== */}
-        <div className="flex flex-col gap-6 min-w-0">
+      {/* Column widths rebalanced so the roster (now on the right) breathes
+          and the scanner (center) sits tighter -- Event running moved into
+          the topbar so the scanner column no longer needs headroom for it. */}
+      <div className="max-w-[1600px] w-full mx-auto px-6 py-6 grid gap-6 grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        {/* ============== LEFT: Guest list check-in =========================== */}
         <section
           className="rounded-2xl border overflow-hidden flex flex-col"
           style={{ background: '#111', borderColor: 'rgba(255,255,255,0.08)', minHeight: 520 }}
@@ -580,54 +612,19 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
           </div>
         </section>
 
-        {/* Tonight's Trial Pass sign-ins -- chronological list the door
-            attendant scans to confirm a walk-up filled out the QR form.
-            Each check-in click bumps venue capacity by one, same primitive
-            as the Guest List check-in; note field distinguishes it in the
-            audit log. */}
-        <TonightSignInsPanel
-          onCheckIn={async () => {
-            return bumpCapacityFor('front_desk laptop (trial-pass roster check-in)');
-          }}
-        />
-        </div>
-
-        {/* ============== CENTER: Door scanner + recent activity ============== */}
+        {/* ============== CENTER: Door scanner (Event running lives in the
+            topbar now, so this column is just the scanner and its recent
+            activity feed). Wrapped in a max-width so the 4:3 camera stage
+            no longer dominates the page on a small laptop. */}
         <div className="flex flex-col gap-6 min-w-0">
-          <DoorSessionBar
-            activeSession={activeSession}
-            activeEvent={activeEvent}
-            busy={sessionBusy}
-            error={sessionError}
-            onStart={() => {
-              setSessionError('');
-              setStartPickerOpen(true);
-              // Lazy-load the wide event list every time the picker opens.
-              // Cheap query, and it means the manager sees an event they
-              // just created in another tab without a page reload.
-              setPickerEventsError('');
-              setPickerEventsLoading(true);
-              fetch('/api/capacity/guestlist/events?include_all=1', { cache: 'no-store' })
-                .then((res) => res.json().then((json) => ({ ok: res.ok, json })))
-                .then(({ ok, json }) => {
-                  if (!ok) {
-                    setPickerEventsError(json?.error || 'Could not load events.');
-                    setPickerEvents([]);
-                  } else {
-                    setPickerEvents(json?.events || []);
-                  }
-                })
-                .catch(() => setPickerEventsError('Network error loading events.'))
-                .finally(() => setPickerEventsLoading(false));
-            }}
-            onEnd={() => { setSessionError(''); setConfirmEndOpen(true); }}
-          />
-          <UnifiedDoorScanner
-            activeEvent={activeEvent}
-            doorSessionId={doorSessionId}
-            onActivity={logActivity}
-            getBumpWarning={getScannerBumpWarning}
-          />
+          <div className="w-full mx-auto" style={{ maxWidth: 420 }}>
+            <UnifiedDoorScanner
+              activeEvent={activeEvent}
+              doorSessionId={doorSessionId}
+              onActivity={logActivity}
+              getBumpWarning={getScannerBumpWarning}
+            />
+          </div>
         </div>
 
         {startPickerOpen && (
@@ -651,12 +648,20 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
           />
         )}
 
-        {/* ============== RIGHT: Issue trial pass ============================= */}
-        {/* ManualTrialPassForm expects the --auth-* CSS variables set up by
-            AuthenticatedThemeProvider; wrap the panel in the provider (team
-            scope, dark) so we don't have to re-declare its theme here. */}
+        {/* ============== RIGHT: Trial Pass roster on top, Issue below ======== */}
+        {/* The roster lives here now (previously bottom-left) because it's the
+            surface the door attendant reads most often -- putting it above
+            the fold on small laptops was the whole reason for this reshuffle.
+            Issue Trial Pass moves under the scanner column pattern by living
+            below the roster; recent activity closes out the column. */}
         <AuthenticatedThemeProvider scope="team">
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 min-w-0">
+            <TonightSignInsPanel
+              onCheckIn={async () => {
+                return bumpCapacityFor('front_desk laptop (trial-pass roster check-in)');
+              }}
+            />
+
             <section
               className="rounded-2xl border p-4"
               style={{ background: '#111', borderColor: 'rgba(255,255,255,0.08)' }}
@@ -1002,77 +1007,81 @@ function formatTime(ts) {
 // Door session controls
 // ============================================================================
 //
-// The bar sits directly above the scanner so staff cannot miss the "start an
-// event first" state. Copy is deliberately blunt \u2014 nobody at the door in the
-// middle of a rush should have to interpret a subtle icon to know if ticket
-// scanning is armed.
-
-function DoorSessionBar({ activeSession, activeEvent, busy, error, onStart, onEnd }) {
+// The chip sits in the topbar beside the capacity readout so staff cannot
+// miss the "start an event first" state -- above the fold even on a small
+// laptop. Copy is deliberately blunt: nobody at the door in the middle of
+// a rush should have to interpret a subtle icon to know if ticket scanning
+// is armed. Same Start / End actions as the retired inline DoorSessionBar.
+function TopbarEventChip({ activeSession, activeEvent, busy, error, onStart, onEnd }) {
   if (activeSession) {
     const eventTitle = activeEvent?.title || 'Event live';
     const opened = activeSession.opened_at
       ? new Date(activeSession.opened_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
       : '';
     return (
-      <section
-        className="rounded-2xl border p-3 flex items-center gap-3"
+      <div
+        className="flex items-center gap-3 rounded-full border pl-3 pr-1 py-1"
         style={{ background: 'rgba(124,252,155,0.06)', borderColor: 'rgba(124,252,155,0.35)' }}
       >
-        <div className="flex-1 min-w-0">
-          <div className="text-[10px] font-bold tracking-[0.16em] uppercase" style={{ color: '#7CFC9B' }}>
+        <div className="min-w-0">
+          <div className="text-[9px] font-bold tracking-[0.16em] uppercase leading-none" style={{ color: '#7CFC9B' }}>
             Event running
           </div>
-          <div className="text-[15px] font-bold truncate leading-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+          <div
+            className="text-[13px] font-bold truncate leading-tight"
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", maxWidth: 220 }}
+            title={eventTitle}
+          >
             {eventTitle}
+            {opened && (
+              <span className="ml-2 text-[11px] font-semibold" style={{ color: '#8a8a8a' }}>
+                since {opened}
+              </span>
+            )}
           </div>
-          {opened && (
-            <div className="text-[11px]" style={{ color: '#8a8a8a' }}>
-              Opened {opened}
-            </div>
-          )}
           {error && (
-            <div className="text-[12px] mt-1" style={{ color: '#ff8a8a' }}>{error}</div>
+            <div className="text-[11px] leading-tight" style={{ color: '#ff8a8a' }}>{error}</div>
           )}
         </div>
         <button
           type="button"
           onClick={onEnd}
           disabled={busy}
-          className="rounded-full px-4 py-2 text-[12px] font-bold tracking-[0.12em] uppercase border"
+          className="shrink-0 rounded-full px-3 py-1 text-[10px] font-bold tracking-[0.12em] uppercase border"
           style={{ borderColor: 'rgba(255,138,138,0.5)', color: '#ff8a8a', background: 'transparent' }}
         >
-          End Event
+          End
         </button>
-      </section>
+      </div>
     );
   }
 
   return (
-    <section
-      className="rounded-2xl border p-4 flex items-center gap-4"
+    <div
+      className="flex items-center gap-3 rounded-full border pl-3 pr-1 py-1"
       style={{ background: 'rgba(255,184,77,0.06)', borderColor: 'rgba(255,184,77,0.35)' }}
     >
-      <div className="flex-1 min-w-0">
-        <div className="text-[11px] font-bold tracking-[0.16em] uppercase" style={{ color: '#ffb84d' }}>
+      <div className="min-w-0">
+        <div className="text-[9px] font-bold tracking-[0.16em] uppercase leading-none" style={{ color: '#ffb84d' }}>
           No event running
         </div>
-        <div className="text-[14px]" style={{ color: '#e5e5e5' }}>
-          Start an event to scan tickets. Member IDs and trial passes still work without one.
+        <div className="text-[12px] leading-tight" style={{ color: '#cfcfcf' }}>
+          Start one to scan tickets
         </div>
         {error && (
-          <div className="text-[12px] mt-1" style={{ color: '#ff8a8a' }}>{error}</div>
+          <div className="text-[11px] leading-tight" style={{ color: '#ff8a8a' }}>{error}</div>
         )}
       </div>
       <button
         type="button"
         onClick={onStart}
         disabled={busy}
-        className="rounded-full px-5 py-2 text-[12px] font-bold tracking-[0.12em] uppercase"
+        className="shrink-0 rounded-full px-3 py-1 text-[10px] font-bold tracking-[0.12em] uppercase"
         style={{ background: '#7CFC9B', color: '#0a0a0a' }}
       >
         Start Event
       </button>
-    </section>
+    </div>
   );
 }
 
