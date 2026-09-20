@@ -159,6 +159,18 @@ export default function UnifiedDoorScanner({
     // network round-trip.
     const sniff = sniffScan(raw);
     const plan = planScanAttempts(sniff, { eventId, doorSessionId });
+
+    // DIAGNOSTIC: log every scan so we can trace mysterious rejections.
+    // Remove once the trial-pass scan bug is understood.
+    try {
+      console.log('[scan.diag]', {
+        rawLen: typeof raw === 'string' ? raw.length : null,
+        rawPreview: typeof raw === 'string' ? raw.slice(0, 120) : String(raw),
+        sniffKind: sniff?.kind || null,
+        attempts: plan.attempts.length,
+      });
+    } catch {}
+
     if (plan.requiresEvent) {
       // A ticket QR was scanned but no door session is running. Surface a
       // friendly, actionable result card instead of firing a doomed POST.
@@ -171,7 +183,14 @@ export default function UnifiedDoorScanner({
       return;
     }
     if (plan.attempts.length === 0) {
-      showSoftNoticeRef.current?.('Not a valid QR — try again.');
+      // DIAGNOSTIC: surface the first ~60 chars of what was scanned so we can
+      // see live what the camera decoded. Remove once resolved.
+      const preview = typeof raw === 'string' ? raw.slice(0, 60) : '';
+      showSoftNoticeRef.current?.(
+        preview
+          ? `Not a valid QR — scanned: ${preview}${raw.length > 60 ? '…' : ''}`
+          : 'Not a valid QR — try again.',
+      );
       return;
     }
 
@@ -260,7 +279,11 @@ export default function UnifiedDoorScanner({
   const showSoftNotice = useCallback((msg) => {
     setSoftNotice(msg);
     if (softNoticeTimerRef.current) clearTimeout(softNoticeTimerRef.current);
-    softNoticeTimerRef.current = setTimeout(() => setSoftNotice(null), 1600);
+    // Diagnostic notices (long messages with scanned payload preview) get more
+    // time on screen so staff can actually read them. Remove the branch once
+    // the trial-pass scan bug is resolved.
+    const holdMs = typeof msg === 'string' && msg.length > 40 ? 6000 : 1600;
+    softNoticeTimerRef.current = setTimeout(() => setSoftNotice(null), holdMs);
   }, []);
 
   const showResult = useCallback((r) => {
@@ -523,10 +546,10 @@ export default function UnifiedDoorScanner({
             </div>
             <div className="absolute inset-x-0 bottom-3 flex justify-center pointer-events-none px-3">
               <div
-                className="rounded-lg px-3 py-1.5 text-center"
+                className="rounded-lg px-3 py-1.5 text-center max-w-full"
                 style={{ background: 'rgba(0,0,0,0.55)', color: '#e5e5e5' }}
               >
-                <div className="text-[13px] font-semibold">
+                <div className="text-[13px] font-semibold break-all">
                   {softNotice || 'Hold their QR inside the frame.'}
                 </div>
               </div>
