@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
-import { requireTeam } from '@/lib/auth-helpers';
+import { requireFrontDeskOrTeam } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/stub';
 import { auditGuestlist } from '@/lib/guestlist-helpers';
@@ -38,7 +38,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 //                      created, the signature is filed in private storage and
 //                      the guest is added to the Sign Ups list.
 export async function POST(request) {
-  const { user, unauthorized } = await requireTeam();
+  const { user, unauthorized } = await requireFrontDeskOrTeam();
   if (unauthorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

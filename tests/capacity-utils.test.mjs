@@ -104,8 +104,13 @@ test('mapRpcError flags an un-applied migration (missing RPC/table) clearly', ()
 });
 
 test('CAPACITY_OPERATIONS dispatch table enforces correct roles', () => {
-  assert.equal(CAPACITY_OPERATIONS.check_in.role, 'team');
-  assert.equal(CAPACITY_OPERATIONS.check_out.role, 'team');
+  // check_in and check_out use the wider 'front_desk' gate so a hard-locked
+  // front_desk account (see 20260919_front_desk_role.sql) can operate the
+  // +1/-1 buttons on /capacity/front-desk. Team and admin still pass; the
+  // underlying RPCs re-check role, and only capacity_check_in and
+  // capacity_check_out were widened to accept is_front_desk().
+  assert.equal(CAPACITY_OPERATIONS.check_in.role, 'front_desk');
+  assert.equal(CAPACITY_OPERATIONS.check_out.role, 'front_desk');
   assert.equal(CAPACITY_OPERATIONS.reset.role, 'team');
   assert.equal(CAPACITY_OPERATIONS.adjust.role, 'admin');
   assert.equal(CAPACITY_OPERATIONS.start.role, 'admin');

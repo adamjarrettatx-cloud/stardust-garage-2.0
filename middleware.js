@@ -176,6 +176,26 @@ export async function middleware(request) {
     return NextResponse.redirect(url);
   }
 
+  // front_desk is a hard-locked, single-purpose role (see
+  // 20260919_front_desk_role.sql) for the venue's attended-entry laptop.
+  // Every front-of-house staffer who works the door has their OWN
+  // front_desk login so that trial passes, guest check-ins, and capacity
+  // +1/-1 events are attributed to the specific human on shift. The role
+  // is ALLOWED on /capacity/front-desk and NOWHERE else this middleware
+  // guards — not the door kiosks, not the scan page, not the tablet
+  // guest-list, not /capacity/admin, and none of /bananas, /team/*,
+  // /member/*, /portal/*. Same shape as the calendar_viewer branch above.
+  const isFrontDesk = teamRole === 'front_desk';
+  if (isFrontDesk) {
+    if (pathname === '/capacity/front-desk') {
+      return supabaseResponse;
+    }
+    const url = request.nextUrl.clone();
+    url.pathname = '/capacity/front-desk';
+    url.search = '';
+    return NextResponse.redirect(url);
+  }
+
   // Partner status is only needed for the mutual-exclusion checks below, and
   // staff can never be partners, so skip the extra round trip for them. The
   // select-own-row policy on partner_profiles is what makes this readable with

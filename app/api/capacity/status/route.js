@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireTeam } from '@/lib/auth-helpers';
+import { requireFrontDeskOrTeam } from '@/lib/auth-helpers';
 import { createClient } from '@/lib/supabase/server';
 import { deriveStatus } from '@/lib/capacity-utils';
 
@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 // through the user-scoped (RLS-aware) client; the capacity_sessions_team_select
 // policy already restricts this to team members.
 export async function GET() {
-  const { unauthorized } = await requireTeam();
+  const { unauthorized } = await requireFrontDeskOrTeam();
   if (unauthorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

@@ -70,6 +70,12 @@ export default function UnifiedLoginPage() {
     let destination;
     if (role === 'admin') destination = next || '/bananas';
     else if (role === 'team') destination = next || '/team/calendar';
+    else if (role === 'calendar_viewer') destination = '/team/calendar';
+    // front_desk is a hard-locked, single-purpose role. Ignore any ?next=
+    // and send them straight to the one page they're allowed on — the
+    // middleware would just bounce them back here anyway if `next` pointed
+    // anywhere else.
+    else if (role === 'front_desk') destination = '/capacity/front-desk';
     else destination = next || '/member';
 
     router.push(destination);

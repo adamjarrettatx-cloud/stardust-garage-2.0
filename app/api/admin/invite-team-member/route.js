@@ -19,7 +19,12 @@ export async function POST(request) {
     if (!email || !role || !password) {
       return NextResponse.json({ error: 'Email, role, and password are required.' }, { status: 400 });
     }
-    if (!['admin', 'team'].includes(role)) {
+    // The two hard-locked roles (calendar_viewer, front_desk) are also
+    // invitable through this endpoint. They are handled exactly like a
+    // 'team' invite from a login-creation standpoint (auth user + password
+    // + team_members row); their limited access is enforced by the
+    // middleware, the require* helpers, and the per-role SQL predicate.
+    if (!['admin', 'team', 'calendar_viewer', 'front_desk'].includes(role)) {
       return NextResponse.json({ error: 'Invalid role.' }, { status: 400 });
     }
 

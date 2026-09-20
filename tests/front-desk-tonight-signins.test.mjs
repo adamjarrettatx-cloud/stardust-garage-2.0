@@ -23,10 +23,10 @@ const frontDeskSrc = readFileSync(
   'utf8',
 );
 
-test('today route is gated by requireTeam', () => {
+test('today route is gated by a team-or-front-desk require*() helper', () => {
   assert.ok(
-    /requireTeam\(\)/.test(routeSrc),
-    'Route must call requireTeam() before querying trial_passes',
+    /require(Team|FrontDeskOrTeam)\(\)/.test(routeSrc),
+    'Route must call requireTeam() or requireFrontDeskOrTeam() before querying trial_passes',
   );
   assert.ok(
     /Unauthorized/.test(routeSrc),

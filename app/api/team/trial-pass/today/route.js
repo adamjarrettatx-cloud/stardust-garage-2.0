@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/stub';
-import { requireTeam } from '@/lib/auth-helpers';
+import { requireFrontDeskOrTeam } from '@/lib/auth-helpers';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
 // just needs to visually match a walk-up to the list.
 //
 // Why service-role: trial_passes is admin-only under RLS but the door is
-// worked by team members who are not admins. requireTeam() gates the route
+// worked by team members who are not admins. requireFrontDeskOrTeam() gates the route
 // and the narrow projection below prevents PII leaks. Same contract used by
 // /api/capacity/checkins.
 
@@ -30,7 +30,7 @@ export async function GET() {
     return NextResponse.json({ signins: [] });
   }
 
-  const { unauthorized } = await requireTeam();
+  const { unauthorized } = await requireFrontDeskOrTeam();
   if (unauthorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

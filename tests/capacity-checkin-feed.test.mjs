@@ -203,7 +203,14 @@ test('the front desk renders the merged feed, not the raw local buffer', () => {
 
 test('the checkins route is team-gated and scoped to a door session', () => {
   const route = readFileSync(new URL('../app/api/capacity/checkins/route.js', import.meta.url), 'utf8');
-  assert.ok(route.includes('requireTeam('), 'door staff only');
+  // Route accepts admin, team, and the hard-locked front_desk role (which
+  // works only /capacity/front-desk). requireFrontDeskOrTeam() is the
+  // helper for that shape; requireTeam() is still permitted for older
+  // callers.
+  assert.ok(
+    route.includes('requireTeam(') || route.includes('requireFrontDeskOrTeam('),
+    'door staff only',
+  );
   assert.ok(route.includes('getActiveDoorSession('), 'scope to the open door session');
   assert.ok(route.includes('door_session_id'), 'ticket and trial rows scope by session');
   assert.equal(route.includes('buyer_email'), false, 'the door feed must not fetch buyer email addresses');

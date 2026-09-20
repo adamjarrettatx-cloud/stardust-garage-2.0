@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireTeam } from '@/lib/auth-helpers';
+import { requireFrontDeskOrTeam } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/stub';
 import { getTodayInAustin } from '@/lib/studio-helpers';
@@ -27,7 +27,7 @@ export const dynamic = 'force-dynamic';
 //                     default guest-list dropdown does NOT pass this because
 //                     an event with zero grants has nothing to work.
 export async function GET(request) {
-  const { unauthorized } = await requireTeam();
+  const { unauthorized } = await requireFrontDeskOrTeam();
   if (unauthorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

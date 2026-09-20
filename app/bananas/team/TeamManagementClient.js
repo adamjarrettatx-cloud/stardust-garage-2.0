@@ -22,6 +22,13 @@ const ROLE_CONFIG = {
     bg: 'rgba(59,130,246,0.1)',
     border: 'rgba(59,130,246,0.3)',
   },
+  front_desk: {
+    label: 'Front Desk',
+    description: 'Locked to /capacity/front-desk · nothing else',
+    color: '#a78bfa',
+    bg: 'rgba(167,139,250,0.10)',
+    border: 'rgba(167,139,250,0.32)',
+  },
 };
 
 // Department tag chip. Static when no onClick is given, otherwise a toggle in
