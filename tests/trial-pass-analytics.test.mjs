@@ -189,89 +189,96 @@ test('accepts DB-native checkin shape (checked_in_at + notes)', () => {
 });
 
 // -----------------------------------------------------------------------------
-// By-event grouping
+// By-event grouping (signup-first)
 // -----------------------------------------------------------------------------
 
-test('computeByEvent groups check-ins by event and orders newest first', () => {
-  const passes = [
-    { id: 'p1', full_name: 'Ada Lovelace', email: 'ada@example.com', phone: '+15125550101', signup_source: 'trial_pass_qr', phone_verified_at: dayAgo(4), applied_at: null, converted_at: null },
-    { id: 'p2', full_name: 'Grace Hopper', email: 'grace@example.com', phone: '+15125550102', signup_source: 'front_desk_manual', phone_verified_at: null, applied_at: dayAgo(1), converted_at: null },
-    { id: 'p3', full_name: 'Alan Turing', email: 'alan@example.com', phone: null, signup_source: 'trial_pass_qr', phone_verified_at: dayAgo(9), applied_at: null, converted_at: dayAgo(1) },
-  ];
+// A helper that builds an ISO instant for a given Chicago wall-clock time.
+// Attribution runs off issued_at, which the DB stores in UTC but produces
+// from a wall-clock event, so the tests here mirror that pattern.
+import { centralWallClockToUtcMs } from '../lib/event-window.js';
+function ctIso(y, mo, d, hh, mm) {
+  return new Date(centralWallClockToUtcMs(y, mo, d, hh, mm)).toISOString();
+}
+
+test('computeByEvent attributes each signup to the event whose window it falls in', () => {
   const events = [
-    { id: 'ev-old', title: 'Warehouse Warmup', event_date: '2026-09-13', event_time: '21:00:00' },
-    { id: 'ev-new', title: 'Stardust Saturday', event_date: '2026-09-20', event_time: '22:00:00' },
+    { id: 'fri', title: 'Groove Therapy', event_date: '2026-09-19', event_time: '10:00 pm' },
+    { id: 'sat', title: 'BASS CHURCH', event_date: '2026-09-20', event_time: '2PM - 11PM' },
+  ];
+  const passes = [
+    // Sat morning 3am -> Groove Therapy window (10pm Fri -> 4am Sat + buffer)
+    { id: 'a', full_name: 'A', email: 'a@x', phone: null, signup_source: 'trial_pass_qr', issued_at: ctIso(2026, 9, 20, 3, 0) },
+    // Sat afternoon 3pm -> BASS CHURCH window
+    { id: 'b', full_name: 'B', email: 'b@x', phone: null, signup_source: 'trial_pass_qr', issued_at: ctIso(2026, 9, 20, 15, 0) },
+    // Wed noon -> outside any window
+    { id: 'c', full_name: 'C', email: 'c@x', phone: null, signup_source: 'trial_pass_qr', issued_at: ctIso(2026, 9, 16, 12, 0) },
+  ];
+  const out = computeByEvent({ passes, checkins: [], events });
+
+  const bySat = out.find((e) => e.eventId === 'sat');
+  const byFri = out.find((e) => e.eventId === 'fri');
+  const unattr = out.find((e) => e.eventId === null);
+
+  strictEqual(bySat.signupCount, 1);
+  strictEqual(bySat.signups[0].passId, 'b');
+  strictEqual(byFri.signupCount, 1);
+  strictEqual(byFri.signups[0].passId, 'a');
+  strictEqual(unattr.signupCount, 1);
+  strictEqual(unattr.signups[0].passId, 'c');
+});
+
+test('computeByEvent overlapping windows -> closest-to-start event wins', () => {
+  const events = [
+    // Two overlapping late-night events.
+    { id: 'early', title: 'Early set', event_date: '2026-09-20', event_time: '9:00 PM - 1:00 AM' },
+    { id: 'late', title: 'Late set', event_date: '2026-09-20', event_time: '11:00 PM - 3:00 AM' },
+  ];
+  const passes = [
+    // 11:30pm falls in both windows. Late set starts at 11pm -> distance 30m.
+    // Early set starts at 9pm -> distance 2h30m. Late wins.
+    { id: 'x', full_name: 'X', email: 'x@x', phone: null, signup_source: 'trial_pass_qr', issued_at: ctIso(2026, 9, 20, 23, 30) },
+  ];
+  const out = computeByEvent({ passes, checkins: [], events });
+  const late = out.find((e) => e.eventId === 'late');
+  const early = out.find((e) => e.eventId === 'early');
+  strictEqual(late.signupCount, 1);
+  strictEqual(early.signupCount, 0);
+});
+
+test('computeByEvent seeds zero-signup events so a slow night still shows up', () => {
+  const events = [
+    { id: 'quiet', title: 'Quiet Sunday', event_date: '2026-09-21', event_time: '6:30 PM - 9:30 PM' },
+  ];
+  const out = computeByEvent({ passes: [], checkins: [], events });
+  strictEqual(out.length, 1);
+  strictEqual(out[0].eventId, 'quiet');
+  strictEqual(out[0].signupCount, 0);
+});
+
+test('computeByEvent folds allowed check-ins into the same event bucket', () => {
+  const events = [
+    { id: 'sat', title: 'BASS CHURCH', event_date: '2026-09-20', event_time: '2PM - 11PM' },
+  ];
+  const passes = [
+    { id: 'b', full_name: 'B', email: 'b@x', phone: null, signup_source: 'trial_pass_qr', issued_at: ctIso(2026, 9, 20, 15, 0) },
   ];
   const checkins = [
-    { trial_pass_id: 'p1', event_id: 'ev-new', result: 'allowed', reject_reason: null, notes: null, checked_in_at: dayAgo(1) },
-    { trial_pass_id: 'p2', event_id: 'ev-new', result: 'allowed', reject_reason: null, notes: null, checked_in_at: dayAgo(1) },
-    { trial_pass_id: 'p2', event_id: 'ev-new', result: 'denied_duplicate', reject_reason: null, notes: null, checked_in_at: dayAgo(1) },
-    { trial_pass_id: 'p3', event_id: 'ev-old', result: 'allowed', reject_reason: null, notes: null, checked_in_at: dayAgo(8) },
-    { trial_pass_id: 'p1', event_id: 'ev-old', result: 'rejected', reject_reason: 'photo_mismatch', notes: null, checked_in_at: dayAgo(8) },
+    { trial_pass_id: 'b', event_id: 'sat', result: 'allowed', reject_reason: null, notes: null, checked_in_at: ctIso(2026, 9, 20, 16, 0) },
   ];
-
   const out = computeByEvent({ passes, checkins, events });
-
-  strictEqual(out.length, 2);
-  strictEqual(out[0].eventId, 'ev-new'); // newest first
-  strictEqual(out[0].title, 'Stardust Saturday');
-  strictEqual(out[0].allowedCount, 2);   // p1 + p2 unique passes
-  strictEqual(out[0].rejectedCount, 0);
-  strictEqual(out[0].deniedCount, 1);    // p2 duplicate
-  strictEqual(out[0].attendees.length, 2);
-
-  strictEqual(out[1].eventId, 'ev-old');
-  strictEqual(out[1].allowedCount, 1);
-  strictEqual(out[1].rejectedCount, 1);
-  strictEqual(out[1].attendees.length, 1);
-  strictEqual(out[1].attendees[0].fullName, 'Alan Turing');
-  strictEqual(out[1].attendees[0].convertedAt !== null, true);
+  const sat = out.find((e) => e.eventId === 'sat');
+  strictEqual(sat.checkedInCount, 1);
+  strictEqual(sat.signups[0].checkedInAt !== null, true);
 });
 
-test('computeByEvent labels missing events as "Unknown event" without dropping rows', () => {
+test('computeByEvent unattributed bucket falls to the bottom of the list', () => {
+  const events = [
+    { id: 'sat', title: 'BASS CHURCH', event_date: '2026-09-20', event_time: '2PM - 11PM' },
+  ];
   const passes = [
-    { id: 'p1', full_name: 'Test User', email: 't@example.com', phone: null, signup_source: 'trial_pass_qr' },
+    { id: 'c', full_name: 'C', email: 'c@x', phone: null, signup_source: 'trial_pass_qr', issued_at: ctIso(2026, 9, 16, 12, 0) },
+    { id: 'b', full_name: 'B', email: 'b@x', phone: null, signup_source: 'trial_pass_qr', issued_at: ctIso(2026, 9, 20, 15, 0) },
   ];
-  const checkins = [
-    { trial_pass_id: 'p1', event_id: 'ev-missing', result: 'allowed', reject_reason: null, notes: null, checked_in_at: dayAgo(1) },
-  ];
-  const out = computeByEvent({ passes, checkins, events: [] });
-  strictEqual(out.length, 1);
-  strictEqual(out[0].title, 'Unknown event');
-  strictEqual(out[0].attendees.length, 1);
-});
-
-test('computeByEvent buckets check-ins with no event_id under a front-desk group', () => {
-  const passes = [
-    { id: 'p1', full_name: 'Walk In', email: 'w@example.com', phone: null, signup_source: 'front_desk_manual' },
-  ];
-  const checkins = [
-    { trial_pass_id: 'p1', event_id: null, result: 'allowed', reject_reason: null, notes: null, checked_in_at: dayAgo(1) },
-  ];
-  const out = computeByEvent({ passes, checkins, events: [] });
-  strictEqual(out.length, 1);
-  strictEqual(out[0].eventId, null);
-  strictEqual(out[0].title, 'No event (front desk)');
-  strictEqual(out[0].allowedCount, 1);
-});
-
-test('computeByEvent dedupes attendees by pass id even if allowed twice', () => {
-  const passes = [
-    { id: 'p1', full_name: 'Repeat Scan', email: 'r@example.com', phone: null, signup_source: 'trial_pass_qr' },
-  ];
-  // Older backfilled data could plausibly contain two 'allowed' rows for the
-  // same pass at the same event even though the current unique index prevents
-  // it. The CSV should still emit exactly one row.
-  const checkins = [
-    { trial_pass_id: 'p1', event_id: 'ev1', result: 'allowed', reject_reason: null, notes: null, checked_in_at: dayAgo(1) },
-    { trial_pass_id: 'p1', event_id: 'ev1', result: 'allowed', reject_reason: null, notes: null, checked_in_at: dayAgo(2) },
-  ];
-  const out = computeByEvent({
-    passes,
-    checkins,
-    events: [{ id: 'ev1', title: 'Doubled', event_date: '2026-09-20', event_time: null }],
-  });
-  strictEqual(out[0].attendees.length, 1);
-  // The retained row should be the most recent scan.
-  strictEqual(out[0].attendees[0].scannedAt, checkins[0].checked_in_at);
+  const out = computeByEvent({ passes, checkins: [], events });
+  strictEqual(out[out.length - 1].eventId, null);
 });

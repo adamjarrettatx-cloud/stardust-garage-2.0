@@ -26,6 +26,7 @@ const CSV_HEADERS = [
   'phone',
   'phone_verified',
   'signup_source',
+  'signed_up_at',
   'checked_in_at',
   'applied_at',
   'converted_at',
@@ -50,7 +51,8 @@ function toCsv(rows) {
         r.phone,
         r.phoneVerified ? 'yes' : 'no',
         r.signupSource,
-        r.scannedAt,
+        r.issuedAt,
+        r.checkedInAt,
         r.appliedAt,
         r.convertedAt,
       ]
@@ -86,13 +88,13 @@ export async function GET(_request, { params }) {
     return NextResponse.json({ error: 'Event not found' }, { status: 404 });
   }
 
-  const csv = toCsv(match.attendees);
+  const csv = toCsv(match.signups);
 
-  // Filename tries to be human-readable — "2026-09-20-warehouse-warmup.csv" —
-  // so the file is obviously the right one when Adam has three exports open.
-  const datePart = match.eventDate || 'undated';
-  const titlePart = safeSlug(match.title, isNoEvent ? 'front-desk' : 'event');
-  const filename = `trial-checkins-${datePart}-${titlePart}.csv`;
+  // Filename tries to be human-readable — "2026-09-20-bass-church.csv" — so
+  // the file is obviously the right one when Adam has three exports open.
+  const datePart = match.eventDate || 'unattributed';
+  const titlePart = safeSlug(match.title, isNoEvent ? 'unattributed' : 'event');
+  const filename = `trial-signups-${datePart}-${titlePart}.csv`;
 
   return new NextResponse(csv, {
     status: 200,
