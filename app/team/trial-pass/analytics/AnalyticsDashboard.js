@@ -563,7 +563,7 @@ function EventSignupsPanel({ event }) {
 
       {event.signups.length === 0 ? (
         <div className="p-6 text-[13px]" style={{ color: 'var(--auth-muted)' }}>
-          No trial passes were signed up during this event's window.
+          No trial passes were signed up during this event&apos;s window.
         </div>
       ) : (
         <div className="overflow-x-auto">
