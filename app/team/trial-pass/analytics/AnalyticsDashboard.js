@@ -415,7 +415,6 @@ function formatScannedAt(iso) {
 }
 
 function EventListCard({ event, active, onSelect }) {
-  const total = event.allowedCount + event.rejectedCount + event.deniedCount;
   return (
     <button
       type="button"
@@ -431,7 +430,9 @@ function EventListCard({ event, active, onSelect }) {
         className="text-[10px] font-semibold tracking-[0.2em] uppercase mb-2"
         style={{ color: 'var(--auth-muted)' }}
       >
-        {formatEventDate(event.eventDate, event.eventTime)}
+        {event.eventDate
+          ? formatEventDate(event.eventDate, event.eventTime)
+          : 'Outside any event window'}
       </div>
       <div
         className="text-[16px] font-bold leading-tight mb-3"
@@ -445,10 +446,20 @@ function EventListCard({ event, active, onSelect }) {
             className="text-[18px] font-extrabold mr-1"
             style={{ color: 'var(--auth-text)' }}
           >
-            {event.allowedCount}
+            {event.signupCount}
           </span>
-          <span style={{ color: 'var(--auth-muted)' }}>checked in</span>
+          <span style={{ color: 'var(--auth-muted)' }}>
+            signup{event.signupCount === 1 ? '' : 's'}
+          </span>
         </div>
+        {event.checkedInCount > 0 && (
+          <div style={{ color: 'var(--auth-muted)' }}>
+            <span className="font-semibold" style={{ color: 'var(--auth-text)' }}>
+              {event.checkedInCount}
+            </span>{' '}
+            checked in
+          </div>
+        )}
         {event.rejectedCount > 0 && (
           <div style={{ color: 'var(--auth-muted)' }}>
             <span className="font-semibold" style={{ color: 'var(--auth-text)' }}>
@@ -456,17 +467,6 @@ function EventListCard({ event, active, onSelect }) {
             </span>{' '}
             rejected
           </div>
-        )}
-        {event.deniedCount > 0 && (
-          <div style={{ color: 'var(--auth-muted)' }}>
-            <span className="font-semibold" style={{ color: 'var(--auth-text)' }}>
-              {event.deniedCount}
-            </span>{' '}
-            denied
-          </div>
-        )}
-        {total === 0 && (
-          <div style={{ color: 'var(--auth-muted)' }}>No scans</div>
         )}
       </div>
     </button>
@@ -501,12 +501,12 @@ function FollowUpPill({ appliedAt, convertedAt }) {
   );
 }
 
-function EventAttendeesPanel({ event }) {
+function EventSignupsPanel({ event }) {
   if (!event) {
     return (
       <div className="rounded-2xl p-6" style={CARD_STYLE}>
         <div className="text-[13px]" style={{ color: 'var(--auth-muted)' }}>
-          Select an event on the left to see who came.
+          Select an event on the left to see who signed up during it.
         </div>
       </div>
     );
@@ -515,6 +515,10 @@ function EventAttendeesPanel({ event }) {
   const exportHref = event.eventId
     ? `/api/team/trial-pass/analytics/event/${event.eventId}/export`
     : `/api/team/trial-pass/analytics/event/none/export`;
+
+  const summaryBits = [`${event.signupCount} signups`];
+  if (event.checkedInCount > 0) summaryBits.push(`${event.checkedInCount} checked in`);
+  if (event.rejectedCount > 0) summaryBits.push(`${event.rejectedCount} rejected`);
 
   return (
     <div className="rounded-2xl overflow-hidden" style={CARD_STYLE}>
@@ -527,7 +531,9 @@ function EventAttendeesPanel({ event }) {
             className="text-[10px] font-semibold tracking-[0.2em] uppercase mb-1.5"
             style={{ color: 'var(--auth-muted)' }}
           >
-            {formatEventDate(event.eventDate, event.eventTime)}
+            {event.eventDate
+              ? formatEventDate(event.eventDate, event.eventTime)
+              : 'Outside any event window'}
           </div>
           <div
             className="text-[20px] font-extrabold leading-tight truncate"
@@ -536,12 +542,10 @@ function EventAttendeesPanel({ event }) {
             {event.title}
           </div>
           <div className="text-[12px] mt-2" style={{ color: 'var(--auth-muted)' }}>
-            {event.allowedCount} checked in
-            {event.rejectedCount > 0 && ` · ${event.rejectedCount} rejected`}
-            {event.deniedCount > 0 && ` · ${event.deniedCount} denied`}
+            {summaryBits.join(' · ')}
           </div>
         </div>
-        {event.attendees.length > 0 && (
+        {event.signups.length > 0 && (
           <a
             href={exportHref}
             download
@@ -557,9 +561,9 @@ function EventAttendeesPanel({ event }) {
         )}
       </div>
 
-      {event.attendees.length === 0 ? (
+      {event.signups.length === 0 ? (
         <div className="p-6 text-[13px]" style={{ color: 'var(--auth-muted)' }}>
-          No trial members were checked in at this event yet.
+          No trial passes were signed up during this event's window.
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -569,35 +573,39 @@ function EventAttendeesPanel({ event }) {
                 <th className="text-left font-semibold px-6 py-3">Name</th>
                 <th className="text-left font-semibold px-4 py-3">Source</th>
                 <th className="text-left font-semibold px-4 py-3">Follow-up</th>
+                <th className="text-right font-semibold px-4 py-3">Signed up</th>
                 <th className="text-right font-semibold px-6 py-3">Checked in</th>
               </tr>
             </thead>
             <tbody>
-              {event.attendees.map((a) => (
+              {event.signups.map((s) => (
                 <tr
-                  key={a.passId}
+                  key={s.passId}
                   style={{ borderTop: '1px solid var(--auth-row-border, var(--auth-card-border))' }}
                 >
                   <td className="px-6 py-3.5">
-                    <div style={{ color: 'var(--auth-text)', fontWeight: 500 }}>{a.fullName}</div>
+                    <div style={{ color: 'var(--auth-text)', fontWeight: 500 }}>{s.fullName}</div>
                     <div className="text-[11px] mt-0.5" style={{ color: 'var(--auth-muted)' }}>
-                      {a.email}
-                      {a.phone && (
+                      {s.email}
+                      {s.phone && (
                         <>
                           <span className="mx-1.5">·</span>
-                          {a.phone}
+                          {s.phone}
                         </>
                       )}
                     </div>
                   </td>
                   <td className="px-4 py-3.5" style={{ color: 'var(--auth-text)' }}>
-                    {formatSource(a.signupSource)}
+                    {formatSource(s.signupSource)}
                   </td>
                   <td className="px-4 py-3.5">
-                    <FollowUpPill appliedAt={a.appliedAt} convertedAt={a.convertedAt} />
+                    <FollowUpPill appliedAt={s.appliedAt} convertedAt={s.convertedAt} />
+                  </td>
+                  <td className="px-4 py-3.5 text-right" style={{ color: 'var(--auth-muted)' }}>
+                    {formatScannedAt(s.issuedAt)}
                   </td>
                   <td className="px-6 py-3.5 text-right" style={{ color: 'var(--auth-muted)' }}>
-                    {formatScannedAt(a.scannedAt)}
+                    {s.checkedInAt ? formatScannedAt(s.checkedInAt) : '—'}
                   </td>
                 </tr>
               ))}
@@ -610,33 +618,49 @@ function EventAttendeesPanel({ event }) {
 }
 
 function ByEventTab({ byEvent }) {
-  // Pick the newest real event by default so opening the tab shows something
-  // useful; user can click into any other event or the front-desk bucket.
+  // Show only events that had at least one signup (or check-in) plus the
+  // Unattributed bucket if it exists. A months-old event with zero of both
+  // is not useful noise on this tab.
+  const visible = useMemo(
+    () =>
+      byEvent.filter(
+        (e) =>
+          e.signupCount > 0 ||
+          e.checkedInCount > 0 ||
+          e.rejectedCount > 0 ||
+          e.deniedCount > 0 ||
+          e.eventId === null,
+      ),
+    [byEvent],
+  );
+
+  // Pick the newest real event by default so opening the tab lands on the
+  // most useful view; user can click any other event or the Unattributed row.
   const initialId = useMemo(() => {
-    const withEvent = byEvent.find((e) => e.eventId);
-    return (withEvent || byEvent[0])?.eventId || null;
-  }, [byEvent]);
+    const withEvent = visible.find((e) => e.eventId);
+    return (withEvent || visible[0])?.eventId || null;
+  }, [visible]);
 
   const [selectedId, setSelectedId] = useState(initialId);
 
-  if (byEvent.length === 0) {
+  if (visible.length === 0) {
     return (
       <div className="rounded-2xl p-6" style={CARD_STYLE}>
         <div className="text-[13px]" style={{ color: 'var(--auth-muted)' }}>
-          No trial-pass check-ins have been recorded yet. Once the door scans
-          the first trial pass at an event, that event will show up here.
+          No trial-pass signups or check-ins yet. Once guests start signing up
+          during an event window, that event will show up here.
         </div>
       </div>
     );
   }
 
   const selected =
-    byEvent.find((e) => (e.eventId || '__none__') === (selectedId || '__none__')) || byEvent[0];
+    visible.find((e) => (e.eventId || '__none__') === (selectedId || '__none__')) || visible[0];
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] gap-4">
       <div className="space-y-3">
-        {byEvent.map((e) => (
+        {visible.map((e) => (
           <EventListCard
             key={e.eventId || '__none__'}
             event={e}
@@ -645,7 +669,7 @@ function ByEventTab({ byEvent }) {
           />
         ))}
       </div>
-      <EventAttendeesPanel event={selected} />
+      <EventSignupsPanel event={selected} />
     </div>
   );
 }
@@ -660,9 +684,15 @@ export default function AnalyticsDashboard({ data }) {
 
   const [tab, setTab] = useState('overview');
 
+  // Only counting events that had signup activity (or the Unattributed
+  // bucket) so the tab's count chip matches what the user sees on the tab.
+  const byEventVisibleCount = (byEvent || []).filter(
+    (e) => e.signupCount > 0 || e.checkedInCount > 0 || e.eventId === null,
+  ).length;
+
   const tabs = [
     { id: 'overview', label: 'Overview' },
-    { id: 'by-event', label: 'By event', count: (byEvent || []).length },
+    { id: 'by-event', label: 'Signups by event', count: byEventVisibleCount },
   ];
 
   return (
