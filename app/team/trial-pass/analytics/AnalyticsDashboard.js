@@ -1,5 +1,8 @@
 'use client';
 
+import { useMemo, useState } from 'react';
+import UnderlineTabs from '@/app/bananas/components/UnderlineTabs';
+
 // Analytics dashboard for the trial pass program.
 //
 // Every color comes from the --auth-* CSS variables in lib/authenticated-theme.js
@@ -10,11 +13,21 @@
 // frame is themed and the cards inside it were not.
 //
 // Layout:
-//   1. KPI cards (issued / active / applied / converted, plus 7d & 30d)
-//   2. Funnel bar (issued -> checked in -> applied -> converted)
-//   3. Two-column: source breakdown | denial reasons
-//   4. Days-to-first-checkin histogram
-//   5. Recent activity table
+//   Tabs: Overview | By event
+//
+//   Overview:
+//     1. KPI cards (issued / active / applied / converted, plus 7d & 30d)
+//     2. Funnel bar (issued -> checked in -> applied -> converted)
+//     3. Two-column: source breakdown | denial reasons
+//     4. Days-to-first-checkin histogram
+//     5. Recent activity table
+//
+//   By event:
+//     Left column: one card per event with a trial check-in (newest first),
+//     showing the event date/title and unique allowed / rejected / denied
+//     counts. Selecting a card opens the drill-down on the right with the
+//     full attendee list for that event and a CSV export button so Adam
+//     can pull the crowd from a specific night into follow-up outreach.
 
 // The gold accent is the trial-pass brand mark. It reads well against both
 // theme surfaces, so it stays a literal rather than a token.
@@ -362,9 +375,324 @@ function RecentTable({ rows }) {
   );
 }
 
-export default function AnalyticsDashboard({ data }) {
-  const { totals, funnel, rates, sourceBreakdown, denialReasons, dayBuckets, recent } = data;
+// -----------------------------------------------------------------------------
+// By-event tab
+// -----------------------------------------------------------------------------
 
+function formatEventDate(dateStr, timeStr) {
+  if (!dateStr) return 'Undated';
+  // Event dates are stored as YYYY-MM-DD without a timezone. Parsing directly
+  // with new Date('2026-09-20') anchors to UTC midnight and prints as "Sep 19"
+  // in Central Time, so we split and construct in the local zone instead.
+  const [y, m, d] = dateStr.split('-').map(Number);
+  if (!y || !m || !d) return dateStr;
+  const dt = new Date(y, m - 1, d);
+  const base = dt.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: dt.getFullYear() === new Date().getFullYear() ? undefined : 'numeric',
+  });
+  if (!timeStr) return base;
+  // event_time is 'HH:MM:SS'. Trim seconds; a 24h -> 12h render matches the
+  // rest of the admin surfaces without pulling in a full date library.
+  const [hh, mm] = timeStr.split(':').map(Number);
+  if (Number.isNaN(hh)) return base;
+  const suffix = hh >= 12 ? 'pm' : 'am';
+  const h12 = ((hh + 11) % 12) + 1;
+  const mmStr = mm ? `:${String(mm).padStart(2, '0')}` : '';
+  return `${base} · ${h12}${mmStr}${suffix}`;
+}
+
+function formatScannedAt(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function EventListCard({ event, active, onSelect }) {
+  const total = event.allowedCount + event.rejectedCount + event.deniedCount;
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(event)}
+      className="w-full text-left rounded-2xl p-5 transition-colors"
+      style={{
+        background: active ? 'var(--auth-hover-bg)' : 'var(--auth-card-bg)',
+        border: `1px solid ${active ? GOLD : 'var(--auth-card-border)'}`,
+        cursor: 'pointer',
+      }}
+    >
+      <div
+        className="text-[10px] font-semibold tracking-[0.2em] uppercase mb-2"
+        style={{ color: 'var(--auth-muted)' }}
+      >
+        {formatEventDate(event.eventDate, event.eventTime)}
+      </div>
+      <div
+        className="text-[16px] font-bold leading-tight mb-3"
+        style={{ color: 'var(--auth-text)', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+      >
+        {event.title}
+      </div>
+      <div className="flex items-baseline gap-4 text-[12px]">
+        <div>
+          <span
+            className="text-[18px] font-extrabold mr-1"
+            style={{ color: 'var(--auth-text)' }}
+          >
+            {event.allowedCount}
+          </span>
+          <span style={{ color: 'var(--auth-muted)' }}>checked in</span>
+        </div>
+        {event.rejectedCount > 0 && (
+          <div style={{ color: 'var(--auth-muted)' }}>
+            <span className="font-semibold" style={{ color: 'var(--auth-text)' }}>
+              {event.rejectedCount}
+            </span>{' '}
+            rejected
+          </div>
+        )}
+        {event.deniedCount > 0 && (
+          <div style={{ color: 'var(--auth-muted)' }}>
+            <span className="font-semibold" style={{ color: 'var(--auth-text)' }}>
+              {event.deniedCount}
+            </span>{' '}
+            denied
+          </div>
+        )}
+        {total === 0 && (
+          <div style={{ color: 'var(--auth-muted)' }}>No scans</div>
+        )}
+      </div>
+    </button>
+  );
+}
+
+function FollowUpPill({ appliedAt, convertedAt }) {
+  if (convertedAt) {
+    return (
+      <span
+        className="inline-block text-[10px] font-semibold tracking-[0.14em] uppercase px-2 py-0.5 rounded-full"
+        style={{ color: 'var(--auth-success)', background: 'var(--auth-card-bg-alt)' }}
+      >
+        Member
+      </span>
+    );
+  }
+  if (appliedAt) {
+    return (
+      <span
+        className="inline-block text-[10px] font-semibold tracking-[0.14em] uppercase px-2 py-0.5 rounded-full"
+        style={{ color: GOLD, background: 'var(--auth-card-bg-alt)' }}
+      >
+        Applied
+      </span>
+    );
+  }
+  return (
+    <span className="text-[11px]" style={{ color: 'var(--auth-muted)' }}>
+      —
+    </span>
+  );
+}
+
+function EventAttendeesPanel({ event }) {
+  if (!event) {
+    return (
+      <div className="rounded-2xl p-6" style={CARD_STYLE}>
+        <div className="text-[13px]" style={{ color: 'var(--auth-muted)' }}>
+          Select an event on the left to see who came.
+        </div>
+      </div>
+    );
+  }
+
+  const exportHref = event.eventId
+    ? `/api/team/trial-pass/analytics/event/${event.eventId}/export`
+    : `/api/team/trial-pass/analytics/event/none/export`;
+
+  return (
+    <div className="rounded-2xl overflow-hidden" style={CARD_STYLE}>
+      <div
+        className="px-6 py-5 flex items-start justify-between gap-4"
+        style={{ borderBottom: '1px solid var(--auth-card-border)' }}
+      >
+        <div className="min-w-0">
+          <div
+            className="text-[10px] font-semibold tracking-[0.2em] uppercase mb-1.5"
+            style={{ color: 'var(--auth-muted)' }}
+          >
+            {formatEventDate(event.eventDate, event.eventTime)}
+          </div>
+          <div
+            className="text-[20px] font-extrabold leading-tight truncate"
+            style={{ color: 'var(--auth-text)', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+          >
+            {event.title}
+          </div>
+          <div className="text-[12px] mt-2" style={{ color: 'var(--auth-muted)' }}>
+            {event.allowedCount} checked in
+            {event.rejectedCount > 0 && ` · ${event.rejectedCount} rejected`}
+            {event.deniedCount > 0 && ` · ${event.deniedCount} denied`}
+          </div>
+        </div>
+        {event.attendees.length > 0 && (
+          <a
+            href={exportHref}
+            download
+            className="flex-shrink-0 text-[12px] font-semibold px-3.5 py-2 rounded-lg transition-colors"
+            style={{
+              color: 'var(--auth-text)',
+              background: 'var(--auth-card-bg-alt)',
+              border: '1px solid var(--auth-card-border)',
+            }}
+          >
+            Export CSV
+          </a>
+        )}
+      </div>
+
+      {event.attendees.length === 0 ? (
+        <div className="p-6 text-[13px]" style={{ color: 'var(--auth-muted)' }}>
+          No trial members were checked in at this event yet.
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr style={{ color: 'var(--auth-muted)' }}>
+                <th className="text-left font-semibold px-6 py-3">Name</th>
+                <th className="text-left font-semibold px-4 py-3">Source</th>
+                <th className="text-left font-semibold px-4 py-3">Follow-up</th>
+                <th className="text-right font-semibold px-6 py-3">Checked in</th>
+              </tr>
+            </thead>
+            <tbody>
+              {event.attendees.map((a) => (
+                <tr
+                  key={a.passId}
+                  style={{ borderTop: '1px solid var(--auth-row-border, var(--auth-card-border))' }}
+                >
+                  <td className="px-6 py-3.5">
+                    <div style={{ color: 'var(--auth-text)', fontWeight: 500 }}>{a.fullName}</div>
+                    <div className="text-[11px] mt-0.5" style={{ color: 'var(--auth-muted)' }}>
+                      {a.email}
+                      {a.phone && (
+                        <>
+                          <span className="mx-1.5">·</span>
+                          {a.phone}
+                        </>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3.5" style={{ color: 'var(--auth-text)' }}>
+                    {formatSource(a.signupSource)}
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <FollowUpPill appliedAt={a.appliedAt} convertedAt={a.convertedAt} />
+                  </td>
+                  <td className="px-6 py-3.5 text-right" style={{ color: 'var(--auth-muted)' }}>
+                    {formatScannedAt(a.scannedAt)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ByEventTab({ byEvent }) {
+  // Pick the newest real event by default so opening the tab shows something
+  // useful; user can click into any other event or the front-desk bucket.
+  const initialId = useMemo(() => {
+    const withEvent = byEvent.find((e) => e.eventId);
+    return (withEvent || byEvent[0])?.eventId || null;
+  }, [byEvent]);
+
+  const [selectedId, setSelectedId] = useState(initialId);
+
+  if (byEvent.length === 0) {
+    return (
+      <div className="rounded-2xl p-6" style={CARD_STYLE}>
+        <div className="text-[13px]" style={{ color: 'var(--auth-muted)' }}>
+          No trial-pass check-ins have been recorded yet. Once the door scans
+          the first trial pass at an event, that event will show up here.
+        </div>
+      </div>
+    );
+  }
+
+  const selected =
+    byEvent.find((e) => (e.eventId || '__none__') === (selectedId || '__none__')) || byEvent[0];
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] gap-4">
+      <div className="space-y-3">
+        {byEvent.map((e) => (
+          <EventListCard
+            key={e.eventId || '__none__'}
+            event={e}
+            active={(e.eventId || '__none__') === (selected.eventId || '__none__')}
+            onSelect={(next) => setSelectedId(next.eventId)}
+          />
+        ))}
+      </div>
+      <EventAttendeesPanel event={selected} />
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Dashboard shell
+// -----------------------------------------------------------------------------
+
+export default function AnalyticsDashboard({ data }) {
+  const { totals, funnel, rates, sourceBreakdown, denialReasons, dayBuckets, recent, byEvent } =
+    data;
+
+  const [tab, setTab] = useState('overview');
+
+  const tabs = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'by-event', label: 'By event', count: (byEvent || []).length },
+  ];
+
+  return (
+    <>
+      <UnderlineTabs
+        tabs={tabs}
+        active={tab}
+        onChange={setTab}
+        ariaLabel="Analytics view"
+        testId="trial-pass-analytics-tabs"
+      />
+
+      {tab === 'by-event' ? (
+        <ByEventTab byEvent={byEvent || []} />
+      ) : (
+        <OverviewTab
+          totals={totals}
+          funnel={funnel}
+          rates={rates}
+          sourceBreakdown={sourceBreakdown}
+          denialReasons={denialReasons}
+          dayBuckets={dayBuckets}
+          recent={recent}
+        />
+      )}
+    </>
+  );
+}
+
+function OverviewTab({ totals, funnel, rates, sourceBreakdown, denialReasons, dayBuckets, recent }) {
   return (
     <>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
@@ -428,3 +756,4 @@ export default function AnalyticsDashboard({ data }) {
     </>
   );
 }
+
