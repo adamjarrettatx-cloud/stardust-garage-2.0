@@ -5,7 +5,7 @@ import { deepStrictEqual, strictEqual } from 'node:assert';
 // data and assert the shape. This is where we lock down the bucketing and
 // rate math so a refactor can't quietly break the dashboard.
 
-import { computeAnalytics } from '../lib/trial-pass-analytics.js';
+import { computeAnalytics, computeByEvent } from '../lib/trial-pass-analytics.js';
 import { TRIAL_MEMBER_STATUS_RANK, TRIAL_MEMBER_STATUS } from '../lib/trial-member-profile.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -186,4 +186,92 @@ test('accepts DB-native checkin shape (checked_in_at + notes)', () => {
   });
   strictEqual(out.funnel.checkedIn, 1);
   strictEqual(out.denialReasons[0].reason, 'pass expired');
+});
+
+// -----------------------------------------------------------------------------
+// By-event grouping
+// -----------------------------------------------------------------------------
+
+test('computeByEvent groups check-ins by event and orders newest first', () => {
+  const passes = [
+    { id: 'p1', full_name: 'Ada Lovelace', email: 'ada@example.com', phone: '+15125550101', signup_source: 'trial_pass_qr', phone_verified_at: dayAgo(4), applied_at: null, converted_at: null },
+    { id: 'p2', full_name: 'Grace Hopper', email: 'grace@example.com', phone: '+15125550102', signup_source: 'front_desk_manual', phone_verified_at: null, applied_at: dayAgo(1), converted_at: null },
+    { id: 'p3', full_name: 'Alan Turing', email: 'alan@example.com', phone: null, signup_source: 'trial_pass_qr', phone_verified_at: dayAgo(9), applied_at: null, converted_at: dayAgo(1) },
+  ];
+  const events = [
+    { id: 'ev-old', title: 'Warehouse Warmup', event_date: '2026-09-13', event_time: '21:00:00' },
+    { id: 'ev-new', title: 'Stardust Saturday', event_date: '2026-09-20', event_time: '22:00:00' },
+  ];
+  const checkins = [
+    { trial_pass_id: 'p1', event_id: 'ev-new', result: 'allowed', reject_reason: null, notes: null, checked_in_at: dayAgo(1) },
+    { trial_pass_id: 'p2', event_id: 'ev-new', result: 'allowed', reject_reason: null, notes: null, checked_in_at: dayAgo(1) },
+    { trial_pass_id: 'p2', event_id: 'ev-new', result: 'denied_duplicate', reject_reason: null, notes: null, checked_in_at: dayAgo(1) },
+    { trial_pass_id: 'p3', event_id: 'ev-old', result: 'allowed', reject_reason: null, notes: null, checked_in_at: dayAgo(8) },
+    { trial_pass_id: 'p1', event_id: 'ev-old', result: 'rejected', reject_reason: 'photo_mismatch', notes: null, checked_in_at: dayAgo(8) },
+  ];
+
+  const out = computeByEvent({ passes, checkins, events });
+
+  strictEqual(out.length, 2);
+  strictEqual(out[0].eventId, 'ev-new'); // newest first
+  strictEqual(out[0].title, 'Stardust Saturday');
+  strictEqual(out[0].allowedCount, 2);   // p1 + p2 unique passes
+  strictEqual(out[0].rejectedCount, 0);
+  strictEqual(out[0].deniedCount, 1);    // p2 duplicate
+  strictEqual(out[0].attendees.length, 2);
+
+  strictEqual(out[1].eventId, 'ev-old');
+  strictEqual(out[1].allowedCount, 1);
+  strictEqual(out[1].rejectedCount, 1);
+  strictEqual(out[1].attendees.length, 1);
+  strictEqual(out[1].attendees[0].fullName, 'Alan Turing');
+  strictEqual(out[1].attendees[0].convertedAt !== null, true);
+});
+
+test('computeByEvent labels missing events as "Unknown event" without dropping rows', () => {
+  const passes = [
+    { id: 'p1', full_name: 'Test User', email: 't@example.com', phone: null, signup_source: 'trial_pass_qr' },
+  ];
+  const checkins = [
+    { trial_pass_id: 'p1', event_id: 'ev-missing', result: 'allowed', reject_reason: null, notes: null, checked_in_at: dayAgo(1) },
+  ];
+  const out = computeByEvent({ passes, checkins, events: [] });
+  strictEqual(out.length, 1);
+  strictEqual(out[0].title, 'Unknown event');
+  strictEqual(out[0].attendees.length, 1);
+});
+
+test('computeByEvent buckets check-ins with no event_id under a front-desk group', () => {
+  const passes = [
+    { id: 'p1', full_name: 'Walk In', email: 'w@example.com', phone: null, signup_source: 'front_desk_manual' },
+  ];
+  const checkins = [
+    { trial_pass_id: 'p1', event_id: null, result: 'allowed', reject_reason: null, notes: null, checked_in_at: dayAgo(1) },
+  ];
+  const out = computeByEvent({ passes, checkins, events: [] });
+  strictEqual(out.length, 1);
+  strictEqual(out[0].eventId, null);
+  strictEqual(out[0].title, 'No event (front desk)');
+  strictEqual(out[0].allowedCount, 1);
+});
+
+test('computeByEvent dedupes attendees by pass id even if allowed twice', () => {
+  const passes = [
+    { id: 'p1', full_name: 'Repeat Scan', email: 'r@example.com', phone: null, signup_source: 'trial_pass_qr' },
+  ];
+  // Older backfilled data could plausibly contain two 'allowed' rows for the
+  // same pass at the same event even though the current unique index prevents
+  // it. The CSV should still emit exactly one row.
+  const checkins = [
+    { trial_pass_id: 'p1', event_id: 'ev1', result: 'allowed', reject_reason: null, notes: null, checked_in_at: dayAgo(1) },
+    { trial_pass_id: 'p1', event_id: 'ev1', result: 'allowed', reject_reason: null, notes: null, checked_in_at: dayAgo(2) },
+  ];
+  const out = computeByEvent({
+    passes,
+    checkins,
+    events: [{ id: 'ev1', title: 'Doubled', event_date: '2026-09-20', event_time: null }],
+  });
+  strictEqual(out[0].attendees.length, 1);
+  // The retained row should be the most recent scan.
+  strictEqual(out[0].attendees[0].scannedAt, checkins[0].checked_in_at);
 });
