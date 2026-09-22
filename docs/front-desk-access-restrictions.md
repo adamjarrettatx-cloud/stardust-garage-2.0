@@ -10,7 +10,7 @@ Implemented within `/capacity/front-desk`; the existing three-column layout is u
 - Select a roster guest or open their guest-list/scan preview to see access status and notes. Use **Restrict / notes** to create a profile-linked restriction; append notes directly on a matched record.
 - Exact server-resolved profile/account links are confirmed matches and block admission. Matching names, aliases, email, or phone without an established profile link are possible matches, not automatic bans.
 - Staff must document identity verification to confirm a possible match or mark a different person. Confirming links the identity; different-person decisions suppress that restriction for that specific subject. Confirmed identity matches cannot be dismissed this way.
-- Only admins or explicitly authorized restriction managers can lift, with a required reason. Admins assign these permissions in the drawer. A generic `team` role is not sufficient.
+- Only explicitly authorized restriction managers can lift, with a required reason. As directed by the owner on September 22, 2026, the list is Adam Jarrett, Naish Kulpath, and Jeyu Bigelow. Only Adam can change this permission list in the drawer. Neither a generic `admin` nor `team` role grants lifting rights.
 - Notes are append-only. Lifted/expired record history remains available beside matching profiles and through **Include lifted / expired**.
 
 ## Server enforcement

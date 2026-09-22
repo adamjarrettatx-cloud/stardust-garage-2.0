@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { accessStatus, restrictionGuard } from '@/lib/capacity/access-restrictions';
-import { POST } from '@/app/api/capacity/access-restrictions/route';
+import { GET, POST } from '@/app/api/capacity/access-restrictions/route';
 
 const auth = vi.hoisted(() => ({ gate: { unauthorized: false, user: { id: 'owner' }, isAdmin: false }, client: null }));
 vi.mock('@/lib/auth-helpers', () => ({ requireFrontDeskOrTeam: async () => auth.gate }));
@@ -8,7 +8,7 @@ vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => auth.client })
 const subject = { kind: 'member', id: '00000000-0000-4000-8000-000000000001' };
 const restriction = { id: '00000000-0000-4000-8000-000000000010', full_name: 'Test Guest', kind: 'banned',
   reason: 'Test reason', identity_keys: [], match_keys: ['name:test guest'], lifted_at: null, expires_at: null };
-function database({ rows = [], exclusions = [], fail = null } = {}) {
+function database({ rows = [], exclusions = [], fail = null, manager = null } = {}) {
   return {
     rpc: vi.fn(async () => ({ data: restriction.id })),
     from(table) {
@@ -16,9 +16,10 @@ function database({ rows = [], exclusions = [], fail = null } = {}) {
       const builder = {
         select: () => builder, eq: () => builder, is: () => builder, in: () => builder,
         order: () => builder, limit: () => builder,
+        range: () => builder, or: () => builder, ilike: () => builder, not: () => builder,
         overlaps: (field, values) => { overlap = { field, values }; return builder; },
         single: async () => table === fail ? { error: { message: 'offline' } } : { data: { id: subject.id, full_name: 'Test Guest', email: 'test@example.invalid', user_id: null } },
-        maybeSingle: async () => ({ data: null }),
+        maybeSingle: async () => ({ data: table === 'access_restriction_managers' ? manager : null }),
         then(resolve, reject) {
           let data = [];
           if (table === 'access_restrictions') data = rows.filter(row => !overlap || row[overlap.field].some(key => overlap.values.includes(key)));
@@ -67,6 +68,23 @@ describe('mutation API', () => {
     auth.gate = { unauthorized: true };
     expect((await POST(request({ action: 'create' }))).status).toBe(401);
     expect(auth.client.rpc).not.toHaveBeenCalled();
+  });
+  it('does not show lift or permission controls just because the caller is an admin', async () => {
+    auth.gate.isAdmin = true;
+    const json = await (await GET(new Request('https://example.invalid/api/capacity/access-restrictions'))).json();
+    expect(json.canLift).toBe(false);
+    expect(json.canManagePermissions).toBe(false);
+    expect((await POST(request({ action: 'manager', user_id: subject.id, enabled: true }))).status).toBe(403);
+  });
+  it('shows lift to authorized managers but reserves grant management for the owner', async () => {
+    auth.client = database({ manager: { user_id: 'owner', can_manage_permissions: false } });
+    let json = await (await GET(new Request('https://example.invalid/api/capacity/access-restrictions'))).json();
+    expect(json.canLift).toBe(true);
+    expect(json.canManagePermissions).toBe(false);
+    auth.client = database({ manager: { user_id: 'owner', can_manage_permissions: true } });
+    json = await (await GET(new Request('https://example.invalid/api/capacity/access-restrictions'))).json();
+    expect(json.canLift).toBe(true);
+    expect(json.canManagePermissions).toBe(true);
   });
   it('allows manual names but strips forged identity keys from input', async () => {
     const response = await POST(request({ action: 'create', ...restriction, identity_keys: ['user:forged'] }));
