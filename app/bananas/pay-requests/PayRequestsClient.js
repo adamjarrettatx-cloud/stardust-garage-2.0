@@ -6,6 +6,7 @@ import { adminFetch } from '@/lib/admin-fetch';
 import { formatSlotRange } from '@/lib/booking-helpers';
 import { formatMoney, cumulativePayByContact, payRequestStatusLabel } from '@/lib/pay-request-helpers';
 import UnderlineTabs from '../components/UnderlineTabs';
+import MercuryPayoutRow from './MercuryPayoutRow';
 
 const cardStyle = { background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' };
 const altCardStyle = { background: 'var(--auth-card-bg-alt)', borderColor: 'var(--auth-card-border)' };
@@ -137,8 +138,9 @@ function NineNineNineTab({ requests, scoped }) {
   return (
     <div>
       <p className="text-[12px] mb-5" style={{ color: 'var(--auth-muted)' }}>
-        Cumulative pay per 1099 contractor for {year}, from paid requests only. Every total below will read $0 until
-        Phase 4 connects Mercury payouts — that&rsquo;s expected, not a bug.
+        Cumulative pay per 1099 contractor for {year}, from paid requests only. Mercury queueing and approval
+        do not verify settlement and are excluded. Until settlement reconciliation is connected, use
+        Mercury payment records for complete payout and tax reporting.
         {scoped ? ' These totals stay year-wide across every event, because that is what a 1099 reports.' : ''}
       </p>
       {totals.length === 0 ? (
@@ -192,14 +194,19 @@ export default function PayRequestsClient({ eventId = null, eventTitle = null, e
   const [busyId, setBusyId] = useState(null);
   const [actionError, setActionError] = useState('');
   const [tab, setTab] = useState('review');
+  const [mercuryEnabled, setMercuryEnabled] = useState(false);
+  const [mercuryEnvironment, setMercuryEnvironment] = useState(null);
 
   const load = useCallback(async () => {
     try {
       const res = await adminFetch('/api/admin/pay-requests');
       setRequests(res.requests || []);
+      setMercuryEnabled(res.mercury_enabled === true);
+      setMercuryEnvironment(res.mercury_environment);
       setLoadError('');
     } catch (err) {
       setLoadError(err?.message || 'Could not load pay requests');
+      setMercuryEnabled(false);
     }
   }, []);
 
@@ -215,6 +222,22 @@ export default function PayRequestsClient({ eventId = null, eventTitle = null, e
   );
   const pending = inScope.filter((r) => r.status === 'pending_review');
   const reviewed = inScope.filter((r) => r.status !== 'pending_review');
+  const approved = inScope.filter((r) => r.status === 'approved');
+
+  const handleMercury = async (id, action, body = {}) => {
+    setBusyId(id);
+    setActionError('');
+    try {
+      await adminFetch(`/api/admin/pay-requests/${id}/${action}-mercury`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      });
+    } catch (err) {
+      setActionError(err?.message || 'Could not confirm Mercury status.');
+    } finally {
+      await load();
+      setBusyId(null);
+    }
+  };
 
   const handleApprove = async (id) => {
     setBusyId(id);
@@ -306,7 +329,7 @@ export default function PayRequestsClient({ eventId = null, eventTitle = null, e
       {requests !== null && tab === 'review' && (
         <div>
           {actionError && (
-            <p className="text-[13px] mb-4" style={{ color: 'var(--auth-danger)' }}>
+            <p role="alert" className="text-[13px] mb-4" style={{ color: 'var(--auth-danger)' }}>
               {actionError}
             </p>
           )}
@@ -319,8 +342,29 @@ export default function PayRequestsClient({ eventId = null, eventTitle = null, e
           ) : (
             <div className="space-y-3">
               {pending.map((req) => (
-                <RequestRow key={req.id} req={req} onApprove={handleApprove} onReject={handleReject} busy={busyId === req.id} />
+                <RequestRow key={req.id} req={req} onApprove={handleApprove} onReject={handleReject} busy={busyId !== null} />
               ))}
+            </div>
+          )}
+
+          {approved.length > 0 && (
+            <div className="mt-6">
+              <h2 className="text-[14px] font-bold mb-2">APPROVED / MERCURY</h2>
+              <p className="text-[13px] mb-4" style={{ color: 'var(--auth-muted)' }}>
+                Approval in SDG does not send money. Queue each request, then approve it inside Mercury.
+                {mercuryEnvironment === 'sandbox' ? ' Sandbox mode: no real payments.' : ''}
+                {!mercuryEnabled ? ' Mercury queueing is currently disabled.' : ''}
+              </p>
+              <div className="space-y-3">
+                {approved.map((req) => (
+                  <MercuryPayoutRow key={req.id} req={req} enabled={mercuryEnabled} environment={mercuryEnvironment}
+                    busy={busyId !== null}
+                    onQueue={(id, recipientId, amountCents) => handleMercury(id, 'queue', {
+                      confirmed: true, expected_recipient_id: recipientId, expected_amount_cents: amountCents,
+                    })}
+                    onRefresh={(id) => handleMercury(id, 'refresh')} />
+                ))}
+              </div>
             </div>
           )}
 

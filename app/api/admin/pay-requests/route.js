@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { requireAdminMfa } from '@/lib/auth-helpers';
+import { requireOwnerMfa } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { mercuryConfig } from '@/lib/mercury';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,7 +18,7 @@ export const dynamic = 'force-dynamic';
 // try/catch means Phase 3 works whether or not Phase 1 has landed, instead of
 // repeating the cross-phase-dependency bug just fixed in PR #92.
 export async function GET() {
-  const { unauthorized, reason } = await requireAdminMfa();
+  const { unauthorized, reason } = await requireOwnerMfa();
   if (unauthorized) return NextResponse.json({ error: 'Unauthorized', reason }, { status: 401 });
 
   const admin = createAdminClient();
@@ -59,8 +60,33 @@ export async function GET() {
     }
   }
 
+  const config = mercuryConfig();
+  const requestIds = (requests || []).map((r) => r.id);
+  const [profilesResult, payoutsResult] = await Promise.all([
+    contactIds.length
+      ? admin.from('contact_payout_profiles').select('contact_id, mercury_recipient_id').in('contact_id', contactIds)
+      : { data: [] },
+    requestIds.length
+      ? admin.from('artist_pay_payouts')
+        .select('pay_request_id, mercury_recipient_id, mercury_request_id, amount_cents, environment, status, last_error_code, updated_at')
+        .in('pay_request_id', requestIds)
+      : { data: [] },
+  ]);
+  // Preserve review/approval during staged rollout, but disable queueing if
+  // the payout migration cannot be read. The queue route also fails closed.
+  const payoutSchemaReady = !profilesResult.error && !payoutsResult.error;
+  const profilesByContact = Object.fromEntries((profilesResult.data || []).map((p) => [p.contact_id, p]));
+  const payoutsByRequest = Object.fromEntries((payoutsResult.data || []).map((p) => [p.pay_request_id, p]));
   return NextResponse.json({
     ok: true,
-    requests: (requests || []).map((r) => ({ ...r, w9_on_file: w9ByContact[r.contact_id] ?? null })),
-  });
+    mercury_enabled: config.enabled && payoutSchemaReady,
+    mercury_environment: config.mode || null,
+    payout_schema_ready: payoutSchemaReady,
+    requests: (requests || []).map((r) => ({
+      ...r,
+      w9_on_file: w9ByContact[r.contact_id] ?? null,
+      mercury_recipient_id: profilesByContact[r.contact_id]?.mercury_recipient_id || null,
+      payout: payoutsByRequest[r.id] || null,
+    })),
+  }, { headers: { 'Cache-Control': 'no-store' } });
 }
