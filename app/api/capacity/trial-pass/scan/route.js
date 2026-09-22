@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { restrictionGuard } from '@/lib/capacity/access-restrictions';
 import { fetchPriorDenials, fetchDoorSessionStart } from '@/lib/capacity/denial-lookup';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/stub';
@@ -163,6 +164,10 @@ export async function POST(request) {
     // the guest is showing the older screenshot. Same answer either way.
     return NextResponse.json({ ok: false, result: 'not_a_pass', reason: 'This pass is no longer valid.' });
   }
+  if (mode === 'checkin') {
+    const blocked = await restrictionGuard(admin, { kind: 'trial_pass', id: pass.id });
+    if (blocked) return blocked;
+  }
 
   // Event context, when the door passed one. Used for the Weekend Music
   // rule and for the one-scan-per-event guard.
@@ -235,6 +240,7 @@ export async function POST(request) {
       console.error('[door.trial-pass.scan.priorDenials]', err?.message || err);
     }
     return NextResponse.json({
+      access_subject: { kind: 'trial_pass', id: pass.id },
       ok: decision.allowed,
       mode: 'preview',
       result: decision.result,

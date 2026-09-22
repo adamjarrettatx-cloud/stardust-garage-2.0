@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AccessCheck } from '../components/AccessRestrictions';
 
 // TonightSignInsPanel
 //
@@ -11,9 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 //
 // The door attendant uses this to visually match a walk-up ("Did you sign
 // in? What's your name?") to the roster before scanning a ticket or ringing
-// up a purchase. Order is oldest -> newest so the person who signed up first
-// stays at the top and the newest arrival appears at the bottom, matching
-// how a paper sign-in sheet reads.
+// up a purchase. Most recent sign-up comes first, matching the live API.
 //
 // Polls every 15s and also on window focus so the attendant sees a new
 // signup within a few seconds of the guest submitting the form.
@@ -106,6 +105,8 @@ export default function TonightSignInsPanel({ onCheckIn }) {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [checkedIn, setCheckedIn] = useState(() => new Set());
   const [busyId, setBusyId] = useState(null);
+  const [selectedGuest, setSelectedGuest] = useState(null);
+  const [accessClear, setAccessClear] = useState(false);
   const [rowNote, setRowNote] = useState(null); // { id, message, tone }
   const previousIds = useRef(new Set());
   const storageKey = useMemo(() => STORAGE_PREFIX + chicagoShiftDayKey(), []);
@@ -165,20 +166,23 @@ export default function TonightSignInsPanel({ onCheckIn }) {
     setBusyId(row.id);
     setRowNote(null);
 
-    // Optimistic check so double-clicks don't double-fire.
-    const next = new Set(checkedIn);
-    next.add(row.id);
-    setCheckedIn(next);
-    persistCheckedIn(next);
-
     let warning = null;
     if (typeof onCheckIn === 'function') {
       try {
         warning = await onCheckIn(row);
-      } catch {
-        warning = 'Check-in recorded, but the capacity count could not be bumped.';
+      } catch (err) {
+        setBusyId(null);
+        setRowNote({ id: row.id, message: err.message || 'Check-in failed. Hold entry.', tone: 'warn' });
+        window.dispatchEvent(new Event('sdg:access-changed'));
+        return;
       }
     }
+    // Mark only after server-side restriction and capacity checks succeeded.
+    const next = new Set(checkedIn);
+    next.add(row.id);
+    setCheckedIn(next);
+    persistCheckedIn(next);
+    setSelectedGuest(null);
 
     setBusyId(null);
     if (warning) {
@@ -295,6 +299,18 @@ export default function TonightSignInsPanel({ onCheckIn }) {
         </div>
       )}
 
+      {selectedGuest && <div className="px-5 pb-3">
+        <div className="flex items-center justify-between gap-2">
+          <strong className="text-sm">{selectedGuest.full_name}</strong>
+          <button type="button" className="text-sm underline" onClick={() => setSelectedGuest(null)}>Close details</button>
+        </div>
+        <AccessCheck key={selectedGuest.id} subject={{ kind: 'trial_pass', id: selectedGuest.id }} onStatus={setAccessClear} />
+        {!checkedIn.has(selectedGuest.id) && <button type="button"
+          className="w-full rounded-lg bg-green-300 text-black py-2 font-bold disabled:opacity-40"
+          disabled={!accessClear || Boolean(busyId)} onClick={() => handleToggle(selectedGuest)}>
+          {busyId ? 'Checking in…' : 'Check in guest'}
+        </button>}
+      </div>}
       <div className="flex-1 px-5 pb-5 pt-1 overflow-y-auto">
         {loading ? (
           <div className="text-[14px] py-10 text-center" style={{ color: '#8a8a8a' }}>
@@ -324,7 +340,7 @@ export default function TonightSignInsPanel({ onCheckIn }) {
                 >
                   <button
                     type="button"
-                    onClick={() => handleToggle(row)}
+                    onClick={() => { if (selectedGuest?.id !== row.id) setAccessClear(false); setSelectedGuest(row); }}
                     disabled={isIn || isBusy}
                     aria-label={isIn ? `${row.full_name} checked in` : `Check in ${row.full_name}`}
                     aria-pressed={isIn}
@@ -368,15 +384,16 @@ export default function TonightSignInsPanel({ onCheckIn }) {
                   >
                     {index + 1}
                   </span>
-                  <span
-                    className="flex-1 text-[15px] font-semibold truncate"
+                  <button type="button"
+                    onClick={() => { if (selectedGuest?.id !== row.id) setAccessClear(false); setSelectedGuest(row); }}
+                    className="flex-1 text-left text-[15px] font-semibold truncate"
                     style={{
                       color: isIn ? '#8a8a8a' : '#f5f5f5',
                       textDecoration: isIn ? 'line-through' : 'none',
                     }}
                   >
                     {row.full_name}
-                  </span>
+                  </button>
                   <span
                     className="text-[12px] tabular-nums shrink-0"
                     style={{ color: '#8a8a8a' }}

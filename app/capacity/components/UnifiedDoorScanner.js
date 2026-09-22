@@ -1,4 +1,5 @@
 'use client';
+import { AccessCheck } from './AccessRestrictions';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useDoorScanner } from './useDoorScanner';
@@ -261,7 +262,7 @@ export default function UnifiedDoorScanner({
       }
 
       // Real preview — render the card and wait for staff.
-      setPreview(buildPreviewVM(attempt.source, attempt.body, json));
+      setPreview({ ...buildPreviewVM(attempt.source, attempt.body, json), accessSubject: json.access_subject });
       setPhase('preview');
       return;
     }
@@ -350,6 +351,12 @@ export default function UnifiedDoorScanner({
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (json.code === 'access_restricted' || json.code === 'access_unavailable') {
+          setDecisionBusy(false);
+          setPhase('preview');
+          window.dispatchEvent(new Event('sdg:access-changed'));
+          return;
+        }
         showResult({
           theme: 'red',
           headline: preview.source === 'member_id'
@@ -640,7 +647,6 @@ function buildPreviewVM(source, requestBody, json) {
       token: requestBody.code,
       activityId: `ticket:${ticket?.id || requestBody.code}`,
       priorDenials: Array.isArray(json.prior_denials) ? json.prior_denials : [],
-    sessionStartedAt: Number.isFinite(json.session_started_at) ? json.session_started_at : null,
       sessionStartedAt: Number.isFinite(json.session_started_at) ? json.session_started_at : null,
       name: buyer.displayName || buyer.email || 'Ticket holder',
       firstName: buyer.firstName || buyer.displayName || 'Guest',
@@ -667,7 +673,6 @@ function buildPreviewVM(source, requestBody, json) {
       token: requestBody.token,
       activityId: `member:${m.memberProfileId || requestBody.token}`,
       priorDenials: Array.isArray(json.prior_denials) ? json.prior_denials : [],
-    sessionStartedAt: Number.isFinite(json.session_started_at) ? json.session_started_at : null,
       sessionStartedAt: Number.isFinite(json.session_started_at) ? json.session_started_at : null,
       name: m.fullName || m.firstName || 'Member',
       firstName: m.firstName || 'Member',
@@ -822,6 +827,7 @@ function PreviewCard({
   preview, rejectPicker, rejectNote, decisionBusy,
   onCheckIn, onOpenReject, onCancelReject, onReject, onRejectNoteChange, onCancelPreview,
 }) {
+  const [accessClear, setAccessClear] = useState(false);
   const bank = reasonsFor(preview.source);
   const previewLabel = preview.source === 'member_id'
     ? 'Member ID · Preview'
@@ -868,7 +874,7 @@ function PreviewCard({
           </div>
           {preview.subhead && (
             <div className="text-[13px] font-semibold mt-1" style={{ color: '#c9c9c9' }}>
-              {preview.subhead}
+              {accessClear ? preview.subhead : 'Hold entry until access is verified.'}
             </div>
           )}
           {(preview.statusLabel || preview.expiresLabel) && (
@@ -894,6 +900,9 @@ function PreviewCard({
       )}
 
       <PriorDenials denials={preview.priorDenials} sessionStartedAt={preview.sessionStartedAt} />
+      {preview.accessSubject
+        ? <AccessCheck key={`${preview.accessSubject.kind}:${preview.accessSubject.id}`} subject={preview.accessSubject} onStatus={setAccessClear} />
+        : <p className="text-sm text-red-300 my-3">Guest identity unavailable. Do not admit.</p>}
 
       {rejectPicker ? (
         <div>
@@ -947,7 +956,7 @@ function PreviewCard({
           <button
             type="button"
             onClick={onCheckIn}
-            disabled={decisionBusy}
+            disabled={decisionBusy || !accessClear}
             className="w-full rounded-xl py-3 text-[16px] font-extrabold active:scale-[0.98] transition-transform"
             style={{
               background: '#7CFC9B',

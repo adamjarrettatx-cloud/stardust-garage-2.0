@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { restrictionGuard } from '@/lib/capacity/access-restrictions';
 import { fetchPriorDenials, fetchDoorSessionStart } from '@/lib/capacity/denial-lookup';
 import { createClient } from '@supabase/supabase-js';
 import { requireFrontDeskOrTeam, getCurrentUser } from '@/lib/auth-helpers';
@@ -121,6 +122,10 @@ export async function POST(request) {
   if (!member) {
     return NextResponse.json({ error: 'Member not found' }, { status: 404 });
   }
+  if (mode === 'verify') {
+    const blocked = await restrictionGuard(admin, { kind: 'member', id: member.id });
+    if (blocked) return blocked;
+  }
 
   // MODE: preview \u2014 pure read + photo signed URL, no writes.
   //
@@ -149,6 +154,7 @@ export async function POST(request) {
       console.error('[member-id-scan.priorDenials]', err?.message || err);
     }
     return NextResponse.json({
+      access_subject: { kind: 'member', id: member.id },
       mode: 'preview',
       member: preview,
       prior_denials: priorDenials,

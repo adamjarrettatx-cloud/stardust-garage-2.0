@@ -46,10 +46,10 @@ test('today route returns only display-safe fields', () => {
   assert.ok(!columns.includes('email'), 'email must not be exposed to team-scoped door staff');
 });
 
-test('today route orders sign-ins oldest first', () => {
+test('today route preserves the live newest-first roster order', () => {
   assert.ok(
-    /ascending:\s*true/.test(routeSrc),
-    'Signins must be ordered oldest -> newest so the earliest arrival stays at the top',
+    /ascending:\s*false/.test(routeSrc),
+    'Preserve the newest-first ordering shipped in PR #310',
   );
 });
 
@@ -86,17 +86,10 @@ test('panel is wired into the Front Desk left column', () => {
   );
 });
 
-test('roster check-in bumps venue capacity through the shared primitive', () => {
-  // Row clicks call parent-supplied onCheckIn. Parent must route that
-  // through bumpCapacityFor -- the same primitive the Guest List uses --
-  // so the audit log shape stays identical to the tablet flow.
+test('roster check-in uses the server-authorized named admission route', () => {
   assert.ok(
-    /onCheckIn=\{[\s\S]*?bumpCapacityFor\(/.test(frontDeskSrc),
-    'FrontDeskClient must wire onCheckIn -> bumpCapacityFor',
-  );
-  assert.ok(
-    /trial-pass roster check-in/.test(frontDeskSrc),
-    'Roster check-ins must be distinguishable in the capacity_events note',
+    /onCheckIn=\{[\s\S]*?\/api\/capacity\/trial-pass\/roster-checkin/.test(frontDeskSrc),
+    'Roster check-in must run the server restriction guard before the capacity RPC',
   );
   assert.ok(
     /onCheckIn/.test(clientSrc) && /handleToggle/.test(clientSrc),
