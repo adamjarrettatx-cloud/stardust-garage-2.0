@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { restrictionGuard } from '@/lib/capacity/access-restrictions';
 import { fetchPriorDenials, fetchDoorSessionStart } from '@/lib/capacity/denial-lookup';
 import { createClient } from '@supabase/supabase-js';
 import { requireFrontDeskOrTeam } from '@/lib/auth-helpers';
@@ -100,6 +101,10 @@ export async function POST(request) {
     .maybeSingle();
 
   const decision = validateTicketScan({ ticket, eventId });
+  if (ticket && mode === 'checkin') {
+    const blocked = await restrictionGuard(supabaseAdmin, { kind: 'ticket', id: ticket.id });
+    if (blocked) return blocked;
+  }
 
   // ------------------------------------------------------------------
   // mode: 'preview' \u2014 return decision + buyer preview, no side effects.
@@ -122,6 +127,7 @@ export async function POST(request) {
       }
     }
     return NextResponse.json({
+      access_subject: ticket ? { kind: 'ticket', id: ticket.id } : null,
       mode: 'preview',
       result: decision.result,
       reason: decision.reason,

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { validateGuestIntake } from '@/lib/guestlist-checkin';
+import { AccessCheck } from '../components/AccessRestrictions';
 
 // The check-in flow for one pending entry, as a bottom sheet so the roster stays
 // visible behind it and the controls sit under the thumbs holding the tablet.
@@ -27,6 +28,7 @@ export default function CheckInSheet({ entry, onClose, onCheckedIn, onConflict }
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [intake, setIntake] = useState({ phone: '', email: '' });
+  const [accessClear, setAccessClear] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,6 +82,7 @@ export default function CheckInSheet({ entry, onClose, onCheckedIn, onConflict }
           return;
         }
         setError(json.error || 'Check-in failed.');
+        window.dispatchEvent(new Event('sdg:access-changed'));
         return;
       }
       // The guest is in either way; a warning means the consent record did not
@@ -131,6 +134,8 @@ export default function CheckInSheet({ entry, onClose, onCheckedIn, onConflict }
           </button>
         </div>
 
+        <AccessCheck subject={{ kind: 'guestlist', id: entry.id }} onStatus={setAccessClear}
+          extra={view === 'confirm' && confirmProfile ? { guestProfileId: confirmProfile.id } : view === 'intake' ? { newGuest: intake } : null} />
         {isDiscount && (
           <div
             className="rounded-xl px-4 py-3 my-3 border"
@@ -168,7 +173,7 @@ export default function CheckInSheet({ entry, onClose, onCheckedIn, onConflict }
             </p>
             <BigButton
               color="#16a34a"
-              disabled={submitting}
+              disabled={submitting || !accessClear}
               onClick={() => checkIn(
                 { guestProfileId: confirmProfile.id },
                 `${entry.guest_name} checked in.`,
@@ -193,10 +198,7 @@ export default function CheckInSheet({ entry, onClose, onCheckedIn, onConflict }
                   <button
                     type="button"
                     disabled={submitting}
-                    onClick={() => checkIn(
-                      { guestProfileId: candidate.id },
-                      `${entry.guest_name} checked in.`,
-                    )}
+                    onClick={() => { setAccessClear(false); setConfirmProfile(candidate); setView('confirm'); }}
                     className="w-full text-left rounded-2xl px-4 py-3 border active:scale-[0.99] transition-transform"
                     style={{ background: '#0e0e0e', borderColor: 'rgba(255,255,255,0.12)' }}
                   >
@@ -261,7 +263,7 @@ export default function CheckInSheet({ entry, onClose, onCheckedIn, onConflict }
               />
             </label>
 
-            <BigButton color="#16a34a" disabled={submitting || !intakeCheck.valid} type="submit">
+            <BigButton color="#16a34a" disabled={submitting || !intakeCheck.valid || !accessClear} type="submit">
               Save &amp; check in
             </BigButton>
             {(confirmProfile || candidates.length > 0) && (
