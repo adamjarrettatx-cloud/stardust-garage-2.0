@@ -136,13 +136,15 @@ export default function AccessRestrictions() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [comment, setComment] = useState('');
+  const [confirmLift, setConfirmLift] = useState(false);
+  const [confirmManager, setConfirmManager] = useState(null);
   const dialog = useRef(null);
   useEffect(() => {
     function show(event) {
       setSubject(event.detail?.subject || null);
       setName(event.detail?.name || '');
       setCreating(Boolean(event.detail?.subject));
-      setSelected(null); setError(''); setComment(''); setOpen(true);
+      setSelected(null); setError(''); setComment(''); setConfirmLift(false); setConfirmManager(null); setOpen(true);
     }
     window.addEventListener('sdg:restrictions-open', show);
     return () => window.removeEventListener('sdg:restrictions-open', show);
@@ -171,7 +173,7 @@ export default function AccessRestrictions() {
     setBusy(true); setError('');
     try {
       const result = await save(payload);
-      setCreating(false); setSubject(null); setComment(''); setSelected(result.id);
+      setCreating(false); setSubject(null); setComment(''); setConfirmLift(false); setConfirmManager(null); setSelected(result.id);
       await load();
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
@@ -228,10 +230,13 @@ export default function AccessRestrictions() {
           <label className="block text-sm">Add note / reason to lift<textarea className={field} value={comment} onChange={e => setComment(e.target.value)} maxLength={2000} rows={3} /></label>
           <div className="flex gap-2 flex-wrap">
             <button type="button" disabled={busy || !comment.trim()} className={button} onClick={() => mutate({ action: 'note', id: row.id, comment })}>Save note</button>
-            {data.canLift && !row.lifted_at && <button type="button" disabled={busy || !comment.trim()} className={button} onClick={() => {
-              if (window.confirm(`Lift the restriction for ${row.full_name}? This restores access subject to other eligibility checks.`)) mutate({ action: 'lift', id: row.id, comment });
-            }}>Lift restriction</button>}
+            {data.canLift && !row.lifted_at && <button type="button" disabled={busy || !comment.trim()} className={button} onClick={() => setConfirmLift(true)}>Lift restriction</button>}
           </div>
+          {confirmLift && data.canLift && !row.lifted_at && <div className="border border-amber-300/40 rounded-lg p-3 space-y-2">
+            <p className="text-sm">Lift the restriction for {row.full_name}? Other eligibility checks still apply. The reason will be saved in the audit history.</p>
+            <button type="button" disabled={busy || !comment.trim()} className={button} onClick={() => mutate({ action: 'lift', id: row.id, comment })}>Confirm lift</button>
+            <button type="button" className={`${button} ml-2`} onClick={() => setConfirmLift(false)}>Cancel lift</button>
+          </div>}
           {!data.canLift && <p className="text-xs text-neutral-400">Only the owner or authorized managers can lift restrictions. Notes remain in the audit history.</p>}
         </div> : <>
           <label className="block text-sm">Search restricted guests<input className={field} value={query} onChange={e => { setQuery(e.target.value); setPage(0); }} placeholder="Search name" /></label>
@@ -249,10 +254,13 @@ export default function AccessRestrictions() {
             <summary className="text-sm cursor-pointer">Authorized restriction managers</summary>
             <p className="text-xs text-neutral-400 my-2">Only grant this to staff authorized to restore access. Other staff can still add restrictions and notes.</p>
             {data.staff.map(person => <label key={person.user_id} className="flex gap-2 py-2 text-sm">
-              <input type="checkbox" checked={person.authorized} disabled={busy} onChange={e => {
-                if (window.confirm(`${e.target.checked ? 'Authorize' : 'Remove authorization for'} ${person.full_name} to lift restrictions?`)) mutate({ action: 'manager', user_id: person.user_id, enabled: e.target.checked });
-              }} />{person.full_name || 'Staff member'}
+              <input type="checkbox" checked={person.authorized} disabled={busy} onChange={e => setConfirmManager({ person, enabled: e.target.checked })} />{person.full_name || 'Staff member'}
             </label>)}
+            {confirmManager && <div className="border border-amber-300/40 rounded-lg p-3 space-y-2">
+              <p className="text-sm">{confirmManager.enabled ? 'Authorize' : 'Remove authorization for'} {confirmManager.person.full_name} to lift restrictions?</p>
+              <button type="button" className={button} disabled={busy} onClick={() => mutate({ action: 'manager', user_id: confirmManager.person.user_id, enabled: confirmManager.enabled })}>Confirm permission change</button>
+              <button type="button" className={`${button} ml-2`} onClick={() => setConfirmManager(null)}>Cancel</button>
+            </div>}
           </details>}
         </>}
       </div>
