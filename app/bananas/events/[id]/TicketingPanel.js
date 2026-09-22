@@ -618,6 +618,10 @@ export default function TicketingPanel({
           </div>
 
           <div style={{ marginTop: 20, fontSize: 12, opacity: 0.7 }}>
+            <a href={`/bananas/events/${eventId}/attendees`} style={{ textDecoration: 'underline', fontWeight: 600 }}>
+              Attendees &amp; Orders: names, tickets, and check-ins
+            </a>
+            <br />
             Day-of operations (orders, refunds, scanner activity) live on the{' '}
             <a href={`/admin/tickets/${eventId}`} style={{ textDecoration: 'underline' }}>ticket operations console</a>.
           </div>

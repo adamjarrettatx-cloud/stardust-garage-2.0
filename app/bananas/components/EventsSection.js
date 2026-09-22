@@ -86,7 +86,7 @@ export default function EventsSection({ upcoming, past, metricsByEvent = {} }) {
       ) : (
         <div className={`space-y-3 ${tab === 'past' ? 'opacity-70' : ''}`}>
           {events.map((event) => (
-            <div key={event.id} className="rounded-[14px] border p-5 flex items-center gap-5" style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}>
+            <div key={event.id} className="rounded-[14px] border p-5 flex flex-wrap md:flex-nowrap items-center gap-5" style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}>
               <div className="w-20 h-20 rounded-[10px] overflow-hidden flex-shrink-0" style={{ background: 'var(--auth-card-bg-alt)' }}>
                 {event.image_url && <img src={event.image_url} alt={event.title} className="w-full h-full object-cover" />}
               </div>
@@ -161,7 +161,16 @@ export default function EventsSection({ upcoming, past, metricsByEvent = {} }) {
                 }
                 initialMetrics={metricsByEvent[event.id] || null}
               />
-              <div className="flex flex-wrap gap-2 justify-end flex-shrink-0">
+              <div className="flex flex-wrap gap-2 justify-end flex-shrink-0 max-w-[340px]">
+                {event.ticketing_mode === 'internal' && (
+                  <Link
+                    href={`/bananas/events/${event.id}/attendees`}
+                    className="auth-theme-border-button px-3 sm:px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
+                    title={`Attendees and orders for ${event.title}`}
+                  >
+                    ATTENDEES &amp; ORDERS
+                  </Link>
+                )}
                 {/* SDG-only events have no counterparty to sign anything, so
                     the Contracts section is hidden on the edit page for those
                     (see app/bananas/events/[id]/page.js). Hiding the button
