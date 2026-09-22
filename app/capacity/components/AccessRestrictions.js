@@ -250,11 +250,11 @@ export default function AccessRestrictions() {
             <button className={button} disabled={!page} onClick={() => setPage(p => p - 1)}>Previous</button>
             <button className={button} disabled={data?.rows.length !== 50} onClick={() => setPage(p => p + 1)}>Next</button>
           </div>
-          {data?.isAdmin && <details className="border-t border-white/15 pt-3">
+          {data?.canManagePermissions && <details className="border-t border-white/15 pt-3">
             <summary className="text-sm cursor-pointer">Authorized restriction managers</summary>
             <p className="text-xs text-neutral-400 my-2">Only grant this to staff authorized to restore access. Other staff can still add restrictions and notes.</p>
             {data.staff.map(person => <label key={person.user_id} className="flex gap-2 py-2 text-sm">
-              <input type="checkbox" checked={person.authorized} disabled={busy} onChange={e => setConfirmManager({ person, enabled: e.target.checked })} />{person.full_name || 'Staff member'}
+              <input type="checkbox" checked={person.authorized} disabled={busy || person.permissionOwner} onChange={e => setConfirmManager({ person, enabled: e.target.checked })} />{person.full_name || 'Staff member'}{person.permissionOwner ? ' (permission owner)' : ''}
             </label>)}
             {confirmManager && <div className="border border-amber-300/40 rounded-lg p-3 space-y-2">
               <p className="text-sm">{confirmManager.enabled ? 'Authorize' : 'Remove authorization for'} {confirmManager.person.full_name} to lift restrictions?</p>

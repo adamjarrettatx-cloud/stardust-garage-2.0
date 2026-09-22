@@ -18,7 +18,7 @@ export async function GET(request) {
       return reply(await accessStatus(admin, { kind: params.get('kind'), id: params.get('subjectId') }));
     }
     const { data: manager, error: managerError } = await admin.from('access_restriction_managers')
-      .select('user_id').eq('user_id', gate.user.id).maybeSingle();
+      .select('user_id,can_manage_permissions').eq('user_id', gate.user.id).maybeSingle();
     if (managerError) throw managerError;
     let query = admin.from('access_restrictions').select('*').order('created_at', { ascending: false });
     const search = (params.get('q') || '').trim().slice(0, 160).replace(/[%_\\]/g, '');
@@ -37,16 +37,17 @@ export async function GET(request) {
       events = result.data;
     }
     let staff = [];
-    if (gate.isAdmin) {
+    if (manager?.can_manage_permissions) {
       const [people, managers] = await Promise.all([
-        admin.from('team_members').select('user_id,full_name,role').in('role', ['team', 'front_desk']).not('user_id', 'is', null),
-        admin.from('access_restriction_managers').select('user_id'),
+        admin.from('team_members').select('user_id,full_name,role').in('role', ['admin', 'team', 'front_desk']).not('user_id', 'is', null),
+        admin.from('access_restriction_managers').select('user_id,can_manage_permissions'),
       ]);
       if (people.error || managers.error) throw new Error('Permissions unavailable');
-      staff = people.data.map(p => ({ ...p, authorized: managers.data.some(m => m.user_id === p.user_id) }));
+      staff = people.data.map(p => ({ ...p, authorized: managers.data.some(m => m.user_id === p.user_id),
+        permissionOwner: managers.data.some(m => m.user_id === p.user_id && m.can_manage_permissions) }));
     }
     return reply({ rows: rows.map(r => ({ ...r, events: events.filter(e => e.restriction_id === r.id) })),
-      canLift: gate.isAdmin || Boolean(manager), isAdmin: gate.isAdmin, staff, page });
+      canLift: Boolean(manager), canManagePermissions: Boolean(manager?.can_manage_permissions), staff, page });
   } catch {
     return reply({ error: 'Could not load access restrictions. Hold entry until the check is available.' }, 503);
   }
@@ -67,7 +68,9 @@ export async function POST(request) {
   let payload;
   try {
     if (action === 'manager') {
-      if (!gate.isAdmin) return reply({ error: 'Owner/admin required' }, 403);
+      const { data: permissionOwner, error } = await admin.from('access_restriction_managers')
+        .select('can_manage_permissions').eq('user_id', gate.user.id).maybeSingle();
+      if (error || !permissionOwner?.can_manage_permissions) return reply({ error: 'Only the permission owner can change this list.' }, 403);
       if (!UUID.test(body.user_id || '') || typeof body.enabled !== 'boolean') throw new Error('Choose a staff member.');
       payload = { user_id: body.user_id, enabled: body.enabled };
     } else if (action === 'create') {
