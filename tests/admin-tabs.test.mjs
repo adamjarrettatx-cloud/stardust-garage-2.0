@@ -276,20 +276,18 @@ test('the type scale keeps a readable hierarchy', () => {
 
 // --- Owner-only pages still gate themselves --------------------------------
 
-test('trial pass surfaces are reachable from the Memberships tab', () => {
-  // The two trial-pass surfaces (/team/trial-pass/analytics and
-  // /team/trial-pass/manual) existed as pages long before the sidebar linked
-  // them. This test locks them into the Memberships tab so a future refactor
-  // can't quietly orphan them again.
+test('Memberships retains analytics but no duplicate manual issuance tile', () => {
   const memberships = ADMIN_TILES.memberships;
   const hrefs = memberships.map((t) => t.href);
   assert.ok(hrefs.includes('/team/trial-pass/analytics'), 'Trial Passes analytics tile missing from Memberships');
-  assert.ok(hrefs.includes('/team/trial-pass/manual'), 'Issue Trial Pass tile missing from Memberships');
+  assert.deepEqual(hrefs, [
+    '/bananas/applications',
+    '/bananas/members',
+    '/team/trial-pass/analytics',
+  ]);
   const analytics = memberships.find((t) => t.href === '/team/trial-pass/analytics');
-  const manual = memberships.find((t) => t.href === '/team/trial-pass/manual');
   assert.equal(analytics.title, 'Trial Passes');
-  assert.equal(manual.title, 'Issue Trial Pass');
-  assert.equal(manual.restricted, 'team', 'manual issuance page is team-only, tile should show the lock');
+  assert.ok(!Object.values(ADMIN_TILES).flat().some((tile) => tile.href === '/team/trial-pass/manual'));
   // Intentionally no countKey on the analytics tile: an active trial pass
   // is inventory, not queued work. If someone adds a countKey here without
   // rethinking that, this catches it.
@@ -609,7 +607,7 @@ test('the team layout only wraps routes that belong to a section', () => {
   }
 });
 
-test('the trial pass pages render inside the shell like every other admin route', () => {
+test('trial pass analytics remains inside the admin shell', () => {
   // They gained tiles in #115 and the shell learned to wrap tiled /team
   // routes in #116, but the pages themselves shipped with hardcoded dark
   // chrome (a second AuthenticatedPageHeader and a <main> with #0a0a0a),
@@ -618,10 +616,20 @@ test('the trial pass pages render inside the shell like every other admin route'
   // other Memberships surface — the sidebar stays, the header stays, and
   // "click back out of it" is a real crumb rather than a hunt for the
   // browser back button.
-  for (const p of ['/team/trial-pass/analytics', '/team/trial-pass/manual']) {
+  for (const p of ['/team/trial-pass/analytics']) {
     assert.equal(tabForPath(p), 'memberships', `${p} should own a tile`);
     assert.equal(isShellExempt(p), false, `${p} must render inside the shell`);
   }
+});
+
+test('the retired manual page redirects to the protected Front Desk form', () => {
+  const legacyPage = read('app/team/trial-pass/manual/page.js');
+  assert.match(legacyPage, /redirect\('\/capacity\/front-desk'\)/);
+  assert.doesNotMatch(legacyPage, /ManualTrialPassForm|AuthenticatedPageHeader/);
+  assert.equal(tabForPath('/team/trial-pass/manual'), null);
+  assert.match(read('app/capacity/front-desk/FrontDeskClient.js'), /<ManualTrialPassForm createdByEmail=\{staffEmail\} compact \/>/);
+  assert.match(read('app/capacity/front-desk/page.js'), /await requireFrontDeskOrTeam\(\)/);
+  assert.match(read('app/capacity/front-desk/page.js'), /if \(unauthorized\) redirect\('\/team\/login'\)/);
 });
 
 test('SHELL_EXEMPT_PREFIXES is empty and its helper still exists', () => {
@@ -641,7 +649,6 @@ test('a page rendered inside the shell must not render its own <main>', () => {
   // before this cleanup.
   for (const rel of [
     'app/team/trial-pass/analytics/page.js',
-    'app/team/trial-pass/manual/page.js',
   ]) {
     const src = read(rel);
     assert.doesNotMatch(src, /<main\b/, `${rel} must not render its own <main> inside the shell`);
