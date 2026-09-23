@@ -11,6 +11,7 @@ import InvitePartnerButton from './InvitePartnerButton';
 import TaxProfileSection from './TaxProfileSection';
 import PayoutProfileSection from './PayoutProfileSection';
 import styles from '../profile.module.css';
+import { contactProfileKind } from '@/lib/contact-organizations';
 
 const KIND_LABELS = {
   event: 'Event', contract: 'Contract', venue_inquiry: 'Venue inquiry',
@@ -21,6 +22,7 @@ const FIELD_LABELS = {
   primary_contact_name: 'Primary contact', email: 'Email', phone: 'Phone', company: 'Company',
   instagram_handle: 'Instagram', website: 'Website', status: 'Status',
   internal_notes: 'Internal notes', additional_contacts: 'Additional contacts', photo_url: 'Photo URL',
+  profile_kind: 'Profile type', main_contact: 'Main point of contact',
 };
 const ACTION_LABELS = {
   create: 'Created', update: 'Updated', status_change: 'Status changed', note_added: 'Note added',
@@ -70,7 +72,7 @@ export default function ContactDetailClient({
   useEffect(() => { setContact(initialContact); }, [initialContact]);
   useEffect(() => { setTaxProfile(initialTaxProfile); }, [initialTaxProfile]);
   const isContractor = isContractorContact(contact.contact_type);
-  const isOrganizer = isEventOrganizer(contact);
+  const isOrganizer = isEventOrganizer(contact) || contactProfileKind(contact) === 'organization';
   const organizerGaps = useMemo(() => {
     if (!isOrganizer) return [];
     const gaps = [];
@@ -150,7 +152,7 @@ export default function ContactDetailClient({
   );
   return (
     <ContactForm key={contact.id} contact={contact} initialCategory={category} profile={{
-      onSaved: setContact, isOrganizer, organizerGaps, w9Missing, showTaxStatus: isAdmin && isContractor,
+      onSaved: setContact, isAdmin, isOrganizer, organizerGaps, w9Missing, showTaxStatus: isAdmin && isContractor,
       createdLabel: formatDay(contact.created_at), updatedLabel: formatDay(contact.updated_at),
       canArchive: isAdmin,
       archivedView: searchParams?.get('view') === 'archived',

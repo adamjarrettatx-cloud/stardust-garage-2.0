@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { CONTACT_TYPE_OPTIONS, CONTACT_STATUS_OPTIONS, isContactTypeSelected, toggleContactType, contactDirectoryHref } from '@/lib/contact-helpers';
 import { ENTITY_TYPE_OPTIONS } from '@/lib/event-organizer';
 import styles from './profile.module.css';
+import OrganizationMainContact from './OrganizationMainContact';
+import { contactProfileKind } from '@/lib/contact-organizations';
 
 function ProfilePhoto({ url, name }) {
   const [failed, setFailed] = useState(false);
@@ -23,6 +25,7 @@ export default function ContactProfileLayout({
   error, success, onDiscard, onSubmit, showLegalFields, onArchive,
 }) {
   const formId = useId();
+  const organization = values.profile_kind === 'organization';
   const [section, setSection] = useState('overview');
   const [photoDraft, setPhotoDraft] = useState('');
   const [photoError, setPhotoError] = useState('');
@@ -139,6 +142,17 @@ export default function ContactProfileLayout({
         {values.status === 'do_not_book' && <p className={styles.danger}>Do Not Book is flagged throughout the directory.</p>}
         {values.status === 'archived' && <p className={styles.warningText}>Archived contacts stay on file but are hidden from pickers and cannot be sent new contracts.</p>}
         <p className={styles.relationshipLabel}>Relationship types{profile.createMode ? ' · required' : ''}</p>
+        <div className={styles.field}>
+          <label htmlFor={`${formId}-profile-kind`}>Profile type</label>
+          <select id={`${formId}-profile-kind`} value={values.profile_kind} onChange={(event) => {
+            setField('profile_kind', event.target.value);
+            if (event.target.value === 'organization' && !isContactTypeSelected(values.contact_type, 'organization')) {
+              setField('contact_type', [...values.contact_type, 'organization']);
+            }
+          }}>
+            <option value="person">Person</option><option value="organization">Organization</option>
+          </select>
+        </div>
         <div className={styles.tags}>{CONTACT_TYPE_OPTIONS.filter((opt) => isContactTypeSelected(values.contact_type, opt.value)).map((opt) => <span key={opt.value} className={styles.tag}>{opt.label}</span>)}</div>
         {profile.createMode && values.contact_type.length === 0 && <p className={styles.hint}>Choose at least one type.</p>}
         <button type="button" className={styles.textButton} onClick={openTypes}>{profile.createMode && values.contact_type.length === 0 ? 'Select relationship types' : 'Edit relationship types'}</button>
@@ -159,10 +173,11 @@ export default function ContactProfileLayout({
             <ProfilePhoto key={values.photo_url} url={values.photo_url} name={values.display_name} /><span className={styles.photoEdit} aria-hidden="true">+</span>
           </button>
           <div className={styles.identityText}>
+            <span className={styles.hint}>{organization ? 'Organization profile' : 'Person profile'}</span>
             <h1>{profile.createMode ? (values.display_name.trim() || 'New contact') : contact.display_name}</h1>
             <p>{profile.createMode
-              ? ([values.company, values.primary_contact_name].filter(Boolean).join(' · ') || 'Add a person, collective, or organization')
-              : [contact.company, contact.primary_contact_name].filter(Boolean).join(' · ')}</p>
+              ? ([values.company, !organization && values.primary_contact_name].filter(Boolean).join(' · ') || 'Add a person or organization')
+              : [contact.company, !organization && contact.primary_contact_name].filter(Boolean).join(' · ')}</p>
           </div>
         </div>
         <div className={styles.headerActions}>
@@ -197,18 +212,23 @@ export default function ContactProfileLayout({
         {profile.canArchive && <button type="button" className={styles.textButton} disabled={saving || dirty} onClick={onArchive}>Restore contact</button>}
       </div>}
 
+      {activeSection === 'overview' && !profile.createMode && contactProfileKind(contact) === 'organization' &&
+        <OrganizationMainContact contactId={contact.id} legacyName={contact.primary_contact_name}
+          isAdmin={profile.isAdmin} disabled={dirty || saving || contact.status === 'archived'} />}
+      {activeSection === 'overview' && organization && profile.createMode &&
+        <p className={styles.hint}>Create the organization first, then select an existing person or create its main point of contact here.</p>}
       <form id={formId} ref={formRef} onSubmit={submit} noValidate>
         <fieldset disabled={saving} className={styles.editable}>
           <div id={panelId('overview')} role="tabpanel" aria-labelledby={tabId('overview')} hidden={activeSection !== 'overview'} data-profile-section="overview">
             <div className={styles.layout}>
               <div className={styles.stack}>
                 <section className={styles.card}>
-                  <div className={styles.cardHeading}><h2>Contact details</h2></div>
+                  <div className={styles.cardHeading}><h2>{organization ? 'Organization details' : 'Contact details'}</h2></div>
                   <div className={styles.cardBody}>
                     <div className={styles.fields}>
-                      {input('display_name', 'Display name', { required: true })}
+                      {input('display_name', organization ? 'Organization name' : 'Display name', { required: true })}
                       {input('company', 'Company / organization')}
-                      {input('primary_contact_name', 'Primary contact')}
+                      {!organization && input('primary_contact_name', 'Primary contact')}
                       {input('email', 'Email address', { type: 'email' })}
                       {input('phone', 'Phone number', { type: 'tel' })}
                       {input('instagram_handle', 'Instagram', { placeholder: '@username' })}
