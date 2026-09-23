@@ -37,7 +37,7 @@ export default function ContactProfileLayout({
     { id: 'overview', label: 'Overview' },
     ...(showLegalFields ? [{ id: 'legal', label: 'Legal & signing' }] : []),
     ...(profile.taxPanel ? [{ id: 'tax', label: 'Tax & payouts' }] : []),
-    { id: 'activity', label: 'Activity' },
+    ...(!profile.createMode ? [{ id: 'activity', label: 'Activity' }] : []),
   ];
   const activeSection = tabs.some((tab) => tab.id === section) ? section : 'overview';
   const tabId = (id) => `${formId}-tab-${id}`;
@@ -135,9 +135,10 @@ export default function ContactProfileLayout({
         </div>
         {values.status === 'do_not_book' && <p className={styles.danger}>Do Not Book is flagged throughout the directory.</p>}
         {values.status === 'archived' && <p className={styles.warningText}>Archived contacts stay on file but are hidden from pickers and cannot be sent new contracts.</p>}
-        <p className={styles.relationshipLabel}>Relationship types</p>
+        <p className={styles.relationshipLabel}>Relationship types{profile.createMode ? ' · required' : ''}</p>
         <div className={styles.tags}>{CONTACT_TYPE_OPTIONS.filter((opt) => isContactTypeSelected(values.contact_type, opt.value)).map((opt) => <span key={opt.value} className={styles.tag}>{opt.label}</span>)}</div>
-        <button type="button" className={styles.textButton} onClick={openTypes}>Edit relationship types</button>
+        {profile.createMode && values.contact_type.length === 0 && <p className={styles.hint}>Choose at least one type.</p>}
+        <button type="button" className={styles.textButton} onClick={openTypes}>{profile.createMode && values.contact_type.length === 0 ? 'Select relationship types' : 'Edit relationship types'}</button>
       </div>
     </section>
   );
@@ -147,19 +148,24 @@ export default function ContactProfileLayout({
       <nav className={styles.breadcrumbs} aria-label="Breadcrumb">
         <Link href={contactDirectoryHref(initialCategory)} onClick={(event) => {
           if (dirty && !window.confirm('Discard unsaved contact changes and return to Contacts?')) event.preventDefault();
-        }}>← Contacts</Link><span aria-hidden="true">/</span><span>{contact.display_name}</span>
+        }}>← Contacts</Link><span aria-hidden="true">/</span><span>{profile.createMode ? 'New contact' : contact.display_name}</span>
       </nav>
       <header className={styles.header}>
         <div className={styles.identity}>
           <button type="button" className={styles.photo} onClick={openPhoto} disabled={saving} aria-label="Change contact photo" title="Change contact photo">
             <ProfilePhoto key={values.photo_url} url={values.photo_url} name={values.display_name} /><span className={styles.photoEdit} aria-hidden="true">+</span>
           </button>
-          <div className={styles.identityText}><h1>{contact.display_name}</h1><p>{[contact.company, contact.primary_contact_name].filter(Boolean).join(' · ')}</p></div>
+          <div className={styles.identityText}>
+            <h1>{profile.createMode ? (values.display_name.trim() || 'New contact') : contact.display_name}</h1>
+            <p>{profile.createMode
+              ? ([values.company, values.primary_contact_name].filter(Boolean).join(' · ') || 'Add a person, collective, or organization')
+              : [contact.company, contact.primary_contact_name].filter(Boolean).join(' · ')}</p>
+          </div>
         </div>
         <div className={styles.headerActions}>
-          <span className={styles.saveState} role="status">{saving ? 'Saving…' : dirty ? 'Unsaved changes' : success ? 'Saved' : 'No unsaved changes'}</span>
-          {dirty && <button type="button" className={styles.button} onClick={onDiscard} disabled={saving}>Discard</button>}
-          <button type="submit" form={formId} className={`${styles.button} ${styles.primaryButton}`} disabled={saving || !dirty}>{saving ? 'Saving…' : 'Save changes'}</button>
+          <span className={styles.saveState} role="status">{saving ? 'Saving…' : profile.createMode ? (dirty ? 'Unsaved new contact' : 'Ready for details') : dirty ? 'Unsaved changes' : success ? 'Saved' : 'No unsaved changes'}</span>
+          {dirty && <button type="button" className={styles.button} onClick={onDiscard} disabled={saving}>{profile.createMode ? 'Clear' : 'Discard'}</button>}
+          <button type="submit" form={formId} className={`${styles.button} ${styles.primaryButton}`} disabled={saving || (!profile.createMode && !dirty)}>{saving ? 'Saving…' : profile.createMode ? 'Create contact' : 'Save changes'}</button>
           {profile.deleteAction && (
             <details className={styles.more} ref={moreMenu}>
               <summary aria-label="More contact actions" title="More contact actions">⋯</summary>
@@ -235,6 +241,15 @@ export default function ContactProfileLayout({
                     </div>
                   </section>
                 )}
+                {profile.createMode && !profile.isOrganizer && (
+                  <section className={styles.card}>
+                    <div className={styles.cardHeading}><h2>Before you create</h2></div>
+                    <div className={styles.cardBody}>
+                      <p className={styles.hint}>Choose every applicable relationship type and add the contact details your team will search by.</p>
+                      <p className={styles.hint}>Legal and signing details appear automatically for relationship types that can sign agreements.</p>
+                    </div>
+                  </section>
+                )}
                 {profile.portalPanel && <section className={styles.card}>
                   <div className={styles.cardHeading}><h2>Portal access</h2><span>Admin</span></div>
                   <div className={styles.cardBody}>
@@ -243,13 +258,13 @@ export default function ContactProfileLayout({
                     {dirty && <p className={styles.hint}>Invitations use the saved email. Save contact changes first.</p>}
                   </div>
                 </section>}
-                <div className={styles.metadata}><p><span>Added</span><time>{profile.createdLabel}</time></p><p><span>Last updated</span><time>{profile.updatedLabel}</time></p><button type="button" className={styles.textButton} onClick={() => goTo('activity')}>View activity &amp; edit history</button></div>
+                {!profile.createMode && <div className={styles.metadata}><p><span>Added</span><time>{profile.createdLabel}</time></p><p><span>Last updated</span><time>{profile.updatedLabel}</time></p><button type="button" className={styles.textButton} onClick={() => goTo('activity')}>View activity &amp; edit history</button></div>}
               </aside>
             </div>
           </div>
           {showLegalFields && <div id={panelId('legal')} role="tabpanel" aria-labelledby={tabId('legal')} hidden={activeSection !== 'legal'} data-profile-section="legal">
             <div className={styles.legalLayout}><div className={styles.stack}>
-              {profile.legalSummary}
+              {profile.legalSummary || (profile.createMode && <div className={styles.banner}><strong>Complete before contracting.</strong> These details determine who signs and where legal notices are sent. You can create the contact before every field is complete.</div>)}
               <section className={styles.card}><div className={styles.cardHeading}><h2>Legal entity</h2></div><div className={styles.cardBody}><div className={styles.fields}>
                 {input('legal_name', 'Legal name', { placeholder: 'Exact name on the agreement' })}
                 <div className={styles.field}><label htmlFor={`${formId}-entity-type`}>Entity type</label><select id={`${formId}-entity-type`} value={values.entity_type} onChange={(e) => setField('entity_type', e.target.value)}><option value="">Not specified</option>{ENTITY_TYPE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></div>
@@ -262,14 +277,14 @@ export default function ContactProfileLayout({
                 {input('default_signer_name', 'Signer name', { placeholder: 'Who signs on their behalf' })}
                 {input('default_signer_email', 'Signer email', { type: 'email', placeholder: 'Where signature requests go' })}
               </div><p className={styles.hint}>When signer email is blank, the contact email is used.</p></div></section>
-            </div><aside className={styles.card}><div className={styles.cardHeading}><h2>Contract identity</h2></div><div className={styles.cardBody}><h3>{contact.legal_name || contact.display_name}</h3>{contact.legal_name && <p className={styles.hint}>Doing business as {contact.display_name}</p>}<p className={styles.guidance}>Contact details identify who you work with. Legal details identify who signs the agreement.</p><p className={styles.hint}>Start a contract from the event this organizer is attached to.</p></div></aside></div>
+            </div><aside className={styles.card}><div className={styles.cardHeading}><h2>Contract identity</h2></div><div className={styles.cardBody}><h3>{values.legal_name || values.display_name || 'New contact'}</h3>{values.legal_name && values.display_name && values.legal_name !== values.display_name && <p className={styles.hint}>Doing business as {values.display_name}</p>}<p className={styles.guidance}>Contact details identify who you work with. Legal details identify who signs the agreement.</p><p className={styles.hint}>{profile.createMode ? 'You can finish these details later from the saved contact.' : 'Start a contract from the event this organizer is attached to.'}</p></div></aside></div>
           </div>}
         </fieldset>
       </form>
       {/* Independent forms must not be nested in the contact form. They keep
           their existing server-authoritative save/upload/invite behavior. */}
       {profile.taxPanel && <div id={panelId('tax')} role="tabpanel" aria-labelledby={tabId('tax')} hidden={activeSection !== 'tax'} className={styles.separatePanels}>{profile.taxPanel}</div>}
-      <div id={panelId('activity')} role="tabpanel" aria-labelledby={tabId('activity')} hidden={activeSection !== 'activity'}>{profile.activityPanel}</div>
+      {!profile.createMode && <div id={panelId('activity')} role="tabpanel" aria-labelledby={tabId('activity')} hidden={activeSection !== 'activity'}>{profile.activityPanel}</div>}
 
       <dialog ref={photoDialog} className={styles.dialog} aria-labelledby={`${formId}-photo-title`}>
         <div className={styles.dialogHeading}><h2 id={`${formId}-photo-title`}>Contact photo</h2><button type="button" className={styles.closeButton} onClick={() => photoDialog.current.close()} aria-label="Close photo editor">×</button></div>

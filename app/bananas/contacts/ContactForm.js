@@ -18,6 +18,7 @@ import {
   ENTITY_TYPE_OPTIONS,
   buildOrganizerPatch,
   needsLegalCounterpartyFields,
+  defaultSignerEmail as resolveSignerEmail,
 } from '@/lib/event-organizer';
 
 // The legal-counterparty fields, in render order. Kept as data so the fieldset
@@ -121,6 +122,13 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
     needsLegalCounterpartyFields(contactTypes) ||
     !!(legalName || entityType || defaultSignerName || defaultSignerEmail) ||
     ADDRESS_FIELDS.some((f) => address[f.key]);
+  const createOrganizerGaps = [];
+  if (!resolveSignerEmail(values)) createOrganizerGaps.push('a signer email');
+  if (!legalName.trim()) createOrganizerGaps.push('a legal name');
+  if (!entityType) createOrganizerGaps.push('an entity type');
+  if (!address.address_line1.trim() || !address.address_city.trim() || !address.address_state.trim()) {
+    createOrganizerGaps.push('a mailing address for notices');
+  }
 
   const toggleType = (value) => {
     setContactTypes((prev) => toggleContactType(prev, value));
@@ -244,10 +252,28 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
     }
   };
 
-  if (profile) {
+  if (profile || !isEditing) {
+    const activeProfile = profile || {
+      createMode: true,
+      isOrganizer: needsLegalCounterpartyFields(contactTypes),
+      organizerGaps: createOrganizerGaps,
+      showTaxStatus: false,
+      w9Missing: false,
+      taxPanel: null,
+      activityPanel: null,
+      deleteAction: null,
+      portalPanel: null,
+      legalSummary: null,
+    };
+    const draftContact = contact || {
+      display_name: 'New contact',
+      company: '',
+      primary_contact_name: '',
+      legal_name: '',
+    };
     return (
       <ContactProfileLayout
-        contact={contact} initialCategory={initialCategory} profile={profile}
+        contact={draftContact} initialCategory={initialCategory} profile={activeProfile}
         values={values} setField={setField} dirty={dirty} saving={saving}
         error={error} success={success} onDiscard={discardChanges} onSubmit={handleSubmit}
         showLegalFields={showLegalFields}
