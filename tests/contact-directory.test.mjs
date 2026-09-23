@@ -6,10 +6,12 @@ import { fileURLToPath } from 'node:url';
 import {
   CONTACT_DIRECTORY_SECTIONS,
   CONTACT_TYPE_OPTIONS,
+  CONTACT_STATUS_OPTIONS,
   contactDirectoryHref,
   contactDirectoryTypes,
   contactMatchesDirectorySection,
   filterDirectoryContacts,
+  filterArchivedContacts,
   isContactTypeSelected,
   toggleContactType,
 } from '../lib/contact-helpers.js';
@@ -23,6 +25,12 @@ test('the directory exposes exactly the six approved sections in order', () => {
   assert.deepEqual(CONTACT_TYPE_OPTIONS.map(option => option.label), expected);
 });
 
+test('contact statuses exclude Inactive while legacy records stay in the normal directory', () => {
+  assert.deepEqual(CONTACT_STATUS_OPTIONS.map(option => option.value), ['active', 'do_not_book', 'archived']);
+  const legacy = { id: 1, display_name: 'Legacy Artist', status: 'inactive', contact_type: ['artist'] };
+  assert.deepEqual(filterDirectoryContacts([legacy], 'artist'), [legacy]);
+  assert.deepEqual(filterArchivedContacts([legacy]), []);
+});
 test('DJ and Performer records are included under Artist without changing stored records', () => {
   for (const value of ['artist', 'dj', 'performer']) {
     assert.equal(contactMatchesDirectorySection([value], 'artist'), true);
@@ -42,8 +50,31 @@ test('directory URLs only accept the six known categories', () => {
   assert.equal(contactDirectoryHref('artist'), '/bananas/contacts?category=artist');
   assert.equal(contactDirectoryHref('dj'), '/bananas/contacts');
   assert.equal(contactDirectoryHref('all'), '/bananas/contacts');
+  assert.equal(contactDirectoryHref(null, true), '/bananas/contacts?view=archived');
+  assert.equal(contactDirectoryHref('artist', true), '/bananas/contacts?category=artist&view=archived');
 });
 
+test('archived contacts are excluded from normal lists and available through the archive', () => {
+  const rows = [
+    { id: 1, display_name: 'Active DJ', contact_type: ['dj'], status: 'active' },
+    { id: 2, display_name: 'Archived DJ', contact_type: ['dj'], status: 'archived' },
+    { id: 3, display_name: 'Legacy Person', contact_type: ['other'], status: 'archived' },
+    { id: 4, display_name: 'Blocked DJ', contact_type: ['artist'], status: 'do_not_book' },
+  ];
+  assert.deepEqual(filterDirectoryContacts(rows, 'artist').map(row => row.id), [1, 4]);
+  assert.deepEqual(filterDirectoryContacts(rows, 'artist', '', 'archived'), []);
+  assert.deepEqual(filterArchivedContacts(rows).map(row => row.id), [2, 3]);
+  assert.deepEqual(filterArchivedContacts(rows, 'artist').map(row => row.id), [2]);
+  assert.deepEqual(filterArchivedContacts(rows, null, 'legacy').map(row => row.id), [3]);
+  assert.deepEqual(filterArchivedContacts(rows, null, 'missing'), []);
+});
+
+test('archive entry is a small link and category counts use non-archived records', () => {
+  assert.match(source, />Archived Contacts<\/Link>/);
+  assert.match(source, /filterDirectoryContacts\(contacts, value\)\.length/);
+  assert.match(source, /searchParams\?\.get\('view'\) === 'archived'/);
+  assert.match(source, /option\.value !== 'archived'/);
+});
 test('section filtering supports aliases, status, and text search', () => {
   const rows = [
     { id: 1, display_name: 'DJ One', contact_type: ['dj'], status: 'active', email: 'dj@example.com' },

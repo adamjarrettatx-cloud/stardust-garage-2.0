@@ -10,6 +10,7 @@
 .category h2{font-family:'Plus Jakarta Sans',sans-serif;font-size:19px;letter-spacing:-.02em;font-weight:700;color:var(--auth-text-strong)}
 .category p{font-size:12px;line-height:1.5;margin-top:8px;color:var(--auth-muted)}
 .note{font-size:12px;color:var(--auth-muted);margin-top:23px;line-height:1.7}
+.directoryFooter,.listMeta{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.directoryFooter{margin-top:16px}.directoryFooter .note{margin:0}.listMeta{margin-bottom:12px}.listMeta .count{margin:0}.archiveLink{display:inline-flex;align-items:center;min-height:36px;font-size:11px;font-weight:500;color:var(--auth-muted);text-decoration:underline;text-underline-offset:3px}.archiveLink:hover{color:var(--auth-text-strong)}.archiveLink:focus-visible{outline:2px solid var(--auth-accent-strong);outline-offset:3px}
 .back{display:inline-flex;align-items:center;gap:9px;color:var(--auth-muted);font-size:12px;font-weight:600;margin-bottom:19px}
 .back span{font-size:19px}.back:hover{text-decoration:underline}
 .tools{display:flex;gap:12px;margin:27px 0 17px}

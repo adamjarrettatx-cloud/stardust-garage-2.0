@@ -6,7 +6,7 @@ import ContactsList from './ContactsList';
 export const revalidate = 0;
 
 // Team-gated, not admin-gated: admins and team members both maintain the
-// directory (only DELETE is admin-only, enforced by RLS).
+// directory. Contacts are archived rather than deleted.
 export default async function ContactsPage() {
   const { unauthorized } = await requireTeam();
   if (unauthorized) redirect('/login');

@@ -60,7 +60,7 @@ test('relationship editing preserves the canonical legacy-aware helpers and rest
 });
 
 test('administrator and owner actions retain their gates', () => {
-  assert.match(detail, /deleteAction: isAdmin \?/);
+  assert.match(detail, /canArchive: isAdmin/);
   assert.match(detail, /portalPanel: isAdmin \?/);
   assert.match(detail, /isAdmin && isContractor && <TaxProfileSection/);
   assert.match(detail, /isOwner && <PayoutProfileSection/);

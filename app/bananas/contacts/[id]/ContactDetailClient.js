@@ -7,7 +7,6 @@ import { formatMoney } from '@/lib/studio-helpers';
 import { contactStatusLabel, isContractorContact, contactDirectorySection } from '@/lib/contact-helpers';
 import { defaultSignerEmail, isEventOrganizer, organizerDisplayLabel } from '@/lib/event-organizer';
 import ContactForm from '../ContactForm';
-import DeleteContactButton from './DeleteContactButton';
 import InvitePartnerButton from './InvitePartnerButton';
 import TaxProfileSection from './TaxProfileSection';
 import PayoutProfileSection from './PayoutProfileSection';
@@ -109,7 +108,9 @@ export default function ContactDetailClient({
   const w9Missing = isAdmin && isContractor && !taxProfile?.w9_on_file;
   const legalSummary = isOrganizer ? (
     <div className={`${styles.banner} ${organizerGaps.length ? styles.bannerWarning : ''}`}>
-      {organizerGaps.length ? <>
+      {contact.status === 'archived' ? <>
+        <strong>Archived contact.</strong> Restore this contact before sending a new agreement. Existing agreements and history remain on file.
+      </> : organizerGaps.length ? <>
         <strong>Not yet contract-ready.</strong> Still needs {organizerGaps.join(', ')}. Complete the details below before sending an agreement.
       </> : <>
         <strong>Ready for contracts.</strong> Agreements will be issued to {organizerDisplayLabel(contact)} and sent to {defaultSignerEmail(contact)}. Start a contract from the event this organizer is attached to.
@@ -151,7 +152,8 @@ export default function ContactDetailClient({
     <ContactForm key={contact.id} contact={contact} initialCategory={category} profile={{
       onSaved: setContact, isOrganizer, organizerGaps, w9Missing, showTaxStatus: isAdmin && isContractor,
       createdLabel: formatDay(contact.created_at), updatedLabel: formatDay(contact.updated_at),
-      deleteAction: isAdmin ? <DeleteContactButton contactId={contact.id} displayName={contact.display_name} /> : null,
+      canArchive: isAdmin,
+      archivedView: searchParams?.get('view') === 'archived',
       portalStatus: partnerProfile ? (partnerProfile.is_active ? 'Portal profile active.' : 'Invited. Pending activation.') : 'No portal invitation on file.',
       portalPanel: isAdmin ? <InvitePartnerButton contactId={contact.id} email={contact.email} contactType={contact.contact_type} partnerProfile={partnerProfile} isContractor={isContractor} /> : null,
       legalSummary, taxPanel, activityPanel,
