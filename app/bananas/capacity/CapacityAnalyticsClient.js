@@ -167,7 +167,7 @@ export default function CapacityAnalyticsClient({ initialEvent = null }) {
               {selected.coverage !== 'session' && <span>{selected.coverage === 'none' ? 'No session coverage' : 'Partial session coverage'}</span>}
               {selected.corrections > 0 && <span>{selected.corrections} correction(s), net {selected.correctionDelta}</span>}
             </div>}
-            <p className={styles.small}>Austin time, including CDT/CST at daylight-saving changes. After-midnight intervals stay with the preceding night. Scroll sideways to see more intervals; select a bar for its time range and counts. Use Hourly for a full-night overview.</p>
+            <p className={styles.small}>The entire timeline fits this panel; every interval is retained. Hover or tap a bar, or use the interval selector, for exact times and counts. Times use Austin CDT/CST; after-midnight activity stays with the preceding night.</p>
           </section>
           <section className={styles.panel}>
             <div className={styles.panelHead}><div><h2>{intervalName} breakdown</h2><p>Counter operations, not unique attendees. Resets and adjustments are separate from exits.</p></div>{mode === 'live' && <button onClick={download}>Export CSV</button>}</div>
@@ -194,30 +194,56 @@ function Stat({ label, value, hint }) {
 }
 
 function CapacityChart({ buckets, intervalMinutes = 60, view, selected, onSelect }) {
-  if (view === 'heatmap') return <div className={styles.scroll}>
-    <div className={styles.heatgrid} style={{ gridTemplateColumns: `110px repeat(${buckets.length},minmax(76px,1fr))`, minWidth: 110 + buckets.length * 82 }}>
-      <span />{buckets.map((b) => <span className={styles.hourLabel} key={b.start}>{capacityHourLabel(b.start, intervalMinutes)}</span>)}
+  const dense = intervalMinutes === 5 || buckets.length > 12;
+  const selectedIndex = Math.max(0, buckets.findIndex((b) => b.start === selected));
+  const selector = <label className={styles.intervalSlider}>Inspect interval
+    <input type="range" min="0" max={Math.max(0, buckets.length - 1)} step="1" value={selectedIndex}
+      aria-label="Inspect interval" aria-valuetext={buckets[selectedIndex] ? capacityWhen(buckets[selectedIndex].start) : ''}
+      onChange={(e) => onSelect(buckets[Number(e.target.value)].start)} />
+  </label>;
+  if (view === 'heatmap') return <div className={styles.fitChart} data-capacity-chart="heatmap">
+    <div className={styles.heatAxis}><TimeAxis buckets={buckets} /></div>
+    <div className={`${styles.heatgrid} ${styles.denseHeatgrid}`}
+      style={{ gridTemplateColumns: `90px repeat(${buckets.length},minmax(0,1fr))` }}>
       {[['peak', 'Peak inside'], ['entries', 'Entries'], ['exits', 'Exits']].map(([field, label]) => {
         const max = Math.max(1, ...buckets.map((b) => b[field] || 0));
         return [<span key={field} className={styles.rowLabel}>{label}</span>, ...buckets.map((b) => <button
-          key={`${field}:${b.start}`} className={styles.heatcell} onClick={() => onSelect(b.start)}
+          key={`${field}:${b.start}`} className={styles.heatcell} onClick={() => onSelect(b.start)} onMouseEnter={() => onSelect(b.start)}
+          onFocus={() => onSelect(b.start)} tabIndex={-1}
+          title={`${capacityWhen(b.start)} ${label}: ${number(b[field])}`}
           aria-label={`${capacityWhen(b.start)} ${label} ${number(b[field])}`}
           style={{ background: b[field] == null ? 'var(--auth-card-bg-alt)' : `color-mix(in srgb, var(--auth-accent) ${8 + (b[field] / max) * 65}%, var(--auth-card-bg))` }}
-        >{number(b[field])}</button>)];
+        ><span className={dense ? styles.denseValue : ''}>{number(b[field])}</span></button>)];
       })}
     </div>
+    {selector}
   </div>;
   const top = Math.max(1, ...buckets.flatMap((b) => view === 'traffic' ? [b.entries || 0, b.exits || 0] : [b.peak || 0, b.limit || 0]));
   const ceiling = Math.max(10, Math.ceil(top / 50) * 50);
-  return <div className={styles.scroll}>
-    <div className={styles.chart} style={{ minWidth: Math.max(540, buckets.length * (intervalMinutes === 5 ? 92 : 76) + 40) }}>
+  return <div className={styles.fitChart} data-capacity-chart={view}>
+    <div className={`${styles.chart} ${styles.denseChart}`}>
       {[0, 0.5, 1].map((f) => <div key={f} className={styles.gridline} style={{ bottom: `${34 + f * 204}px` }}><span>{ceiling * f}</span></div>)}
       {buckets.map((b) => <button key={b.start} className={`${styles.column} ${selected === b.start ? styles.picked : ''}`} onClick={() => onSelect(b.start)}
+        onMouseEnter={() => onSelect(b.start)} onFocus={() => onSelect(b.start)} tabIndex={-1}
+        title={`${capacityWhen(b.start)}: ${number(b.entries)} entries, ${number(b.exits)} exits, peak ${number(b.peak)}`}
         aria-label={`${capacityWhen(b.start)}: ${number(b.entries)} entries, ${number(b.exits)} exits, peak ${number(b.peak)}`}>
         {(view === 'traffic' ? ['entries', 'exits'] : ['peak']).map((field) => <span key={field} className={`${styles.bar} ${field === 'entries' ? styles.entryBar : field === 'exits' ? styles.exitBar : ''}`}
-          style={{ height: `${(b[field] || 0) / ceiling * 100}%` }}><b>{number(b[field])}</b></span>)}
-        <span className={styles.xLabel}>{capacityHourLabel(b.start, intervalMinutes)}</span>
+          style={{ height: `${(b[field] || 0) / ceiling * 100}%` }}><b>{dense ? '' : number(b[field])}</b></span>)}
       </button>)}
+      <div className={styles.barAxis}><TimeAxis buckets={buckets} /></div>
     </div>
+    {selector}
   </div>;
+}
+
+function TimeAxis({ buckets }) {
+  const count = Math.min(7, buckets.length);
+  return <div className={styles.timeAxis}>{Array.from({ length: count }, (_, i) => {
+    const fraction = count > 1 ? i / (count - 1) : 0;
+    const bucket = buckets[Math.round(fraction * (buckets.length - 1))];
+    return <span key={bucket.start} className={i !== 0 && i !== count - 1 && i !== Math.floor(count / 2) ? styles.extraTick : ''}
+      style={{ left: `${fraction * 100}%`, transform: i === 0 ? 'none' : i === count - 1 ? 'translateX(-100%)' : 'translateX(-50%)' }}>
+      {capacityHourLabel(bucket.start, 5).replace(/ (CDT|CST)$/, '')}
+    </span>;
+  })}</div>;
 }
