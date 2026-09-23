@@ -7,8 +7,9 @@
     "build": "next build --turbopack",
     "start": "next start -H 0.0.0.0 -p 3000",
     "lint": "eslint",
+    "test:view-portal": "vitest run tests/api/view-portal.vitest.js && node --test tests/view-portal.test.mjs tests/view-portal-db.test.mjs",
     "test:partner": "vitest run tests/api/partner-profile.vitest.js tests/api/partner-invite.vitest.js && node --test tests/partner-access.test.mjs tests/partner-access-db.test.mjs tests/partner-identity.test.mjs tests/partner-photo.test.mjs tests/front-desk-role.test.mjs tests/role-label.test.mjs",
-    "test": "TZ=UTC npx vitest run tests/api/account/delete.test.js tests/api/cron/fail-closed.test.js tests/api/capacity/access-restrictions.vitest.js tests/api/event-roster.vitest.js tests/api/partner-profile.vitest.js tests/api/partner-invite.vitest.js && TZ=UTC node --test $(find tests -type f \\( -name '*.test.mjs' -o -name '*.test.js' \\) ! -path 'tests/api/account/delete.test.js' ! -path 'tests/api/cron/fail-closed.test.js')",
+    "test": "TZ=UTC npx vitest run tests/api/account/delete.test.js tests/api/cron/fail-closed.test.js tests/api/capacity/access-restrictions.vitest.js tests/api/event-roster.vitest.js tests/api/partner-profile.vitest.js tests/api/partner-invite.vitest.js tests/api/view-portal.vitest.js && TZ=UTC node --test $(find tests -type f \\( -name '*.test.mjs' -o -name '*.test.js' \\) ! -path 'tests/api/account/delete.test.js' ! -path 'tests/api/cron/fail-closed.test.js')",
     "backfill:tt-orders": "node scripts/backfill-ticket-order-attribution.mjs",
     "backfill:member-tickets": "node scripts/backfill-member-tickets.mjs"
   },
