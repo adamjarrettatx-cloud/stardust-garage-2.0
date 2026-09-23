@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { validateLegalName } from '@/lib/legal-name';
 import { checkVerification, isTwilioVerifyConfigured } from '@/lib/twilio-verify';
 
 export const runtime = 'nodejs';
@@ -40,10 +41,11 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
   }
 
-  const fullName = typeof body?.fullName === 'string' ? body.fullName.trim().replace(/\s+/g, ' ') : '';
-  if (!fullName || fullName.length > 120) {
-    return NextResponse.json({ error: 'Enter your full legal name.', field: 'fullName' }, { status: 400 });
+  const name = validateLegalName(body?.fullName);
+  if (!name.valid) {
+    return NextResponse.json({ error: name.error, field: 'fullName' }, { status: 400 });
   }
+  const fullName = name.fullName;
 
   const phone = typeof body?.phone === 'string' ? body.phone.trim() : '';
   if (!/^\+[1-9]\d{9,14}$/.test(phone)) {

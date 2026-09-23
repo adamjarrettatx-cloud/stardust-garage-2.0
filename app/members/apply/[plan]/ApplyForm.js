@@ -3,6 +3,8 @@
 import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import LegalNameInput from '@/app/components/LegalNameInput';
+import { validateLegalName } from '@/lib/legal-name';
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const ACCEPTED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
@@ -64,6 +66,8 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    const name = validateLegalName(form.full_name);
+    if (!name.valid) { setError(name.error); return; }
 
     // Check all required agreements
     if (!form.agreed_ethos || !form.agreed_renewal || !form.agreed_house_rules) {
@@ -238,18 +242,8 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
           className="rounded-[14px] p-6 md:p-8 border space-y-6"
           style={{ background: '#0f0f0f', borderColor: 'rgba(255,255,255,0.05)' }}
         >
-          <div>
-            <label className={labelClass} style={labelStyle}>FULL NAME *</label>
-            <input
-              type="text"
-              required
-              value={form.full_name}
-              onChange={(e) => update('full_name', e.target.value)}
-              placeholder="your full name"
-              className={inputClass}
-              style={inputStyle}
-            />
-          </div>
+          <LegalNameInput value={form.full_name} onChange={(e) => update('full_name', e.target.value)}
+            inputClassName={inputClass} inputStyle={inputStyle} disabled={submitting} />
 
           <div>
             <label className={labelClass} style={labelStyle}>PREFERRED NAME / ALIAS</label>

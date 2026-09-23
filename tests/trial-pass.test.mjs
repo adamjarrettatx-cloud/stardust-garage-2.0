@@ -324,10 +324,8 @@ test('each missing or malformed field names itself', () => {
   assert.equal(validateTrialPassIntake(null).valid, false, 'a junk body is a 400, not a crash');
 });
 
-test('a mononymous guest is not locked out of a pass', () => {
-  // Deliberate: "full legal name" is what we ask for, but one long-enough word
-  // is accepted rather than turning the form into an argument.
-  assert.equal(validateTrialPassIntake({ fullName: 'Prince', phone: '5125550134', email: 'a@b.co' }).valid, true);
+test('intake requires both first and last name', () => {
+  assert.equal(validateTrialPassIntake({ fullName: 'Prince', phone: '5125550134', email: 'a@b.co' }).valid, false);
 });
 
 test('phone normalization is conservative about numbers it cannot place', () => {

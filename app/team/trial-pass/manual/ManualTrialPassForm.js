@@ -1,6 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import LegalNameInput from '@/app/components/LegalNameInput';
+import { validateLegalName } from '@/lib/legal-name';
+import EditLegalName from '@/app/capacity/components/EditLegalName';
 
 // Two states: form (staff types the guest's info) and result (pass created,
 // staff shows the link/QR to the guest). Not persisted — a refresh clears
@@ -30,6 +33,8 @@ export default function ManualTrialPassForm({ createdByEmail, compact = false })
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (submitting) return;
+    const name = validateLegalName(values.fullName);
+    if (!name.valid) { setError(name.error); setBadField('fullName'); return; }
     setError('');
     setBadField(null);
     setSubmitting(true);
@@ -90,6 +95,8 @@ export default function ManualTrialPassForm({ createdByEmail, compact = false })
             {result.emailed ? ' · pass emailed' : ' · email failed to send'}
           </div>
           <AccountStatusLines result={result} />
+          {result.passId && <EditLegalName subject={{ kind: 'trial_pass', id: result.passId }}
+            fullName={result.fullName} onSaved={(fullName) => setResult(prev => ({ ...prev, fullName }))} />}
         </div>
 
         <div
@@ -148,17 +155,8 @@ export default function ManualTrialPassForm({ createdByEmail, compact = false })
 
   return (
     <form onSubmit={handleSubmit} className={`flex flex-col ${formGap}`} noValidate>
-      <Field
-        label="Full legal name"
-        name="fullName"
-        type="text"
-        autoComplete="name"
-        placeholder="Jane Doe"
-        value={values.fullName}
-        onChange={update('fullName')}
-        bad={badField === 'fullName'}
-        compact={compact}
-      />
+      <LegalNameInput value={values.fullName} onChange={update('fullName')}
+        disabled={submitting} bad={badField === 'fullName'} />
       <Field
         label="Mobile phone number"
         name="phone"

@@ -74,6 +74,7 @@ export async function POST(request) {
   return NextResponse.json({
     ok: true,
     existing: issued.existing,
+    passId: issued.pass.id,
     passUrl: issued.passUrl,
     fullName: issued.pass.full_name,
     email: issued.pass.email,

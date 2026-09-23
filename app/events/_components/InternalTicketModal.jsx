@@ -40,6 +40,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import InternalTicketPurchase from './InternalTicketPurchase';
 import AccountGate from '@/app/components/AccountGate';
+import AccountLegalNameGate from '@/app/components/AccountLegalNameGate';
 
 export default function InternalTicketModal({
   eventId,
@@ -246,11 +247,13 @@ export default function InternalTicketModal({
                 onSuccess={() => setStep('checkout')}
               />
             ) : (
+              <AccountLegalNameGate>
               <InternalTicketPurchase
                 eventId={eventId}
                 preview={preview}
                 isMember={isMember}
               />
+              </AccountLegalNameGate>
             )}
           </div>
         </div>

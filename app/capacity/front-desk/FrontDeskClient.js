@@ -250,6 +250,16 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
   }, []);
 
   useEffect(() => { loadCheckedIn(eventId); }, [eventId, loadCheckedIn]);
+  useEffect(() => {
+    function refreshNames() {
+      // Do not let a cached scan name overwrite corrected server truth.
+      setLocalCheckedIn([]);
+      loadCheckedIn(eventId);
+      if (eventId) loadRoster(eventId, { quiet: true });
+    }
+    window.addEventListener('sdg:legal-name-changed', refreshNames);
+    return () => window.removeEventListener('sdg:legal-name-changed', refreshNames);
+  }, [eventId, loadCheckedIn, loadRoster]);
 
   useEffect(() => {
     if (activeEntry) return undefined;

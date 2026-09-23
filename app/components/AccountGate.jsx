@@ -32,6 +32,8 @@
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import LegalNameInput from './LegalNameInput';
+import { validateLegalName } from '@/lib/legal-name';
 
 // Field styles factored out because they repeat 4x below and any drift
 // between the two tabs is a visual bug.
@@ -126,6 +128,8 @@ export default function AccountGate({
   async function handleSignUp(e) {
     e.preventDefault();
     setError('');
+    const name = validateLegalName(suName);
+    if (!name.valid) { setError(name.error); return; }
     setBusy(true);
     try {
       const res = await fetch('/api/free-account/create-no-verify', {
@@ -232,18 +236,8 @@ export default function AccountGate({
             <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.1)' }} />
           </div>
 
-          <div>
-            <label className={labelClass} style={labelStyle}>FULL LEGAL NAME</label>
-            <input
-              type="text"
-              value={suName}
-              onChange={(e) => setSuName(e.target.value)}
-              required
-              autoComplete="name"
-              className={inputClass}
-              style={inputStyle}
-            />
-          </div>
+          <LegalNameInput value={suName} onChange={(e) => setSuName(e.target.value)}
+            inputClassName={inputClass} inputStyle={inputStyle} disabled={busy} />
           <div>
             <label className={labelClass} style={labelStyle}>EMAIL</label>
             <input
