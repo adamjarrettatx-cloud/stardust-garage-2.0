@@ -1,6 +1,6 @@
 # Contacts directory
 
-The directory opens on six category cards in this order: Artist, Organizations, Venue Renter, Vendor, Promoter, People. No All category or list appears on the initial screen. Event Organizer and Collective are consolidated into Organizations; old category links still resolve.
+The directory opens on four category cards in this order: Persons, Organizations, Venue Renter, Vendor. No All category or list appears on the initial screen. Artists, Promoters, and individual contacts are consolidated into Persons. Event Organizer and Collective are consolidated into Organizations; old category links still resolve to their consolidated category.
 
 Each category opens a bookmarkable `?category=` list with search, status filtering, a contact count, and a link back to the category dashboard. New Contact preselects the current category. Detail and cancel links retain the originating category.
 
@@ -8,7 +8,7 @@ Contact rows use a full-height square image at the left edge of the rounded cont
 
 ## Historical data
 
-- `artist`, `dj`, and `performer` all appear under Artist, without duplicating a contact.
+- `artist`, `dj`, `performer`, `promoter`, and `person` all appear under Persons, without duplicating a contact. Artist and Promoter remain independent profile tags, not top-level directory categories.
 - Multiple relationship types place a contact in each applicable category.
 - New/edit forms offer canonical relationship tags. Historical DJ/Performer records show Artist selected; removing Artist removes those aliases deliberately.
 - Organization, Event Organizer, and Collective tags display once as Organization. Ordinary edits retain legacy tags and all event/contract/partner references.
