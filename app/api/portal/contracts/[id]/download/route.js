@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requirePartner } from '@/lib/auth-helpers';
-import { createClient } from '@/lib/supabase/server';
+import { createRequestScopedClient, requirePartner } from '@/lib/auth-helpers';
 import { createAdminClient, streamDocumentVersion, audit } from '@/lib/document-helpers';
 
 export const runtime = 'nodejs';
@@ -28,13 +27,13 @@ const UUID = /^[0-9a-f-]{36}$/i;
 // reason to learn internal document ids, and it keeps this route from ever
 // resolving a non-contract document.
 export async function GET(request, { params }) {
-  const { user, unauthorized } = await requirePartner();
+  const { user, unauthorized } = await requirePartner(request);
   if (unauthorized) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id } = await params;
   if (!UUID.test(id)) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const supabase = await createClient();
+  const supabase = await createRequestScopedClient(request);
   const { data: rows, error } = await supabase.rpc('partner_contracts');
   if (error) {
     console.error('[portal contract download] partner_contracts failed', error);

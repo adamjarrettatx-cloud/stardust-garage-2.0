@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import { teamDocumentPath } from '@/lib/document-access';
+import { partnerRouteRedirect } from '@/lib/partner-access';
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
@@ -147,11 +148,7 @@ export async function middleware(request) {
   }
 
   // SECURITY: Source of truth for admin status is the server-controlled
-  // `team_members` table, NOT `user_metadata` (which is end-user editable per
-  // Supabase advisor 0015). We still tolerate legacy metadata = true so we
-  // don't lock out existing admins during the rollout, but the new
-  // /admin/documents pages and API routes re-check via team_members in
-  // getCurrentUser() / requireAdmin().
+  // `team_members` table, NOT end-user-editable `user_metadata`.
   const { data: tm } = await supabase
     .from('team_members')
     .select('role')
@@ -159,7 +156,7 @@ export async function middleware(request) {
     .maybeSingle();
 
   const teamRole = tm?.role || null;
-  const isAdmin = teamRole === 'admin' || Boolean(user.user_metadata?.is_admin);
+  const isAdmin = teamRole === 'admin';
   // calendar_viewer is a hard-locked read-only role (see
   // 20260918_calendar_viewer_role.sql). They are ALLOWED on /team/calendar
   // and NOWHERE else that this middleware guards. Do this check before every
@@ -196,43 +193,21 @@ export async function middleware(request) {
     return NextResponse.redirect(url);
   }
 
-  // Partner status is only needed for the mutual-exclusion checks below, and
-  // staff can never be partners, so skip the extra round trip for them. The
-  // select-own-row policy on partner_profiles is what makes this readable with
-  // the anon key.
-  let isActivePartner = false;
-  // Distinct from isActivePartner: someone who has been invited but hasn't
-  // confirmed their name and photo yet. They belong on /portal/activate, not
-  // bounced off the portal area as a stranger.
-  let isInvitedPartner = false;
-  if (!isAdmin && teamRole !== 'team') {
+  // Partner access is additive, not a replacement for membership or staff.
+  // Only read it on portal routes; ordinary account/member gates stay intact.
+  if (isPartnerRoute) {
     const { data: partner } = await supabase
       .from('partner_profiles')
-      .select('is_active')
+      .select('is_active, activated_at')
       .eq('user_id', user.id)
       .maybeSingle();
-    isActivePartner = Boolean(partner?.is_active);
-    isInvitedPartner = Boolean(partner);
-  }
-
-  // Partners are not staff and not members: keep them out of every other
-  // authenticated area rather than letting them land on an empty /member
-  // dashboard.
-  if (isActivePartner && !isPartnerRoute) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/portal';
-    url.search = '';
-    return NextResponse.redirect(url);
-  }
-
-  // /portal/* requires an ACTIVE partner profile. An invited partner who never
-  // finished setup is sent to do that; everyone else — admins, team, members —
-  // goes to the public home page, the mirror image of the rule above.
-  if (isPartnerRoute && !isActivePartner) {
-    const url = request.nextUrl.clone();
-    url.pathname = isInvitedPartner ? '/portal/activate' : '/';
-    url.search = '';
-    return NextResponse.redirect(url);
+    const destination = partnerRouteRedirect({ pathname, partner, teamRole });
+    if (destination) {
+      const url = request.nextUrl.clone();
+      url.pathname = destination;
+      url.search = '';
+      return NextResponse.redirect(url);
+    }
   }
 
   // /admin/* requires is_admin flag

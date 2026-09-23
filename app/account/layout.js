@@ -25,6 +25,7 @@ import { isSupabaseConfigured } from '@/lib/supabase/stub';
 import { createProfilePhotoSignedUrl } from '@/lib/profile-photo';
 import SignOutButton from './SignOutButton';
 import ProfileAvatar from '@/components/profile-photo/ProfileAvatar';
+import PartnerAccessLink from '@/components/account/PartnerAccessLink';
 
 const TABS = [
   { href: '/account/tickets', label: 'Tickets' },
@@ -114,7 +115,10 @@ export default async function AccountLayout({ children }) {
                 <span style={{ color: '#e0e0e0' }}>{user.email}</span>
               </div>
             </div>
-            <SignOutButton />
+            <div className="flex items-center gap-3">
+              <PartnerAccessLink />
+              <SignOutButton />
+            </div>
           </div>
         </div>
 

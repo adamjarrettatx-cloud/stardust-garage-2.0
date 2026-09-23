@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import PortalSignOutButton from '../PortalSignOutButton';
-import { canHostGuestList, canRequestPay, canSignContracts, portalName } from '@/lib/role-label';
+import { portalName } from '@/lib/role-label';
 
 // Two destinations, and that is the whole product for a partner. Promoters and
 // collectives open this on a phone in a green room ten minutes before doors, so
@@ -14,22 +14,23 @@ import { canHostGuestList, canRequestPay, canSignContracts, portalName } from '@
 // navbar on /partner routes, so a logo in this bar would be the second one on
 // the page.
 const ALL_TABS = [
-  { href: '/portal/guest-list', label: 'Guest List', show: canHostGuestList },
-  { href: '/portal/pay', label: 'Pay', show: canRequestPay },
+  { href: '/portal/guest-list', label: 'Guest List', key: 'guestList' },
+  { href: '/portal/pay', label: 'Bookings & Pay', key: 'pay' },
   // Contracts is shown to the types we sign with, and to anyone who actually has
   // a contract — so a DJ who gets sent one agreement can find it, without every
   // DJ carrying an empty tab.
   {
     href: '/portal/contracts',
     label: 'Contracts',
-    show: (type, { hasContracts } = {}) => canSignContracts(type) || Boolean(hasContracts),
+    key: 'contracts',
   },
-  { href: '/portal/profile', label: 'My Profile', show: () => true },
+  { href: '/portal/profile', label: 'My Profile' },
+  { href: '/account/profile', label: 'My Account' },
 ];
 
-export default function PortalNav({ contactType, hasContracts = false }) {
+export default function PortalNav({ contactType, views = {} }) {
   const pathname = usePathname();
-  const tabs = ALL_TABS.filter((t) => t.show(contactType, { hasContracts }));
+  const tabs = ALL_TABS.filter((t) => !t.key || views[t.key]);
   const name = portalName(contactType);
 
   return (
@@ -41,7 +42,7 @@ export default function PortalNav({ contactType, hasContracts = false }) {
         <div className="text-[11px] font-semibold tracking-[0.24em] uppercase" style={{ color: '#8a8a8a' }}>
           {name}
         </div>
-        <nav className="flex gap-2">
+        <nav className="flex flex-wrap gap-2" aria-label="Partner sections">
           {tabs.map((tab) => {
             // startsWith so /portal/guest-list/<grantId> keeps the tab lit.
             const active = pathname === tab.href || pathname.startsWith(`${tab.href}/`);

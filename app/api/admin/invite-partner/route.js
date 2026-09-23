@@ -96,20 +96,33 @@ export async function POST(request) {
     // matches on later (see lib/partner-identity.js), because the auth user id
     // created just above is not necessarily the identity the partner ends up
     // authenticating as.
-    const { error: profileErr } = await admin
+    const { data: existing, error: lookupError } = await admin
       .from('partner_profiles')
-      .upsert(
-        {
+      .select('id, user_id, invited_email')
+      .eq('contact_id', contact.id)
+      .maybeSingle();
+    if (lookupError) {
+      return NextResponse.json({ error: 'Could not verify the existing partner profile.' }, { status: 500 });
+    }
+    // Resending an invite must not revoke active access, overwrite the person's
+    // chosen name/photo, or silently transfer a contact to a different login.
+    if (existing && (existing.user_id !== userId || existing.invited_email !== email)) {
+      return NextResponse.json({ error: 'This contact is linked to another identity. Review the account link before inviting.' }, { status: 409 });
+    }
+    const invitation = {
+      invited_by: user.id,
+      invited_at: new Date().toISOString(),
+    };
+    const { error: profileErr } = existing
+      ? await admin.from('partner_profiles').update(invitation).eq('id', existing.id)
+      : await admin.from('partner_profiles').insert({
           user_id: userId,
           contact_id: contact.id,
           full_name: fullName,
           invited_email: email,
           is_active: false,
-          invited_by: user.id,
-          invited_at: new Date().toISOString(),
-        },
-        { onConflict: 'contact_id' }
-      );
+          ...invitation,
+        });
 
     if (profileErr) {
       // user_id is unique too: this fires when the same email is already the
@@ -155,7 +168,6 @@ export async function POST(request) {
       emailSent = false;
       emailError = err?.message || String(err);
       console.error('Partner invite email failed:', emailError);
-      console.log('[invite-partner] activation link for', email, activationUrl);
     }
 
     await auditContact({
