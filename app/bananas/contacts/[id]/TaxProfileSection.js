@@ -19,7 +19,7 @@ function formatDate(iso) {
 // The upload itself goes through the existing Documents Hub endpoint (category
 // "tax") so it gets the same access-logged storage as every other document —
 // this component only ever links a document id, it never stores the file.
-export default function TaxProfileSection({ contactId, displayName, taxProfile: initialTaxProfile }) {
+export default function TaxProfileSection({ contactId, displayName, taxProfile: initialTaxProfile, onChange }) {
   const router = useRouter();
   const [taxProfile, setTaxProfile] = useState(initialTaxProfile);
   const [entityType, setEntityType] = useState(initialTaxProfile?.entity_type || 'individual');
@@ -45,6 +45,7 @@ export default function TaxProfileSection({ contactId, displayName, taxProfile: 
     try {
       const saved = await patchTaxProfile({ entity_type: value });
       setTaxProfile(saved);
+      onChange?.(saved);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -72,6 +73,7 @@ export default function TaxProfileSection({ contactId, displayName, taxProfile: 
 
       const saved = await patchTaxProfile({ w9_document_id: uploadData.document_id });
       setTaxProfile(saved);
+      onChange?.(saved);
       router.refresh();
     } catch (err) {
       setError(err.message);
@@ -85,6 +87,8 @@ export default function TaxProfileSection({ contactId, displayName, taxProfile: 
     try {
       const saved = await patchTaxProfile({ w9_on_file: false });
       setTaxProfile(saved);
+      onChange?.(saved);
+      router.refresh();
     } catch (err) {
       setError(err.message);
     }

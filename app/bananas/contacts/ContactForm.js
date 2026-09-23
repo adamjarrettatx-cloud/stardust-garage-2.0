@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import ContactProfileLayout from './ContactProfileLayout';
 import {
   CONTACT_TYPE_OPTIONS,
   CONTACT_STATUS_OPTIONS,
@@ -54,7 +55,7 @@ function diffFields(previous, next) {
 // Shared create/edit form. `contact` is null on the create page and the existing
 // row on the detail page — the only behavioural differences are the insert vs
 // update call and the audit action that follows it.
-export default function ContactForm({ contact = null, initialCategory = null }) {
+export default function ContactForm({ contact = null, initialCategory = null, profile = null }) {
   const router = useRouter();
   const isEditing = !!contact;
 
@@ -85,6 +86,33 @@ export default function ContactForm({ contact = null, initialCategory = null }) 
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const values = {
+    display_name: displayName, contact_type: contactTypes, primary_contact_name: primaryContactName,
+    email, phone, company, instagram_handle: instagramHandle, website, status,
+    internal_notes: internalNotes, photo_url: photoUrl, additional_contacts: additionalContacts,
+    legal_name: legalName, entity_type: entityType, default_signer_name: defaultSignerName,
+    default_signer_email: defaultSignerEmail, ...address,
+  };
+  const [baseline, setBaseline] = useState(() => JSON.stringify(values));
+  const dirty = JSON.stringify(values) !== baseline;
+  const setField = (key, value) => {
+    const setters = {
+      display_name: setDisplayName, contact_type: setContactTypes, primary_contact_name: setPrimaryContactName,
+      email: setEmail, phone: setPhone, company: setCompany, instagram_handle: setInstagramHandle,
+      website: setWebsite, status: setStatus, internal_notes: setInternalNotes, photo_url: setPhotoUrl,
+      additional_contacts: setAdditionalContacts, legal_name: setLegalName, entity_type: setEntityType,
+      default_signer_name: setDefaultSignerName, default_signer_email: setDefaultSignerEmail,
+    };
+    if (setters[key]) setters[key](value);
+    else if (ADDRESS_FIELDS.some((f) => f.key === key)) setAddress((prev) => ({ ...prev, [key]: value }));
+    setSuccess('');
+  };
+  const discardChanges = () => {
+    Object.entries(JSON.parse(baseline)).forEach(([key, value]) => setField(key, value));
+    setError('');
+    setSuccess('');
+  };
 
   // Shown for Event Organizers and the other types that sign agreements. Always
   // shown when the row already has legal data, so an existing profile can never
@@ -110,7 +138,12 @@ export default function ContactForm({ contact = null, initialCategory = null }) 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
 
+    if (!displayName.trim()) {
+      setError('Enter a display name for this contact.');
+      return;
+    }
     if (contactDirectoryTypes(contactTypes).length === 0) {
       setError('Pick at least one relationship type so the directory stays searchable.');
       return;
@@ -131,6 +164,7 @@ export default function ContactForm({ contact = null, initialCategory = null }) 
     }
 
     setSaving(true);
+    try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -193,10 +227,33 @@ export default function ContactForm({ contact = null, initialCategory = null }) 
       await logAudit('create', { display_name: payload.display_name, contact_type: payload.contact_type });
     }
 
+    if (profile) {
+      setBaseline(JSON.stringify(values));
+      setSuccess('Contact changes saved.');
+      profile.onSaved?.(saved);
+      router.refresh();
+      return;
+    }
     const category = contactDirectorySection(initialCategory)?.value;
     router.push(`/bananas/contacts/${saved.id}${category ? `?category=${category}` : ''}`);
     router.refresh();
+    } catch (err) {
+      setError(err.message || 'Could not save this contact. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (profile) {
+    return (
+      <ContactProfileLayout
+        contact={contact} initialCategory={initialCategory} profile={profile}
+        values={values} setField={setField} dirty={dirty} saving={saving}
+        error={error} success={success} onDiscard={discardChanges} onSubmit={handleSubmit}
+        showLegalFields={showLegalFields}
+      />
+    );
+  }
 
   const inputStyle = {
     background: 'var(--auth-input-bg)',
