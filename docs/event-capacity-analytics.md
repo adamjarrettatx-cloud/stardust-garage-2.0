@@ -3,6 +3,13 @@
 Admin navigation: ADMIN → Event Capacity (`/bananas/capacity`).
 Optional deep link: `/bananas/capacity?event=<event UUID>`.
 
+The dashboard defaults to 5-minute intervals, with an Hourly toggle for the
+full-night overview. Capacity bars, arrivals/departures, heatmap, detail table,
+and CSV all use the selected interval. Both resolutions aggregate original audit
+timestamps, not interpolated hourly totals. API `interval=5|60` selects resolution
+(omitting it retains the original 60-minute API default). CSV records
+`interval_minutes` with explicit UTC start/end boundaries.
+
 ## Data and attribution
 
 This is a read-only report over `capacity_events`, `capacity_sessions`, published
