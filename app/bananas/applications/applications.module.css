@@ -1,0 +1,73 @@
+.card {
+  display: flex;
+  align-items: stretch;
+  height: 104px;
+  overflow: hidden;
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--auth-accent);
+  outline-offset: 3px;
+}
+
+.photo {
+  width: 102px;
+  height: 102px;
+  flex: 0 0 102px;
+  object-fit: cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--auth-card-bg-alt);
+  color: var(--auth-muted);
+  font: 700 24px 'Plus Jakarta Sans', sans-serif;
+}
+
+.content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 24px;
+  flex: 1;
+  min-width: 0;
+}
+
+.nameLine {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+  min-width: 0;
+}
+
+.details {
+  display: flex;
+  gap: 4px 16px;
+  min-width: 0;
+}
+
+.details span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.metadata {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .card { height: 170px; }
+  .photo { width: 168px; height: 168px; flex-basis: 168px; }
+  .content { flex-direction: column; align-items: stretch; justify-content: center; gap: 8px; padding: 12px; }
+  .content > div:first-child { flex: initial; }
+  .nameLine { display: block; margin-bottom: 4px; }
+  .nameLine h3 { font-size: 14px; }
+  .nameLine > span { display: block; font-size: 12px; }
+  .details { display: block; font-size: 12px; }
+  .details span { display: block; }
+  .metadata { text-align: left; }
+  .metadata > div:first-child { margin-bottom: 4px; }
+}
