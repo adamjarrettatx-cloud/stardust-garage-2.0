@@ -126,8 +126,17 @@ test('visible groups preserve ADMIN_TAB_GROUPS order', () => {
 // --- URL resolution ---------------------------------------------------------
 
 test('a valid tab id in the URL is honoured', () => {
-  assert.equal(resolveAdminTab('people', { isOwner: false }), 'people');
-  assert.equal(resolveAdminTab('rentals', { isOwner: false }), 'rentals');
+  assert.equal(resolveAdminTab('incoming', { isOwner: false }), 'incoming');
+});
+
+test('legacy People and Rentals bookmarks open Incoming for owners and admins', () => {
+  for (const isOwner of [false, true]) {
+    for (const id of ['people', 'rentals']) {
+      assert.equal(resolveAdminTab(id, { isOwner }), 'incoming');
+      assert.equal(resolveRootAdminTab(id, { isOwner }), 'incoming');
+      assert.equal(resolveRootAdminTab([id, 'settings'], { isOwner }), 'incoming');
+    }
+  }
 });
 
 test('a missing or junk tab param falls back to the default', () => {
@@ -138,7 +147,7 @@ test('a missing or junk tab param falls back to the default', () => {
 
 test('repeated ?tab= params take the first value', () => {
   // URLSearchParams-style duplicates arrive as an array from Next.
-  assert.equal(resolveAdminTab(['people', 'settings'], { isOwner: false }), 'people');
+  assert.equal(resolveAdminTab(['incoming', 'settings'], { isOwner: false }), 'incoming');
 });
 
 test('tab ids are case-sensitive', () => {
@@ -169,7 +178,7 @@ test('isAdminTab recognises exactly the defined ids', () => {
 test('tabs removed by owner decision are not reintroduced', () => {
   // Community was split into Memberships + People; Studio was folded into
   // Rentals and Settings; Potential Members was deleted outright.
-  for (const dead of ['community', 'studio', 'potential-members']) {
+  for (const dead of ['community', 'studio', 'potential-members', 'people', 'rentals']) {
     assert.equal(adminTabById(dead), null, `${dead} tab is back`);
   }
 });
@@ -403,7 +412,7 @@ test('Contacts is a direct ADMIN destination, not a People tile', () => {
   assert.equal(adminTabHref(contacts), '/bananas/contacts');
   assert.deepEqual(adminTilesFor('contacts'), []);
   assert.equal(allAdminTiles().some(tile => tile.href === '/bananas/contacts'), false);
-  assert.deepEqual(adminTilesFor('people').map(tile => tile.title), ['Collaborations', 'Signups']);
+  assert.equal(adminTilesFor('incoming').some(tile => tile.href === '/bananas/contacts'), false);
   for (const isOwner of [false, true]) {
     const group = visibleAdminTabGroups(isOwner).find(group => group.group === 'ADMIN');
     assert.ok(group.tabs.some(tab => tab.id === 'contacts'));
@@ -487,7 +496,7 @@ test('leaving an event returns you to the Events section', () => {
 test('section badges sum only the tiles in that section', () => {
   const counts = { applications: 3, pastDueMembers: 2, collaborations: 5, unreadChat: 1 };
   assert.equal(adminTabBadge('memberships', counts), 5);
-  assert.equal(adminTabBadge('people', counts), 5);
+  assert.equal(adminTabBadge('incoming', counts), 5);
   // Unread chat moved off the old Team tile and onto the Chat section with it.
   assert.equal(adminTabBadge('tasks', counts), 0);
   assert.equal(adminTabBadge('chat', counts), 1);
@@ -784,7 +793,7 @@ test('a link section can never become the dashboard root panel', () => {
   // And the default itself must never be a link section, or the fallback loops.
   assert.ok(!adminTabById(DEFAULT_ADMIN_TAB)?.href, 'the default section has no panel to show');
   // Ordinary sections are unaffected.
-  assert.equal(resolveRootAdminTab('people', { isOwner: false }), 'people');
+  assert.equal(resolveRootAdminTab('incoming', { isOwner: false }), 'incoming');
   assert.equal(resolveRootAdminTab('analytics', { isOwner: false }), DEFAULT_ADMIN_TAB);
 });
 
@@ -965,7 +974,7 @@ test('a section that renders its own content gets no heading block', () => {
   for (const id of ['events', 'chat', 'tasks']) {
     assert.equal(adminTabById(id).rendersOwnContent, true, `${id} would render a heading again`);
   }
-  for (const id of ['people', 'memberships']) {
+  for (const id of ['incoming', 'memberships']) {
     assert.ok(!adminTabById(id).rendersOwnContent, `${id} lost its tile-grid heading`);
     assert.ok(adminTabById(id).description, `${id} has no description to show`);
   }
