@@ -1,36 +1,4 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron/send-discount-codes",
-      "schedule": "0 14 * * *"
-    },
-    {
-      "path": "/api/admin/refresh-event-metrics",
-      "schedule": "23 6 * * *"
-    },
-    {
-      "path": "/api/admin/refresh-tt-discovered",
-      "schedule": "41 6 * * *"
-    },
-    {
-      "path": "/api/cron/trial-pass-reminders",
-      "schedule": "15 15 * * *"
-    },
-    {
-      "path": "/api/cron/sweep-ticket-holds",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/publish-due-series-drafts",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/hydrate-ticket-fees",
-      "schedule": "12 6 * * *"
-    },
-    {
-      "path": "/api/cron/generate-series-occurrences",
-      "schedule": "30 6 * * *"
-    }
-  ]
+  "buildCommand": "node scripts/verify-view-sandbox-deployment.mjs && npm run build",
+  "crons": []
 }
