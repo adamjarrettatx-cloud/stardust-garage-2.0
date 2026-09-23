@@ -16,6 +16,18 @@ test('profile separates the four workflows and preserves mounted editing panels'
   assert.match(layout, /hidden=\{activeSection !== 'activity'\}/);
 });
 
+test('New Contact uses the compact layout with creation-specific controls', () => {
+  const page = read('new/page.js');
+  assert.match(page, /<ContactForm initialCategory=\{category\} \/>/);
+  assert.match(page, /max-w-\[1160px\]/);
+  assert.ok(!/AuthenticatedPageHeader/.test(page));
+  assert.match(form, /profile \|\| !isEditing/);
+  assert.match(form, /createMode: true/);
+  assert.match(layout, /profile\.createMode \? 'Create contact' : 'Save changes'/);
+  assert.match(layout, /!profile\.createMode \? \[\{ id: 'activity'/);
+  assert.match(layout, /profile\.createMode && !profile\.isOrganizer/);
+});
+
 test('independent tax and Mercury forms stay outside the contact form', () => {
   const endForm = layout.indexOf('</form>');
   assert.ok(endForm > 0);
