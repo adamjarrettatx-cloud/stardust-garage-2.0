@@ -1,73 +1,76 @@
+.layout { container-type: inline-size; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  align-items: stretch;
+}
 .card {
   display: flex;
-  align-items: stretch;
-  height: 104px;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--auth-card-border);
+  border-radius: 16px;
   overflow: hidden;
+  color: var(--auth-text);
+  background: var(--auth-card-bg);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  transition: border-color 150ms, box-shadow 150ms;
 }
-
-.card:focus-visible {
-  outline: 2px solid var(--auth-accent);
-  outline-offset: 3px;
+.card:hover {
+  border-color: var(--auth-card-border-strong);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 5%);
 }
-
+.card:focus-visible { outline: 2px solid var(--auth-accent-strong); outline-offset: 4px; }
 .photo {
-  width: 102px;
-  height: 102px;
-  flex: 0 0 102px;
-  object-fit: cover;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
   background: var(--auth-card-bg-alt);
   color: var(--auth-muted);
-  font: 700 24px 'Plus Jakarta Sans', sans-serif;
+  border-bottom: 1px solid var(--auth-card-border);
 }
-
-.content {
+.photo img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+.photo > span { font-size: 56px; font-weight: 600; letter-spacing: -.04em; }
+.body { padding: 22px 22px 20px; flex: 1; min-width: 0; }
+.identity { margin-bottom: 22px; }
+.plan {
+  display: inline-block;
+  border: 1px solid var(--auth-card-border-strong);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: .12em;
+  background: var(--auth-card-bg-alt);
+  margin-bottom: 12px;
+}
+.identity h2 { font-size: 20px; font-weight: 750; letter-spacing: -.025em; line-height: 1.35; overflow-wrap: anywhere; color: var(--auth-text-strong); }
+.preferred { font-size: 12px; color: var(--auth-muted); line-height: 1.5; margin-top: 3px; overflow-wrap: anywhere; }
+.details { display: grid; gap: 12px; }
+.details > div { display: grid; grid-template-columns: 45px minmax(0,1fr); align-items: baseline; gap: 14px; }
+.details dt { font-size: 12px; line-height: 1.5; color: var(--auth-muted); }
+.details dd { font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.footer {
+  margin: 0 22px;
+  padding: 17px 0 19px;
+  border-top: 1px solid var(--auth-card-border);
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 16px;
-  padding: 16px 24px;
-  flex: 1;
-  min-width: 0;
 }
-
-.nameLine {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 4px;
-  min-width: 0;
-}
-
-.details {
-  display: flex;
-  gap: 4px 16px;
-  min-width: 0;
-}
-
-.details span {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.metadata {
-  flex-shrink: 0;
-  text-align: right;
-}
-
-@media (max-width: 640px) {
-  .card { height: 170px; }
-  .photo { width: 168px; height: 168px; flex-basis: 168px; }
-  .content { flex-direction: column; align-items: stretch; justify-content: center; gap: 8px; padding: 12px; }
-  .content > div:first-child { flex: initial; }
-  .nameLine { display: block; margin-bottom: 4px; }
-  .nameLine h3 { font-size: 14px; }
-  .nameLine > span { display: block; font-size: 12px; }
-  .details { display: block; font-size: 12px; }
-  .details span { display: block; }
-  .metadata { text-align: left; }
-  .metadata > div:first-child { margin-bottom: 4px; }
-}
+.date { display: flex; flex-direction: column; gap: 3px; font-size: 11px; line-height: 1.6; color: var(--auth-muted); }
+.date > span { font-size: 11px; }
+.open { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; white-space: nowrap; padding-bottom: 2px; }
+.open > span { font-size: 17px; line-height: 1; }
+.empty { text-align: center; border: 1px solid var(--auth-card-border); border-radius: 16px; padding: 48px 24px; background: var(--auth-card-bg); color: var(--auth-muted); }
+/* Use content width, not viewport width: the admin sidebar shares the screen. */
+@container (max-width: 920px) { .grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@container (max-width: 600px) { .grid { grid-template-columns: minmax(0,1fr); gap: 20px; } }
+@media (prefers-reduced-motion: reduce) { .card { transition: none; } }
