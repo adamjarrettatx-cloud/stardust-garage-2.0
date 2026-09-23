@@ -10,6 +10,14 @@ timestamps, not interpolated hourly totals. API `interval=5|60` selects resoluti
 (omitting it retains the original 60-minute API default). CSV records
 `interval_minutes` with explicit UTC start/end boundaries.
 
+Charts fit every selected interval into the panel width without horizontal
+scrolling or dropping/combining buckets. Sparse responsive axis labels keep
+desktop and phone views legible. Hover/tap updates the detail panel; an
+accessible range input supports exact interval selection with arrow/Home/End
+keys when five-minute bars are too narrow to tap. The heatmap uses the same
+fitted-width approach. The detailed data table retains its own overflow
+container rather than compressing its numerical columns.
+
 ## Data and attribution
 
 This is a read-only report over `capacity_events`, `capacity_sessions`, published
