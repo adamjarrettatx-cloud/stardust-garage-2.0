@@ -200,7 +200,7 @@ test('navigation is direct, admin-visible and keeps the new page selected', () =
   assert.equal(adminTabById('event-capacity').ownerOnly, false);
   assert.equal(tabForPath('/bananas/capacity'), 'event-capacity');
   const i = ADMIN_TABS.findIndex((t) => t.id === 'front-desk');
-  assert.equal(ADMIN_TABS[i + 1].id, 'event-capacity');
+  assert.deepEqual(ADMIN_TABS.slice(i, i + 3).map((t) => t.id), ['front-desk', 'orders', 'event-capacity']);
 });
 
 test('page and endpoint independently enforce admin gates; no write operations', () => {
