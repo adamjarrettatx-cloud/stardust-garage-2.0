@@ -121,6 +121,22 @@ it('every sandbox route requires a valid owner-authorized lease', async () => {
     expect((await previewRequestGate(new NextRequest(`${sandbox}${path}`))).denied.status).toBe(403);
   }
 });
+it('locked bootstrap blocks pages, APIs, redemption and exit without calling Auth', async () => {
+  await sandboxRequest();
+  vi.stubEnv('VIEW_PORTAL_READY', 'false');
+  vi.stubEnv('VIEW_PORTAL_ISOLATION_VERIFIED', 'false');
+  vi.stubEnv('VIEW_PORTAL_OWNER_USER_ID', '');
+  vi.stubEnv('VIEW_PORTAL_SIGNING_SECRET', '');
+  vi.stubEnv('VIEW_PORTAL_CONTROLLER_ORIGIN', '');
+  for (const path of ['/', '/account/profile', '/bananas', '/api/capacity/status',
+    '/view-preview/redeem', '/view-preview/exit', '/api/cron/reminders']) {
+    const result = await previewRequestGate(new NextRequest(`${sandbox}${path}`));
+    expect(result.denied.status).toBe(503);
+    expect(await result.denied.text()).toBe('Preview environment is locked.');
+  }
+  expect(createServerClient).not.toHaveBeenCalled();
+  expect(createAdminClient).not.toHaveBeenCalled();
+});
 it('a sandbox session cannot swap its authenticated subject', async () => {
   const req = await sandboxRequest();
   createServerClient.mockReturnValue({ auth: { getUser: async () => ({ data: { user: { id: 'someone-else' } } }) } });

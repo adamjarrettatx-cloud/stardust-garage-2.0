@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { webcrypto } from 'node:crypto';
 import { VIEW_PERSONAS, viewPersona, personaEmail } from '../lib/view-portal/personas.js';
-import { viewConfig, viewPortalStatus, PREVIEW_PROJECT_REF } from '../lib/view-portal/config.js';
+import { viewConfig, viewPortalStatus, sandboxRuntimeConfig, PREVIEW_PROJECT_REF } from '../lib/view-portal/config.js';
 import { signViewToken, verifyViewToken } from '../lib/view-portal/tokens.js';
-import { sandboxFetchAllowed } from '../lib/view-portal/egress.js';
+import { sandboxFetchAllowed, installSandboxEgressGuard } from '../lib/view-portal/egress.js';
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 
 const ownerId = '00000000-0000-4000-8000-000000000001';
@@ -70,4 +70,35 @@ test('server egress is limited to the isolated database without functions or red
     `${env.NEXT_PUBLIC_SUPABASE_URL}:8443/rest/v1/events`,
     `${env.NEXT_PUBLIC_SUPABASE_URL}.attacker.test/rest/v1/events`,
   ]) assert.equal(sandboxFetchAllowed(url), false);
+});
+test('locked bootstrap validates infrastructure without enabling preview access', () => {
+  const locked = { ...env, VIEW_PORTAL_READY: 'false', VIEW_PORTAL_ISOLATION_VERIFIED: 'false' };
+  delete locked.VIEW_PORTAL_OWNER_USER_ID;
+  delete locked.VIEW_PORTAL_SIGNING_SECRET;
+  delete locked.VIEW_PORTAL_CONTROLLER_ORIGIN;
+  assert.doesNotThrow(() => sandboxRuntimeConfig(locked));
+  assert.throws(() => viewConfig(locked));
+  for (const patch of [
+    { NEXT_PUBLIC_SUPABASE_URL: 'https://iwgfelvbebqbaotkylsw.supabase.co' },
+    { NEXT_PUBLIC_SITE_URL: 'https://sdgatx.com' },
+    { VIEW_PORTAL_SANDBOX_ORIGIN: 'http://preview.example.test' },
+    { STRIPE_SECRET_KEY: 'forbidden' },
+  ]) assert.throws(() => sandboxRuntimeConfig({ ...locked, ...patch }));
+});
+test('locked bootstrap installs a deny-all fetch guard', async () => {
+  const originalEnv = { ...process.env };
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  try {
+    Object.assign(process.env, env, { VIEW_PORTAL_READY: 'false' });
+    globalThis.fetch = async () => { calls++; return new Response('unexpected'); };
+    installSandboxEgressGuard();
+    await assert.rejects(fetch(`${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/events`), /locked/);
+    await assert.rejects(fetch('https://api.stripe.com/v1/charges'), /locked/);
+    assert.equal(calls, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const key of Object.keys(process.env)) if (!(key in originalEnv)) delete process.env[key];
+    Object.assign(process.env, originalEnv);
+  }
 });

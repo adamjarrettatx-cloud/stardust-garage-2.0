@@ -19,3 +19,11 @@ gates. Do not mark personas ready or enable launch solely because hosting is
 configured. The saved isolated secret key has not yet been verified: the sandbox
 credential proxy fails certificate signature verification. No TLS checks were
 disabled. The dashboard path does not itself resolve that verification gap.
+
+Locked bootstrap is supported with `VIEW_PORTAL_READY=false` and
+`VIEW_PORTAL_ISOLATION_VERIFIED=false`, without an owner UUID, controller origin
+or signing secret. It still validates the isolated database, HTTPS sandbox/site
+origin and absence of integration credentials. Server fetch is deny-all and
+middleware returns HTTP 503 `Preview environment is locked.` for application
+pages, APIs and handoff routes. Static bundled assets are not private data.
+This is a hosting checkpoint only, not permission to use account previews.
