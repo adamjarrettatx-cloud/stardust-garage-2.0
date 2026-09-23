@@ -2,8 +2,15 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import { teamDocumentPath } from '@/lib/document-access';
 import { partnerRouteRedirect } from '@/lib/partner-access';
+import { previewRequestGate, previewResponse } from '@/lib/view-portal/middleware';
 
 export async function middleware(request) {
+  const preview = await previewRequestGate(request);
+  if (preview.denied) return preview.denied;
+  return previewResponse(await websiteMiddleware(request), preview, request);
+}
+
+async function websiteMiddleware(request) {
   const { pathname } = request.nextUrl;
 
   const isAdminRoute  = pathname.startsWith('/bananas');

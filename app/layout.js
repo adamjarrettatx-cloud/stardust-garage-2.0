@@ -7,6 +7,7 @@ import AuthenticatedRouteShell from './components/AuthenticatedRouteShell';
 import MailchimpAttribution from './components/MailchimpAttribution';
 import SoundProvider from './components/SoundProvider';
 import GlobalSoundToggle from './components/GlobalSoundToggle';
+import ViewPortalBanner from './components/ViewPortalBanner';
 
 export const metadata = {
   title: 'Stardust Garage',
@@ -35,17 +36,18 @@ export default function RootLayout({ children }) {
             Mailchimp's built-in abandoned-browse/on-site behavior features;
             fully independent of, and a nice-to-have on top of, the
             mc_cid/mc_eid click + Ticket Tailor order attribution built below. */}
-        <script
+        {process.env.VIEW_PORTAL_MODE !== 'sandbox' && <script
           id="mcjs"
           dangerouslySetInnerHTML={{
             __html: `!function(c,h,i,m,p){m=c.createElement(h),p=c.getElementsByTagName(h)[0],m.async=1,m.src=i,p.parentNode.insertBefore(m,p)}(document,"script","https://chimpstatic.com/mcjs-connected/js/users/2f35fafd0eb753cd9b691177e/e783a1da3d152253632af49c9.js");`,
           }}
-        />
+        />}
       </head>
       <body>
-        <Suspense fallback={null}>
+        <ViewPortalBanner />
+        {process.env.VIEW_PORTAL_MODE !== 'sandbox' && <Suspense fallback={null}>
           <MailchimpAttribution />
-        </Suspense>
+        </Suspense>}
         <CosmosBackground />
         <SoundProvider>
           <AuthenticatedRouteShell
