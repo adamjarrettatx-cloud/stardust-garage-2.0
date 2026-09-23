@@ -25,6 +25,12 @@ test('non-owner admins can also see the Front Desk shortcut', () => {
   assert.equal(adminTabById('front-desk').ownerOnly, false);
 });
 
+test('Orders & Refunds appears under ADMIN directly after Front Desk', () => {
+  const group = visibleAdminTabGroups(true).find(({ group }) => group === 'ADMIN');
+  assert.deepEqual(group.tabs.slice(0, 2).map(({ id }) => id), ['front-desk', 'orders']);
+  assert.equal(adminTabById('orders').group, 'ADMIN');
+});
+
 test('a Front Desk query cannot create an empty admin dashboard panel', () => {
   for (const isOwner of [true, false]) {
     assert.equal(resolveRootAdminTab('front-desk', { isOwner }), DEFAULT_ADMIN_TAB);
