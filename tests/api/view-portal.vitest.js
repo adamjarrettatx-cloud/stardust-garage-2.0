@@ -168,7 +168,8 @@ it('external redirects are blocked while an explicit owner-portal exit remains a
   const allowed = previewResponse(NextResponse.redirect('https://sdgatx.com/bananas/view-portal'), context, exit);
   expect(allowed.status).toBe(307);
   expect(allowed.headers.get('referrer-policy')).toBe('same-origin');
-  expect(allowed.headers.get('content-security-policy')).toContain("frame-ancestors 'none'");
+  expect(allowed.headers.get('content-security-policy')).toContain("frame-ancestors 'self'");
+  expect(allowed.headers.get('content-security-policy')).toContain("frame-src 'self'");
   const directives = allowed.headers.get('content-security-policy').split('; ');
   expect(directives.find((value) => value.startsWith('form-action ')))
     .toBe("form-action 'self' https://sdgatx.com/bananas/view-portal");
