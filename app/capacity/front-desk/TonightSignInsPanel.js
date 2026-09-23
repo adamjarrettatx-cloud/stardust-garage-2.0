@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AccessCheck } from '../components/AccessRestrictions';
+import EditLegalName from '../components/EditLegalName';
 
 // TonightSignInsPanel
 //
@@ -107,9 +108,11 @@ export default function TonightSignInsPanel({ onCheckIn }) {
   const [busyId, setBusyId] = useState(null);
   const [selectedGuest, setSelectedGuest] = useState(null);
   const [accessClear, setAccessClear] = useState(false);
+  const [editingName, setEditingName] = useState(false);
   const [rowNote, setRowNote] = useState(null); // { id, message, tone }
   const previousIds = useRef(new Set());
   const storageKey = useMemo(() => STORAGE_PREFIX + chicagoShiftDayKey(), []);
+  useEffect(() => { setEditingName(false); }, [selectedGuest?.id]);
 
   // Rehydrate the checked-in set for tonight so a laptop refresh does not
   // re-arm every checkbox and re-bump the count. Falls back to the calendar
@@ -223,10 +226,12 @@ export default function TonightSignInsPanel({ onCheckIn }) {
     const interval = setInterval(() => load(false), POLL_MS);
     const onFocus = () => load(false);
     window.addEventListener('focus', onFocus);
+    window.addEventListener('sdg:legal-name-changed', onFocus);
     return () => {
       cancelled = true;
       clearInterval(interval);
       window.removeEventListener('focus', onFocus);
+      window.removeEventListener('sdg:legal-name-changed', onFocus);
     };
   }, []);
 
@@ -304,10 +309,17 @@ export default function TonightSignInsPanel({ onCheckIn }) {
           <strong className="text-sm">{selectedGuest.full_name}</strong>
           <button type="button" className="text-sm underline" onClick={() => setSelectedGuest(null)}>Close details</button>
         </div>
+        <EditLegalName key={selectedGuest.id} subject={{ kind: 'trial_pass', id: selectedGuest.id }}
+          fullName={selectedGuest.full_name} onEditing={setEditingName} disabled={Boolean(busyId)}
+          onSaved={(fullName) => {
+            setAccessClear(false);
+            setSelectedGuest(prev => prev?.id === selectedGuest.id ? { ...prev, full_name: fullName } : prev);
+            setSignins(prev => prev.map(row => row.id === selectedGuest.id ? { ...row, full_name: fullName } : row));
+          }} />
         <AccessCheck key={selectedGuest.id} subject={{ kind: 'trial_pass', id: selectedGuest.id }} onStatus={setAccessClear} />
         {!checkedIn.has(selectedGuest.id) && <button type="button"
           className="w-full rounded-lg bg-green-300 text-black py-2 font-bold disabled:opacity-40"
-          disabled={!accessClear || Boolean(busyId)} onClick={() => handleToggle(selectedGuest)}>
+          disabled={!accessClear || editingName || Boolean(busyId)} onClick={() => handleToggle(selectedGuest)}>
           {busyId ? 'Checking in…' : 'Check in guest'}
         </button>}
       </div>}

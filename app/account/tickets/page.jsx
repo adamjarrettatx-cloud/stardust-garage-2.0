@@ -26,6 +26,7 @@ import { renderTicketQrSvg } from '@/lib/tickets/qr';
 import { createProfilePhotoSignedUrl } from '@/lib/profile-photo';
 import TicketsList from './TicketsList';
 import CompleteProfileNudge from './CompleteProfileNudge';
+import { validateLegalName } from '@/lib/legal-name';
 import WalletPhotoNudge from '@/components/profile-photo/WalletPhotoNudge';
 
 export const runtime = 'nodejs';
@@ -72,7 +73,7 @@ export default async function AccountTicketsPage() {
   // Google OAuth path: user is authenticated but has no free_accounts row
   // (or the phone is missing) \u2014 show a small nudge above the list so we
   // eventually capture the phone. See /api/free-account/complete-profile-no-verify.
-  const needsProfileCompletion = !freeAccount || !freeAccount.phone;
+  const needsProfileCompletion = !freeAccount || !freeAccount.phone || !validateLegalName(freeAccount.full_name).valid;
 
   // Mint a server-side signed URL for the user's own photo (if any) so the
   // wallet nudge and avatars render immediately without a client fetch.
@@ -89,7 +90,7 @@ export default async function AccountTicketsPage() {
     <div>
       {needsProfileCompletion && (
         <CompleteProfileNudge
-          initialName={user.user_metadata?.full_name || freeAccount?.full_name || ''}
+          initialName={freeAccount?.full_name || user.user_metadata?.full_name || ''}
           initialPhone={freeAccount?.phone || ''}
         />
       )}

@@ -249,8 +249,9 @@ export async function POST(request) {
       prior_denials: priorDenials,
       session_started_at: sessionStartedAt,
       guest: {
-        // First name only. Enough for the attendant to greet them and match
-        // the face to the phone; not a contact record handed to a door device.
+        // Staff need the full legal name for ID comparison/correction.
+        // Device-token-only clients keep the existing first-name projection.
+        fullName: staffUserId ? pass.full_name : null,
         firstName: preview.firstName,
         statusLabel: passStatusLabel(pass),
         expiresLabel: expiryBeforeActivation ? formatPassDate(expiryBeforeActivation) : null,

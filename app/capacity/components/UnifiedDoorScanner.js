@@ -1,5 +1,6 @@
 'use client';
 import { AccessCheck } from './AccessRestrictions';
+import EditLegalName from './EditLegalName';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useDoorScanner } from './useDoorScanner';
@@ -603,7 +604,9 @@ export default function UnifiedDoorScanner({
           place while a card is up. */}
       {phase === 'preview' && preview && (
         <PreviewCard
+          key={preview.activityId}
           preview={preview}
+          onNameSaved={(name) => setPreview(prev => ({ ...prev, name, firstName: name.split(' ')[0] }))}
           rejectPicker={rejectPicker}
           rejectNote={rejectNote}
           decisionBusy={decisionBusy}
@@ -697,7 +700,7 @@ function buildPreviewVM(source, requestBody, json) {
     activityId: `trial:${g.passId || requestBody.token}`,
     priorDenials: Array.isArray(json.prior_denials) ? json.prior_denials : [],
     sessionStartedAt: Number.isFinite(json.session_started_at) ? json.session_started_at : null,
-    name: g.firstName || 'Guest',
+    name: g.fullName || g.firstName || 'Guest',
     firstName: g.firstName || 'Guest',
     subhead: json.reason || (isAllowed ? 'Wave them in.' : 'Denied at the door.'),
     statusLabel: g.statusLabel || null,
@@ -825,9 +828,11 @@ function humanDeniedHeadline(code) {
 
 function PreviewCard({
   preview, rejectPicker, rejectNote, decisionBusy,
-  onCheckIn, onOpenReject, onCancelReject, onReject, onRejectNoteChange, onCancelPreview,
+  onCheckIn, onOpenReject, onCancelReject, onReject, onRejectNoteChange, onCancelPreview, onNameSaved,
 }) {
   const [accessClear, setAccessClear] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  decisionBusy = decisionBusy || editingName;
   const bank = reasonsFor(preview.source);
   const previewLabel = preview.source === 'member_id'
     ? 'Member ID · Preview'
@@ -869,9 +874,12 @@ function PreviewCard({
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[24px] font-extrabold leading-tight truncate" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            {preview.firstName}
+          <div className="text-[24px] font-extrabold leading-tight break-words" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            {preview.name}
           </div>
+          <EditLegalName subject={preview.accessSubject} fullName={preview.name}
+            disabled={decisionBusy && !editingName} onEditing={setEditingName}
+            onSaved={(name) => { setAccessClear(false); onNameSaved(name); }} />
           {preview.subhead && (
             <div className="text-[13px] font-semibold mt-1" style={{ color: '#c9c9c9' }}>
               {accessClear ? preview.subhead : 'Hold entry until access is verified.'}

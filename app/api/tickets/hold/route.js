@@ -15,6 +15,8 @@ import { validateAcceptancePayload, recordWaiverAcceptance, evidenceFromRequest 
 import { memberSatisfiesTierGate, membershipTierLabel } from '@/lib/membership-tiers';
 import { resolveWaiverGateEnabled } from '@/lib/waiver-gate';
 import { UNLISTED_VISIBILITY } from '@/lib/event-visibility';
+import { accountLegalName } from '@/lib/account-legal-name';
+import { LEGAL_NAME_ERROR } from '@/lib/legal-name';
 
 // Waiver gate — fails CLOSED in production. See lib/waiver-gate.js for
 // the full policy + why. Resolved at module load so a request can never
@@ -140,6 +142,12 @@ export async function POST(request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY,
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
+  let legalProfile;
+  try { legalProfile = await accountLegalName(supabaseAdmin, user.id); }
+  catch { return NextResponse.json({ error: 'Could not verify your profile. Please retry.' }, { status: 503 }); }
+  if (!legalProfile.complete) {
+    return NextResponse.json({ error: LEGAL_NAME_ERROR, code: 'legal_name_required' }, { status: 400 });
+  }
 
   // --- Load event and gate on ticketing_mode + published ------------------
   const { data: event } = await supabaseAdmin
@@ -526,7 +534,7 @@ export async function POST(request) {
         payload: waiverEnvelope,
         userId: user.id,
         buyerEmail,
-        buyerName: memberProfile?.full_name || null,
+        buyerName: legalProfile.fullName,
         eventId,
         holdId: hold.id,
         ...ev,

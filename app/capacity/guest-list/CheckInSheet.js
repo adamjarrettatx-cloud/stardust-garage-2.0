@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { validateGuestIntake } from '@/lib/guestlist-checkin';
 import { AccessCheck } from '../components/AccessRestrictions';
+import EditLegalName from '../components/EditLegalName';
 
 // The check-in flow for one pending entry, as a bottom sheet so the roster stays
 // visible behind it and the controls sit under the thumbs holding the tablet.
@@ -20,18 +21,24 @@ import { AccessCheck } from '../components/AccessRestrictions';
 // guest we have never met before, it just no longer collects a signature and
 // (per lib/guestlist-checkin.js validateGuestIntake) marketing_consent is
 // false for the resulting guest_profiles row.
-export default function CheckInSheet({ entry, onClose, onCheckedIn, onConflict }) {
+export default function CheckInSheet({ entry: initialEntry, onClose, onCheckedIn, onConflict }) {
+  const [entry, setEntry] = useState(initialEntry);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState(null);
   const [candidates, setCandidates] = useState([]);
   const [confirmProfile, setConfirmProfile] = useState(null);
   const [error, setError] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [savingCheckin, setSubmitting] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const submitting = savingCheckin || editingName;
   const [intake, setIntake] = useState({ phone: '', email: '' });
   const [accessClear, setAccessClear] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+    setConfirmProfile(null);
+    setAccessClear(false);
     (async () => {
       try {
         const res = await fetch(`/api/capacity/guestlist/matches?entryId=${encodeURIComponent(entry.id)}`, {
@@ -64,7 +71,7 @@ export default function CheckInSheet({ entry, onClose, onCheckedIn, onConflict }
       }
     })();
     return () => { cancelled = true; };
-  }, [entry.id]);
+  }, [entry.id, entry.guest_name]);
 
   async function checkIn(payload, message) {
     setSubmitting(true);
@@ -134,6 +141,9 @@ export default function CheckInSheet({ entry, onClose, onCheckedIn, onConflict }
           </button>
         </div>
 
+        <EditLegalName subject={{ kind: 'guestlist', id: entry.id }} fullName={entry.guest_name}
+          disabled={savingCheckin} onEditing={setEditingName}
+          onSaved={(fullName) => { setAccessClear(false); setEntry(prev => ({ ...prev, guest_name: fullName })); }} />
         <AccessCheck subject={{ kind: 'guestlist', id: entry.id }} onStatus={setAccessClear}
           extra={view === 'confirm' && confirmProfile ? { guestProfileId: confirmProfile.id } : view === 'intake' ? { newGuest: intake } : null} />
         {isDiscount && (

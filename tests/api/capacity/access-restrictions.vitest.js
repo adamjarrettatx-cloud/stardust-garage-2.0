@@ -8,7 +8,7 @@ vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => auth.client })
 const subject = { kind: 'member', id: '00000000-0000-4000-8000-000000000001' };
 const restriction = { id: '00000000-0000-4000-8000-000000000010', full_name: 'Test Guest', kind: 'banned',
   reason: 'Test reason', identity_keys: [], match_keys: ['name:test guest'], lifted_at: null, expires_at: null };
-function database({ rows = [], exclusions = [], fail = null, manager = null } = {}) {
+function database({ rows = [], exclusions = [], fail = null, manager = null, corrections = [] } = {}) {
   return {
     rpc: vi.fn(async () => ({ data: restriction.id })),
     from(table) {
@@ -23,6 +23,7 @@ function database({ rows = [], exclusions = [], fail = null, manager = null } = 
         then(resolve, reject) {
           let data = [];
           if (table === 'access_restrictions') data = rows.filter(row => !overlap || row[overlap.field].some(key => overlap.values.includes(key)));
+          if (table === 'legal_name_corrections') data = corrections;
           if (table === 'access_restriction_exclusions') data = exclusions.map(id => ({ restriction_id: id }));
           return Promise.resolve(table === fail ? { error: { message: 'offline' } } : { data }).then(resolve, reject);
         },
@@ -48,11 +49,17 @@ describe('live access checks', () => {
     expect((await accessStatus(database({ rows: [{ ...restriction, lifted_at: '2026-01-01' }] }), subject)).status).toBe('clear');
   });
   it('fails closed on identity, restriction, exclusion or notes read failures', async () => {
-    for (const fail of ['member_profiles', 'access_restrictions', 'access_restriction_exclusions', 'access_restriction_events']) {
+    for (const fail of ['member_profiles', 'legal_name_corrections', 'access_restrictions', 'access_restriction_exclusions', 'access_restriction_events']) {
       const response = await restrictionGuard(database({ rows: [restriction], fail }), subject);
       expect(response.status).toBe(503);
       expect((await response.json()).code).toBe('access_unavailable');
     }
+  });
+  it('keeps previous names as possible restriction matches after correction', async () => {
+    const oldNameRestriction = { ...restriction, full_name: 'Old Alias', match_keys: ['name:old alias'] };
+    const result = await accessStatus(database({ rows: [oldNameRestriction], corrections: [{old_names:['Old Alias']}] }), subject);
+    expect(result.status).toBe('verify');
+    expect(result.matches[0].match).toBe('possible');
   });
   it('rechecks a new restriction at admission instead of trusting a previous clear preview', async () => {
     const rows = [];

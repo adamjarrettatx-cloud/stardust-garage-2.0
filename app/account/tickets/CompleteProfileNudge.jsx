@@ -13,8 +13,10 @@
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import LegalNameInput from '@/app/components/LegalNameInput';
+import { validateLegalName } from '@/lib/legal-name';
 
-export default function CompleteProfileNudge({ initialName = '', initialPhone = '' }) {
+export default function CompleteProfileNudge({ initialName = '', initialPhone = '', onSaved }) {
   const [name, setName] = useState(initialName);
   const [phone, setPhone] = useState(initialPhone);
   const [busy, setBusy] = useState(false);
@@ -24,6 +26,8 @@ export default function CompleteProfileNudge({ initialName = '', initialPhone = 
   async function onSubmit(e) {
     e.preventDefault();
     setError('');
+    const legalName = validateLegalName(name);
+    if (!legalName.valid) { setError(legalName.error); return; }
     setBusy(true);
     try {
       const supabase = createClient();
@@ -41,6 +45,7 @@ export default function CompleteProfileNudge({ initialName = '', initialPhone = 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || 'Could not save profile.');
       setDone(true);
+      if (onSaved) { onSaved(); return; }
       // Refresh the server component so the nudge disappears + the wallet
       // picks up the new free_accounts row.
       setTimeout(() => { window.location.reload(); }, 600);
@@ -74,16 +79,7 @@ export default function CompleteProfileNudge({ initialName = '', initialPhone = 
         Add your name and mobile so we can reach you about your tickets.
       </div>
       <div className="grid gap-2.5 md:grid-cols-2">
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Full legal name"
-          required
-          autoComplete="name"
-          className="w-full px-4 py-3 rounded-full outline-none border transition-colors focus:border-white/30"
-          style={{ background: '#0a0a0a', borderColor: 'rgba(255,255,255,0.1)', color: '#f5f5f5', fontSize: 16 }}
-        />
+        <LegalNameInput value={name} onChange={(e) => setName(e.target.value)} disabled={busy} />
         <input
           type="tel"
           value={phone}

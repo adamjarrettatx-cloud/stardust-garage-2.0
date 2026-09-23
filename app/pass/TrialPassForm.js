@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import ProfilePhotoUploader from '@/components/profile-photo/ProfilePhotoUploader';
+import LegalNameInput from '@/app/components/LegalNameInput';
+import { validateLegalName } from '@/lib/legal-name';
 
 // The three-question intake form behind the printed QR codes in the venue,
 // the SMS-verification step it turns into, and the success state after that.
@@ -16,7 +18,6 @@ import ProfilePhotoUploader from '@/components/profile-photo/ProfilePhotoUploade
 // forever — which is why the email is sent from issueTrialPass.
 
 const FIELDS = [
-  { name: 'fullName', label: 'Full legal name', type: 'text', autoComplete: 'name', placeholder: 'Jane Doe' },
   { name: 'phone', label: 'Mobile phone number', type: 'tel', autoComplete: 'tel', placeholder: '(512) 555-0134' },
   { name: 'email', label: 'Email address', type: 'email', autoComplete: 'email', placeholder: 'you@email.com' },
 ];
@@ -58,6 +59,8 @@ export default function TrialPassForm() {
   const startVerification = async (event) => {
     event?.preventDefault?.();
     if (submitting) return;
+    const name = validateLegalName(values.fullName);
+    if (!name.valid) { setError(name.error); setBadField('fullName'); return; }
     setError('');
     setBadField(null);
     setSubmitting(true);
@@ -418,6 +421,8 @@ export default function TrialPassForm() {
       </div>
 
       <form onSubmit={startVerification} className="flex flex-col gap-4" noValidate>
+        <LegalNameInput value={values.fullName} onChange={update('fullName')}
+          disabled={submitting} bad={badField === 'fullName'} />
         {FIELDS.map((field) => (
           <label key={field.name} className="block">
             <span
