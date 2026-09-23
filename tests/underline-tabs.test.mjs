@@ -14,7 +14,6 @@ const TABS = read('app/bananas/components/UnderlineTabs.js');
 // Inquiries and Micro Parties all share SubmissionTabs.
 const FILTER_SOURCES = [
   'app/bananas/components/SubmissionTabs.js',
-  'app/bananas/contacts/ContactsList.js',
   'app/bananas/pay-requests/PayRequestsClient.js',
 ];
 

@@ -1,4 +1,4 @@
-import { contactStatusLabel, contactTypeLabel } from '@/lib/contact-helpers';
+import { contactStatusLabel, contactTypeLabel, contactDirectoryTypes } from '@/lib/contact-helpers';
 
 // do_not_book has to be impossible to miss — it's the whole point of tracking
 // status on a contact.
@@ -41,7 +41,7 @@ export function ContactTypeBadges({ types }) {
   if (!types || types.length === 0) return null;
   return (
     <>
-      {types.map((t) => (
+      {contactDirectoryTypes(types).map((t) => (
         <span
           key={t}
           className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full"
