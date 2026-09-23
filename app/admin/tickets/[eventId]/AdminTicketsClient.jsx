@@ -34,22 +34,7 @@ export default function AdminTicketsClient({ eventId }) {
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [eventId]);
 
   async function refundOrder(orderId) {
-    const amountStr = prompt('Refund amount in cents (blank = full remaining):', '');
-    if (amountStr === null) return;
-    const amount_cents = amountStr === '' ? null : parseInt(amountStr, 10);
-    if (amount_cents !== null && (!Number.isFinite(amount_cents) || amount_cents <= 0)) return alert('Bad amount');
-    if (!confirm('Confirm refund?')) return;
-    setBusy(true);
-    try {
-      const res = await fetch(`/api/admin/tickets/orders/${orderId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'refund', amount_cents }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      await load();
-    } catch (e) { alert(`Refund failed: ${e.message}`); } finally { setBusy(false); }
+    window.location.assign(`/bananas/events/${eventId}/attendees?order=${encodeURIComponent(orderId)}`);
   }
 
   async function resendOrder(orderId) {

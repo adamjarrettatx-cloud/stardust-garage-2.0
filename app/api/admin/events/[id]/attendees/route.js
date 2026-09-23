@@ -33,7 +33,7 @@ export async function GET(request, { params }) {
     if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404, headers });
 
     const { data: orders, error } = await db.from('orders')
-      .select('id, buyer_name, buyer_email, member_profile_id, user_id, status, total_cents, refunded_cents, currency, paid_at, created_at')
+      .select('id, event_id, buyer_name, buyer_email, member_profile_id, user_id, status, total_cents, refunded_cents, currency, paid_at, created_at, stripe_payment_intent_id, events(title, event_date)')
       .eq('event_id', id).order('created_at', { ascending: false }).order('id')
       .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
     if (error) throw error;
