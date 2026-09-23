@@ -8,7 +8,7 @@
     "build": "next build --turbopack",
     "start": "next start -H 0.0.0.0 -p 3000",
     "lint": "eslint",
-    "test": "TZ=UTC npx vitest run tests/api/account/delete.test.js tests/api/cron/fail-closed.test.js tests/api/capacity/access-restrictions.vitest.js tests/api/legal-name.vitest.js tests/api/event-roster.vitest.js tests/api/ticket-refunds.vitest.js tests/api/capacity-analytics.vitest.js tests/api/admin-signup-photos.vitest.js tests/artist-pay/*.spec.js && TZ=UTC node --test $(find tests -type f \\( -name '*.test.mjs' -o -name '*.test.js' \\) ! -path 'tests/api/account/delete.test.js' ! -path 'tests/api/cron/fail-closed.test.js')",
+    "test": "TZ=UTC npx vitest run tests/api/account/delete.test.js tests/api/cron/fail-closed.test.js tests/api/capacity/access-restrictions.vitest.js tests/api/legal-name.vitest.js tests/api/event-roster.vitest.js tests/api/ticket-refunds.vitest.js tests/api/capacity-analytics.vitest.js tests/api/admin-signup-photos.vitest.js tests/api/organization-main-contact.vitest.js tests/artist-pay/*.spec.js && TZ=UTC node --test $(find tests -type f \\( -name '*.test.mjs' -o -name '*.test.js' \\) ! -path 'tests/api/account/delete.test.js' ! -path 'tests/api/cron/fail-closed.test.js')",
     "backfill:tt-orders": "node scripts/backfill-ticket-order-attribution.mjs",
     "backfill:member-tickets": "node scripts/backfill-member-tickets.mjs"
   },

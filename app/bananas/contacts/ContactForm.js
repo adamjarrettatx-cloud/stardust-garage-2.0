@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import ContactProfileLayout from './ContactProfileLayout';
+import { contactProfileKind } from '@/lib/contact-organizations';
 import {
   CONTACT_TYPE_OPTIONS,
   CONTACT_STATUS_OPTIONS,
@@ -61,6 +62,7 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
   const isEditing = !!contact;
 
   const [displayName, setDisplayName] = useState(contact?.display_name || '');
+  const [profileKind, setProfileKind] = useState(contactProfileKind(contact || { contact_type: [initialCategory] }));
   const [contactTypes, setContactTypes] = useState(contact?.contact_type || (contactDirectorySection(initialCategory) ? [initialCategory] : []));
   const [primaryContactName, setPrimaryContactName] = useState(contact?.primary_contact_name || '');
   const [email, setEmail] = useState(contact?.email || '');
@@ -89,7 +91,7 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const values = {
-    display_name: displayName, contact_type: contactTypes, primary_contact_name: primaryContactName,
+    display_name: displayName, profile_kind: profileKind, contact_type: contactTypes, primary_contact_name: primaryContactName,
     email, phone, company, instagram_handle: instagramHandle, website, status,
     internal_notes: internalNotes, photo_url: photoUrl, additional_contacts: additionalContacts,
     legal_name: legalName, entity_type: entityType, default_signer_name: defaultSignerName,
@@ -99,7 +101,7 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
   const dirty = JSON.stringify(values) !== baseline;
   const setField = (key, value) => {
     const setters = {
-      display_name: setDisplayName, contact_type: setContactTypes, primary_contact_name: setPrimaryContactName,
+      display_name: setDisplayName, profile_kind: setProfileKind, contact_type: setContactTypes, primary_contact_name: setPrimaryContactName,
       email: setEmail, phone: setPhone, company: setCompany, instagram_handle: setInstagramHandle,
       website: setWebsite, status: setStatus, internal_notes: setInternalNotes, photo_url: setPhotoUrl,
       additional_contacts: setAdditionalContacts, legal_name: setLegalName, entity_type: setEntityType,
@@ -182,6 +184,7 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
 
     const payload = {
       display_name: displayName.trim(),
+      profile_kind: profileKind,
       contact_type: contactTypes,
       primary_contact_name: primaryContactName.trim() || null,
       email: email.trim() || null,

@@ -8,6 +8,7 @@ import {
   contactDirectoryHref, filterDirectoryContacts, filterArchivedContacts,
 } from '@/lib/contact-helpers';
 import styles from './contacts.module.css';
+import { contactProfileKind } from '@/lib/contact-organizations';
 
 function ContactImage({ contact }) {
   const [failed, setFailed] = useState(false);
@@ -21,7 +22,7 @@ function ContactImage({ contact }) {
 }
 
 function NewContactLink({ category }) {
-  return <Link className={styles.add} href={category ? `/bananas/contacts/new?category=${category}` : '/bananas/contacts/new'}>+ NEW CONTACT</Link>;
+  return <Link className={styles.add} href={category ? `/bananas/contacts/new?category=${category}` : '/bananas/contacts/new'}>{category === 'organization' ? '+ NEW ORGANIZATION' : '+ NEW CONTACT'}</Link>;
 }
 
 function ArchivedContactsLink({ category }) {
@@ -36,7 +37,7 @@ function ContactRows({ contacts, category, archived = false }) {
       <ContactImage key={`${contact.id}:${contact.photo_url}`} contact={contact} />
       <div className={styles.info}>
         <div className={styles.nameLine}><h2 title={contact.display_name}>{contact.display_name}</h2>
-          {contact.primary_contact_name && <span className={styles.primary}>{contact.primary_contact_name}</span>}
+          {contactProfileKind(contact) !== 'organization' && contact.primary_contact_name && <span className={styles.primary}>{contact.primary_contact_name}</span>}
           {contact.status === 'do_not_book' && <span className={styles.warning}>Do Not Book</span>}
         </div>
         {contact.company && <div className={styles.company}>{contact.company}</div>}

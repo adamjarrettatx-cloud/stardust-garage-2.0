@@ -19,10 +19,10 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const source = fs.readFileSync(path.join(ROOT, 'app/bananas/contacts/ContactsList.js'), 'utf8');
 
-test('the directory exposes exactly the six approved sections in order', () => {
-  const expected = ['Artist', 'Event Organizer', 'Venue Renter', 'Vendor', 'Collective', 'Promoter'];
+test('the directory combines organizers and collectives into Organizations', () => {
+  const expected = ['Artist', 'Organizations', 'Venue Renter', 'Vendor', 'Promoter', 'People'];
   assert.deepEqual(CONTACT_DIRECTORY_SECTIONS.map(section => section.label), expected);
-  assert.deepEqual(CONTACT_TYPE_OPTIONS.map(option => option.label), expected);
+  assert.deepEqual(CONTACT_TYPE_OPTIONS.map(option => option.label), ['Artist', 'Organization', 'Venue Renter', 'Vendor', 'Promoter', 'Person']);
 });
 
 test('contact statuses exclude Inactive while legacy records stay in the normal directory', () => {
@@ -36,7 +36,7 @@ test('DJ and Performer records are included under Artist without changing stored
     assert.equal(contactMatchesDirectorySection([value], 'artist'), true);
     assert.equal(isContactTypeSelected([value], 'artist'), true);
   }
-  assert.deepEqual(contactDirectoryTypes(['dj', 'event_organizer']), ['artist', 'event_organizer']);
+  assert.deepEqual(contactDirectoryTypes(['dj', 'event_organizer']), ['artist', 'organization']);
   assert.equal(contactMatchesDirectorySection(['collective'], 'artist'), false);
 });
 
@@ -46,7 +46,9 @@ test('Artist form toggles replace legacy artist aliases without touching unrelat
   assert.deepEqual(toggleContactType(['performer', 'other'], 'artist'), ['other']);
 });
 
-test('directory URLs only accept the six known categories', () => {
+test('directory URLs canonicalize legacy organization categories', () => {
+  assert.equal(contactDirectoryHref('event_organizer'), '/bananas/contacts?category=organization');
+  assert.equal(contactDirectoryHref('collective'), '/bananas/contacts?category=organization');
   assert.equal(contactDirectoryHref('artist'), '/bananas/contacts?category=artist');
   assert.equal(contactDirectoryHref('dj'), '/bananas/contacts');
   assert.equal(contactDirectoryHref('all'), '/bananas/contacts');
@@ -91,7 +93,7 @@ test('multi-role contacts count once per category and filtering never mutates st
   const contact = Object.freeze({ id: 1, contact_type: types, status: 'active' });
   assert.equal(filterDirectoryContacts([contact], 'artist').length, 1);
   assert.equal(filterDirectoryContacts([contact], 'collective').length, 1);
-  assert.deepEqual(contactDirectoryTypes(types), ['artist', 'collective']);
+  assert.deepEqual(contactDirectoryTypes(types), ['artist', 'organization']);
   assert.deepEqual(types, ['dj', 'artist', 'performer', 'collective', 'resident']);
 });
 
