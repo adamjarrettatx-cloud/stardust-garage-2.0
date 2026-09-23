@@ -7,6 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createServerClient } from '@supabase/ssr';
 import { POST as launch } from '../../app/api/admin/view-portal/launch/route.js';
 import { POST as redeem, GET as redeemGet } from '../../app/view-preview/redeem/route.js';
+import { POST as exitPreview } from '../../app/view-preview/exit/route.js';
 import { PREVIEW_PROJECT_REF } from '../../lib/view-portal/config.js';
 import { verifyViewToken } from '../../lib/view-portal/tokens.js';
 import { signViewToken } from '../../lib/view-portal/tokens.js';
@@ -151,4 +152,24 @@ it('external redirects are blocked while an explicit owner-portal exit remains a
   const allowed = previewResponse(NextResponse.redirect('https://sdgatx.com/bananas/view-portal'), context, exit);
   expect(allowed.status).toBe(307);
   expect(allowed.headers.get('content-security-policy')).toContain("frame-ancestors 'none'");
+});
+it('exit requires the sandbox origin and clears lease plus chunked Auth cookies', async () => {
+  await sandboxRequest();
+  const denied = await exitPreview(new Request(`${sandbox}/view-preview/exit`, {
+    method: 'POST', headers: { Origin: 'https://attacker.test' },
+  }));
+  expect(denied.status).toBe(403);
+  const response = await exitPreview(new Request(`${sandbox}/view-preview/exit`, {
+    method: 'POST',
+    headers: {
+      Origin: sandbox,
+      Cookie: `__Host-sdg-view=lease; sb-${PREVIEW_PROJECT_REF}-auth-token.0=a; sb-${PREVIEW_PROJECT_REF}-auth-token.1=b`,
+    },
+  }));
+  expect(response.status).toBe(303);
+  const cookies = response.headers.getSetCookie().join('\n');
+  expect(cookies).toContain('__Host-sdg-view=');
+  expect(cookies).toContain(`sb-${PREVIEW_PROJECT_REF}-auth-token.0=`);
+  expect(cookies).toContain(`sb-${PREVIEW_PROJECT_REF}-auth-token.1=`);
+  expect(cookies.match(/Max-Age=0/g)).toHaveLength(3);
 });

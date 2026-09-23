@@ -26,17 +26,19 @@ for (let page = 1; ; page += 1) {
 }
 for (const [index, persona] of VIEW_PERSONAS.entries()) {
   const email = personaEmail(persona.id);
+  // IDs contain letters/hyphens only; labels can contain "/" or "+", which
+  // deliberately fail the application's legal-name intake validation.
+  const fullName = `Preview ${persona.id}`;
   let user = users.find((entry) => entry.email === email);
   if (!user) {
     user = check(await db.auth.admin.createUser({
       email, email_confirm: true,
       app_metadata: { view_portal_persona: persona.id },
-      user_metadata: { full_name: `Preview ${persona.label}` },
+      user_metadata: { full_name: fullName },
     })).user;
   } else if (user.app_metadata?.view_portal_persona !== persona.id) {
     throw new Error('Existing identity is not a registered preview persona.');
   }
-  const fullName = `Preview ${persona.label}`;
   const phone = `+120255501${String(index).padStart(2, '0')}`;
   check(await db.from('view_portal_personas').upsert({
     persona_id: persona.id, user_id: user.id, ready: false, fixture_version: 1,

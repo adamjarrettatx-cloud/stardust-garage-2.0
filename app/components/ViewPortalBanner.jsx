@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { PREVIEW_COOKIE, PREVIEW_DURATION, viewConfig } from '@/lib/view-portal/config';
 import { viewPersona } from '@/lib/view-portal/personas';
@@ -21,7 +20,7 @@ export default async function ViewPortalBanner() {
         <strong>Viewing as: {persona.label}</strong>
       </div>
       <div className="view-portal-banner__actions">
-        <Link href={`${config.controllerOrigin}/bananas/view-portal`}>Change view</Link>
+        <form action="/view-preview/exit" method="post"><button type="submit">Change view</button></form>
         <form action="/view-preview/exit" method="post"><button type="submit">Exit preview</button></form>
       </div>
     </aside>
