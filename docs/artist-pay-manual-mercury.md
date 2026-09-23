@@ -41,6 +41,8 @@ Mercury documents idempotency keys and approval-required payments; the integrati
 
 Do not enable live queueing just because this pull request is merged.
 
+This limited production release additionally locks production queueing off in code, regardless of the environment flag. The read-only connection check remains available. Live activation requires a separately reviewed and authorized code change after the gates below, not just changing an environment variable.
+
 ### Selected production account
 
 Adam selected **Artist & Collective Pay**, a Checking account ending **0305**, on September 23, 2026. He supplied its dashboard URL, `https://app.mercury.com/accounts/depository/6a8a713e-b760-11f1-a161-6b9575e7cd6d`, identifying the intended account UUID. This is a dashboard-derived selection, not yet an authenticated API verification.
@@ -65,7 +67,7 @@ The owner-only **Check Mercury connection** control performs `GET /accounts` fro
    - `MERCURY_ENVIRONMENT`: `sandbox` or `production`; no arbitrary API host.
    - `MERCURY_API_KEY`: scoped Mercury API token, never a `NEXT_PUBLIC_` variable.
    - `MERCURY_ACCOUNT_ID`: Mercury source-account UUID, not a bank account number.
-   - `ARTIST_PAY_MERCURY_ENABLED`: set to exact `true` only after the checks below.
+   - `ARTIST_PAY_MERCURY_ENABLED`: exact `true` enables sandbox queueing only in this release. Keep production `false`; a separate code release is required for live activation after the checks below.
    - Vercel preview/development deployments fail closed if `MERCURY_ENVIRONMENT=production`, even if the enable flag is accidentally inherited.
 4. Use a Custom token limited to **Send Money with Approval**, **Fetch Send Money Requests**, and **Fetch Depository Accounts** (the last is used solely by the read-only connection check). This implementation does not require Fetch Recipients, Create Recipients, recipient invites, or direct Send Money.
 5. Verify who can approve API-created requests in this Mercury organization. The endpoint reference says the approver must differ from the token creator; the newer guide documents a policy-dependent self-approval exception. Do not assume a sole-user account qualifies. Confirm the actual account policy with Mercury before activation ([endpoint reference](https://docs.mercury.com/reference/requestsendmoney), [current guide](https://docs.mercury.com/docs/send-money)).

@@ -20,6 +20,18 @@ const config = mercuryConfig({
 });
 
 describe('Mercury privacy and safety boundary', () => {
+  it('locks production payments off even with a fully configured enabled environment', async () => {
+    const production = mercuryConfig({
+      MERCURY_ENVIRONMENT: 'production', MERCURY_API_KEY: 'test-only',
+      MERCURY_ACCOUNT_ID: account, ARTIST_PAY_MERCURY_ENABLED: 'true', VERCEL_ENV: 'production',
+    });
+    expect(production.configured).toBe(true);
+    expect(production.enabled).toBe(false);
+    const fetchImpl = vi.fn();
+    await expect(mercuryApproval({ ...payout, environment: 'production' }, { config: production, fetchImpl }))
+      .rejects.toMatchObject({ code: 'disabled' });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
   it('fails closed when configuration is absent or malformed', () => {
     expect(mercuryConfig({}).enabled).toBe(false);
     expect(mercuryConfig({ MERCURY_ENVIRONMENT: 'https://attacker.test' }).enabled).toBe(false);
