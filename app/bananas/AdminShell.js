@@ -170,7 +170,7 @@ export default function AdminShell({
   const isDashboardRoot = pathname === '/bananas' || pathname === '/bananas/';
 
   // Which section the tile grid is showing while we are on the dashboard root.
-  // Seeded from ?tab= so a deep link such as /bananas?tab=people opens People.
+  // Seeded from ?tab= so /bananas?tab=incoming opens Incoming.
   const [rootTab, setRootTab] = useState(() =>
     resolveRootAdminTab(searchParams?.get('tab'), { isOwner })
   );
