@@ -19,7 +19,7 @@ import AccessRestrictions from '../components/AccessRestrictions';
 //   * top strip     — live capacity from useCapacity() (team mode, no token)
 //   * left column   — event picker + name search + check-in list, opens the
 //                     existing CheckInSheet for the confirm/pick/intake flow
-//   * right column  — the same manual trial pass form used at /team/trial-pass/manual
+//   * issuance form — manual trial passes, available only in this workstation
 //
 // The check-in itself STILL goes through /api/capacity/guestlist/operation,
 // exactly like the tablet page, so audit rows and RLS behaviour are identical.

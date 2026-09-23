@@ -17,7 +17,7 @@ import EditLegalName from '@/app/capacity/components/EditLegalName';
 
 // compact=true renders a denser variant used inside the front-desk console
 // where vertical space competes with the roster + recent-activity panels.
-// The regular /team/trial-pass/manual page still gets the roomy layout.
+// Front Desk is the only page that mounts this form; the old manual page redirects.
 export default function ManualTrialPassForm({ createdByEmail, compact = false }) {
   const [values, setValues] = useState({ fullName: '', phone: '', email: '' });
   const [submitting, setSubmitting] = useState(false);
