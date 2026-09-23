@@ -167,7 +167,11 @@ it('external redirects are blocked while an explicit owner-portal exit remains a
   const exit = await sandboxRequest('/view-preview/exit');
   const allowed = previewResponse(NextResponse.redirect('https://sdgatx.com/bananas/view-portal'), context, exit);
   expect(allowed.status).toBe(307);
+  expect(allowed.headers.get('referrer-policy')).toBe('same-origin');
   expect(allowed.headers.get('content-security-policy')).toContain("frame-ancestors 'none'");
+  const directives = allowed.headers.get('content-security-policy').split('; ');
+  expect(directives.find((value) => value.startsWith('form-action ')))
+    .toBe("form-action 'self' https://sdgatx.com/bananas/view-portal");
 });
 it('exit requires the sandbox origin and clears lease plus chunked Auth cookies', async () => {
   await sandboxRequest();
@@ -183,9 +187,30 @@ it('exit requires the sandbox origin and clears lease plus chunked Auth cookies'
     },
   }));
   expect(response.status).toBe(303);
+  expect(response.headers.get('referrer-policy')).toBe('same-origin');
   const cookies = response.headers.getSetCookie().join('\n');
   expect(cookies).toContain('__Host-sdg-view=');
   expect(cookies).toContain(`sb-${PREVIEW_PROJECT_REF}-auth-token.0=`);
   expect(cookies).toContain(`sb-${PREVIEW_PROJECT_REF}-auth-token.1=`);
   expect(cookies.match(/Max-Age=0/g)).toHaveLength(3);
+});
+it.each([null, 'null', 'https://attacker.test', 'https://sdgatx.com'])(
+  'exit still rejects missing, opaque and cross-origin requests: %s',
+  async (origin) => {
+    await sandboxRequest();
+    const response = await exitPreview(new Request(`${sandbox}/view-preview/exit`, {
+      method: 'POST', headers: origin === null ? {} : { Origin: origin },
+    }));
+    expect(response.status).toBe(403);
+    expect(response.headers.get('set-cookie')).toBeNull();
+    expect(response.headers.get('location')).toBeNull();
+  },
+);
+it('exit still rejects a different destination host even with the expected Origin', async () => {
+  await sandboxRequest();
+  const response = await exitPreview(new Request('https://other.test/view-preview/exit', {
+    method: 'POST', headers: { Origin: sandbox },
+  }));
+  expect(response.status).toBe(403);
+  expect(response.headers.get('set-cookie')).toBeNull();
 });

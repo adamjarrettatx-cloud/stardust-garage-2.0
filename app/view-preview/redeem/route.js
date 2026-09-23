@@ -57,7 +57,7 @@ export async function POST(request) {
     httpOnly: true, secure: true, sameSite: 'lax', path: '/', maxAge: PREVIEW_DURATION,
   });
   response.headers.set('Cache-Control', 'no-store');
-  response.headers.set('Referrer-Policy', 'no-referrer');
+  response.headers.set('Referrer-Policy', 'same-origin');
   return response;
 }
 
