@@ -2,7 +2,7 @@
 
 ## Admin workflow
 
-- Open **Orders & Refunds** in the MONEY sidebar, or **Attendees & Orders** on an event.
+- Open **Orders & Refunds** in the ADMIN sidebar, or **Attendees & Orders** on an event.
 - Search by purchaser name, email, order ID, or event title. The all-events view also has an event filter.
 - Use **Refund** on a row for a full remaining-balance refund or an individual partial USD refund.
 - Select individual orders, the current page, or all matching refundable orders for full remaining-balance batch refunds. Maximum: 100 orders. Changing search/filter/view clears selection.

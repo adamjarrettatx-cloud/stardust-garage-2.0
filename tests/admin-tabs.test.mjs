@@ -84,11 +84,13 @@ test('owners see every tab', () => {
   assert.equal(visibleAdminTabs(true).length, ADMIN_TABS.length);
 });
 
-test('groups are nonempty and non-owner admins only see Orders & Refunds under MONEY', () => {
-  // Ticket refunds were already admin-authorized. Their new sidebar entry
-  // does not grant access to owner-only analytics or Artist Pay.
-  const money = visibleAdminTabGroups(false).find((g) => g.group === 'MONEY');
-  assert.deepEqual(money.tabs.map((tab) => tab.id), ['orders']);
+test('groups are nonempty and non-owner admins see Orders & Refunds under ADMIN', () => {
+  // Ticket refunds remain admin-authorized without granting access to the
+  // owner-only MONEY sections, Analytics and Artist Pay.
+  const groups = visibleAdminTabGroups(false);
+  assert.equal(groups.some((g) => g.group === 'MONEY'), false);
+  const admin = groups.find((g) => g.group === 'ADMIN');
+  assert.ok(admin.tabs.some((tab) => tab.id === 'orders'));
   for (const { tabs } of visibleAdminTabGroups(false)) {
     assert.ok(tabs.length > 0);
   }
