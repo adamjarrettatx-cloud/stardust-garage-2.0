@@ -67,6 +67,10 @@ export default function EventsSection({ upcoming, past, metricsByEvent = {} }) {
             which handles both internal and public (ticketed) events. Direct
             '+ New Event' entry point intentionally removed so there is only
             one create path. */}
+        <div className="flex flex-wrap items-center justify-end gap-4">
+        <Link href="/bananas/orders" className="text-[12px] font-semibold" style={{ color: 'var(--auth-muted)' }}>
+          ORDERS &amp; REFUNDS
+        </Link>
         <Link
           href="/bananas/calendar"
           className="text-[12px] font-semibold tracking-[0.14em] transition-colors"
@@ -74,6 +78,7 @@ export default function EventsSection({ upcoming, past, metricsByEvent = {} }) {
         >
           + NEW EVENT → CALENDAR
         </Link>
+        </div>
       </div>
 
       {/* Event list */}

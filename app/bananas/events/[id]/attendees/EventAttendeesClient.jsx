@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { matchesRosterSearch, rosterCsv, rosterTickets } from '@/lib/tickets/event-roster';
+import RefundDialog from '@/components/ticketing/RefundDialog';
+import RefundActivity from '@/components/ticketing/RefundActivity';
 import styles from './roster.module.css';
 
 function money(cents, currency = 'usd') {
@@ -30,6 +32,15 @@ export default function EventAttendeesClient({ event }) {
   const [reload, setReload] = useState(0);
   const [loadedAt, setLoadedAt] = useState(null);
   const [page, setPage] = useState(0);
+  const [eventFilter, setEventFilter] = useState('all');
+  const [selected, setSelected] = useState(new Set());
+  const [refundOrders, setRefundOrders] = useState(null);
+  const eventId = event?.id;
+
+  useEffect(() => {
+    const orderId = new URLSearchParams(window.location.search).get('order');
+    if (orderId) setSearch(orderId);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -42,7 +53,8 @@ export default function EventAttendeesClient({ event }) {
         const collected = new Map();
         let next = 0;
         do {
-          const res = await fetch(`/api/admin/events/${event.id}/attendees?page=${next}`, {
+          const url = eventId ? `/api/admin/events/${eventId}/attendees?page=${next}` : `/api/admin/tickets/roster?page=${next}`;
+          const res = await fetch(url, {
             cache: 'no-store', signal: controller.signal,
           });
           const data = await res.json();
@@ -62,12 +74,20 @@ export default function EventAttendeesClient({ event }) {
     }
     load();
     return () => controller.abort();
-  }, [event.id, reload]);
+  }, [eventId, reload]);
+
+  // Filter changes intentionally clear selection. No invisible orders are
+  // carried into a batch after switching event, view, or search.
+  useEffect(() => { setSelected(new Set()); }, [search, status, tab, eventFilter, reload]);
 
   const tickets = useMemo(() => rosterTickets(orders), [orders]);
   const rows = useMemo(() => (tab === 'purchasers' ? orders : tickets)
-    .filter((row) => (status === 'all' || row.status === status) && matchesRosterSearch(row, search)),
-  [orders, tickets, tab, status, search]);
+    .filter((row) => (eventFilter === 'all' || row.event_id === eventFilter)
+      && (status === 'all' || row.status === status) && matchesRosterSearch(row, search)),
+  [orders, tickets, tab, status, search, eventFilter]);
+  const events = useMemo(() => [...new Map(orders.map((o) => [o.event_id,
+    { id: o.event_id, title: o.event_title, date: o.event_date }])).values()]
+    .sort((a, b) => (b.date || '').localeCompare(a.date || '')), [orders]);
   const pageSize = 50;
   const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
   const currentPage = Math.min(page, pageCount - 1);
@@ -75,12 +95,31 @@ export default function EventAttendeesClient({ event }) {
   const validTickets = tickets.filter((t) => ['valid', 'used'].includes(t.status));
   const uniquePurchasers = new Set(orders.filter((o) => ['paid', 'partial_refund'].includes(o.status))
     .map((o) => o.buyer_email?.trim().toLowerCase() || o.id)).size;
+  const eligible = tab === 'purchasers' ? rows.filter((row) => row.can_refund) : [];
+  const pageEligible = visible.filter((row) => row.can_refund);
+  function toggleOrder(id) {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else if (next.size < 100) next.add(id);
+      return next;
+    });
+  }
+  function togglePage() {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (pageEligible.every((row) => next.has(row.id))) pageEligible.forEach((row) => next.delete(row.id));
+      else pageEligible.forEach((row) => { if (next.size < 100) next.add(row.id); });
+      return next;
+    });
+  }
+  function refreshed() { setReload((n) => n + 1); }
 
   function exportCsv() {
     const csv = tab === 'purchasers'
       ? rosterCsv(
-        ['Purchaser name', 'Email', 'Order status', 'Tickets', 'Checked in', 'Total', 'Refunded', 'Currency', 'Purchased at', 'Order ID'],
-        rows.map((o) => [o.buyer_name, o.buyer_email, o.status, o.tickets.length,
+        ['Purchaser name', 'Email', 'Event', 'Order status', 'Tickets', 'Checked in', 'Total', 'Refunded', 'Currency', 'Purchased at', 'Order ID'],
+        rows.map((o) => [o.buyer_name, o.buyer_email, o.event_title, o.status, o.tickets.length,
           o.tickets.filter((t) => t.status === 'used').length, (o.total_cents || 0) / 100,
           (o.refunded_cents || 0) / 100, o.currency, o.purchased_at, o.id]),
       )
@@ -92,7 +131,7 @@ export default function EventAttendeesClient({ event }) {
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${event.event_date}-${event.id}-${tab}.csv`;
+    a.download = `${event ? `${event.event_date}-${event.id}` : 'all-events'}-${tab}.csv`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
@@ -101,22 +140,25 @@ export default function EventAttendeesClient({ event }) {
     <section className={styles.roster} aria-busy={busy}>
       <header className={styles.header}>
         <div>
-          <p className={styles.eyebrow}>ATTENDEES &amp; ORDERS</p>
-          <h1>{event.title}</h1>
-          <p className={styles.muted}>{new Intl.DateTimeFormat('en-US', {
+          <p className={styles.eyebrow}>{event ? 'ATTENDEES & ORDERS' : 'TICKET ORDERS'}</p>
+          <h1>{event?.title || 'Orders & Refunds'}</h1>
+          <p className={styles.muted}>{event ? new Intl.DateTimeFormat('en-US', {
             month: 'long', day: 'numeric', year: 'numeric',
-          }).format(new Date(`${event.event_date}T12:00:00`))}</p>
+          }).format(new Date(`${event.event_date}T12:00:00`)) : 'Search purchases across all SDG-ticketed events.'}</p>
         </div>
         <div className={styles.actions}>
-          <a className={styles.button} href={`/bananas/events/${event.id}`}>Edit event</a>
-          <a className={styles.button} href={`/admin/tickets/${event.id}`}>Refunds &amp; ticket tools</a>
+          {event ? <>
+            <a className={styles.button} href="/bananas/orders">Search all orders</a>
+            <a className={styles.button} href={`/bananas/events/${event.id}`}>Edit event</a>
+            <a className={styles.button} href={`/admin/tickets/${event.id}`}>Ticket tools</a>
+          </> : <a className={styles.button} href="/bananas?tab=events">Events</a>}
           <button className={styles.button} disabled={busy} onClick={() => setReload((n) => n + 1)}>
             {busy ? 'Loading…' : 'Refresh'}
           </button>
         </div>
       </header>
 
-      {event.ticketing_mode !== 'internal' && (
+      {event && event.ticketing_mode !== 'internal' && (
         <p className={styles.notice}>This list contains SDG checkout purchases only. Ticket Tailor and other external ticket purchases are not included. Complimentary guest lists and trial-pass visits are separate.</p>
       )}
 
@@ -145,13 +187,20 @@ export default function EventAttendeesClient({ event }) {
         </div>
         <div className={styles.filters}>
           <label className={styles.search}>
-            <span>Search names or email</span>
-            <input type="search" placeholder="Search names or email…" value={search}
+            <span>Search name, email, or order ID</span>
+            <input type="search" placeholder="Search name, email, or order ID…" value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(0); }} />
           </label>
+          {!event && <label>
+            <span>Event</span>
+            <select aria-label="Event" value={eventFilter} onChange={(e) => { setEventFilter(e.target.value); setPage(0); }}>
+              <option value="all">All events</option>
+              {events.map((item) => <option key={item.id} value={item.id}>{item.title} · {item.date}</option>)}
+            </select>
+          </label>}
           <label>
             <span>{tab === 'purchasers' ? 'Order status' : 'Ticket status'}</span>
-            <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(0); }}>
+            <select aria-label={tab === 'purchasers' ? 'Order status' : 'Ticket status'} value={status} onChange={(e) => { setStatus(e.target.value); setPage(0); }}>
               <option value="all">All statuses</option>
               {(tab === 'purchasers'
                 ? ['paid', 'partial_refund', 'refunded', 'pending', 'failed', 'void']
@@ -163,39 +212,65 @@ export default function EventAttendeesClient({ event }) {
         </div>
         <p className={styles.explanation}>
           {tab === 'purchasers'
-            ? 'One row per order. Names come from checkout or the linked member profile. A purchaser may have bought multiple tickets.'
+            ? 'One row per order. Select orders for full remaining-balance refunds, or use Refund on a row for a partial amount. Maximum 100 orders per batch.'
             : 'One row per ticket. When a guest name was not collected, the purchaser is shown and labeled. Ticket scans do not identify unnamed guests.'}
         </p>
+        {tab === 'purchasers' && !busy && !error && (
+          <div className={styles.selectionBar}>
+            <span>{selected.size} selected</span>
+            <button className={styles.button} disabled={!eligible.length || eligible.length > 100}
+              onClick={() => setSelected(new Set(eligible.map((row) => row.id)))}>
+              Select all {eligible.length} matching refundable orders
+            </button>
+            <button className={styles.button} disabled={!selected.size} onClick={() => setSelected(new Set())}>Clear</button>
+            <button className={styles.primaryButton} disabled={!selected.size}
+              onClick={() => setRefundOrders(orders.filter((row) => selected.has(row.id)))}>
+              Refund selected{selected.size ? ` (${selected.size})` : ''}
+            </button>
+            {eligible.length > 100 && <span className={styles.secondary}>Narrow your filters or select up to 100 orders.</span>}
+          </div>
+        )}
 
         {error ? <div className={styles.empty} role="alert"><strong>Unable to load the list</strong><p>{error}</p><button className={styles.button} onClick={() => setReload((n) => n + 1)}>Try again</button></div>
           : busy ? <div className={styles.empty} role="status">Loading names and tickets…</div>
-          : !rows.length ? <div className={styles.empty}>{search || status !== 'all' ? 'No matches. Try another name or clear your filters.' : 'No SDG ticket orders for this event yet.'}</div>
+          : !rows.length ? <div className={styles.empty}>{search || status !== 'all' || eventFilter !== 'all' ? 'No matches. Try another name or clear your filters.' : 'No SDG ticket orders found.'}</div>
           : (
             <div className={styles.tableWrap} tabIndex={0} role="region" aria-label={tab === 'purchasers' ? 'Purchaser list' : 'Ticket list'}>
               <table>
-                <thead><tr>{(tab === 'purchasers'
-                  ? ['Purchaser', 'Order status', 'Tickets', 'Checked in', 'Total paid', 'Purchased (Austin)']
-                  : ['Attendee / purchaser', 'Ticket type', 'Ticket status', 'Checked in (Austin)', 'Order']
+                <thead><tr>
+                  {tab === 'purchasers' && <th scope="col"><input type="checkbox" aria-label="Select refundable orders on this page"
+                    checked={pageEligible.length > 0 && pageEligible.every((row) => selected.has(row.id))}
+                    disabled={!pageEligible.length} onChange={togglePage} /></th>}
+                  {(tab === 'purchasers'
+                  ? ['Purchaser', ...(!event ? ['Event'] : []), 'Order status', 'Tickets', 'Checked in', 'Total / refunded', 'Actions']
+                  : ['Attendee / purchaser', ...(!event ? ['Event'] : []), 'Ticket type', 'Ticket status', 'Checked in (Austin)', 'Order']
                 ).map((label) => <th key={label} scope="col">{label}</th>)}</tr></thead>
                 <tbody>
                   {visible.map((row) => tab === 'purchasers' ? (
                     <tr key={row.id}>
-                      <td><strong>{row.buyer_name || 'Name not provided'}</strong><span className={styles.secondary}>{row.buyer_email || 'No email'}</span></td>
+                      <td className={styles.checkCell}><input type="checkbox" aria-label={`Select order ${row.id} for ${row.buyer_name || row.buyer_email}`}
+                        checked={selected.has(row.id)} disabled={!row.can_refund || (!selected.has(row.id) && selected.size >= 100)}
+                        onChange={() => toggleOrder(row.id)} /></td>
+                      <td className={styles.personCell}><strong>{row.buyer_name || 'Name not provided'}</strong><span className={styles.secondary}>{row.buyer_email || 'No email'}</span>
+                        <span className={styles.secondary}>Order {row.id.slice(0, 8)} · {when(row.purchased_at)}</span></td>
+                      {!event && <td><a href={`/bananas/events/${row.event_id}/attendees`}>{row.event_title || 'Event'}</a><span className={styles.secondary}>{row.event_date}</span></td>}
                       <td><Status value={row.status} /></td>
                       <td>{row.tickets.length}</td>
                       <td>{row.tickets.filter((t) => t.status === 'used').length} / {row.tickets.length}</td>
                       <td>{money(row.total_cents, row.currency)}{row.refunded_cents > 0 && <span className={styles.secondary}>{money(row.refunded_cents, row.currency)} refunded</span>}</td>
-                      <td>{when(row.purchased_at)}</td>
+                      <td>{row.can_refund ? <button className={styles.button} onClick={() => setRefundOrders([row])}>Refund</button>
+                        : <span className={styles.secondary}>{row.status === 'refunded' ? 'Fully refunded' : 'Not refundable'}</span>}</td>
                     </tr>
                   ) : (
                     <tr key={row.id}>
-                      <td>
+                      <td className={styles.personCell}>
                         <strong>{row.attendee_name || row.buyer_name || 'Name not provided'}</strong>
                         <span className={styles.secondary}>{row.attendee_name
                           ? `Purchaser: ${row.buyer_name || row.buyer_email || 'Name not provided'}`
                           : 'Purchaser name · guest name not collected'}</span>
                         <span className={styles.secondary}>{row.attendee_email || row.buyer_email || 'No email'}</span>
                       </td>
+                      {!event && <td>{row.event_title || 'Event'}</td>}
                       <td>{row.product_name}<span className={styles.secondary}>{row.tier_name}</span></td>
                       <td><Status value={row.status} /></td>
                       <td>{when(row.used_at)}</td>
@@ -217,6 +292,9 @@ export default function EventAttendeesClient({ event }) {
           </footer>
         )}
       </div>
+      <RefundActivity eventId={eventId} refresh={reload} onChange={refreshed} />
+      {!event && <p className={styles.explanation}>SDG checkout orders only. Ticket Tailor purchases, memberships, guest-list allocations, and trial passes are not included.</p>}
+      {refundOrders && <RefundDialog orders={refundOrders} onClose={() => setRefundOrders(null)} onDone={refreshed} />}
     </section>
   );
 }
