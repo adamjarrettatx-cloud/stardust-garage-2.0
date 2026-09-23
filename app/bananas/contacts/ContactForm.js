@@ -156,6 +156,10 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
       setError('Pick at least one relationship type so the directory stays searchable.');
       return;
     }
+    if (!CONTACT_STATUS_OPTIONS.some((option) => option.value === status)) {
+      setError('Choose Active, Do Not Book, or Archived for this contact.');
+      return;
+    }
 
     // Same pure validator the server route uses, so the client can't produce a
     // payload the API would reject.
@@ -252,6 +256,45 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
     }
   };
 
+  const handleArchive = async () => {
+    // Do not silently save or discard unrelated edits when changing lifecycle.
+    if (!profile?.canArchive || !isEditing || dirty || saving) return;
+    const restoring = contact.status === 'archived';
+    const nextStatus = restoring ? 'active' : 'archived';
+    const confirmed = window.confirm(restoring
+      ? `Restore "${contact.display_name}" as Active? It will return to the main directory.`
+      : `Archive "${contact.display_name}"? It will leave the main directory, but its details, linked records, and edit history will be kept.`);
+    if (!confirmed) return;
+    setSaving(true);
+    setError('');
+    setSuccess('');
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: saved, error: saveError } = await supabase.from('contacts')
+        .update({ status: nextStatus, updated_by: user?.id || null })
+        .eq('id', contact.id).eq('status', contact.status).select().single();
+      if (saveError) throw new Error(`Could not ${restoring ? 'restore' : 'archive'} contact. Refresh the profile and try again.`);
+      try {
+        await fetch(`/api/admin/contacts/${saved.id}/audit`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'status_change', details: { from: contact.status, to: nextStatus } }),
+        });
+      } catch (auditError) {
+        console.error('Contact audit log failed:', auditError);
+      }
+      setStatus(nextStatus);
+      setBaseline(JSON.stringify({ ...values, status: nextStatus }));
+      setSuccess(restoring ? 'Contact restored as Active.' : 'Contact archived. All records and history are preserved.');
+      profile.onSaved?.(saved);
+      router.refresh();
+    } catch (err) {
+      setError(err.message || 'Could not update contact status. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (profile || !isEditing) {
     const activeProfile = profile || {
       createMode: true,
@@ -261,7 +304,7 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
       w9Missing: false,
       taxPanel: null,
       activityPanel: null,
-      deleteAction: null,
+      canArchive: false,
       portalPanel: null,
       legalSummary: null,
     };
@@ -276,7 +319,7 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
         contact={draftContact} initialCategory={initialCategory} profile={activeProfile}
         values={values} setField={setField} dirty={dirty} saving={saving}
         error={error} success={success} onDiscard={discardChanges} onSubmit={handleSubmit}
-        showLegalFields={showLegalFields}
+        showLegalFields={showLegalFields} onArchive={handleArchive}
       />
     );
   }
@@ -337,11 +380,13 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
       <div>
         <label className={labelClass} style={labelStyle}>STATUS</label>
         <select
-          value={status}
+          value={CONTACT_STATUS_OPTIONS.some((opt) => opt.value === status) ? status : ''}
+          required
           onChange={(e) => setStatus(e.target.value)}
           className={inputClass}
           style={inputStyle}
         >
+          {!CONTACT_STATUS_OPTIONS.some((opt) => opt.value === status) && <option value="" disabled>Select status</option>}
           {CONTACT_STATUS_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}

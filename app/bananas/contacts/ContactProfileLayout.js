@@ -20,7 +20,7 @@ function ProfilePhoto({ url, name }) {
 
 export default function ContactProfileLayout({
   contact, initialCategory, profile, values, setField, dirty, saving,
-  error, success, onDiscard, onSubmit, showLegalFields,
+  error, success, onDiscard, onSubmit, showLegalFields, onArchive,
 }) {
   const formId = useId();
   const [section, setSection] = useState('overview');
@@ -128,11 +128,14 @@ export default function ContactProfileLayout({
       <div className={styles.cardBody}>
         <div className={styles.row}>
           <label className={styles.fieldLabel} htmlFor={`${formId}-status`}>Status</label>
-          <select id={`${formId}-status`} className={styles.statusSelect} value={values.status}
+          <select id={`${formId}-status`} className={styles.statusSelect} required
+            value={CONTACT_STATUS_OPTIONS.some((opt) => opt.value === values.status) ? values.status : ''}
             onChange={(e) => setField('status', e.target.value)}>
+            {!CONTACT_STATUS_OPTIONS.some((opt) => opt.value === values.status) && <option value="" disabled>Select status</option>}
             {CONTACT_STATUS_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
           </select>
         </div>
+        {!CONTACT_STATUS_OPTIONS.some((opt) => opt.value === values.status) && <p className={styles.hint}>Choose Active, Do Not Book, or Archived before saving this contact.</p>}
         {values.status === 'do_not_book' && <p className={styles.danger}>Do Not Book is flagged throughout the directory.</p>}
         {values.status === 'archived' && <p className={styles.warningText}>Archived contacts stay on file but are hidden from pickers and cannot be sent new contracts.</p>}
         <p className={styles.relationshipLabel}>Relationship types{profile.createMode ? ' · required' : ''}</p>
@@ -146,9 +149,9 @@ export default function ContactProfileLayout({
   return (
     <div className={styles.profile}>
       <nav className={styles.breadcrumbs} aria-label="Breadcrumb">
-        <Link href={contactDirectoryHref(initialCategory)} onClick={(event) => {
+        <Link href={contactDirectoryHref(initialCategory, profile.archivedView || contact.status === 'archived')} onClick={(event) => {
           if (dirty && !window.confirm('Discard unsaved contact changes and return to Contacts?')) event.preventDefault();
-        }}>← Contacts</Link><span aria-hidden="true">/</span><span>{profile.createMode ? 'New contact' : contact.display_name}</span>
+        }}>← {profile.archivedView || contact.status === 'archived' ? 'Archived Contacts' : 'Contacts'}</Link><span aria-hidden="true">/</span><span>{profile.createMode ? 'New contact' : contact.display_name}</span>
       </nav>
       <header className={styles.header}>
         <div className={styles.identity}>
@@ -166,10 +169,16 @@ export default function ContactProfileLayout({
           <span className={styles.saveState} role="status">{saving ? 'Saving…' : profile.createMode ? (dirty ? 'Unsaved new contact' : 'Ready for details') : dirty ? 'Unsaved changes' : success ? 'Saved' : 'No unsaved changes'}</span>
           {dirty && <button type="button" className={styles.button} onClick={onDiscard} disabled={saving}>{profile.createMode ? 'Clear' : 'Discard'}</button>}
           <button type="submit" form={formId} className={`${styles.button} ${styles.primaryButton}`} disabled={saving || (!profile.createMode && !dirty)}>{saving ? 'Saving…' : profile.createMode ? 'Create contact' : 'Save changes'}</button>
-          {profile.deleteAction && (
+          {profile.canArchive && (
             <details className={styles.more} ref={moreMenu}>
               <summary aria-label="More contact actions" title="More contact actions">⋯</summary>
-              <div className={styles.moreContent}>{profile.deleteAction}</div>
+              <div className={styles.moreContent}>
+                <button type="button" className={styles.button} disabled={saving || dirty}
+                  onClick={() => { moreMenu.current.open = false; onArchive(); }}>
+                  {contact.status === 'archived' ? 'Restore contact' : 'Archive contact'}
+                </button>
+                {dirty && <p className={styles.hint}>Save or discard your changes first.</p>}
+              </div>
             </details>
           )}
         </div>
@@ -183,6 +192,10 @@ export default function ContactProfileLayout({
       </div>
       {error && <div role="alert" className={styles.error}>{error}</div>}
       {success && !dirty && <p role="status" className={styles.success}>{success}</p>}
+      {!profile.createMode && contact.status === 'archived' && <div className={`${styles.banner} ${styles.archivedBanner}`}>
+        <strong>Archived contact.</strong> Details, linked records, and history are preserved. This contact is hidden from the main directory.
+        {profile.canArchive && <button type="button" className={styles.textButton} disabled={saving || dirty} onClick={onArchive}>Restore contact</button>}
+      </div>}
 
       <form id={formId} ref={formRef} onSubmit={submit} noValidate>
         <fieldset disabled={saving} className={styles.editable}>
@@ -229,8 +242,8 @@ export default function ContactProfileLayout({
                     <div className={styles.cardHeading}><h2>Setup &amp; readiness</h2></div>
                     <div className={styles.cardBody}>
                       {profile.isOrganizer && <div className={styles.readinessItem}>
-                        <div className={styles.row}><h3>Contracts</h3><span className={profile.organizerGaps.length ? styles.warningText : styles.ready}>{profile.organizerGaps.length ? 'Incomplete' : '✓ Ready'}</span></div>
-                        <p className={styles.hint}>{profile.organizerGaps.length ? `Still needs ${profile.organizerGaps.join(', ')}.` : 'Legal and signing details are on file.'}</p>
+                        <div className={styles.row}><h3>Contracts</h3><span className={contact.status === 'archived' || profile.organizerGaps.length ? styles.warningText : styles.ready}>{contact.status === 'archived' ? 'Archived' : profile.organizerGaps.length ? 'Incomplete' : '✓ Ready'}</span></div>
+                        <p className={styles.hint}>{contact.status === 'archived' ? 'Restore this contact before sending new agreements.' : profile.organizerGaps.length ? `Still needs ${profile.organizerGaps.join(', ')}.` : 'Legal and signing details are on file.'}</p>
                         <button type="button" className={styles.textButton} onClick={() => goTo('legal')}>{profile.organizerGaps.length ? 'Complete signing details' : 'View signing details'}</button>
                       </div>}
                       {profile.showTaxStatus && <div className={profile.w9Missing ? styles.warningBox : styles.readinessItem}>
