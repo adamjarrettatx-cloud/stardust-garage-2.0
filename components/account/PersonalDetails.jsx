@@ -1,21 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
-export default function PersonalDetails({ profile }) {
+export default function PersonalDetails({ profile, initialEditing = false }) {
   const router = useRouter();
-  const params = useSearchParams();
-  const requestedEdit = params.get('edit') === '1';
-  const [editing, setEditing] = useState(requestedEdit);
+  const [editing, setEditing] = useState(initialEditing);
   const [name, setName] = useState(profile.name);
   const [phone, setPhone] = useState(profile.phone);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
-  useEffect(() => { if (requestedEdit) setEditing(true); }, [requestedEdit]);
   function open() { setName(profile.name); setPhone(profile.phone); setError(''); setSaved(false); setEditing(true); }
-  function close() { setEditing(false); if (requestedEdit) router.replace('/account/profile', { scroll: false }); }
+  function close() { setEditing(false); }
   async function save(event) {
     event.preventDefault(); setBusy(true); setError(''); setSaved(false);
     try {
