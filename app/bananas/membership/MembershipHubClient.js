@@ -52,6 +52,7 @@ function fmtCents(cents) {
 // -----------------------------------------------------------------------
 
 function Avatar({ name, photoUrl, theme, size = 44, accent }) {
+  const [failedUrl, setFailedUrl] = useState(null);
   const initials = (name || '?').trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase();
   return (
     <div
@@ -66,9 +67,9 @@ function Avatar({ name, photoUrl, theme, size = 44, accent }) {
         letterSpacing: '0.02em',
       }}
     >
-      {photoUrl ? (
+      {photoUrl && photoUrl !== failedUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={photoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <img src={photoUrl} alt="" onError={() => setFailedUrl(photoUrl)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       ) : initials}
     </div>
   );
@@ -157,15 +158,27 @@ export default function MembershipHubClient() {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetch('/api/admin/membership/journey', { cache: 'no-store' })
+    const load = () => fetch('/api/admin/membership/journey', { cache: 'no-store' })
       .then(async (r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       })
-      .then((json) => { if (!cancelled) setPayload(json); })
+      .then((json) => { if (!cancelled) { setPayload(json); setError(null); } })
       .catch((e) => { if (!cancelled) setError(e.message || 'Failed to load'); })
       .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+    load();
+    // Signed photos expire after five minutes. Refresh before expiry and
+    // when returning to a tab that may have been suspended by the browser.
+    const refresh = () => { if (document.visibilityState === 'visible') load(); };
+    const timer = window.setInterval(refresh, 4 * 60 * 1000);
+    document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('focus', refresh);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', refresh);
+      window.removeEventListener('focus', refresh);
+    };
   }, []);
 
   const tabOrder = payload?.tab_order || [];

@@ -19,7 +19,7 @@ export const metadata = {
 // into a browser without an authenticated request behind it.
 //
 // Any team member on shift can view. Every metric is derived from
-// trial_passes + trial_pass_checkins; no PII beyond names/emails is exposed.
+// trial_passes + trial_pass_checkins; private photos use short-lived URLs.
 //
 // Rendered inside the admin shell (see app/team/layout.js): the shell owns
 // the outer header, sidebar, breadcrumb and page container. The dashboard's
@@ -29,7 +29,7 @@ export default async function TrialPassAnalyticsPage() {
   const { unauthorized } = await requireTeam();
   if (unauthorized) redirect('/login');
 
-  const analytics = await loadTrialPassAnalytics();
+  const analytics = await loadTrialPassAnalytics({ includePhotos: true });
 
   return (
     <>
