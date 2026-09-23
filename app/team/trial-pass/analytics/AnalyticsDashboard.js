@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import UnderlineTabs from '@/app/bananas/components/UnderlineTabs';
 
 // Analytics dashboard for the trial pass program.
@@ -46,6 +47,31 @@ const CARD_STYLE = {
 const TRACK_STYLE = {
   background: 'var(--auth-card-bg-alt)',
 };
+
+function SignupIdentity({ row }) {
+  const [failedUrl, setFailedUrl] = useState(null);
+  const initials = (row.fullName || '?').trim().split(/\s+/).map((part) => part[0]).slice(0, 2).join('').toUpperCase();
+  return (
+    <div className="flex items-center gap-3">
+      <div
+        className="w-11 h-11 shrink-0 rounded-full overflow-hidden flex items-center justify-center text-[14px] font-semibold"
+        style={{ background: 'var(--auth-card-bg-alt)', color: 'var(--auth-muted-strong)', border: '1px solid var(--auth-card-border)' }}
+      >
+        {row.photoUrl && row.photoUrl !== failedUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={row.photoUrl} alt="" onError={() => setFailedUrl(row.photoUrl)} className="w-full h-full object-cover" />
+        ) : initials}
+      </div>
+      <div>
+        <div style={{ color: 'var(--auth-text)', fontWeight: 500 }}>{row.fullName}</div>
+        <div className="text-[11px] mt-0.5" style={{ color: 'var(--auth-muted)' }}>
+          {row.email}
+          {row.phone && <><span className="mx-1.5">·</span>{row.phone}</>}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function StatusPill({ status, appliedAt, convertedAt, activationPhase }) {
   let label = status;
@@ -334,10 +360,7 @@ function RecentTable({ rows }) {
                   style={{ borderTop: '1px solid var(--auth-row-border, var(--auth-card-border))' }}
                 >
                   <td className="px-6 py-3.5">
-                    <div style={{ color: 'var(--auth-text)', fontWeight: 500 }}>{r.fullName}</div>
-                    <div className="text-[11px] mt-0.5" style={{ color: 'var(--auth-muted)' }}>
-                      {r.email}
-                    </div>
+                    <SignupIdentity row={r} />
                   </td>
                   <td className="px-4 py-3.5">
                     <StatusPill
@@ -584,16 +607,7 @@ function EventSignupsPanel({ event }) {
                   style={{ borderTop: '1px solid var(--auth-row-border, var(--auth-card-border))' }}
                 >
                   <td className="px-6 py-3.5">
-                    <div style={{ color: 'var(--auth-text)', fontWeight: 500 }}>{s.fullName}</div>
-                    <div className="text-[11px] mt-0.5" style={{ color: 'var(--auth-muted)' }}>
-                      {s.email}
-                      {s.phone && (
-                        <>
-                          <span className="mx-1.5">·</span>
-                          {s.phone}
-                        </>
-                      )}
-                    </div>
+                    <SignupIdentity row={s} />
                   </td>
                   <td className="px-4 py-3.5" style={{ color: 'var(--auth-text)' }}>
                     {formatSource(s.signupSource)}
@@ -679,6 +693,21 @@ function ByEventTab({ byEvent }) {
 // -----------------------------------------------------------------------------
 
 export default function AnalyticsDashboard({ data }) {
+  const router = useRouter();
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === 'visible') router.refresh();
+    };
+    const timer = window.setInterval(refresh, 4 * 60 * 1000);
+    document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('focus', refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', refresh);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [router]);
+
   const { totals, funnel, rates, sourceBreakdown, denialReasons, dayBuckets, recent, byEvent } =
     data;
 
@@ -786,4 +815,3 @@ function OverviewTab({ totals, funnel, rates, sourceBreakdown, denialReasons, da
     </>
   );
 }
-

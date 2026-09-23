@@ -34,7 +34,7 @@ test('falls back to photo_url when signing throws', () => {
 test('bulk helper runs in parallel via Promise.all', () => {
   const bulk = sliceBetween(src, 'export async function resolveMemberPhotoUrls', '$$END$$');
   assert.match(bulk, /Promise\.all/);
-  assert.match(bulk, /rows\.map/);
+  assert.match(bulk, /rows\.slice\(offset, offset \+ 25\)\.map/);
 });
 
 test('bulk helper returns a Map keyed by row.id', () => {

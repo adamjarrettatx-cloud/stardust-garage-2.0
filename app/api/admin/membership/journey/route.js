@@ -21,6 +21,7 @@ import { NextResponse } from 'next/server';
 import { requireOwner } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { STRIPE_PRICES, PLAN_DISPLAY } from '@/lib/stripe-prices';
+import { resolveMemberPhotoUrls } from '@/lib/member-photo';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -197,6 +198,20 @@ export async function GET() {
     tabs[t].sort((a, b) => new Date(b.member_since) - new Date(a.member_since));
   }
 
+  // Resolve private photos only after authorization. Never send storage keys
+  // to the browser; each card receives a short-lived URL string or null.
+  const photos = await resolveMemberPhotoUrls(admin, Object.values(tabs).flat().map((row) => ({
+    id: `${row.kind}:${row.id}`,
+    profile_photo_path: row.photo_path,
+    photo_url: row.photo_url,
+  })));
+  for (const tab of TAB_ORDER) {
+    tabs[tab] = tabs[tab].map(({ photo_path, ...row }) => ({
+      ...row,
+      photo_url: photos.get(`${row.kind}:${row.id}`) || null,
+    }));
+  }
+
   const counts   = Object.fromEntries(TAB_ORDER.map((t) => [t, tabs[t].length]));
   const mrrCents = Object.fromEntries(
     ['weekender', 'builder', 'insider'].map((t) => [
@@ -212,7 +227,7 @@ export async function GET() {
     counts,
     mrr_cents: mrrCents,
     tabs,
-  });
+  }, { headers: { 'Cache-Control': 'private, no-store' } });
 }
 
 // ---------------------------------------------------------------------------
