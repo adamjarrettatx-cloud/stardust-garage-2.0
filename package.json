@@ -3,11 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "test:artist-pay": "TZ=UTC vitest run tests/artist-pay/*.spec.js",
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start -H 0.0.0.0 -p 3000",
     "lint": "eslint",
-    "test": "TZ=UTC npx vitest run tests/api/account/delete.test.js tests/api/cron/fail-closed.test.js tests/api/capacity/access-restrictions.vitest.js tests/api/event-roster.vitest.js tests/api/ticket-refunds.vitest.js && TZ=UTC node --test $(find tests -type f \\( -name '*.test.mjs' -o -name '*.test.js' \\) ! -path 'tests/api/account/delete.test.js' ! -path 'tests/api/cron/fail-closed.test.js')",
+    "test": "TZ=UTC npx vitest run tests/api/account/delete.test.js tests/api/cron/fail-closed.test.js tests/api/capacity/access-restrictions.vitest.js tests/api/event-roster.vitest.js tests/api/ticket-refunds.vitest.js tests/artist-pay/*.spec.js && TZ=UTC node --test $(find tests -type f \\( -name '*.test.mjs' -o -name '*.test.js' \\) ! -path 'tests/api/account/delete.test.js' ! -path 'tests/api/cron/fail-closed.test.js')",
     "backfill:tt-orders": "node scripts/backfill-ticket-order-attribution.mjs",
     "backfill:member-tickets": "node scripts/backfill-member-tickets.mjs"
   },

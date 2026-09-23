@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { requireTeam } from '@/lib/auth-helpers';
+import { requireTeam, OWNER_EMAIL } from '@/lib/auth-helpers';
 import ContactDetailClient from './ContactDetailClient';
 import { isContractorContact } from '@/lib/contact-helpers';
 
@@ -10,7 +10,7 @@ export const revalidate = 0;
 // is fetched here and rendered as a read-only timeline — that timeline IS the
 // revenue/deal history view (there is no separate financial-terms table).
 export default async function ContactDetailPage({ params }) {
-  const { unauthorized, isAdmin } = await requireTeam();
+  const { unauthorized, isAdmin, user } = await requireTeam();
   if (unauthorized) redirect('/login');
 
   const { id } = await params;
@@ -88,6 +88,7 @@ export default async function ContactDetailPage({ params }) {
       <ContactDetailClient
         contact={contact}
         isAdmin={isAdmin}
+        isOwner={isAdmin && user?.email === OWNER_EMAIL}
         partnerProfile={partnerProfile}
         taxProfile={taxProfile}
         events={events.data || []}

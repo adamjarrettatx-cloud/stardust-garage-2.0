@@ -15,6 +15,7 @@ import { ContactStatusBadge, ContactTypeBadges } from '../ContactBadges';
 import DeleteContactButton from './DeleteContactButton';
 import InvitePartnerButton from './InvitePartnerButton';
 import TaxProfileSection from './TaxProfileSection';
+import PayoutProfileSection from './PayoutProfileSection';
 
 const KIND_LABELS = {
   event: 'EVENT',
@@ -105,6 +106,7 @@ function auditLines(row) {
 export default function ContactDetailClient({
   contact,
   isAdmin,
+  isOwner = false,
   partnerProfile,
   taxProfile,
   events,
@@ -304,6 +306,9 @@ export default function ContactDetailClient({
           track W9-on-file status here. Admin-only, mirrors Partner Access. */}
       {isAdmin && isContractor && (
         <TaxProfileSection contactId={contact.id} displayName={contact.display_name} taxProfile={taxProfile} />
+      )}
+      {isOwner && (
+        <PayoutProfileSection contactId={contact.id} displayName={contact.display_name} />
       )}
 
       {/* LINKED ACTIVITY — auto-populated from anything carrying this contact_id.
