@@ -7,6 +7,11 @@ import { createClient } from '@/lib/supabase/client';
 import {
   CONTACT_TYPE_OPTIONS,
   CONTACT_STATUS_OPTIONS,
+  isContactTypeSelected,
+  toggleContactType,
+  contactDirectoryTypes,
+  contactDirectorySection,
+  contactDirectoryHref,
 } from '@/lib/contact-helpers';
 import {
   ENTITY_TYPE_OPTIONS,
@@ -49,12 +54,12 @@ function diffFields(previous, next) {
 // Shared create/edit form. `contact` is null on the create page and the existing
 // row on the detail page — the only behavioural differences are the insert vs
 // update call and the audit action that follows it.
-export default function ContactForm({ contact = null }) {
+export default function ContactForm({ contact = null, initialCategory = null }) {
   const router = useRouter();
   const isEditing = !!contact;
 
   const [displayName, setDisplayName] = useState(contact?.display_name || '');
-  const [contactTypes, setContactTypes] = useState(contact?.contact_type || []);
+  const [contactTypes, setContactTypes] = useState(contact?.contact_type || (contactDirectorySection(initialCategory) ? [initialCategory] : []));
   const [primaryContactName, setPrimaryContactName] = useState(contact?.primary_contact_name || '');
   const [email, setEmail] = useState(contact?.email || '');
   const [phone, setPhone] = useState(contact?.phone || '');
@@ -90,9 +95,7 @@ export default function ContactForm({ contact = null }) {
     ADDRESS_FIELDS.some((f) => address[f.key]);
 
   const toggleType = (value) => {
-    setContactTypes((prev) =>
-      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
-    );
+    setContactTypes((prev) => toggleContactType(prev, value));
   };
 
   const updateAdditional = (index, field, value) => {
@@ -108,7 +111,7 @@ export default function ContactForm({ contact = null }) {
     e.preventDefault();
     setError('');
 
-    if (contactTypes.length === 0) {
+    if (contactDirectoryTypes(contactTypes).length === 0) {
       setError('Pick at least one relationship type so the directory stays searchable.');
       return;
     }
@@ -190,7 +193,8 @@ export default function ContactForm({ contact = null }) {
       await logAudit('create', { display_name: payload.display_name, contact_type: payload.contact_type });
     }
 
-    router.push(`/bananas/contacts/${saved.id}`);
+    const category = contactDirectorySection(initialCategory)?.value;
+    router.push(`/bananas/contacts/${saved.id}${category ? `?category=${category}` : ''}`);
     router.refresh();
   };
 
@@ -223,7 +227,7 @@ export default function ContactForm({ contact = null }) {
         <label className={labelClass} style={labelStyle}>RELATIONSHIP TYPE</label>
         <div className="flex flex-wrap gap-2">
           {CONTACT_TYPE_OPTIONS.map((opt) => {
-            const on = contactTypes.includes(opt.value);
+            const on = isContactTypeSelected(contactTypes, opt.value);
             return (
               <button
                 key={opt.value}
@@ -551,9 +555,9 @@ export default function ContactForm({ contact = null }) {
           {saving ? 'SAVING...' : isEditing ? 'SAVE CHANGES' : 'CREATE CONTACT'}
         </button>
         <Link
-          href="/bananas/contacts"
+          href={contactDirectoryHref(initialCategory)}
           className="px-8 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5 flex items-center"
-          style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
+          style={{ borderColor: 'var(--auth-card-border-strong)', color: 'var(--auth-text)' }}
         >
           CANCEL
         </Link>

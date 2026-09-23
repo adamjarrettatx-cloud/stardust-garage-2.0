@@ -2,8 +2,9 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { formatMoney } from '@/lib/studio-helpers';
-import { contactStatusLabel, isContractorContact } from '@/lib/contact-helpers';
+import { contactStatusLabel, isContractorContact, contactDirectorySection, contactDirectoryHref } from '@/lib/contact-helpers';
 import {
   defaultSignerEmail,
   isEventOrganizer,
@@ -116,6 +117,8 @@ export default function ContactDetailClient({
   microParties,
   audit,
 }) {
+  const searchParams = useSearchParams();
+  const category = contactDirectorySection(searchParams?.get('category'))?.value || null;
   const isContractor = isContractorContact(contact.contact_type);
   const isOrganizer = isEventOrganizer(contact);
   // What is still missing before a contract can be created and sent for this
@@ -194,7 +197,7 @@ export default function ContactDetailClient({
   return (
     <>
       <AuthenticatedPageHeader
-        backHref="/bananas/contacts"
+        backHref={contactDirectoryHref(category)}
         backLabel="← BACK TO CONTACTS"
         title={contact.display_name}
         titleClassName="text-[36px] font-extrabold -tracking-[0.02em] leading-[1.1]"
@@ -282,7 +285,7 @@ export default function ContactDetailClient({
         </div>
       )}
 
-      <ContactForm contact={contact} />
+      <ContactForm contact={contact} initialCategory={category} />
 
       {/* PORTAL ACCESS — directly under the form's saved email field, because
           the email on file is what the invite is sent to. Admin-only: this
