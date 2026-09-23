@@ -358,7 +358,7 @@ test('the shell keeps exactly one page container', () => {
 });
 
 test('every tile route maps back to the section it belongs to', () => {
-  // This is what lets the sidebar highlight People while you are on Contacts.
+  // Each remaining tile keeps its owning section highlighted.
   for (const tile of allAdminTiles()) {
     assert.equal(
       tabForPath(tile.href),
@@ -369,12 +369,36 @@ test('every tile route maps back to the section it belongs to', () => {
 });
 
 test('a nested route resolves to its parent tile, not a shallower one', () => {
-  // /bananas/contacts/abc is still the Contacts page.
-  assert.equal(tileForPath('/bananas/contacts/abc-123')?.title, 'Contacts');
-  assert.equal(tabForPath('/bananas/contacts/abc-123'), 'people');
+  assert.equal(tileForPath('/bananas/applications/xyz')?.title, 'Applications');
   assert.equal(tabForPath('/bananas/applications/xyz'), 'memberships');
   // A trailing slash must not change the answer.
-  assert.equal(tabForPath('/bananas/contacts/'), 'people');
+  assert.equal(tabForPath('/bananas/applications/'), 'memberships');
+});
+
+test('Contacts is a direct ADMIN destination, not a People tile', () => {
+  const contacts = adminTabById('contacts');
+  assert.equal(contacts.group, 'ADMIN');
+  assert.equal(contacts.label, 'Contacts');
+  assert.equal(contacts.ownerOnly, false);
+  assert.equal(contacts.rendersOwnContent, true);
+  assert.equal(adminTabHref(contacts), '/bananas/contacts');
+  assert.deepEqual(adminTilesFor('contacts'), []);
+  assert.equal(allAdminTiles().some(tile => tile.href === '/bananas/contacts'), false);
+  assert.deepEqual(adminTilesFor('people').map(tile => tile.title), ['Collaborations', 'Signups']);
+  for (const isOwner of [false, true]) {
+    const group = visibleAdminTabGroups(isOwner).find(group => group.group === 'ADMIN');
+    assert.ok(group.tabs.some(tab => tab.id === 'contacts'));
+    assert.equal(resolveRootAdminTab('contacts', { isOwner }), DEFAULT_ADMIN_TAB);
+  }
+});
+
+test('Contacts list, creation and detail routes highlight Contacts without a duplicate breadcrumb', () => {
+  for (const route of ['/bananas/contacts', '/bananas/contacts/', '/bananas/contacts/new', '/bananas/contacts/abc-123']) {
+    assert.equal(tabForPath(route), 'contacts');
+    assert.equal(tileForPath(route), null);
+    assert.equal(crumbForPath(route), null);
+  }
+  assert.equal(tabForPath('/bananas/contacts-other'), null);
 });
 
 test('the dashboard root highlights no section by pathname alone', () => {
