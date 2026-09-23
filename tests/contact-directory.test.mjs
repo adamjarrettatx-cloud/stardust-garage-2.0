@@ -20,7 +20,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const source = fs.readFileSync(path.join(ROOT, 'app/bananas/contacts/ContactsList.js'), 'utf8');
 
 test('the directory combines organizers and collectives into Organizations', () => {
-  const expected = ['Artist', 'Organizations', 'Venue Renter', 'Vendor', 'Promoter', 'People'];
+  const expected = ['Persons', 'Organizations', 'Venue Renter', 'Vendor'];
   assert.deepEqual(CONTACT_DIRECTORY_SECTIONS.map(section => section.label), expected);
   assert.deepEqual(CONTACT_TYPE_OPTIONS.map(option => option.label), ['Artist', 'Organization', 'Venue Renter', 'Vendor', 'Promoter', 'Person']);
 });
@@ -36,7 +36,7 @@ test('DJ and Performer records are included under Artist without changing stored
     assert.equal(contactMatchesDirectorySection([value], 'artist'), true);
     assert.equal(isContactTypeSelected([value], 'artist'), true);
   }
-  assert.deepEqual(contactDirectoryTypes(['dj', 'event_organizer']), ['artist', 'organization']);
+  assert.deepEqual(contactDirectoryTypes(['dj', 'event_organizer']), ['person', 'organization']);
   assert.equal(contactMatchesDirectorySection(['collective'], 'artist'), false);
 });
 
@@ -49,11 +49,12 @@ test('Artist form toggles replace legacy artist aliases without touching unrelat
 test('directory URLs canonicalize legacy organization categories', () => {
   assert.equal(contactDirectoryHref('event_organizer'), '/bananas/contacts?category=organization');
   assert.equal(contactDirectoryHref('collective'), '/bananas/contacts?category=organization');
-  assert.equal(contactDirectoryHref('artist'), '/bananas/contacts?category=artist');
+  assert.equal(contactDirectoryHref('artist'), '/bananas/contacts?category=person');
+  assert.equal(contactDirectoryHref('promoter'), '/bananas/contacts?category=person');
   assert.equal(contactDirectoryHref('dj'), '/bananas/contacts');
   assert.equal(contactDirectoryHref('all'), '/bananas/contacts');
   assert.equal(contactDirectoryHref(null, true), '/bananas/contacts?view=archived');
-  assert.equal(contactDirectoryHref('artist', true), '/bananas/contacts?category=artist&view=archived');
+  assert.equal(contactDirectoryHref('artist', true), '/bananas/contacts?category=person&view=archived');
 });
 
 test('archived contacts are excluded from normal lists and available through the archive', () => {
@@ -93,7 +94,7 @@ test('multi-role contacts count once per category and filtering never mutates st
   const contact = Object.freeze({ id: 1, contact_type: types, status: 'active' });
   assert.equal(filterDirectoryContacts([contact], 'artist').length, 1);
   assert.equal(filterDirectoryContacts([contact], 'collective').length, 1);
-  assert.deepEqual(contactDirectoryTypes(types), ['artist', 'organization']);
+  assert.deepEqual(contactDirectoryTypes(types), ['person', 'organization']);
   assert.deepEqual(types, ['dj', 'artist', 'performer', 'collective', 'resident']);
 });
 
@@ -102,6 +103,20 @@ test('missing and unsupported types cannot create extra directory categories', (
   assert.equal(contactMatchesDirectorySection(['other'], 'other'), false);
   assert.equal(contactMatchesDirectorySection(['resident'], 'resident'), false);
   assert.deepEqual(filterDirectoryContacts([{ contact_type: ['artist'] }], 'all'), []);
+});
+
+test('Persons includes artists, promoters and people once without changing their tags', () => {
+  const rows = ['artist', 'dj', 'performer', 'promoter', 'person', 'organization', 'vendor']
+    .map((type, id) => ({ id, contact_type: [type], status: 'active' }));
+  assert.deepEqual(filterDirectoryContacts(rows, 'person').map(row => row.id), [0, 1, 2, 3, 4]);
+  const mixed = Object.freeze(['artist', 'promoter', 'person']);
+  assert.deepEqual(contactDirectoryTypes(mixed), ['person']);
+  assert.equal(isContactTypeSelected(['promoter'], 'artist'), false);
+  assert.equal(isContactTypeSelected(['artist'], 'promoter'), false);
+  assert.equal(isContactTypeSelected(['artist'], 'person'), false);
+  assert.deepEqual(toggleContactType(['promoter'], 'artist'), ['promoter', 'artist']);
+  assert.deepEqual(toggleContactType(['artist', 'promoter'], 'promoter'), ['artist']);
+  assert.deepEqual(filterArchivedContacts([{ contact_type: ['promoter'], status: 'archived' }], 'person').length, 1);
 });
 
 test('the page opens on section cards and does not render an All tab', () => {
