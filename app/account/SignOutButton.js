@@ -10,11 +10,9 @@
 // out we hard-navigate to /login so any RSC-cached account data is flushed.
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
 export default function SignOutButton() {
-  const router = useRouter();
   const [busy, setBusy] = useState(false);
 
   async function handleClick() {
@@ -38,10 +36,11 @@ export default function SignOutButton() {
       style={{
         background: 'transparent',
         border: '1px solid rgba(255,255,255,0.15)',
-        color: '#c9c9c9',
-        padding: '6px 14px',
-        borderRadius: 999,
-        fontSize: 11,
+        color: 'inherit',
+        padding: '10px 14px',
+        minHeight: 44,
+        borderRadius: 8,
+        fontSize: 12,
         fontWeight: 600,
         letterSpacing: '0.14em',
         textTransform: 'uppercase',

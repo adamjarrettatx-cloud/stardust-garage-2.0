@@ -4,6 +4,7 @@ import { portalName } from '@/lib/role-label';
 import { partnerState, partnerViews } from '@/lib/partner-access';
 import { createClient } from '@/lib/supabase/server';
 import PortalNav from './PortalNav';
+import '@/app/account/account.css';
 
 export const revalidate = 0;
 

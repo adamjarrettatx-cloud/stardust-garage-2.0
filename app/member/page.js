@@ -168,11 +168,11 @@ export default async function MemberDashboard() {
 
       <div className="mt-4">
         <Link
-          href="/member/account"
+          href="/account/profile"
           className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5"
           style={{ borderColor: 'rgba(255,255,255,0.08)', color: '#555' }}
         >
-          Account Settings
+          Your profile
         </Link>
       </div>
 

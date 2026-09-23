@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
 const route = vi.hoisted(() => ({ pathname: '/account/profile' }));
-vi.mock('next/navigation', () => ({ usePathname: () => route.pathname }));
+vi.mock('next/navigation', () => ({ usePathname: () => route.pathname, useRouter: () => ({ push: vi.fn() }) }));
 vi.mock('next/link', () => ({
   default: ({ children, ...props }) => React.createElement('a', props, children),
 }));
@@ -21,7 +21,7 @@ describe('account route chrome', () => {
     expect(renderToStaticMarkup(React.createElement(AccountHeading))).toContain(`>${label}</h1>`);
     const nav = renderToStaticMarkup(React.createElement(AccountNavigation));
     expect(nav.match(/aria-current="page"/g)).toHaveLength(1);
-    expect(nav).toMatch(new RegExp(`aria-current="page"[^>]*>${label}</a>`));
+    expect(nav).toMatch(new RegExp(`aria-current="page"[^>]*>${label}${label === 'Membership' ? ' &amp; access' : ''}</a>`));
   });
 
   it('updates when the current pathname changes', () => {

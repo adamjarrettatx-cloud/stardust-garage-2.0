@@ -1,63 +1,44 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
-const TABS = [
-  { href: '/account/tickets', label: 'Tickets' },
+export const ACCOUNT_SECTIONS = [
   { href: '/account/profile', label: 'Profile' },
-  { href: '/account/membership', label: 'Membership' },
+  { href: '/account/tickets', label: 'Tickets' },
+  { href: '/account/membership', label: 'Membership & access', heading: 'Membership' },
+  { href: '/account/security', label: 'Login & security' },
 ];
+const isActive = (pathname, href) => pathname === href || pathname?.startsWith(`${href}/`);
 
-function isActive(pathname, href) {
-  return pathname === href || pathname?.startsWith(`${href}/`);
-}
-
-// Shared server layouts persist during client navigation. Read the live
-// pathname here rather than relying on request headers from the initial load.
 export function AccountHeading() {
   const pathname = usePathname();
-  return (
-    <h1
-      className="text-[28px] md:text-[32px] font-extrabold -tracking-[0.02em] leading-[1.1]"
-      style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-    >
-      {TABS.find((tab) => isActive(pathname, tab.href))?.label || 'Account'}
-    </h1>
-  );
+  const section = ACCOUNT_SECTIONS.find((item) => isActive(pathname, item.href));
+  return <h1>{section?.heading || section?.label || 'Account'}</h1>;
 }
 
-export default function AccountNavigation() {
+export default function AccountNavigation({ workspaces = [] }) {
   const pathname = usePathname();
-  return (
-    <nav
-      aria-label="Account sections"
-      className="mb-6 md:mb-8 -mx-4 md:mx-0 px-4 md:px-0 overflow-x-auto"
-    >
-      <ul
-        className="flex gap-2 md:gap-3 pb-2 md:pb-0"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}
-      >
-        {TABS.map((tab) => {
-          const active = isActive(pathname, tab.href);
-          return (
-            <li key={tab.href} className="flex-shrink-0">
-              <Link
-                href={tab.href}
-                aria-current={active ? 'page' : undefined}
-                className="inline-block px-4 md:px-5 py-2.5 md:py-3 text-[13px] md:text-[14px] font-semibold tracking-[0.04em] transition-colors"
-                style={{
-                  color: active ? '#f5f5f5' : '#8a8a8a',
-                  borderBottom: active ? '2px solid #f5f5f5' : '2px solid transparent',
-                  marginBottom: -1,
-                }}
-              >
-                {tab.label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+  const router = useRouter();
+  const items = [...ACCOUNT_SECTIONS, ...workspaces];
+  const current = items.find((item) => isActive(pathname, item.href))?.href || '';
+  return <div className="account-hub-navigation">
+    <div className="account-hub-mobile-menu">
+      <label htmlFor="account-section">Profile menu</label>
+      <select id="account-section" value={current} onChange={(event) => {
+        if (items.some((item) => item.href === event.target.value)) router.push(event.target.value);
+      }}>
+        {!current && <option value="" disabled>Choose a section</option>}
+        <optgroup label="Account">{ACCOUNT_SECTIONS.map((item) => <option key={item.href} value={item.href}>{item.label}</option>)}</optgroup>
+        {workspaces.length > 0 && <optgroup label="Workspace">{workspaces.map((item) => <option key={item.href} value={item.href}>{item.label}</option>)}</optgroup>}
+      </select>
+    </div>
+    <nav className="account-hub-sidebar" aria-label="Account sections">
+      {[{ label: 'Account', items: ACCOUNT_SECTIONS }, { label: 'Workspace', items: workspaces }].filter((group) => group.items.length).map((group) =>
+        <div key={group.label}><p className="account-hub-nav-label">{group.label}</p><ul>{group.items.map((item) =>
+          <li key={item.href}><Link href={item.href} aria-current={isActive(pathname, item.href) ? 'page' : undefined}>{item.label}</Link></li>
+        )}</ul></div>
+      )}
     </nav>
-  );
+  </div>;
 }

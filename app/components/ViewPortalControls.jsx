@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { safePreviewPath, VIEWPORT_PRESETS } from '@/lib/view-portal/viewport';
 
 const MODE_KEY = 'sdg-view-viewport';
@@ -117,6 +118,11 @@ export default function ViewPortalControls({ label }) {
             </select>
           )}
           <div className="view-portal-banner__actions">
+            {mobile ? <button type="button" onClick={() => {
+              currentPath.current = '/account/profile';
+              if (frameRef.current) frameRef.current.src = '/account/profile';
+              setSource('/account/profile');
+            }}>Profile</button> : <Link href="/account/profile">Profile</Link>}
             <form action="/view-preview/exit" method="post"><button type="submit">Change view</button></form>
             <form action="/view-preview/exit" method="post"><button type="submit">Exit preview</button></form>
           </div>
