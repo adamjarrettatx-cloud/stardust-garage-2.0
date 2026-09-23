@@ -19,6 +19,7 @@ export default function CapacityAnalyticsClient({ initialEvent = null }) {
   const [refresh, setRefresh] = useState(0);
   const [clock, setClock] = useState(Date.now());
   const [view, setView] = useState('capacity');
+  const [intervalMinutes, setIntervalMinutes] = useState(5);
   const [allHours, setAllHours] = useState(false);
   const [picked, setPicked] = useState(null);
 
@@ -51,7 +52,7 @@ export default function CapacityAnalyticsClient({ initialEvent = null }) {
         : `mode=night&date=${encodeURIComponent(selection.slice(2))}`;
     async function load() {
       try {
-        const result = await adminFetch(`${API}?${query}`, { cache: 'no-store', signal: controller.signal });
+        const result = await adminFetch(`${API}?${query}&interval=${intervalMinutes}`, { cache: 'no-store', signal: controller.signal });
         if (!active) return;
         setData(result); setError(''); setBusy(false); setClock(Date.now());
         // End recursive polling when a historical view rolls into the past.
@@ -64,10 +65,11 @@ export default function CapacityAnalyticsClient({ initialEvent = null }) {
     }
     load();
     return () => { active = false; controller.abort(); clearTimeout(timer); };
-  }, [mode, selection, refresh]);
+  }, [mode, selection, refresh, intervalMinutes]);
 
   const report = data?.report;
   const summary = report?.summary;
+  const intervalName = report?.intervalMinutes === 5 ? '5-minute' : 'Hourly';
   const title = data?.event?.title || (mode === 'live' ? 'Current operating night' : report ? `Operating night · ${report.date}` : 'Event history');
   const stale = Boolean(data && (error || ((mode === 'live' || report?.isCurrent) && clock - new Date(data.fetchedAt).getTime() > 45000)));
   const buckets = useMemo(() => {
@@ -83,7 +85,7 @@ export default function CapacityAnalyticsClient({ initialEvent = null }) {
     if (!report) return;
     const url = URL.createObjectURL(new Blob([capacityCsv(report, title)], { type: 'text/csv;charset=utf-8;' }));
     const anchor = document.createElement('a');
-    anchor.href = url; anchor.download = `capacity-${report.date}.csv`; anchor.click();
+    anchor.href = url; anchor.download = `capacity-${report.date}-${report.intervalMinutes || 60}min.csv`; anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
@@ -106,8 +108,16 @@ export default function CapacityAnalyticsClient({ initialEvent = null }) {
             <optgroup label="Venue operating nights (including unlinked history)">{catalogue?.nights.map((n) => <option key={n.date} value={`n:${n.date}`}>{n.date} · {n.eventCount ? `${n.eventCount} published event(s)` : 'Unlinked venue history'}</option>)}</optgroup>
           </select>
         </label>
-        <button onClick={download} disabled={!report || busy}>Export hourly CSV</button>
+        <button onClick={download} disabled={!report || busy}>Export CSV</button>
       </div>}
+      <div className={styles.intervalControl}>
+        <span>Chart interval</span>
+        <div className={styles.toggle} aria-label="Chart interval">
+          {[[5, '5 min'], [60, 'Hourly']].map(([minutes, label]) => <button key={minutes}
+            aria-pressed={intervalMinutes === minutes} className={intervalMinutes === minutes ? styles.selectedToggle : ''}
+            onClick={() => setIntervalMinutes(minutes)}>{label}</button>)}
+        </div>
+      </div>
       <div className={styles.freshness}>
         <span role="status">{busy ? 'Loading complete history…' : stale ? 'STALE DATA · Last successful update ' + capacityWhen(data?.fetchedAt) : data ? `${mode === 'live' || report?.isCurrent ? 'Auto-refresh every 15s · ' : ''}Loaded ${capacityWhen(data.fetchedAt)}` : 'Select an event or operating night.'}</span>
         <button onClick={() => setRefresh((v) => v + 1)} disabled={busy || (mode === 'history' && !selection)}>Refresh</button>
@@ -141,27 +151,27 @@ export default function CapacityAnalyticsClient({ initialEvent = null }) {
         {report.buckets.length === 0 ? <div className={styles.empty}><h2>This operating window has not started</h2><p>Recorded capacity will appear when the window begins and the counter is used.</p></div> : <>
           <section className={styles.panel}>
             <div className={styles.panelHead}><div>
-              <h2>{view === 'capacity' ? 'Recorded capacity by hour' : view === 'traffic' ? 'Arrivals and departures by hour' : 'Night activity heatmap'}</h2>
-              <p>{view === 'capacity' ? 'Highest recorded count in each hour, including its opening count.' : view === 'traffic' ? 'Recorded entry and exit operations in each hour.' : 'Darker cells show higher activity within each row; row scales differ.'}</p>
+              <h2>{view === 'capacity' ? `${intervalName} recorded capacity` : view === 'traffic' ? `${intervalName} arrivals and departures` : `${intervalName} activity heatmap`}</h2>
+              <p>{view === 'capacity' ? 'Highest recorded count in each interval, including its opening count.' : view === 'traffic' ? 'Recorded entry and exit operations in each interval.' : 'Darker cells show higher activity within each row; row scales differ.'}</p>
             </div><div className={styles.toggle} aria-label="Chart type">
               {[['capacity', 'Capacity'], ['traffic', 'In / Out'], ['heatmap', 'Heatmap']].map(([id, label]) => <button key={id} onClick={() => setView(id)} aria-pressed={view === id} className={view === id ? styles.selectedToggle : ''}>{label}</button>)}
             </div></div>
             <div className={styles.chartOptions}>
-              <span>{view === 'traffic' ? 'Green: entries · Grey: exits' : view === 'heatmap' ? 'Lighter: lower · Darker: higher · — unavailable' : 'Amber: hourly peak · — unavailable'}</span>
+              <span>{view === 'traffic' ? 'Green: entries · Grey: exits' : view === 'heatmap' ? 'Lighter: lower · Darker: higher · — unavailable' : 'Amber: interval peak · — unavailable'}</span>
               <label><input type="checkbox" checked={allHours} onChange={(e) => setAllHours(e.target.checked)} /> Show full operating window</label>
             </div>
-            <CapacityChart buckets={buckets} view={view} selected={selected?.start} onSelect={setPicked} />
+            <CapacityChart buckets={buckets} intervalMinutes={report.intervalMinutes} view={view} selected={selected?.start} onSelect={setPicked} />
             {selected && <div className={styles.detail} aria-live="polite">
-              <strong>{capacityWhen(selected.start)}</strong><span>Entries <b>{number(selected.entries)}</b></span><span>Exits <b>{number(selected.exits)}</b></span><span>Peak <b>{number(selected.peak)}</b></span><span>Hour-end <b>{number(selected.closing)}</b></span>
-              {selected.carried && <span>Carried from the last recorded count; no audit writes in this hour.</span>}
+              <strong>{capacityWhen(selected.start)} to {capacityHourLabel(selected.end, 5)}</strong><span>Entries <b>{number(selected.entries)}</b></span><span>Exits <b>{number(selected.exits)}</b></span><span>Peak <b>{number(selected.peak)}</b></span><span>Interval-end <b>{number(selected.closing)}</b></span>
+              {selected.carried && <span>Carried from the last recorded count; no audit writes in this interval.</span>}
               {selected.coverage !== 'session' && <span>{selected.coverage === 'none' ? 'No session coverage' : 'Partial session coverage'}</span>}
               {selected.corrections > 0 && <span>{selected.corrections} correction(s), net {selected.correctionDelta}</span>}
             </div>}
-            <p className={styles.small}>Austin time, including CDT/CST at daylight-saving changes. After-midnight hours stay with the preceding night. Swipe sideways on small screens; select an hour for details.</p>
+            <p className={styles.small}>Austin time, including CDT/CST at daylight-saving changes. After-midnight intervals stay with the preceding night. Scroll sideways to see more intervals; select a bar for its time range and counts. Use Hourly for a full-night overview.</p>
           </section>
           <section className={styles.panel}>
-            <div className={styles.panelHead}><div><h2>Hourly breakdown</h2><p>Counter operations, not unique attendees. Resets and adjustments are separate from exits.</p></div>{mode === 'live' && <button onClick={download}>Export CSV</button>}</div>
-            <div className={styles.scroll}><table><thead><tr><th>Hour · Austin</th><th>Entries</th><th>Exits</th><th>Net flow</th><th>Peak inside</th><th>Hour-end</th><th>Corrections</th><th>Coverage</th></tr></thead>
+            <div className={styles.panelHead}><div><h2>{intervalName} breakdown</h2><p>Counter operations, not unique attendees. Resets and adjustments are separate from exits.</p></div>{mode === 'live' && <button onClick={download}>Export CSV</button>}</div>
+            <div className={styles.scroll}><table><thead><tr><th>Interval start · Austin</th><th>Entries</th><th>Exits</th><th>Net flow</th><th>Peak inside</th><th>Interval-end</th><th>Corrections</th><th>Coverage</th></tr></thead>
               <tbody>{buckets.map((b) => <tr key={b.start}><td>{capacityWhen(b.start)}</td><td>{number(b.entries)}</td><td>{number(b.exits)}</td><td>{b.entries == null || b.exits == null ? '—' : b.entries - b.exits}</td><td>{number(b.peak)}</td><td>{number(b.closing)}</td><td>{b.corrections ? `${b.corrections} (${b.correctionDelta > 0 ? '+' : ''}${b.correctionDelta})` : '—'}</td><td>{b.coverage === 'session' ? b.carried ? 'Carried count' : 'Session recorded' : b.coverage === 'none' ? 'Unavailable' : 'Partial'}</td></tr>)}</tbody>
             </table></div>
           </section>
@@ -172,7 +182,7 @@ export default function CapacityAnalyticsClient({ initialEvent = null }) {
             <li>Sessions spanning several nights are split into daily windows. Older door-session timing is not trusted for historical attribution because sessions can remain open across nights.</li>
             <li>Missing exits cannot be recovered. Resets, adjustments, and session closure are not departures. No recorded movement is not proof of an empty room.</li>
             <li>Counts carry forward only within recorded capacity-session coverage. Unavailable values, gaps, and ambiguous same-timestamp changes are labeled. Peaks are the highest recorded values, not independently verified occupancy.</li>
-            <li>CSV includes the full operating window, UTC timestamps, local hour with CDT/CST, correction totals, and coverage. Live counts are sampled every 15 seconds; connection failures show stale data.</li></ul>
+            <li>Five-minute and hourly views use the original audit timestamps, not interpolated hourly totals. CSV uses the selected interval and includes the full operating window, UTC boundaries, local time with CDT/CST, correction totals, and coverage. Live counts are sampled every 15 seconds; connection failures show stale data.</li></ul>
         </details>
       </>}
     </div>
@@ -183,10 +193,10 @@ function Stat({ label, value, hint }) {
   return <div className={styles.stat}><div>{label}</div><strong>{number(value)}</strong><small>{hint}</small></div>;
 }
 
-function CapacityChart({ buckets, view, selected, onSelect }) {
+function CapacityChart({ buckets, intervalMinutes = 60, view, selected, onSelect }) {
   if (view === 'heatmap') return <div className={styles.scroll}>
-    <div className={styles.heatgrid} style={{ gridTemplateColumns: `110px repeat(${buckets.length},minmax(52px,1fr))`, minWidth: 110 + buckets.length * 58 }}>
-      <span />{buckets.map((b) => <span className={styles.hourLabel} key={b.start}>{capacityHourLabel(b.start)}</span>)}
+    <div className={styles.heatgrid} style={{ gridTemplateColumns: `110px repeat(${buckets.length},minmax(76px,1fr))`, minWidth: 110 + buckets.length * 82 }}>
+      <span />{buckets.map((b) => <span className={styles.hourLabel} key={b.start}>{capacityHourLabel(b.start, intervalMinutes)}</span>)}
       {[['peak', 'Peak inside'], ['entries', 'Entries'], ['exits', 'Exits']].map(([field, label]) => {
         const max = Math.max(1, ...buckets.map((b) => b[field] || 0));
         return [<span key={field} className={styles.rowLabel}>{label}</span>, ...buckets.map((b) => <button
@@ -200,13 +210,13 @@ function CapacityChart({ buckets, view, selected, onSelect }) {
   const top = Math.max(1, ...buckets.flatMap((b) => view === 'traffic' ? [b.entries || 0, b.exits || 0] : [b.peak || 0, b.limit || 0]));
   const ceiling = Math.max(10, Math.ceil(top / 50) * 50);
   return <div className={styles.scroll}>
-    <div className={styles.chart} style={{ minWidth: Math.max(540, buckets.length * 76 + 40) }}>
+    <div className={styles.chart} style={{ minWidth: Math.max(540, buckets.length * (intervalMinutes === 5 ? 92 : 76) + 40) }}>
       {[0, 0.5, 1].map((f) => <div key={f} className={styles.gridline} style={{ bottom: `${34 + f * 204}px` }}><span>{ceiling * f}</span></div>)}
       {buckets.map((b) => <button key={b.start} className={`${styles.column} ${selected === b.start ? styles.picked : ''}`} onClick={() => onSelect(b.start)}
         aria-label={`${capacityWhen(b.start)}: ${number(b.entries)} entries, ${number(b.exits)} exits, peak ${number(b.peak)}`}>
         {(view === 'traffic' ? ['entries', 'exits'] : ['peak']).map((field) => <span key={field} className={`${styles.bar} ${field === 'entries' ? styles.entryBar : field === 'exits' ? styles.exitBar : ''}`}
           style={{ height: `${(b[field] || 0) / ceiling * 100}%` }}><b>{number(b[field])}</b></span>)}
-        <span className={styles.xLabel}>{capacityHourLabel(b.start)}</span>
+        <span className={styles.xLabel}>{capacityHourLabel(b.start, intervalMinutes)}</span>
       </button>)}
     </div>
   </div>;

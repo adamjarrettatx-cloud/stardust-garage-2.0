@@ -73,6 +73,50 @@ test('operating windows use 9am Austin and retain the prior night after midnight
   assert.equal(operatingDate(Date.parse('2026-09-19T14:00:00Z')), '2026-09-19');
 });
 
+test('five-minute buckets use raw timestamps, retain carry-in, and preserve whole-night totals', () => {
+  const rows = [anchor(), row('2026-09-19T03:04:59Z', 'check_in', 8, 8),
+    row('2026-09-19T03:05:00Z', 'check_out', -3, 5),
+    row('2026-09-19T03:09:59Z', 'adjust', 2, 7),
+    row('2026-09-19T03:10:00Z', 'check_in', 1, 8)];
+  const fine = report(rows, { intervalMinutes: 5 });
+  const hourly = report(rows);
+  assert.equal(fine.buckets.length, 288);
+  assert.equal(fine.intervalMinutes, 5);
+  assert.deepEqual(fine.summary, hourly.summary);
+  const b = fine.buckets.find(b => b.start === '2026-09-19T03:05:00.000Z');
+  assert.equal(b.entries, 0); assert.equal(b.exits, 3);
+  assert.equal(b.peak, 7); // The boundary exit starts at 5; the later correction raises it to 7.
+  assert.equal(b.closing, 7); assert.equal(b.corrections, 1);
+  assert.match(b.label, /10:05 PM CDT/);
+  const carried = fine.buckets.find(b => b.start === '2026-09-19T03:15:00.000Z');
+  assert.equal(carried.peak, 8); assert.equal(carried.carried, true);
+  assert.match(capacityCsv(fine, 'Example').split('\r\n')[0], /interval_minutes/);
+  assert.equal(capacityCsv(fine, 'Example').split('\r\n').length, 289);
+});
+
+test('five-minute reports handle DST, partial live intervals and missing coverage', () => {
+  for (const [day, count] of [['2026-03-07', 276], ['2026-10-31', 300]]) {
+    const w = operatingWindow(day);
+    const r = buildCapacityReport({ date: day, now: Date.parse(w.end), intervalMinutes: 5 });
+    assert.equal(r.buckets.length, count);
+    assert.ok(r.buckets.every(b => b.peak === null));
+  }
+  const live = report([anchor()], { intervalMinutes: 5, now: Date.parse(window.start) + 7 * 60000 });
+  assert.equal(live.buckets.length, 2);
+  assert.equal(live.buckets[1].end, '2026-09-18T14:07:00.000Z');
+  assert.throws(() => report([], { intervalMinutes: 0 }), /Invalid capacity interval/);
+});
+
+test('loader validates the interval and passes five-minute resolution to aggregation', async () => {
+  for (const interval of ['0', '-5', '7', '5.0', 'Infinity']) {
+    const result = await loadCapacityAnalytics({ from() { throw new Error('must not read'); } }, new URLSearchParams({ mode: 'night', date, interval }), now);
+    assert.equal(result.status, 400);
+  }
+  const db = queuedDb([[], [session], [anchor()], null]);
+  const result = await loadCapacityAnalytics(db.admin, new URLSearchParams({ mode: 'night', date, interval: '5' }), now);
+  assert.equal(result.report.buckets.length, 288);
+});
+
 test('DST operating windows are 23/25 hours and repeated hours carry distinct offsets', () => {
   const spring = operatingWindow('2026-03-07'), fall = operatingWindow('2026-10-31');
   assert.equal((Date.parse(spring.end) - Date.parse(spring.start)) / 3600000, 23);
@@ -176,7 +220,7 @@ test('catalogue splits multi-day sessions and flags shared event dates', () => {
 test('CSV is complete, timezone-explicit, and formula-safe', () => {
   const csv = capacityCsv(report([anchor()]), '=HYPERLINK("bad")');
   assert.equal(csv.split('\r\n').length, 25);
-  assert.ok(csv.includes('"America/Chicago"')); assert.ok(csv.includes('hour_start_utc'));
+  assert.ok(csv.includes('"America/Chicago"')); assert.ok(csv.includes('interval_start_utc'));
   assert.ok(csv.includes(`"'=HYPERLINK`)); assert.ok(csv.includes('CDT'));
 });
 
