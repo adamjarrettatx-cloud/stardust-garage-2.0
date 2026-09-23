@@ -1,4 +1,6 @@
 import { redirect } from 'next/navigation';
-export default function MembershipPage() {
-  redirect('/account/profile?edit=membership');
+import { getAccountProfile } from '@/lib/account-profile-data';
+export default async function MembershipPage() {
+  const profile = await getAccountProfile();
+  redirect(profile.membershipAction?.href || '/account/profile');
 }

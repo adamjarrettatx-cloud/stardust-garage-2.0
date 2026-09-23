@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth-helpers';
 import { createClient } from '@/lib/supabase/server';
 import MemberSignOutButton from './MemberSignOutButton';
 import { getTodayInAustin } from '@/lib/studio-helpers';
+import { canBookStudio } from '@/lib/profile-capabilities';
 
 export const revalidate = 0;
 
@@ -74,6 +75,7 @@ export default async function MemberDashboard() {
   let displayName = user?.email || 'member';
   let upcomingCount = 0;
   let isActive = false;
+  let studioAllowed = false;
   let subscriptionStatus = 'pending';
 
   try {
@@ -81,7 +83,7 @@ export default async function MemberDashboard() {
 
     const { data: profile } = await supabase
       .from('member_profiles')
-      .select('full_name, is_active, subscription_status')
+      .select('full_name, is_active, subscription_status, subscription_plan')
       .eq('user_id', user.id)
       .maybeSingle();
 
@@ -91,9 +93,10 @@ export default async function MemberDashboard() {
       displayName = user.user_metadata.full_name;
     }
     isActive = profile?.is_active || false;
+    studioAllowed = canBookStudio(profile);
     subscriptionStatus = profile?.subscription_status || 'pending';
 
-    if (isActive) {
+    if (studioAllowed) {
       const today = getTodayInAustin();
       const { count } = await supabase
         .from('studio_bookings')
@@ -133,7 +136,7 @@ export default async function MemberDashboard() {
             <div className="text-[15px]" style={{ color: '#f5f5f5' }}>
               {subscriptionStatus === 'past_due'
                 ? 'Your last payment didn\'t go through. Email us to fix it.'
-                : 'Choose a billing plan to unlock studio booking and member benefits.'}
+                : 'Choose a billing plan to activate your approved membership benefits.'}
             </div>
           </div>
           {subscriptionStatus !== 'past_due' && (
@@ -148,7 +151,7 @@ export default async function MemberDashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {studioAllowed && <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <StudioTile active={isActive}>
           <div className="text-[10px] font-semibold tracking-[0.18em] mb-3" style={{ color: '#8a8a8a' }}>BOOK</div>
           <div className="text-[20px] font-bold mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Studio Time</div>
@@ -164,7 +167,9 @@ export default async function MemberDashboard() {
             {isActive ? 'Your upcoming studio sessions.' : 'Activate membership to book.'}
           </p>
         </BookingsTile>
-      </div>
+      </div>}
+
+      {!studioAllowed && <p className="text-[15px] mb-6" style={{ color: '#8a8a8a' }}>Your membership benefits and tickets are available from your profile.</p>}
 
       <div className="mt-4">
         <Link

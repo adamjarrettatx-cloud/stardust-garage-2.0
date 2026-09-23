@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { computeBookingAmountCents } from '@/lib/booking-helpers';
 import { isPayRequestEligible } from '@/lib/pay-request-helpers';
 import { notifyAdminsPayRequested } from '@/lib/pay-request-notify';
+import { profileCapabilities } from '@/lib/profile-capabilities';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,6 +24,7 @@ const UUID = /^[0-9a-f-]{36}$/i;
 export async function POST(request, { params }) {
   const { user, partner, unauthorized } = await requirePartner(request);
   if (unauthorized) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!profileCapabilities(partner.contact_type).pay) return NextResponse.json({ error: 'Artist access required.' }, { status: 403 });
 
   const { bookingId } = await params;
   if (!UUID.test(bookingId)) return NextResponse.json({ error: 'Bad id' }, { status: 400 });

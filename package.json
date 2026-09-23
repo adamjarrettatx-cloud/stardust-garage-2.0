@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "test:profile": "vitest run tests/api/account-profile.vitest.js tests/api/account-profile-data.vitest.js tests/api/account-navigation.vitest.js",
+    "test:profile": "vitest run tests/api/account-profile.vitest.js tests/api/account-profile-data.vitest.js tests/api/account-navigation.vitest.js tests/api/organization-sales.vitest.js tests/api/profile-route-gates.vitest.js && node --test tests/profile-capabilities.test.mjs tests/profile-capabilities-db.test.mjs",
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start -H 0.0.0.0 -p 3000",

@@ -36,9 +36,8 @@ export default async function PartnerPortalLayout({ children }) {
     redirect(partnerState(partner) === 'invited' ? '/portal/activate' : '/account/profile');
   }
 
-  // Owned resources can make a section useful even without a matching contact
-  // tag. All three reads are scoped to this identity and expose safe columns;
-  // navigation visibility itself never grants access to a resource.
+  // Owned resources can make an eligible section useful, but never override
+  // the contact-type capability gate. Reads remain scoped to this identity.
   const supabase = await createClient();
   const results = await Promise.all([
     supabase.rpc('partner_grants'),

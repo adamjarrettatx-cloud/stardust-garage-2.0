@@ -53,7 +53,7 @@ export default function AccountHub({ profile, children }) {
         <div className="account-settings-body">
           <PersonalDetails key={profile.email} profile={profile} initialEditing={!['membership', 'security'].includes(requestedSection)} />
           <details className="account-settings-section" open={requestedSection === 'membership'}>
-            <summary>Membership &amp; Access</summary>
+            <summary>{profile.membershipAction ? 'Memberships & Access' : 'Account & Access'}</summary>
             <AccountAccess profile={profile} />
           </details>
           <details className="account-settings-section" open={requestedSection === 'security'}>

@@ -36,9 +36,9 @@ describe('profile presentation across all preview identities', () => {
     expect(model.partnerActive).toBe(false);
     expect(model.workspaces).toHaveLength(1);
   });
-  it('adds owned partner resources without granting any staff navigation', () => {
+  it('does not let assigned resources override profile-type restrictions', () => {
     const model = buildAccountProfile({ partner: { is_active: true, contact_type: ['other'] }, resources: { contracts: [{}] } });
-    expect(model.workspaces).toEqual([{ href: '/portal/contracts', label: 'Contracts' }]);
+    expect(model.workspaces).toEqual([]);
   });
   it('does not label a past-due membership as active', () => {
     const model = buildAccountProfile({ member: { is_active: true, subscription_status: 'past_due', subscription_plan: 'cowork' } });

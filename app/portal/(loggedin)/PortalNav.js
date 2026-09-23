@@ -9,6 +9,7 @@ const TABS = [
   { href: '/portal/guest-list', label: 'Guest list', key: 'guestList' },
   { href: '/portal/pay', label: 'Bookings & pay', key: 'pay' },
   { href: '/portal/contracts', label: 'Contracts', key: 'contracts' },
+  { href: '/portal/events', label: 'My Events', key: 'events' },
 ];
 
 export default function PortalNav({ contactType, views = {} }) {

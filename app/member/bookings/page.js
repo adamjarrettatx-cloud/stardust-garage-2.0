@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth-helpers';
 import { createClient } from '@/lib/supabase/server';
 import { getTodayInAustin } from '@/lib/studio-helpers';
 import BookingsList from './BookingsList';
+import { canBookStudio } from '@/lib/profile-capabilities';
 
 export const revalidate = 0;
 
@@ -12,6 +13,9 @@ export default async function MyBookingsPage() {
   if (!user) redirect('/login');
 
   const supabase = await createClient();
+  const { data: profile } = await supabase.from('member_profiles')
+    .select('is_active,subscription_plan,subscription_status').eq('user_id', user.id).maybeSingle();
+  if (!canBookStudio(profile)) redirect('/member');
 
   // Get settings for the min_advance_hours value (so client can decide what's cancellable)
   const { data: settings } = await supabase
