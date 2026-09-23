@@ -91,6 +91,11 @@ export default function AdminTicketsClient({ eventId }) {
 
   return (
     <div>
+      <p style={{ margin: '16px 0' }}>
+        <a href={`/bananas/events/${eventId}/attendees`} style={{ textDecoration: 'underline', fontWeight: 600 }}>
+          Attendees &amp; Orders: search names, view check-ins, export CSV
+        </a>
+      </p>
       {err && <div style={{ color: '#a00', margin: 12 }}>{err}</div>}
       <nav style={{ display: 'flex', gap: 8, borderBottom: '1px solid #eee', margin: '12px 0' }}>
         {['summary', 'products', 'orders'].map((t) => (
@@ -146,7 +151,7 @@ export default function AdminTicketsClient({ eventId }) {
             <tbody>
               {orders.map((o) => (
                 <tr key={o.id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td>{o.buyer_email}</td>
+                  <td><strong>{o.buyer_name?.trim() || 'Name not provided'}</strong><br />{o.buyer_email}</td>
                   <td>{o.status}</td>
                   <td align="right">{money(o.total_cents, o.currency)}</td>
                   <td align="right">{money(o.tax_cents || 0, o.currency)}</td>

@@ -11,6 +11,7 @@ import UnifiedDoorScanner from '../components/UnifiedDoorScanner';
 import { pushRecentActivity, formatActivityTime } from '@/lib/scan/recent-activity';
 import { mergeCheckinFeed, CHECKIN_FEED_MAX } from '@/lib/capacity/checkin-feed';
 import TonightSignInsPanel from './TonightSignInsPanel';
+import AccessRestrictions from '../components/AccessRestrictions';
 
 // /capacity/front-desk client
 //
@@ -474,6 +475,7 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
           />
 
           <div className="flex-1" />
+          <AccessRestrictions />
           <div className="text-right">
             <div className="text-[10px] font-bold tracking-[0.16em] uppercase" style={{ color: '#8a8a8a' }}>
               On shift
@@ -682,8 +684,14 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
             has room to breathe. */}
         <div className="flex flex-col min-w-0 [&>section]:flex-1" style={{ minHeight: 560 }}>
           <TonightSignInsPanel
-            onCheckIn={async () => {
-              return bumpCapacityFor('front_desk laptop (trial-pass roster check-in)');
+            onCheckIn={async (row) => {
+              const response = await fetch('/api/capacity/trial-pass/roster-checkin', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: row.id }),
+              });
+              const json = await response.json();
+              if (!response.ok) throw new Error(json.error || 'Check-in failed. Hold entry.');
+              return null;
             }}
           />
         </div>

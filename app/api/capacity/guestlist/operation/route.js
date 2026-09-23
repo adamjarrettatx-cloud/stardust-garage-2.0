@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
+import { restrictionGuard } from '@/lib/capacity/access-restrictions';
 import { requireFrontDeskOrTeam } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/stub';
@@ -105,6 +106,10 @@ export async function POST(request) {
   let warning = null;
 
   if (op === 'check_in') {
+    const blocked = await restrictionGuard(admin, { kind: 'guestlist', id: entry.id }, {
+      guestProfileId: body.guestProfileId, newGuest: body.newGuest,
+    });
+    if (blocked) return blocked;
     const resolved = await resolveGuestProfile({ admin, entry, grant, body });
     if (resolved.error) {
       return NextResponse.json({ error: resolved.error }, { status: resolved.status });
