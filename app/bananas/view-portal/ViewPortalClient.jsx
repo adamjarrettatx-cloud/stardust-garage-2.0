@@ -1,11 +1,13 @@
 'use client';
 import { useMemo, useState } from 'react';
+import { viewOptions, VIEW_GROUP_DESCRIPTIONS } from '@/lib/view-portal/personas';
 
 export default function ViewPortalClient({ personas, ready, statusMessage }) {
   const [selected, setSelected] = useState(personas[0]?.id || '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const groups = useMemo(() => Array.from(new Set(personas.map((p) => p.group))), [personas]);
+  const options = useMemo(() => viewOptions(personas), [personas]);
+  const groups = useMemo(() => Array.from(new Set(options.map((p) => p.group))), [options]);
   const chosen = personas.find((persona) => persona.id === selected);
   async function launch() {
     setBusy(true); setError('');
@@ -37,23 +39,33 @@ export default function ViewPortalClient({ personas, ready, statusMessage }) {
           {groups.map((group) => (
             <fieldset key={group}>
               <legend className="text-[12px] uppercase tracking-[.14em] font-extrabold mb-3" style={{ color: 'var(--auth-muted)' }}>{group}</legend>
+              {VIEW_GROUP_DESCRIPTIONS[group] && <p className="mb-4 text-[13px] leading-6" style={{ color: 'var(--auth-muted)' }}>{VIEW_GROUP_DESCRIPTIONS[group]}</p>}
               <div className="grid md:grid-cols-2 gap-3">
-                {personas.filter((p) => p.group === group).map((persona) => {
-                  const active = persona.id === selected;
+                {options.filter((p) => p.group === group).map((option) => {
+                  const active = option.scenarios.some((p) => p.id === selected);
                   return (
-                    <label key={persona.id} className="block cursor-pointer rounded-xl border p-4 min-h-[112px] transition-colors"
+                    <div key={option.id} className="rounded-xl border p-4 min-h-[112px] transition-colors focus-within:ring-2"
                       style={{ borderColor: active ? 'var(--auth-accent)' : 'var(--auth-border)', background: active ? 'var(--auth-card-bg)' : 'transparent' }}>
-                      <input className="sr-only" type="radio" name="persona" value={persona.id}
-                        checked={active} onChange={() => setSelected(persona.id)} />
+                      <label className="block cursor-pointer">
+                      <input className="sr-only" type="radio" name="persona" value={option.id}
+                        checked={active} onChange={() => setSelected(option.scenarios[0].id)} />
                       <span className="flex justify-between gap-4">
                         <span>
-                          <span className="block text-[16px] font-bold" style={{ color: 'var(--auth-text)' }}>{persona.label}</span>
-                          <span className="block mt-2 text-[13px] leading-5" style={{ color: 'var(--auth-muted)' }}>{persona.description}</span>
+                          <span className="block text-[16px] font-bold" style={{ color: 'var(--auth-text)' }}>{option.label}</span>
+                          <span className="block mt-2 text-[13px] leading-5" style={{ color: 'var(--auth-muted)' }}>{option.description}</span>
                         </span>
                         <span aria-hidden="true" className="mt-1 size-4 rounded-full border-2 shrink-0"
                           style={{ borderColor: active ? 'var(--auth-accent)' : 'var(--auth-muted)', boxShadow: active ? 'inset 0 0 0 3px var(--auth-card-bg)' : 'none', background: active ? 'var(--auth-accent)' : 'transparent' }} />
                       </span>
-                    </label>
+                      </label>
+                      {active && option.scenarios.length > 1 && <label className="mt-4 block text-[13px]" style={{ color: 'var(--auth-text)' }}>
+                        Test scenario
+                        <select aria-label={`${option.label} test scenario`} value={selected} onChange={(event) => setSelected(event.target.value)}
+                          className="mt-2 block w-full min-h-11 rounded-lg border px-3" style={{ borderColor: 'var(--auth-border)', background: 'var(--auth-card-bg)', color: 'var(--auth-text)' }}>
+                          {option.scenarios.map((scenario) => <option key={scenario.id} value={scenario.id}>{scenario.scenario || scenario.label}</option>)}
+                        </select>
+                      </label>}
+                    </div>
                   );
                 })}
               </div>
