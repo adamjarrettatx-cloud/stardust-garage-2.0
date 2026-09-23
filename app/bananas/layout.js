@@ -10,7 +10,7 @@ export const revalidate = 0;
 // Admin shell layout
 // ---------------------------------------------------------------------------
 // The header and section sidebar live here rather than on the dashboard page so
-// they persist across navigation: opening Contacts from the People section swaps
+// they persist across navigation: opening Contacts from the Admin section swaps
 // only the content column instead of replacing the whole screen with a page you
 // then have to back out of.
 //

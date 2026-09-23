@@ -195,7 +195,7 @@ export default function AdminShell({
 
   // On the dashboard root the active section is whichever tile grid is showing.
   // On any other admin route it comes from the pathname, so opening Contacts
-  // keeps People highlighted.
+  // keeps Contacts highlighted under ADMIN.
   const pathTab = tabForPath(pathname);
   const activeTab = isDashboardRoot
     ? rootTab
