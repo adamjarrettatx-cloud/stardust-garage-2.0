@@ -10,6 +10,7 @@ test('transactional correction, minimum intake name, privileges, legacy compatib
   try {
     await db.exec(`
       create role anon; create role authenticated; create role service_role;
+      alter default privileges in schema public grant all on tables to service_role;
       create schema auth; create table auth.users(id uuid primary key);
       create table team_members(user_id uuid primary key, role text, full_name text);
       create table free_accounts(user_id uuid primary key,full_name text,updated_at timestamptz);
@@ -32,6 +33,7 @@ test('transactional correction, minimum intake name, privileges, legacy compatib
       insert into membership_applications values('${id(10)}','Legacy','pending');
     `);
     await db.exec(await readFile(new URL('../supabase/migrations/20260923010000_legal_name_corrections.sql', import.meta.url), 'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/20260923010100_legal_name_audit_permissions.sql', import.meta.url), 'utf8'));
     const correct = (actor, kind, target, old, name='José García') => db.query(
       'select correct_legal_name($1,$2,$3,$4,$5,$6) result', [actor,kind,target,old,name,'Corrected against ID']);
     for (const name of ['John', 'John 123', 'John !!!', '', 'A '.repeat(70)]) {

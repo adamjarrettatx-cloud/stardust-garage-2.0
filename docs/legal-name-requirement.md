@@ -20,7 +20,7 @@ Previous names remain available to restriction matching as possible matches, not
 
 ## Rollout
 
-1. Apply `20260923010000_legal_name_corrections.sql` to the production database.
+1. Apply `20260923010000_legal_name_corrections.sql`, then `20260923010100_legal_name_audit_permissions.sql` to the production database.
 2. Merge and deploy the matching web changes.
 3. Refresh front-desk browsers; verify a controlled staff correction and a new signup.
 
