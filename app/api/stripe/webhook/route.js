@@ -10,6 +10,7 @@ import {
 import { membershipPaymentFailedPush, membershipPushForTransition, sendPush } from '@/lib/push';
 import { sendPushToUser } from '@/lib/notifications/send';
 import { isTicketFlowEvent, handleTicketFlowEvent } from '@/lib/tickets/webhook-handlers';
+import { handleTicketRefundEvent } from '@/lib/tickets/refunds';
 
 // POST /api/stripe/webhook
 //
@@ -175,6 +176,16 @@ export async function POST(request) {
         .from('stripe_event_ingest')
         .insert({ stripe_event_id: event.id, event_type: event.type })
         .then(() => {}, () => {}); // race with concurrent delivery — safe to ignore
+    }
+
+    // Refunds have their own durable request IDs, not checkout_kind metadata.
+    // On failure, leave processed_at empty so Stripe can retry reconciliation.
+    if (await handleTicketRefundEvent({ stripeEvent: event, supabaseAdmin })) {
+      const { error } = await supabaseAdmin.from('stripe_event_ingest')
+        .update({ processed_at: new Date().toISOString(), outcome: 'ok' })
+        .eq('stripe_event_id', event.id);
+      if (error) throw error;
+      return NextResponse.json({ received: true });
     }
 
     // ---- Dispatch: internal ticketing flow first ------------------------
