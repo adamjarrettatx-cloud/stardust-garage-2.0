@@ -4,12 +4,13 @@ vi.mock('@/lib/auth-helpers', () => ({ requireOwnerMfa: vi.fn() }));
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: vi.fn() }));
 vi.mock('@/lib/mercury', async (importOriginal) => {
   const original = await importOriginal();
-  return { ...original, mercuryApproval: vi.fn(), mercuryConfig: vi.fn() };
+  return { ...original, mercuryApproval: vi.fn(), mercuryConfig: vi.fn(), checkMercuryConnection: vi.fn() };
 });
 
 import { requireOwnerMfa } from '../../lib/auth-helpers';
 import { createAdminClient } from '../../lib/supabase/admin';
-import { mercuryApproval, mercuryConfig, MercuryError } from '../../lib/mercury';
+import { checkMercuryConnection, mercuryApproval, mercuryConfig, MercuryError } from '../../lib/mercury';
+import { GET as checkConnection } from '../../app/api/admin/pay-requests/mercury-connection/route';
 import { POST as queue } from '../../app/api/admin/pay-requests/[id]/queue-mercury/route';
 import { POST as refresh } from '../../app/api/admin/pay-requests/[id]/refresh-mercury/route';
 import { PATCH as link, GET as getProfile } from '../../app/api/admin/contacts/[id]/payout-profile/route';
@@ -35,15 +36,17 @@ beforeEach(() => {
   createAdminClient.mockReturnValue({ rpc, from });
   mercuryConfig.mockReturnValue({ enabled: true, accountId: 'account', mode: 'sandbox' });
   rpc.mockReset();
+  checkMercuryConnection.mockReset();
   mercuryApproval.mockResolvedValue({ mercury_request_id: mercuryRequest, status: 'pending_approval' });
 });
 
 describe('owner-only payout routes', () => {
-  it.each([queue, refresh, link, getProfile])('rejects non-owner before DB or provider calls', async (handler) => {
+  it.each([queue, refresh, link, getProfile, checkConnection])('rejects non-owner before DB or provider calls', async (handler) => {
     requireOwnerMfa.mockResolvedValue({ unauthorized: true, reason: 'not_owner' });
     expect((await handler(req(), context)).status).toBe(401);
     expect(createAdminClient).not.toHaveBeenCalled();
     expect(mercuryApproval).not.toHaveBeenCalled();
+    expect(checkMercuryConnection).not.toHaveBeenCalled();
   });
   it.each([queue, refresh, link])('rejects cross-origin writes', async (handler) => {
     expect((await handler(req(body, 'https://attacker.test'), context)).status).toBe(403);
@@ -108,6 +111,36 @@ describe('owner-only payout routes', () => {
     expect(rpc.mock.calls[0]).toEqual(['link_artist_mercury_recipient', {
       p_contact_id: id, p_recipient_id: recipient, p_actor_id: 'owner',
     }]);
+    expect(mercuryApproval).not.toHaveBeenCalled();
+  });
+});
+
+describe('read-only connection route', () => {
+  it.each([
+    { configured: false, verified: false, queue_enabled: false },
+    { configured: true, verified: true, queue_enabled: false, approval_tested: false },
+  ])('returns configuration status without writes or caching', async (result) => {
+    checkMercuryConnection.mockResolvedValue(result);
+    const res = await checkConnection(req({}, 'https://sdgatx.com', 'GET'));
+    expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    expect(await res.json()).toEqual(result);
+    expect(createAdminClient).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
+    expect(mercuryApproval).not.toHaveBeenCalled();
+  });
+  it('does not echo unexpected exception details', async () => {
+    checkMercuryConnection.mockRejectedValue(new Error('secret-key'));
+    const res = await checkConnection(req({}, 'https://sdgatx.com', 'GET'));
+    expect(res.status).toBe(502);
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    expect(await res.json()).toEqual({ error: 'Could not verify Mercury. No payment request was created.' });
+  });
+  it('returns a sanitized adapter error without creating payment requests', async () => {
+    checkMercuryConnection.mockRejectedValue(new MercuryError('account_not_found', 'Keep payouts disabled.'));
+    const res = await checkConnection(req({}, 'https://sdgatx.com', 'GET'));
+    expect(await res.json()).toEqual({ error: 'Keep payouts disabled.' });
+    expect(rpc).not.toHaveBeenCalled();
     expect(mercuryApproval).not.toHaveBeenCalled();
   });
 });

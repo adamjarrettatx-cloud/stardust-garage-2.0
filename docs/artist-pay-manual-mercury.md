@@ -24,7 +24,7 @@ Recipients are linked manually rather than verified through `/recipients` or `/r
 ## Security and recovery
 
 - Owner + existing MFA policy for every payout read/write route; same-origin checks for mutations.
-- No recipient, account, or direct-send API calls. The only provider endpoints used are `POST /account/{accountId}/request-send-money` and `GET /request-send-money/{requestId}`.
+- No recipient or direct-send API calls. Payouts use only `POST /account/{accountId}/request-send-money` and `GET /request-send-money/{requestId}`. The owner-triggered read-only setup check additionally uses `GET /accounts`, returning only the selected source account's UUID, display names, and status, never balances or banking numbers.
 - Exact body allowlists reject additional fields, including banking details.
 - Service-role-only payout tables and RPCs; no anonymous/authenticated table access or RPC execution.
 - Recipient, source account, environment, amount, and idempotency key are snapshotted before the network request.
@@ -41,6 +41,24 @@ Mercury documents idempotency keys and approval-required payments; the integrati
 
 Do not enable live queueing just because this pull request is merged.
 
+### Selected production account
+
+Adam selected **Artist & Collective Pay**, a Checking account ending **0305**, on September 23, 2026. He supplied its dashboard URL, `https://app.mercury.com/accounts/depository/6a8a713e-b760-11f1-a161-6b9575e7cd6d`, identifying the intended account UUID. This is a dashboard-derived selection, not yet an authenticated API verification.
+
+Non-secret production configuration:
+
+```text
+MERCURY_ENVIRONMENT=production
+MERCURY_ACCOUNT_ID=6a8a713e-b760-11f1-a161-6b9575e7cd6d
+ARTIST_PAY_MERCURY_ENABLED=false
+```
+
+`MERCURY_API_KEY` must be entered into the deployment's protected server-side environment. It is not committed to this repository. Saving a credential in Computer's vault does not automatically install it in Vercel.
+
+The owner-only **Check Mercury connection** control performs `GET /accounts` from the deployed server and returns only the selected account's UUID, display names, and status. It works while queueing is disabled and avoids the local development environment's credential-proxy certificate issue. It never calls recipient endpoints or creates a payment. A successful result does not establish payment scope or self-approval eligibility.
+
+### Release checklist
+
 1. Review and apply `20260922110000_artist_pay_manual_mercury.sql` before enabling the feature. The migration is additive except for removing authenticated audit insertion and tightening anonymous function access.
 2. Deploy the application with `ARTIST_PAY_MERCURY_ENABLED` absent or `false`.
 3. Configure server-side variables only:
@@ -49,7 +67,7 @@ Do not enable live queueing just because this pull request is merged.
    - `MERCURY_ACCOUNT_ID`: Mercury source-account UUID, not a bank account number.
    - `ARTIST_PAY_MERCURY_ENABLED`: set to exact `true` only after the checks below.
    - Vercel preview/development deployments fail closed if `MERCURY_ENVIRONMENT=production`, even if the enable flag is accidentally inherited.
-4. Use a Custom token limited to **Send Money with Approval** and the read permission for **Fetch Send Money Requests**. This implementation does not require Fetch Recipients, Create Recipients, recipient invites, or direct Send Money. Obtain the source-account UUID outside SDG.
+4. Use a Custom token limited to **Send Money with Approval**, **Fetch Send Money Requests**, and **Fetch Depository Accounts** (the last is used solely by the read-only connection check). This implementation does not require Fetch Recipients, Create Recipients, recipient invites, or direct Send Money.
 5. Verify who can approve API-created requests in this Mercury organization. The endpoint reference says the approver must differ from the token creator; the newer guide documents a policy-dependent self-approval exception. Do not assume a sole-user account qualifies. Confirm the actual account policy with Mercury before activation ([endpoint reference](https://docs.mercury.com/reference/requestsendmoney), [current guide](https://docs.mercury.com/docs/send-money)).
 6. Use an isolated test database and sandbox token/recipients for end-to-end testing. Do not create sandbox payout snapshots in production; changing environments later intentionally blocks reuse.
 7. Sandbox checks: queue once, double-click/retry, verify pending request in Mercury, approve/reject there, refresh, remove W9 and verify send blocked, simulate response-save failure, verify no banking data in SDG logs/DB.

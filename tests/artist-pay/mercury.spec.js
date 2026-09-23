@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { approvalPayload, mercuryApproval, mercuryConfig, normalizeApproval } from '../../lib/mercury';
+import { approvalPayload, checkMercuryConnection, mercuryApproval, mercuryConfig, normalizeApproval } from '../../lib/mercury';
 import { payoutBlockReason, validRecipientLink } from '../../lib/artist-payout-helpers';
 
 const recipient = '55555555-5555-4555-8555-555555555555';
@@ -92,6 +92,74 @@ describe('Mercury privacy and safety boundary', () => {
   });
   it.each([0, -1, 1.1, '100', Infinity])('rejects nonpositive/noninteger cents: %s', (amount_cents) => {
     expect(() => approvalPayload({ ...payout, amount_cents })).toThrow();
+  });
+});
+
+describe('read-only Mercury connection check', () => {
+  it('does not fetch when configuration is incomplete or production is used from a preview', async () => {
+    const fetchImpl = vi.fn();
+    for (const env of [{}, {
+      MERCURY_ENVIRONMENT: 'production', MERCURY_API_KEY: 'test-only',
+      MERCURY_ACCOUNT_ID: account, VERCEL_ENV: 'preview',
+    }]) {
+      expect(await checkMercuryConnection({ config: mercuryConfig(env), fetchImpl }))
+        .toEqual({ configured: false, verified: false, queue_enabled: false });
+    }
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+  it('uses only a read-only endpoint while queueing is disabled and discards financial data', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      accounts: [
+        { id: recipient, name: 'Other account', accountNumber: 'other-secret' },
+        { id: account, name: 'Checking', nickname: 'Artist Pay', status: 'active',
+          accountNumber: 'secret-account', routingNumber: 'secret-routing', currentBalance: 100 },
+      ],
+    })));
+    expect(await checkMercuryConnection({ config: { ...config, enabled: false }, fetchImpl })).toEqual({
+      configured: true, verified: true, queue_enabled: false, environment: 'sandbox',
+      account: { id: account, name: 'Checking', nickname: 'Artist Pay', status: 'active' },
+      approval_tested: false,
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const [url, options] = fetchImpl.mock.calls[0];
+    expect(url).toBe('https://api-sandbox.mercury.com/api/v1/accounts');
+    expect(options).toMatchObject({ method: 'GET', cache: 'no-store', redirect: 'error' });
+    expect(options.body).toBeUndefined();
+  });
+  it.each([[], [null], [{ id: recipient }], [{ id: account }, { id: account }]].map((accounts) => ({ accounts })))(
+    'fails closed if the exact account is missing or ambiguous: %j', async ({ accounts }) => {
+      await expect(checkMercuryConnection({
+        config, fetchImpl: vi.fn().mockResolvedValue(new Response(JSON.stringify({ accounts }))),
+      })).rejects.toMatchObject({ code: 'account_not_found' });
+    },
+  );
+  it.each(['not-json', '{}', '{"accounts":{}}'])('rejects malformed responses: %s', async (body) => {
+    await expect(checkMercuryConnection({ config, fetchImpl: vi.fn().mockResolvedValue(new Response(body)) }))
+      .rejects.toMatchObject({ code: 'invalid_response' });
+  });
+  it('sanitizes provider and network failures', async () => {
+    await expect(checkMercuryConnection({
+      config, fetchImpl: vi.fn().mockResolvedValue(new Response('secret-provider-data', { status: 403 })),
+    })).rejects.toMatchObject({
+      code: 'http_403', message: 'Mercury connection check returned HTTP 403. No payment request was created.',
+    });
+    await expect(checkMercuryConnection({
+      config, fetchImpl: vi.fn().mockRejectedValue(new Error('secret-token')),
+    })).rejects.toMatchObject({
+      code: 'connection_failed', message: 'Could not securely connect to Mercury. No payment request was created.',
+    });
+  });
+  it('reports inactive accounts without treating the lookup as an approval test', async () => {
+    const result = await checkMercuryConnection({
+      config: { ...config, enabled: false },
+      fetchImpl: vi.fn().mockResolvedValue(new Response(JSON.stringify({
+        accounts: [{ id: account, name: 'A'.repeat(200), nickname: null, status: 'archived' }],
+      }))),
+    });
+    expect(result.account.name).toHaveLength(160);
+    expect(result.account.status).toBe('archived');
+    expect(result.approval_tested).toBe(false);
+    expect(result.queue_enabled).toBe(false);
   });
 });
 

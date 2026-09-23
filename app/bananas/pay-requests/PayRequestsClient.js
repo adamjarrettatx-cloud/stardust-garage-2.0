@@ -7,6 +7,7 @@ import { formatSlotRange } from '@/lib/booking-helpers';
 import { formatMoney, cumulativePayByContact, payRequestStatusLabel } from '@/lib/pay-request-helpers';
 import UnderlineTabs from '../components/UnderlineTabs';
 import MercuryPayoutRow from './MercuryPayoutRow';
+import MercuryConnectionStatus from './MercuryConnectionStatus';
 
 const cardStyle = { background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' };
 const altCardStyle = { background: 'var(--auth-card-bg-alt)', borderColor: 'var(--auth-card-border)' };
@@ -271,6 +272,7 @@ export default function PayRequestsClient({ eventId = null, eventTitle = null, e
 
   return (
     <section className="rounded-[12px] border p-5" style={cardStyle}>
+      <MercuryConnectionStatus />
       {eventMissing && (
         <p className="text-[13px] mb-4" style={{ color: 'var(--auth-danger)' }}>
           That event no longer exists, so there is nothing to scope to.{' '}
