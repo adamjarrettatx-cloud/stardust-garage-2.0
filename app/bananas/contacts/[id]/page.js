@@ -84,7 +84,7 @@ export default async function ContactDetailPage({ params }) {
   ]);
 
   return (
-    <div className="max-w-[900px]">
+    <div className="max-w-[1160px] w-full">
       <ContactDetailClient
         contact={contact}
         isAdmin={isAdmin}
