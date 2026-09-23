@@ -27,3 +27,12 @@ origin and absence of integration credentials. Server fetch is deny-all and
 middleware returns HTTP 503 `Preview environment is locked.` for application
 pages, APIs and handoff routes. Static bundled assets are not private data.
 This is a hosting checkpoint only, not permission to use account previews.
+
+Before first activation, the managed pg_net extension still granted network
+function access. The migration role could not durably revoke grants owned by
+Supabase's managed administrator. There were no queued requests and no public
+application routine referenced net/http/dblink, so the unused pg_net extension
+was removed without CASCADE. The removal is recorded in the isolated deployment
+branch so future rebuilds retain it. The server fetch guard separately
+permits only the specific Auth admin endpoint needed to generate a local magic
+link; other Auth admin endpoints remain blocked even if a route is added later.

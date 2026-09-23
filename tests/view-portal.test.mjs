@@ -61,7 +61,7 @@ test('tampering, wrong audience, wrong owner, wrong purpose and expiration fail 
   assert.equal(await verifyViewToken(excessive, env.VIEW_PORTAL_SIGNING_SECRET, options), null);
 });
 test('server egress is limited to the isolated database without functions or redirects', () => {
-  assert.equal(sandboxFetchAllowed(`${env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token`), true);
+  assert.equal(sandboxFetchAllowed(`${env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token`, { method: 'POST' }), true);
   assert.equal(sandboxFetchAllowed(`${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/contacts`), true);
   for (const url of [
     'https://api.stripe.com/v1/charges', 'https://api.resend.com/emails',
@@ -70,6 +70,13 @@ test('server egress is limited to the isolated database without functions or red
     `${env.NEXT_PUBLIC_SUPABASE_URL}:8443/rest/v1/events`,
     `${env.NEXT_PUBLIC_SUPABASE_URL}.attacker.test/rest/v1/events`,
   ]) assert.equal(sandboxFetchAllowed(url), false);
+  assert.equal(sandboxFetchAllowed(`${env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/admin/generate_link`, { method: 'POST' }), true);
+  assert.equal(sandboxFetchAllowed(`${env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/admin/generate_link`, { method: 'GET' }), false);
+  for (const path of ['/auth/v1/admin/users', '/auth/v1/admin/invite', '/auth/v1/admin/delete_user',
+    '/auth/v1/invite', '/auth/v1/otp', '/auth/v1/signup', '/auth/v1/recover', '/auth/v1/resend']) {
+    assert.equal(sandboxFetchAllowed(`${env.NEXT_PUBLIC_SUPABASE_URL}${path}`, { method: 'POST' }), false);
+  }
+  assert.equal(sandboxFetchAllowed(`${env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/user`, { method: 'PUT' }), false);
 });
 test('locked bootstrap validates infrastructure without enabling preview access', () => {
   const locked = { ...env, VIEW_PORTAL_READY: 'false', VIEW_PORTAL_ISOLATION_VERIFIED: 'false' };
