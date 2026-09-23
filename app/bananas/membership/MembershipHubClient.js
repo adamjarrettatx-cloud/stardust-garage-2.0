@@ -6,7 +6,7 @@
 //
 //   Guest · Trial Ready · Trial Activated · The Weekender · The Builder · The Insider
 //
-// Each tab is a clean, scannable list of profiles currently in that state.
+// Each tab is a clean, scannable card grid of profiles currently in that state.
 // No funnel chart, no timeseries, no KPI clutter. The counts on the tabs
 // are the funnel. Selecting a tab reveals a search box, the tab's hint line,
 // and the profile list; nothing else.
@@ -22,6 +22,8 @@ import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvid
 import { ANALYTICS_THEMES, FINANCIAL_THEMES } from '@/lib/admin-theme';
 import { centsToUsd } from '@/lib/event-analytics';
 import UnderlineTabs from '../components/UnderlineTabs';
+import cardStyles from '../applications/applications.module.css';
+import styles from './membership.module.css';
 
 const THEMES = {
   dark:  { ...ANALYTICS_THEMES.dark,  ...FINANCIAL_THEMES.dark },
@@ -51,26 +53,18 @@ function fmtCents(cents) {
 // Avatar (photo or initials fallback)
 // -----------------------------------------------------------------------
 
-function Avatar({ name, photoUrl, theme, size = 44, accent }) {
+function ProfilePhoto({ name, photoUrl }) {
   const [failedUrl, setFailedUrl] = useState(null);
-  const initials = (name || '?').trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase();
+  const initials = (name || '').trim().split(/\s+/).map((p) => p[0] || '').slice(0, 2).join('').toUpperCase() || '?';
   return (
     <div
-      className="flex items-center justify-center rounded-full overflow-hidden shrink-0"
-      style={{
-        width: size, height: size,
-        background: theme.neutralChipBg,
-        border: `1px solid ${accent || theme.cardBorder}`,
-        color: theme.mutedStrong,
-        fontSize: size * 0.34,
-        fontWeight: 600,
-        letterSpacing: '0.02em',
-      }}
+      className={cardStyles.photo}
+      style={{ aspectRatio: '1 / 1' }}
     >
       {photoUrl && photoUrl !== failedUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={photoUrl} alt="" onError={() => setFailedUrl(photoUrl)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-      ) : initials}
+        <img src={photoUrl} alt={name || ''} loading="lazy" decoding="async" onError={() => setFailedUrl(photoUrl)} />
+      ) : <span aria-hidden="true">{initials}</span>}
     </div>
   );
 }
@@ -97,42 +91,44 @@ function contextLine(row) {
 }
 
 // -----------------------------------------------------------------------
-// Profile row — one uniform card layout for every tab
+// Profile card — shared application-card styling for all six lifecycle tabs.
+// Only members have detail destinations; guests/trials remain read-only.
 // -----------------------------------------------------------------------
 
-function ProfileRow({ row, accent, theme }) {
+function ProfileCard({ row, stageLabel }) {
+  const name = row.full_name || row.email || 'Unnamed';
+  const contextLabel = row.kind === 'account' ? 'Account'
+    : row.kind === 'trial' ? 'Trial activity' : 'Membership';
   const inner = (
-    <div
-      className="flex items-center gap-4 px-5 py-4 transition-colors"
-      style={{ borderBottom: `1px solid ${theme.rowBorder}` }}
-    >
-      <Avatar name={row.full_name} photoUrl={row.photo_url} theme={theme} accent={accent} />
-      <div className="flex-1 min-w-0">
-        <div className="text-[15px] font-medium truncate" style={{ color: theme.text }}>
-          {row.full_name || row.email || 'Unnamed'}
+    <>
+      <ProfilePhoto name={name} photoUrl={row.photo_url} />
+      <div className={cardStyles.body}>
+        <div className={cardStyles.identity}>
+          <div className={cardStyles.plan}>{stageLabel}</div>
+          <h2>{name}</h2>
         </div>
-        <div className="text-[12px] mt-0.5 truncate" style={{ color: theme.muted }}>
-          {contextLine(row)}
-        </div>
+        <dl className={cardStyles.details}>
+          <div><dt>Email</dt><dd>{row.email || 'Not provided'}</dd></div>
+          <div><dt>Phone</dt><dd>{row.phone || 'Not provided'}</dd></div>
+        </dl>
       </div>
-      <div className="hidden md:flex flex-col items-end text-right shrink-0">
-        {row.email ? (
-          <div className="text-[12px] truncate max-w-[240px]" style={{ color: theme.mutedStrong }}>
-            {row.email}
-          </div>
-        ) : null}
-        {row.phone ? (
-          <div className="text-[11px] font-mono mt-0.5" style={{ color: theme.muted }}>
-            {row.phone}
-          </div>
+      <div className={`${cardStyles.footer} ${styles.footer}`}>
+        <div className={styles.context}>
+          <span>{contextLabel}</span>
+          <p>{contextLine(row)}</p>
+        </div>
+        {row.href ? (
+          <span className={`${cardStyles.open} ${styles.open}`}>
+            View member <span aria-hidden="true">↗</span>
+          </span>
         ) : null}
       </div>
-    </div>
+    </>
   );
 
-  if (!row.href) return inner;
+  if (!row.href) return <article className={`${cardStyles.card} ${styles.readOnly}`}>{inner}</article>;
   return (
-    <Link href={row.href} className="block hover:opacity-90 transition-opacity">
+    <Link href={row.href} className={cardStyles.card} aria-label={`View member ${name}`}>
       {inner}
     </Link>
   );
@@ -212,7 +208,7 @@ export default function MembershipHubClient() {
 
   return (
     <div className="space-y-6" style={{ color: theme.text }}>
-      <div className="max-w-[1200px] mx-auto">
+      <div className={`${cardStyles.layout} max-w-[1200px] mx-auto`}>
 
         {/* Header */}
         <header className="mb-6">
@@ -244,6 +240,7 @@ export default function MembershipHubClient() {
             scoped to one of them. */}
         <input
           type="search"
+          aria-label="Search name, email or phone"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search name, email or phone"
@@ -288,23 +285,20 @@ export default function MembershipHubClient() {
           ) : null}
         </div>
 
-        {/* Profile list — single card, uniform rows for every tab. */}
-        <div
-          className="rounded-[16px] border overflow-hidden"
-          style={{ background: theme.cardBg, borderColor: theme.cardBorder }}
-        >
+        {/* Every tab uses the same responsive profile cards. */}
+        <div>
           {loading && !payload ? (
-            <div className="p-10 text-center text-[13px]" style={{ color: theme.muted }}>Loading…</div>
+            <div className={cardStyles.empty} role="status">Loading…</div>
           ) : filtered.length === 0 ? (
-            <div className="p-10 text-center text-[13px]" style={{ color: theme.muted }}>
+            <div className={cardStyles.empty} role="status">
               {rows.length === 0
                 ? 'Nobody here right now.'
                 : 'No matches for your search.'}
             </div>
           ) : (
-            <div>
+            <div className={cardStyles.grid} data-testid="membership-journey-cards">
               {filtered.map((row) => (
-                <ProfileRow key={`${row.kind}-${row.id}`} row={row} accent={activeMeta?.accent} theme={theme} />
+                <ProfileCard key={`${row.kind}-${row.id}`} row={row} stageLabel={activeMeta?.label} />
               ))}
             </div>
           )}
