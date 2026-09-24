@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '@/lib/supabase/server';
+import { canBookStudio } from '@/lib/profile-capabilities';
 import {
   getNowInAustin,
   hoursBetween,
@@ -43,13 +44,13 @@ export async function POST(request) {
     // Make sure the user has an active member_profile
     const { data: profile } = await supabaseAdmin
       .from('member_profiles')
-      .select('is_active')
+      .select('is_active,subscription_plan,subscription_status')
       .eq('user_id', user.id)
       .maybeSingle();
 
-    if (!profile || !profile.is_active) {
+    if (!canBookStudio(profile)) {
       return NextResponse.json(
-        { error: 'Active membership required to book studio time' },
+        { error: 'Your membership does not include studio booking.' },
         { status: 403 }
       );
     }

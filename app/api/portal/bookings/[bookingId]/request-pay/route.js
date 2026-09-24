@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { requirePartner } from '@/lib/auth-helpers';
-import { createClient } from '@/lib/supabase/server';
+import { createRequestScopedClient, requirePartner } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { computeBookingAmountCents } from '@/lib/booking-helpers';
 import { isPayRequestEligible } from '@/lib/pay-request-helpers';
 import { notifyAdminsPayRequested } from '@/lib/pay-request-notify';
+import { profileCapabilities } from '@/lib/profile-capabilities';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,8 +22,9 @@ const UUID = /^[0-9a-f-]{36}$/i;
 // button until eligible — a network-tab POST against an ineligible or
 // not-their-own booking must still be refused here.
 export async function POST(request, { params }) {
-  const { user, partner, unauthorized } = await requirePartner();
+  const { user, partner, unauthorized } = await requirePartner(request);
   if (unauthorized) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!profileCapabilities(partner.contact_type).pay) return NextResponse.json({ error: 'Artist access required.' }, { status: 403 });
 
   const { bookingId } = await params;
   if (!UUID.test(bookingId)) return NextResponse.json({ error: 'Bad id' }, { status: 400 });
@@ -111,7 +112,7 @@ export async function POST(request, { params }) {
   // partner_bookings()'s auth.uid()-scoped partner_contact_id() resolves —
   // the service-role key has no auth.uid() and would silently return zero
   // rows here.
-  const supabase = await createClient();
+  const supabase = await createRequestScopedClient(request);
   const { data: bookings } = await supabase.rpc('partner_bookings');
   return NextResponse.json({ ok: true, bookings: bookings || null }, { status: 201 });
 }

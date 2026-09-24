@@ -1,8 +1,10 @@
 import { redirect } from 'next/navigation';
 import { getCurrentPartner } from '@/lib/auth-helpers';
-import { portalName, canSignContracts } from '@/lib/role-label';
+import { portalName } from '@/lib/role-label';
+import { partnerState, partnerViews } from '@/lib/partner-access';
 import { createClient } from '@/lib/supabase/server';
 import PortalNav from './PortalNav';
+import '@/app/account/account.css';
 
 export const revalidate = 0;
 
@@ -19,7 +21,7 @@ export async function generateMetadata() {
 // page they were already on.
 //
 // The route group is what makes that split possible without changing any URL:
-// this file wraps /portal/profile and /portal/guest-list only.
+// this file wraps profile, guest-list, bookings/pay and contract pages.
 //
 // middleware.js applies the same two redirects, so in practice nobody reaches
 // here unauthenticated. This is the server-side gate that makes each page safe
@@ -30,27 +32,27 @@ export default async function PartnerPortalLayout({ children }) {
   if (!user) redirect('/portal/login');
   // Invited but hasn't confirmed their name and photo yet. Not an error —
   // finish the job rather than refusing.
-  if (!isActivePartner) redirect('/portal/activate');
-
-  // Does this partner have any contract to look at? Only asked when the nav
-  // wouldn't already show the tab for their type, so the common case costs
-  // nothing. partner_contracts() is the same SECURITY DEFINER read the page uses:
-  // it returns only this partner's non-draft contracts and only safe columns.
-  let hasContracts = false;
-  if (!canSignContracts(partner?.contact_type)) {
-    const supabase = await createClient();
-    const { data, error } = await supabase.rpc('partner_contracts');
-    if (error) {
-      // A missing/failed RPC must not blank the whole portal shell — worst case
-      // the tab is hidden for a type that doesn't normally have it.
-      console.error('[portal layout] partner_contracts failed', error);
-    }
-    hasContracts = (data || []).length > 0;
+  if (!isActivePartner) {
+    redirect(partnerState(partner) === 'invited' ? '/portal/activate' : '/account/profile');
   }
+
+  // Owned resources can make an eligible section useful, but never override
+  // the contact-type capability gate. Reads remain scoped to this identity.
+  const supabase = await createClient();
+  const results = await Promise.all([
+    supabase.rpc('partner_grants'),
+    supabase.rpc('partner_bookings'),
+    supabase.rpc('partner_contracts'),
+  ]);
+  const views = partnerViews(partner?.contact_type, {
+    grants: results[0].data || [],
+    bookings: results[1].data || [],
+    contracts: results[2].data || [],
+  });
 
   return (
     <div className="min-h-screen">
-      <PortalNav contactType={partner?.contact_type} hasContracts={hasContracts} />
+      <PortalNav contactType={partner?.contact_type} views={views} />
       {children}
     </div>
   );

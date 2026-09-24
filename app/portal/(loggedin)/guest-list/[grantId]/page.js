@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import { requirePartner } from '@/lib/auth-helpers';
 import { createClient } from '@/lib/supabase/server';
 import GrantEntriesClient from './GrantEntriesClient';
+import { profileCapabilities } from '@/lib/profile-capabilities';
 
 export const revalidate = 0;
 
@@ -18,8 +19,9 @@ export const revalidate = 0;
 // partner_owns_grant(grant_id) already limits them to this partner's own, and a
 // grantId belonging to somebody else simply matches nothing.
 export default async function PartnerGrantPage({ params }) {
-  const { unauthorized } = await requirePartner();
+  const { partner, unauthorized } = await requirePartner();
   if (unauthorized) redirect('/portal/login');
+  if (!profileCapabilities(partner?.contact_type).guestList) notFound();
 
   const { grantId } = await params;
   const supabase = await createClient();

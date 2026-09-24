@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createRequestScopedClient, requirePartner } from '@/lib/auth-helpers';
 import { auditGuestlist, canRemoveEntry } from '@/lib/guestlist-helpers';
+import { profileCapabilities } from '@/lib/profile-capabilities';
 
 export const runtime = 'nodejs';
 
@@ -23,9 +24,12 @@ export const runtime = 'nodejs';
 export async function DELETE(request, { params }) {
   try {
     // Bearer-aware so the same DELETE serves the mobile app's Remove button.
-    const { user, unauthorized } = await requirePartner(request);
+    const { user, partner, unauthorized } = await requirePartner(request);
     if (unauthorized) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (!profileCapabilities(partner?.contact_type).guestList) {
+      return NextResponse.json({ error: 'Guest list access is not available.' }, { status: 403 });
     }
 
     const { id } = await params;

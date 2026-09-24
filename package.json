@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "test:profile": "vitest run tests/api/account-profile.vitest.js tests/api/account-profile-data.vitest.js tests/api/account-navigation.vitest.js tests/api/organization-sales.vitest.js tests/api/profile-route-gates.vitest.js tests/api/partner-invite.vitest.js tests/api/partner-profile.vitest.js && node --test tests/profile-capabilities.test.mjs tests/profile-capabilities-db.test.mjs tests/partner-access.test.mjs tests/partner-access-db.test.mjs tests/ticket-event-grid.test.mjs tests/wallet-get-orders.test.mjs",
     "test:artist-pay": "TZ=UTC vitest run tests/artist-pay/*.spec.js",
     "test:profile-photos": "TZ=UTC vitest run tests/profile-photo-validation-*.vitest.js",
     "typecheck:profile-photos": "tsc -p tsconfig.profile-photo.json",

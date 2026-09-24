@@ -1,70 +1,30 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import PortalSignOutButton from '../PortalSignOutButton';
-import { canHostGuestList, canRequestPay, canSignContracts, portalName } from '@/lib/role-label';
+import { usePathname, useRouter } from 'next/navigation';
+import { portalName } from '@/lib/role-label';
 
-// Two destinations, and that is the whole product for a partner. Promoters and
-// collectives open this on a phone in a green room ten minutes before doors, so
-// the bar is sticky and the tap targets are large; there is no hamburger to
-// find and nothing to scroll past.
-//
-// Deliberately no brand mark here: the root layout already renders the site
-// navbar on /partner routes, so a logo in this bar would be the second one on
-// the page.
-const ALL_TABS = [
-  { href: '/portal/guest-list', label: 'Guest List', show: canHostGuestList },
-  { href: '/portal/pay', label: 'Pay', show: canRequestPay },
-  // Contracts is shown to the types we sign with, and to anyone who actually has
-  // a contract — so a DJ who gets sent one agreement can find it, without every
-  // DJ carrying an empty tab.
-  {
-    href: '/portal/contracts',
-    label: 'Contracts',
-    show: (type, { hasContracts } = {}) => canSignContracts(type) || Boolean(hasContracts),
-  },
-  { href: '/portal/profile', label: 'My Profile', show: () => true },
+const TABS = [
+  { href: '/account/profile', label: 'Profile' },
+  { href: '/portal/guest-list', label: 'Guest list', key: 'guestList' },
+  { href: '/portal/pay', label: 'Bookings & pay', key: 'pay' },
+  { href: '/portal/contracts', label: 'Contracts', key: 'contracts' },
+  { href: '/portal/events', label: 'My Events', key: 'events' },
 ];
 
-export default function PortalNav({ contactType, hasContracts = false }) {
+export default function PortalNav({ contactType, views = {} }) {
   const pathname = usePathname();
-  const tabs = ALL_TABS.filter((t) => t.show(contactType, { hasContracts }));
-  const name = portalName(contactType);
-
-  return (
-    <div
-      className="sticky top-0 z-40 backdrop-blur mt-6"
-      style={{ background: 'rgba(10,10,10,0.85)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
-    >
-      <div className="max-w-[720px] mx-auto px-5 sm:px-6 flex flex-wrap items-center justify-between gap-3 py-3">
-        <div className="text-[11px] font-semibold tracking-[0.24em] uppercase" style={{ color: '#8a8a8a' }}>
-          {name}
-        </div>
-        <nav className="flex gap-2">
-          {tabs.map((tab) => {
-            // startsWith so /portal/guest-list/<grantId> keeps the tab lit.
-            const active = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
-            return (
-              <Link
-                key={tab.href}
-                href={tab.href}
-                aria-current={active ? 'page' : undefined}
-                className="px-4 py-2.5 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-colors"
-                style={
-                  active
-                    ? { background: '#ffffff', color: '#0a0a0a' }
-                    : { color: '#8a8a8a', border: '1px solid rgba(255,255,255,0.1)' }
-                }
-              >
-                {tab.label.toUpperCase()}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <PortalSignOutButton />
-      </div>
-    </div>
-  );
+  const router = useRouter();
+  const tabs = TABS.filter((tab) => !tab.key || views[tab.key]);
+  const active = tabs.find((tab) => pathname === tab.href || pathname.startsWith(`${tab.href}/`))?.href || '';
+  return <div className="portal-section-navigation">
+    <span style={{ color: '#aaa7a0', fontSize: 12 }}>{portalName(contactType)}</span>
+    <nav aria-label="Partner sections">{tabs.map((tab) => <Link key={tab.href} href={tab.href} aria-current={active === tab.href ? 'page' : undefined}>{tab.label}</Link>)}</nav>
+    <select aria-label="Partner workspace menu" value={active} onChange={(event) => {
+      if (tabs.some((tab) => tab.href === event.target.value)) router.push(event.target.value);
+    }}>
+      {!active && <option value="" disabled>Choose a section</option>}
+      {tabs.map((tab) => <option key={tab.href} value={tab.href}>{tab.label}</option>)}
+    </select>
+  </div>;
 }
