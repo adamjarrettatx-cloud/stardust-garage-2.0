@@ -64,3 +64,10 @@ test('name label and placeholder are explicit only on the manual form', () => {
   assert.match(form, /label="Full legal name" placeholder="Full legal name"/);
   assert.match(form, /color: '#f5f5f5', fontSize: 14/);
 });
+test('check-in does not require redundant confirmation checkboxes', () => {
+  assert.ok(!panel.includes('identityConfirmed'));
+  assert.ok(!panel.includes('admissionConfirmed'));
+  assert.ok(!panel.includes('This records arrival and capacity.'));
+  assert.match(panel, /!accessClear \|\| editingName/);
+  assert.match(panel, /photoUnavailable \|\| Boolean\(selectedGuest.admission_reason\)/);
+});

@@ -14,7 +14,7 @@ const wire = { id, kind:'trial_pass', full_name:'Test Guest', checked_in_at:null
 const roster = () => ({ people:[{ wire:{ ...wire }, identityKeys:[`trial_pass:${id}`], group:[{kind:'trial_pass',id}] }],
   signins:[wire], shiftDay:'2026-09-24', since:'2026-09-24T11:00:00Z', context:{ session:null }, truncated:false });
 const req = body => new Request('https://example.invalid/api/capacity/trial-pass/roster-checkin', { method:'POST', body:JSON.stringify(body) });
-const body = {id,kind:'trial_pass',identityConfirmed:true,admissionConfirmed:true};
+const body = {id,kind:'trial_pass'};
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.gate = { unauthorized:false,user:{id:'staff'} };
@@ -47,14 +47,20 @@ describe('guest search endpoint', () => {
   });
 });
 describe('named arrival check-in endpoint', () => {
-  it('requires authorization, typed identity and explicit confirmations', async () => {
+  it('requires authorization and a typed identity', async () => {
     mocks.gate.unauthorized=true;
     expect((await POST(req(body))).status).toBe(401);
     mocks.gate.unauthorized=false;
-    for (const bad of [{...body,id:'bad'}, {...body,kind:'account'}, {...body,identityConfirmed:false}, {...body,admissionConfirmed:false}]) {
+    for (const bad of [{...body,id:'bad'}, {...body,kind:'account'}]) {
       expect((await POST(req(bad))).status).toBe(400);
     }
     expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+  it('allows direct check-in without the removed confirmation flags', async () => {
+    const res = await POST(req(body));
+    expect(res.status).toBe(200);
+    expect(mocks.guard).toHaveBeenCalled();
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
   });
   it('rechecks restrictions for every linked identity before mutation', async () => {
     const data=roster();data.people[0].group.push({kind:'guest',id});
