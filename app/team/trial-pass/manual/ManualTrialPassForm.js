@@ -51,6 +51,7 @@ export default function ManualTrialPassForm({ createdByEmail, compact = false })
         return;
       }
       setResult(body);
+      window.dispatchEvent(new Event('sdg:roster-changed'));
     } catch {
       setError('No connection. Check your signal and try again.');
     } finally {
@@ -156,6 +157,9 @@ export default function ManualTrialPassForm({ createdByEmail, compact = false })
   return (
     <form onSubmit={handleSubmit} className={`flex flex-col ${formGap}`} noValidate>
       <LegalNameInput value={values.fullName} onChange={update('fullName')}
+        label="Full legal name" placeholder="Full legal name"
+        labelStyle={compact ? { color: '#f5f5f5', fontSize: 14, fontWeight: 700 } : { color: 'var(--auth-text-strong)' }}
+        inputStyle={compact ? { outline: '2px solid #ffbf59', outlineOffset: '-2px', fontWeight: 600 } : {}}
         disabled={submitting} bad={badField === 'fullName'} />
       <Field
         label="Mobile phone number"

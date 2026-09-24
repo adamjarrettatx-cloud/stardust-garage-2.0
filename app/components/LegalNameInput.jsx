@@ -3,15 +3,15 @@
 import { useId } from 'react';
 import { LEGAL_NAME_NOTICE } from '@/lib/legal-name';
 
-export default function LegalNameInput({ value, onChange, disabled = false, inputClassName = '', inputStyle = {}, bad = false }) {
+export default function LegalNameInput({ value, onChange, disabled = false, inputClassName = '', inputStyle = {}, bad = false, label = 'Legal first and last name', labelStyle = {}, placeholder = '' }) {
   const id = useId();
   return (
     <div>
-      <label htmlFor={id} className="block text-[12px] font-semibold mb-2">
-        Legal first and last name
+      <label htmlFor={id} className="block text-[12px] font-semibold mb-2" style={labelStyle}>
+        {label}
       </label>
       <input id={id} name="fullName" type="text" value={value} onChange={onChange}
-        required maxLength={120} autoComplete="name" disabled={disabled}
+        required maxLength={120} autoComplete="name" disabled={disabled} placeholder={placeholder}
         pattern=".*\S+\s+\S+.*" aria-describedby={`${id}-notice`} aria-invalid={bad || undefined}
         className={inputClassName || 'w-full px-4 py-3 rounded-xl border outline-none focus:border-white/50'}
         style={{ background: 'var(--auth-input-bg, #141414)', color: 'var(--auth-text, #f5f5f5)',
