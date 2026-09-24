@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAdminMfa } from '@/lib/auth-helpers';
+import { nonTaxStorageCheck } from '@/lib/w9/server';
 import {
   createAdminClient,
   audit,
@@ -69,6 +70,8 @@ export async function POST(request) {
     .eq('id', templateId)
     .maybeSingle();
   if (!tpl) return NextResponse.json({ error: 'Template not found' }, { status: 404 });
+  const taxError = await nonTaxStorageCheck(admin, tpl.storage_path);
+  if (taxError) return taxError;
 
   // Re-validate the stored layout defensively before cloning.
   const layoutRes = validateFieldLayout(tpl.field_layout);

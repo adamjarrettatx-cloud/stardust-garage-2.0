@@ -2,7 +2,7 @@ import { beforeEach,describe,it,expect,vi } from 'vitest';
 const mock=vi.hoisted(()=>({partner:vi.fn(),adminAuth:vi.fn(),rpc:vi.fn(),from:vi.fn()}));
 vi.mock('@/lib/auth-helpers',()=>({requirePartner:mock.partner,requireAdminMfa:mock.adminAuth}));
 vi.mock('@/lib/supabase/admin',()=>({createAdminClient:()=>({rpc:mock.rpc,from:mock.from})}));
-import { w9Access,validW9Origin,w9BookingCheck,taxDocumentAccess } from '@/lib/w9/server';
+import { w9Access,validW9Origin,w9BookingCheck,taxDocumentAccess,nonTaxStorageCheck } from '@/lib/w9/server';
 const user={id:'artist'};
 const partner={contact_id:'contact',contact_type:['artist'],activated_at:'now',full_name:'Test',photo_url:'/photo'};
 const request=(headers={origin:'https://sdgatx.com'})=>new Request('https://sdgatx.com/api/portal/w9',{method:'POST',headers});
@@ -59,5 +59,13 @@ describe('W-9 server authorization',()=>{
       return q;
     });
     expect(await taxDocumentAccess({from:mock.from,rpc:mock.rpc},'artist','doc')).toBe(false);
+  });
+  it('refuses tax-object pointers through templates and other file paths',async()=>{
+    mock.rpc.mockResolvedValue({data:true});
+    expect((await nonTaxStorageCheck({rpc:mock.rpc},'w9/contact/document.pdf')).status).toBe(403);
+    mock.rpc.mockResolvedValue({error:{message:'unavailable'}});
+    expect((await nonTaxStorageCheck({rpc:mock.rpc},'templates/file.pdf')).status).toBe(503);
+    mock.rpc.mockResolvedValue({data:false});
+    expect(await nonTaxStorageCheck({rpc:mock.rpc},'templates/file.pdf')).toBe(null);
   });
 });

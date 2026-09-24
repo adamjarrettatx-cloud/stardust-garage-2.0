@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient, DOCUMENT_BUCKET } from '@/lib/document-helpers';
 import { isContractTemplatesEnabled } from '@/lib/feature-flags';
+import { nonTaxStorageCheck } from '@/lib/w9/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,6 +29,8 @@ export async function GET(request, { params }) {
     .eq('id', id)
     .maybeSingle();
   if (!tpl) return NextResponse.json({ error: 'Template not found' }, { status: 404 });
+  const taxError = await nonTaxStorageCheck(admin, tpl.storage_path);
+  if (taxError) return taxError;
 
   const { data: blob, error } = await admin.storage.from(DOCUMENT_BUCKET).download(tpl.storage_path);
   if (error || !blob) return NextResponse.json({ error: 'Storage error' }, { status: 500 });

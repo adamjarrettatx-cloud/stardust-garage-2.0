@@ -4,6 +4,7 @@ import { createAdminClient, audit, DOCUMENT_BUCKET, DOCUMENT_CATEGORIES } from '
 import { validateFieldLayout } from '@/lib/contract-fields';
 import { isContractTemplatesEnabled } from '@/lib/feature-flags';
 import { TEMPLATE_KIND_VALUES } from '@/lib/event-organizer';
+import { nonTaxStorageCheck } from '@/lib/w9/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -138,6 +139,9 @@ export async function DELETE(request, { params }) {
     .eq('id', id)
     .maybeSingle();
   if (!template) return NextResponse.json({ error: 'Template not found' }, { status: 404 });
+
+  const taxError = await nonTaxStorageCheck(admin, template.storage_path);
+  if (taxError) return taxError;
 
   // Null out references from contracts so the FK doesn't block deletion; the
   // contract's own cloned field_layout is retained.

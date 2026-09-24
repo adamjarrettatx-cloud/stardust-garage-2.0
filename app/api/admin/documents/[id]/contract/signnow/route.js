@@ -17,6 +17,7 @@ import { contractSendReadiness, defaultSignerName, defaultSignerEmail } from '@/
 import { buildContractNotification, recordContractNotification, markNotificationEmailed } from '@/lib/contract-notify';
 import { sendContractSignatureRequest } from '@/lib/email';
 import { resolveSiteUrl } from '@/lib/site-url';
+import { nonTaxStorageCheck } from '@/lib/w9/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,6 +35,7 @@ async function loadLatestFile(admin, documentId) {
     .limit(1)
     .maybeSingle();
   if (!ver) return null;
+  if (await nonTaxStorageCheck(admin, ver.storage_path)) return null;
   const { data: blob, error } = await admin.storage.from(DOCUMENT_BUCKET).download(ver.storage_path);
   if (error || !blob) return null;
   const buffer = Buffer.from(await blob.arrayBuffer());
