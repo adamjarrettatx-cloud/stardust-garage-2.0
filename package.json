@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "test:arrival-roster": "vitest run tests/api/arrival-roster.vitest.js tests/api/arrival-roster-server.vitest.js && node --test tests/front-desk-tonight-signins.test.mjs tests/front-desk-arrivals-db.test.mjs tests/access-restrictions-wiring.test.mjs",
     "test:profile": "vitest run tests/api/account-profile.vitest.js tests/api/account-profile-data.vitest.js tests/api/account-navigation.vitest.js tests/api/organization-sales.vitest.js tests/api/profile-route-gates.vitest.js tests/api/partner-invite.vitest.js tests/api/partner-profile.vitest.js && node --test tests/profile-capabilities.test.mjs tests/profile-capabilities-db.test.mjs tests/partner-access.test.mjs tests/partner-access-db.test.mjs tests/ticket-event-grid.test.mjs tests/wallet-get-orders.test.mjs",
     "test:artist-pay": "TZ=UTC vitest run tests/artist-pay/*.spec.js",
     "test:profile-photos": "TZ=UTC vitest run tests/profile-photo-validation-*.vitest.js",
@@ -12,7 +13,7 @@
     "build": "next build --turbopack",
     "start": "next start -H 0.0.0.0 -p 3000",
     "lint": "eslint",
-    "test": "TZ=UTC npx vitest run tests/api/account/delete.test.js tests/api/cron/fail-closed.test.js tests/api/capacity/access-restrictions.vitest.js tests/api/legal-name.vitest.js tests/api/event-roster.vitest.js tests/api/ticket-refunds.vitest.js tests/api/capacity-analytics.vitest.js tests/api/admin-signup-photos.vitest.js tests/api/organization-main-contact.vitest.js tests/artist-pay/*.spec.js && TZ=UTC node --test $(find tests -type f \\( -name '*.test.mjs' -o -name '*.test.js' \\) ! -path 'tests/api/account/delete.test.js' ! -path 'tests/api/cron/fail-closed.test.js')",
+    "test": "TZ=UTC npx vitest run tests/api/account/delete.test.js tests/api/cron/fail-closed.test.js tests/api/capacity/access-restrictions.vitest.js tests/api/arrival-roster.vitest.js tests/api/arrival-roster-server.vitest.js tests/api/legal-name.vitest.js tests/api/event-roster.vitest.js tests/api/ticket-refunds.vitest.js tests/api/capacity-analytics.vitest.js tests/api/admin-signup-photos.vitest.js tests/api/organization-main-contact.vitest.js tests/artist-pay/*.spec.js && TZ=UTC node --test $(find tests -type f \\( -name '*.test.mjs' -o -name '*.test.js' \\) ! -path 'tests/api/account/delete.test.js' ! -path 'tests/api/cron/fail-closed.test.js')",
     "backfill:tt-orders": "node scripts/backfill-ticket-order-attribution.mjs",
     "backfill:member-tickets": "node scripts/backfill-member-tickets.mjs"
   },

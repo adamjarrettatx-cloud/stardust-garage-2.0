@@ -697,11 +697,11 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
             onCheckIn={async (row) => {
               const response = await fetch('/api/capacity/trial-pass/roster-checkin', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: row.id }),
+                body: JSON.stringify({ id: row.id, kind: row.kind, identityConfirmed: true, admissionConfirmed: true }),
               });
               const json = await response.json();
               if (!response.ok) throw new Error(json.error || 'Check-in failed. Hold entry.');
-              return null;
+              return json;
             }}
           />
         </div>

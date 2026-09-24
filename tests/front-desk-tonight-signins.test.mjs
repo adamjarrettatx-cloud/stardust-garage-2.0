@@ -1,130 +1,66 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { shiftWindow, orderArrivals, mergeArrivals, escapeNameSearch } from '../lib/capacity/arrival-roster.js';
+const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+const route = read('app/api/team/trial-pass/today/route.js');
+const panel = read('app/capacity/front-desk/TonightSignInsPanel.js');
+const server = read('lib/capacity/arrival-roster-server.js');
+const row = (id, at, checked = false) => ({ id, kind: 'trial_pass', activity_at: at, checked_in_at: checked ? at : null });
 
-// Guardrails for the Tonight's Sign-Ins panel wired into the Front Desk.
-// The panel powers the door attendant's chronological visual match: "did
-// you sign in? what's your name?" -> find them on the list. This test
-// enforces the two invariants that matter for that job:
-//   1. The API route projects ONLY display-safe fields (no phone/email).
-//   2. The client component renders the list oldest -> newest, matching how
-//      a paper sign-in sheet reads.
-
-const routeSrc = readFileSync(
-  new URL('../app/api/team/trial-pass/today/route.js', import.meta.url),
-  'utf8',
-);
-const clientSrc = readFileSync(
-  new URL('../app/capacity/front-desk/TonightSignInsPanel.js', import.meta.url),
-  'utf8',
-);
-const frontDeskSrc = readFileSync(
-  new URL('../app/capacity/front-desk/FrontDeskClient.js', import.meta.url),
-  'utf8',
-);
-
-test('today route is gated by a team-or-front-desk require*() helper', () => {
-  assert.ok(
-    /require(Team|FrontDeskOrTeam)\(\)/.test(routeSrc),
-    'Route must call requireTeam() or requireFrontDeskOrTeam() before querying trial_passes',
-  );
-  assert.ok(
-    /Unauthorized/.test(routeSrc),
-    'Route must return 401 Unauthorized when the caller is not a team member',
-  );
+test('newest signup, searched check-in, then later signup and check-in share one chronological list', () => {
+  let rows = orderArrivals([row('old', '2026-09-25T01:00Z'), row('new', '2026-09-25T01:01Z')]);
+  assert.deepEqual(rows.map(r => r.id), ['new','old']);
+  rows = mergeArrivals(rows, [row('returning', '2026-09-25T01:02Z', true)]);
+  assert.deepEqual(rows.map(r => r.id), ['returning','new','old']);
+  rows = mergeArrivals(rows, [row('later-signup', '2026-09-25T01:03Z')]);
+  rows = mergeArrivals(rows, [row('later-checkin', '2026-09-25T01:04Z', true)]);
+  assert.deepEqual(rows.map(r => r.id), ['later-checkin','later-signup','returning','new','old']);
 });
-
-test('today route returns only display-safe fields', () => {
-  // We explicitly WANT full_name and issued_at; we explicitly do NOT want
-  // phone or email leaking into a door-facing surface.
-  const selectMatch = routeSrc.match(/\.select\(\s*['"]([^'"]+)['"]/);
-  assert.ok(selectMatch, 'Route must include an explicit .select() projection');
-  const columns = selectMatch[1].split(',').map((c) => c.trim());
-  assert.ok(columns.includes('full_name'), 'full_name is required for the door match');
-  assert.ok(columns.includes('issued_at'), 'issued_at is required for chronological ordering');
-  assert.ok(!columns.includes('phone'), 'phone must not be exposed to team-scoped door staff');
-  assert.ok(!columns.includes('email'), 'email must not be exposed to team-scoped door staff');
+test('one row per person; check-in moves it once and stale reads/retries cannot bump it', () => {
+  const original = row('same', '2026-09-25T01:00Z');
+  const checked = row('same', '2026-09-25T01:02Z', true);
+  const rows = mergeArrivals([original], [checked, original, checked]);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].activity_at, checked.activity_at);
 });
-
-test('today route preserves the live newest-first roster order', () => {
-  assert.ok(
-    /ascending:\s*false/.test(routeSrc),
-    'Preserve the newest-first ordering shipped in PR #310',
-  );
+test('ties are deterministic, and sorting does not mutate the input', () => {
+  const rows = [row('b', '2026-09-25T01:00Z'), row('a', '2026-09-25T01:00Z')];
+  assert.deepEqual(orderArrivals(rows).map(r => r.id), ['a','b']);
+  assert.equal(rows[0].id, 'b');
 });
-
-test('today route bounds the window to a single evening', () => {
-  assert.ok(
-    /12 \* 60 \* 60 \* 1000/.test(routeSrc),
-    'Rolling 12-hour window matches the /api/capacity/checkins fallback convention',
-  );
-  assert.ok(
-    /\.gte\(['"]issued_at['"]/.test(routeSrc),
-    'Query must filter by issued_at >= since',
-  );
+test('Chicago shift starts at 6 AM, survives midnight, and handles DST', () => {
+  assert.deepEqual(shiftWindow(new Date('2026-09-25T05:30Z')), { shiftDay:'2026-09-24', since:'2026-09-24T11:00:00.000Z' });
+  assert.equal(shiftWindow(new Date('2026-09-25T10:59:59Z')).shiftDay, '2026-09-24');
+  assert.equal(shiftWindow(new Date('2026-09-25T11:00:00Z')).shiftDay, '2026-09-25');
+  assert.equal(shiftWindow(new Date('2026-03-08T12:00:00Z')).since, '2026-03-08T11:00:00.000Z');
+  assert.equal(shiftWindow(new Date('2026-11-01T12:00:00Z')).since, '2026-11-01T12:00:00.000Z');
 });
-
-test('panel polls the today endpoint', () => {
-  assert.ok(
-    /\/api\/team\/trial-pass\/today/.test(clientSrc),
-    'Panel must fetch from the team-gated today endpoint',
-  );
-  assert.ok(
-    /setInterval/.test(clientSrc),
-    'Panel must poll for live updates',
-  );
+test('wildcard characters in names cannot enumerate the full directory', () => {
+  assert.equal(escapeNameSearch(' %_\\ '), '\\%\\_\\\\');
 });
-
-test('panel is wired into the Front Desk left column', () => {
-  assert.ok(
-    /TonightSignInsPanel/.test(frontDeskSrc),
-    'FrontDeskClient must render TonightSignInsPanel',
-  );
-  assert.ok(
-    /import TonightSignInsPanel from '\.\/TonightSignInsPanel'/.test(frontDeskSrc),
-    'FrontDeskClient must import the panel from its co-located module',
-  );
+test('directory route is role gated and never caches private photos or names', () => {
+  assert.match(route, /requireFrontDeskOrTeam\(\)/);
+  assert.ok(route.indexOf('requireFrontDeskOrTeam()') < route.indexOf('loadRoster(createAdminClient()'));
+  assert.match(route, /private, no-store/);
+  assert.match(route, /minimumQueryLength: 2/);
+  const wire = server.slice(server.indexOf('wire: {'), server.indexOf('export async function loadRoster'));
+  for (const privateField of ['email:', 'phone:', 'user_id:', 'profile_photo_path:', 'identityKeys:']) {
+    assert.ok(!wire.includes(privateField), privateField);
+  }
 });
-
-test('roster check-in uses the server-authorized named admission route', () => {
-  assert.ok(
-    /onCheckIn=\{[\s\S]*?\/api\/capacity\/trial-pass\/roster-checkin/.test(frontDeskSrc),
-    'Roster check-in must run the server restriction guard before the capacity RPC',
-  );
-  assert.ok(
-    /onCheckIn/.test(clientSrc) && /handleToggle/.test(clientSrc),
-    'Panel must accept onCheckIn and expose a toggle handler',
-  );
+test('roster is database-backed, polling and search cannot write check-ins', () => {
+  assert.match(panel, /setInterval/);
+  assert.match(panel, /\/api\/team\/trial-pass\/today\?q=/);
+  assert.ok(!panel.includes('window.localStorage'));
+  assert.match(panel, /AbortController/);
+  assert.match(panel, /version !== requestVersion.current/);
+  assert.match(panel, /mergeArrivals/);
+  assert.match(panel, /setQuery\(''\)/);
+  assert.match(panel, /disabled=\{isIn \|\| isBusy\}/);
 });
-
-test('roster check-in survives a mid-shift refresh without double-bumping', () => {
-  // The checked-in set is namespaced by Chicago calendar day so tomorrow's
-  // shift starts clean, and persisted so a refresh does not re-arm the
-  // checkboxes and bump the count a second time when reloaded.
-  assert.ok(
-    /localStorage/.test(clientSrc),
-    'Checked-in state must be persisted so a refresh does not re-arm the checkboxes',
-  );
-  assert.ok(
-    /America\/Chicago/.test(clientSrc),
-    'Storage namespace must be scoped to the venue-local calendar day',
-  );
-  assert.ok(
-    /sdg\.front-desk\.trial-roster-checked-in\./.test(clientSrc),
-    'Storage key prefix must be stable and namespaced',
-  );
-});
-
-test('roster row disables its checkbox after a successful check-in', () => {
-  // Once a guest is admitted, the row must stop being interactive so a
-  // second click cannot re-fire the capacity bump. The button carries
-  // both `disabled` and `aria-pressed` for accessibility.
-  assert.ok(
-    /disabled=\{isIn \|\| isBusy\}/.test(clientSrc),
-    'Checkbox must be disabled once the guest is checked in or while busy',
-  );
-  assert.ok(
-    /aria-pressed=\{isIn\}/.test(clientSrc),
-    'Checkbox must expose aria-pressed for screen readers',
-  );
+test('name label and placeholder are explicit only on the manual form', () => {
+  const form = read('app/team/trial-pass/manual/ManualTrialPassForm.js');
+  assert.match(form, /label="Full legal name" placeholder="Full legal name"/);
+  assert.match(form, /color: '#f5f5f5', fontSize: 14/);
 });

@@ -1,427 +1,283 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AccessCheck } from '../components/AccessRestrictions';
 import EditLegalName from '../components/EditLegalName';
-
-// TonightSignInsPanel
-//
-// Live, chronological list of guests who completed the Trial SDG Pass signup
-// form tonight. Feeds from /api/team/trial-pass/today, a team-gated endpoint
-// that returns only display-safe fields (name + timestamps) over a rolling
-// 12-hour window -- same convention /api/capacity/checkins falls back to.
-//
-// The door attendant uses this to visually match a walk-up ("Did you sign
-// in? What's your name?") to the roster before scanning a ticket or ringing
-// up a purchase. Most recent sign-up comes first, matching the live API.
-//
-// Polls every 15s and also on window focus so the attendant sees a new
-// signup within a few seconds of the guest submitting the form.
-//
-// Each row has a check box the attendant clicks the moment they let the
-// guest in. That click bumps the venue capacity by one -- same primitive
-// (bumpCapacityFor) the Guest List uses. The set of admitted ids is kept
-// in localStorage keyed by tonight's *shift day* so a laptop refresh mid
-// shift does not re-arm the checkboxes and double-bump the count.
-//
-// Shift day, not calendar day: a nightlife shift routinely crosses midnight,
-// and if the key rolled at 12:00 AM every checkbox on the roster suddenly
-// went blank mid-rush (the exact bug this file's earlier version shipped
-// with -- see PR history). We anchor the day to 6 AM America/Chicago so a
-// single shift owns one key from open through last call.
+import { mergeArrivals, subjectKey } from '@/lib/capacity/arrival-roster';
 
 const POLL_MS = 15000;
-
-// Hour of day (America/Chicago) the shift-day key rolls over. 6 AM comfortably
-// clears every conceivable close time; nothing on the roster tonight belongs
-// to tomorrow's shift until then.
-const SHIFT_DAY_ROLLOVER_HOUR = 6;
-
-// Chicago-local shift-day string (YYYY-MM-DD). Between midnight and 6 AM
-// the key still reports the previous calendar date, so late-night check-ins
-// keep their checkmark instead of vanishing at 12:00 AM.
-function chicagoShiftDayKey(now = new Date()) {
-  try {
-    // Fetch the individual y/m/d/h parts in America/Chicago so we can subtract
-    // a shifted-back day when we're still in the pre-rollover window.
-    const parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'America/Chicago',
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', hour12: false,
-    }).formatToParts(now);
-    const map = Object.fromEntries(
-      parts.filter((p) => p.type !== 'literal').map((p) => [p.type, p.value]),
-    );
-    // Intl 'hour: 2-digit + hour12: false' can emit '24' at midnight in some
-    // runtimes -- treat that as hour 0 of the *next* calendar day, which is
-    // what the y/m/d fields already reflect.
-    const hourNum = Number(map.hour) % 24;
-    const isoBase = `${map.year}-${map.month}-${map.day}`;
-    if (hourNum >= SHIFT_DAY_ROLLOVER_HOUR) return isoBase;
-    // Before the rollover hour: still on last night's shift. Roll the date
-    // back one day. Parse as UTC to avoid the local-tz DST bounce, then emit
-    // YYYY-MM-DD.
-    const prev = new Date(`${isoBase}T00:00:00Z`);
-    prev.setUTCDate(prev.getUTCDate() - 1);
-    return prev.toISOString().slice(0, 10);
-  } catch {
-    return new Date().toISOString().slice(0, 10);
-  }
-}
-
-// Same-day calendar key, kept only so we can migrate an already-populated
-// midnight-rolled entry into the shift-day key without the attendant having
-// to re-check every guest. Safe to remove after one full weekend has cycled.
-function chicagoCalendarDayKey(now = new Date()) {
-  try {
-    return new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'America/Chicago',
-      year: 'numeric', month: '2-digit', day: '2-digit',
-    }).format(now);
-  } catch {
-    return new Date().toISOString().slice(0, 10);
-  }
-}
-
-const STORAGE_PREFIX = 'sdg.front-desk.trial-roster-checked-in.';
-
 function formatTime(iso) {
-  if (!iso) return '';
-  try {
-    return new Date(iso).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      timeZone: 'America/Chicago',
-    });
-  } catch {
-    return '';
-  }
+  return iso ? new Date(iso).toLocaleTimeString('en-US', {
+    hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago',
+  }) : '';
+}
+function GuestPhoto({ guest, large = false, onUnavailable }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [guest.photo_url]);
+  const size = large ? { width: 80, height: 90 } : { width: 48, height: 56 };
+  return guest.photo_url && !failed
+    // Signed private URLs are intentionally rendered without the image proxy.
+    // eslint-disable-next-line @next/next/no-img-element
+    ? <img src={guest.photo_url} alt={`${guest.full_name} profile`} onError={() => { setFailed(true); onUnavailable?.(); }}
+      className="shrink-0 rounded-lg object-cover" style={size} />
+    : <span aria-label="Profile photo unavailable" className="shrink-0 rounded-lg flex items-center justify-center text-sm font-bold"
+      style={{ ...size, background: '#292929', color: '#aaa' }}>
+      {(guest.full_name || '?').split(/\s+/).slice(0, 2).map(n => n[0]).join('')}
+    </span>;
 }
 
 export default function TonightSignInsPanel({ onCheckIn }) {
   const [signins, setSignins] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [query, setQuery] = useState('');
+  const [searchResults, setSearchResults] = useState({ query: '', rows: [], truncated: false });
+  const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
+  const [error, setError] = useState('');
+  const [searchError, setSearchError] = useState('');
+  const [note, setNote] = useState('');
   const [lastUpdated, setLastUpdated] = useState(null);
-  const [checkedIn, setCheckedIn] = useState(() => new Set());
-  const [busyId, setBusyId] = useState(null);
   const [selectedGuest, setSelectedGuest] = useState(null);
+  const [busyId, setBusyId] = useState(null);
   const [accessClear, setAccessClear] = useState(false);
   const [editingName, setEditingName] = useState(false);
-  const [rowNote, setRowNote] = useState(null); // { id, message, tone }
-  const previousIds = useRef(new Set());
-  const storageKey = useMemo(() => STORAGE_PREFIX + chicagoShiftDayKey(), []);
-  useEffect(() => { setEditingName(false); }, [selectedGuest?.id]);
+  const [identityConfirmed, setIdentityConfirmed] = useState(false);
+  const [admissionConfirmed, setAdmissionConfirmed] = useState(false);
+  const [photoUnavailable, setPhotoUnavailable] = useState(false);
+  const [checkInError, setCheckInError] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
+  const dialogRef = useRef(null);
+  const searchRef = useRef(null);
+  const requestVersion = useRef(0);
+  const active = useRef(true);
+  const busy = useRef(false);
+  const shift = useRef(null);
+  const trimmed = query.trim();
+  const isSearch = Boolean(trimmed);
 
-  // Rehydrate the checked-in set for tonight so a laptop refresh does not
-  // re-arm every checkbox and re-bump the count. Falls back to the calendar
-  // day key one time so any check-ins that got written under the old
-  // midnight-rolling scheme survive the switch to shift-day keys.
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
+  const load = useCallback(async () => {
+    const version = ++requestVersion.current;
     try {
-      let raw = window.localStorage.getItem(storageKey);
-      if (!raw) {
-        // Migration path: read from the legacy calendar-day key AND from
-        // yesterday's calendar-day key. Between midnight and 6 AM the two
-        // are different, and the bug we just patched wrote yesterday's
-        // check-ins under yesterday's calendar key.
-        const calToday = STORAGE_PREFIX + chicagoCalendarDayKey();
-        const legacy = window.localStorage.getItem(calToday);
-        if (legacy) {
-          raw = legacy;
-          window.localStorage.setItem(storageKey, legacy);
-        } else {
-          // Also try yesterday's calendar-day key, in case a shift is
-          // resuming after the midnight roll.
-          const y = new Date();
-          y.setDate(y.getDate() - 1);
-          const calYesterday = STORAGE_PREFIX + chicagoCalendarDayKey(y);
-          const legacyYesterday = window.localStorage.getItem(calYesterday);
-          if (legacyYesterday) {
-            raw = legacyYesterday;
-            window.localStorage.setItem(storageKey, legacyYesterday);
-          }
-        }
-      }
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) setCheckedIn(new Set(parsed));
-    } catch {
-      // Corrupted entry -- start fresh rather than crash the shift.
+      const res = await fetch('/api/team/trial-pass/today', { cache: 'no-store' });
+      const json = await res.json();
+      if (!active.current || version !== requestVersion.current) return;
+      if (!res.ok) throw new Error(json.error || 'Could not load tonight’s roster.');
+      // A normal refresh replaces the snapshot, including after 6 AM rollover.
+      // The database, not localStorage or the browser clock, owns check-in state.
+      shift.current = json.shiftDay;
+      setSignins(json.signins || []);
+      setError('');
+      setLastUpdated(new Date());
+    } catch (err) {
+      if (active.current && version === requestVersion.current) setError(err.message || 'Network error loading the roster.');
+    } finally {
+      if (active.current && version === requestVersion.current) setLoading(false);
     }
-  }, [storageKey]);
-
-  // Persist every mutation so a refresh in the middle of a rush picks up
-  // exactly where the attendant left off.
-  const persistCheckedIn = useCallback((next) => {
-    if (typeof window === 'undefined') return;
-    try {
-      window.localStorage.setItem(storageKey, JSON.stringify(Array.from(next)));
-    } catch {
-      // Storage quota / private mode -- non-fatal.
-    }
-  }, [storageKey]);
-
-  const handleToggle = useCallback(async (row) => {
-    if (checkedIn.has(row.id) || busyId) return;
-    setBusyId(row.id);
-    setRowNote(null);
-
-    let warning = null;
-    if (typeof onCheckIn === 'function') {
-      try {
-        warning = await onCheckIn(row);
-      } catch (err) {
-        setBusyId(null);
-        setRowNote({ id: row.id, message: err.message || 'Check-in failed. Hold entry.', tone: 'warn' });
-        window.dispatchEvent(new Event('sdg:access-changed'));
-        return;
-      }
-    }
-    // Mark only after server-side restriction and capacity checks succeeded.
-    const next = new Set(checkedIn);
-    next.add(row.id);
-    setCheckedIn(next);
-    persistCheckedIn(next);
-    setSelectedGuest(null);
-
-    setBusyId(null);
-    if (warning) {
-      setRowNote({ id: row.id, message: warning, tone: 'warn' });
-    } else {
-      setRowNote({ id: row.id, message: `${row.full_name} checked in.`, tone: 'ok' });
-    }
-  }, [checkedIn, busyId, onCheckIn, persistCheckedIn]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load(initial) {
-      try {
-        const res = await fetch('/api/team/trial-pass/today', { cache: 'no-store' });
-        const json = await res.json().catch(() => ({}));
-        if (cancelled) return;
-        if (!res.ok) {
-          setError(json.error || 'Could not load tonight’s sign-ins.');
-          return;
-        }
-        setError(null);
-        const list = Array.isArray(json.signins) ? json.signins : [];
-        setSignins(list);
-        setLastUpdated(new Date());
-        // Track ids so subsequent renders can flag the newest arrivals.
-        if (initial) {
-          previousIds.current = new Set(list.map((row) => row.id));
-        }
-      } catch {
-        if (!cancelled) setError('Network error loading tonight’s sign-ins.');
-      } finally {
-        if (!cancelled && initial) setLoading(false);
-      }
-    }
-
-    load(true);
-    const interval = setInterval(() => load(false), POLL_MS);
-    const onFocus = () => load(false);
-    window.addEventListener('focus', onFocus);
-    window.addEventListener('sdg:legal-name-changed', onFocus);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-      window.removeEventListener('focus', onFocus);
-      window.removeEventListener('sdg:legal-name-changed', onFocus);
-    };
   }, []);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return signins;
-    return signins.filter((row) => (row.full_name || '').toLowerCase().includes(q));
-  }, [signins, query]);
+  useEffect(() => {
+    active.current = true;
+    load();
+    const refresh = () => { load(); setRefreshKey(key => key + 1); };
+    const interval = setInterval(refresh, POLL_MS);
+    window.addEventListener('focus', refresh);
+    window.addEventListener('sdg:roster-changed', refresh);
+    window.addEventListener('sdg:legal-name-changed', refresh);
+    return () => {
+      active.current = false;
+      // This is a request-generation counter, not a captured DOM node.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      ++requestVersion.current;
+      clearInterval(interval);
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('sdg:roster-changed', refresh);
+      window.removeEventListener('sdg:legal-name-changed', refresh);
+    };
+  }, [load]);
 
-  const total = signins.length;
-  const shown = filtered.length;
-  const inCount = useMemo(
-    () => signins.reduce((acc, r) => acc + (checkedIn.has(r.id) ? 1 : 0), 0),
-    [signins, checkedIn],
-  );
+  useEffect(() => {
+    const controller = new AbortController();
+    setSearchError('');
+    if (trimmed.length < 2) { setSearching(false); return () => controller.abort(); }
+    setSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/team/trial-pass/today?q=${encodeURIComponent(trimmed)}`, {
+          cache: 'no-store', signal: controller.signal,
+        });
+        const json = await res.json();
+        if (controller.signal.aborted) return;
+        if (!res.ok) throw new Error(json.error || 'Guest search is unavailable.');
+        setSearchResults({ query: trimmed, rows: json.signins || [], truncated: Boolean(json.truncated) });
+      } catch (err) {
+        if (!controller.signal.aborted) setSearchError(err.message || 'Guest search is unavailable.');
+      } finally {
+        if (!controller.signal.aborted) setSearching(false);
+      }
+    }, 250);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [trimmed, refreshKey]);
 
+  const selectGuest = (row) => {
+    setAccessClear(false);
+    setEditingName(false);
+    setIdentityConfirmed(false);
+    setAdmissionConfirmed(false);
+    setPhotoUnavailable(false);
+    setCheckInError('');
+    setSelectedGuest(row);
+  };
+  useEffect(() => {
+    if (selectedGuest && dialogRef.current && !dialogRef.current.open) dialogRef.current.showModal();
+    if (!selectedGuest && dialogRef.current?.open) dialogRef.current.close();
+  }, [selectedGuest]);
+
+  const handleToggle = async (row) => {
+    if (busy.current || row.checked_in_at || !accessClear || editingName
+      || !identityConfirmed || !admissionConfirmed || photoUnavailable || row.admission_reason) return;
+    busy.current = true;
+    setBusyId(subjectKey(row));
+    setCheckInError('');
+    try {
+      const result = await onCheckIn(row);
+      if (!result?.row?.checked_in_at) throw new Error('Check-in was not confirmed. Hold entry and refresh.');
+      // Discard every GET started before this commit. Use the server timestamp.
+      ++requestVersion.current;
+      const changedShift = shift.current !== result.shiftDay;
+      shift.current = result.shiftDay;
+      setSignins(previous => mergeArrivals(changedShift ? [] : previous, [result.row]));
+      setQuery('');
+      setSelectedGuest(null);
+      setNote(result.alreadyCheckedIn ? `${row.full_name} is already checked in tonight.`
+        : `${row.full_name} checked in. Added to the top of tonight’s roster.`);
+      window.dispatchEvent(new Event('sdg:roster-changed'));
+    } catch (err) {
+      setCheckInError(err.message || 'Check-in failed. Hold entry.');
+      setAccessClear(false);
+      window.dispatchEvent(new Event('sdg:access-changed'));
+    } finally {
+      busy.current = false;
+      setBusyId(null);
+    }
+  };
+
+  const filtered = isSearch ? (searchResults.query === trimmed ? searchResults.rows : []) : signins;
+  const inCount = signins.filter(row => row.checked_in_at).length;
+  const waiting = isSearch ? searching || (!searchError && trimmed.length >= 2 && searchResults.query !== trimmed) : loading;
+  const visibleError = isSearch ? searchError : error;
   return (
-    <section
-      className="rounded-2xl border overflow-hidden flex flex-col"
-      style={{ background: '#111', borderColor: 'rgba(255,255,255,0.08)', minHeight: 280 }}
-    >
-      <div
-        className="px-5 py-4 border-b flex items-baseline justify-between gap-3 flex-wrap"
-        style={{ borderColor: 'rgba(255,255,255,0.06)' }}
-      >
-        <div>
-          <div className="text-[11px] font-bold tracking-[0.16em] uppercase" style={{ color: '#8a8a8a' }}>
-            Tonight’s Sign-Ins
-          </div>
-          <h2 className="text-[20px] font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Trial Pass roster
-          </h2>
-        </div>
-        <div className="text-[12px] tabular-nums" style={{ color: '#8a8a8a' }}>
-          <span style={{ color: '#7CFC9B' }}>{inCount} in</span>
-          {' · '}{total - inCount} to come
-          {lastUpdated && (
-            <>
-              {' · '}updated {formatTime(lastUpdated.toISOString())}
-            </>
-          )}
+    <section className="rounded-2xl border overflow-hidden flex flex-col"
+      style={{ background: '#111', color: '#f5f5f5', borderColor: '#272727', minHeight: 560 }}>
+      <div className="px-5 py-4 border-b" style={{ borderColor: '#272727' }}>
+        <div className="text-[11px] font-bold tracking-[0.14em] uppercase" style={{ color: '#aaa' }}>Front room · Arrival roster</div>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h2 className="text-[20px] font-bold">Sign-ins &amp; guest search</h2>
+          <span className="text-[12px]" style={{ color: '#7cfc9b' }}>{inCount} checked in</span>
         </div>
       </div>
-
       <div className="px-5 pt-4 pb-2">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="fd-input"
-          placeholder="Search name…"
-          autoComplete="off"
-          autoCorrect="off"
-          spellCheck={false}
-          aria-label="Search tonight’s sign-ins"
-        />
+        <div className="flex gap-2">
+          <input ref={searchRef} type="search" value={query} maxLength={120}
+            onChange={e => { setQuery(e.target.value); setNote(''); }}
+            className="fd-input min-w-0" placeholder="Search all guests by name…"
+            autoComplete="off" autoCorrect="off" spellCheck={false} aria-label="Search all guests by name" />
+          {query && <button type="button" className="px-3 rounded-lg text-sm border border-white/20"
+            onClick={() => { setQuery(''); searchRef.current?.focus(); }}>Clear</button>}
+        </div>
+        <p className="text-[12px] mt-2 leading-relaxed" style={{ color: '#aaa' }}>
+          Search existing guests and members, not just tonight’s sign-ins.
+        </p>
       </div>
-
-      {(error || rowNote) && (
-        <div
-          className="mx-5 mt-1 mb-2 px-3 py-2 rounded-lg text-[13px] font-semibold"
-          style={{
-            color: error || rowNote?.tone === 'warn' ? '#ff8a8a' : '#7CFC9B',
-            background: error || rowNote?.tone === 'warn'
-              ? 'rgba(255,138,138,0.08)'
-              : 'rgba(124,252,155,0.08)',
-          }}
-          aria-live="polite"
-        >
-          {error || rowNote?.message}
-        </div>
-      )}
-
-      {selectedGuest && <div className="px-5 pb-3">
-        <div className="flex items-center justify-between gap-2">
-          <strong className="text-sm">{selectedGuest.full_name}</strong>
-          <button type="button" className="text-sm underline" onClick={() => setSelectedGuest(null)}>Close details</button>
-        </div>
-        <EditLegalName key={selectedGuest.id} subject={{ kind: 'trial_pass', id: selectedGuest.id }}
-          fullName={selectedGuest.full_name} onEditing={setEditingName} disabled={Boolean(busyId)}
-          onSaved={(fullName) => {
-            setAccessClear(false);
-            setSelectedGuest(prev => prev?.id === selectedGuest.id ? { ...prev, full_name: fullName } : prev);
-            setSignins(prev => prev.map(row => row.id === selectedGuest.id ? { ...row, full_name: fullName } : row));
-          }} />
-        <AccessCheck key={selectedGuest.id} subject={{ kind: 'trial_pass', id: selectedGuest.id }} onStatus={setAccessClear} />
-        {!checkedIn.has(selectedGuest.id) && <button type="button"
-          className="w-full rounded-lg bg-green-300 text-black py-2 font-bold disabled:opacity-40"
-          disabled={!accessClear || editingName || Boolean(busyId)} onClick={() => handleToggle(selectedGuest)}>
-          {busyId ? 'Checking in…' : 'Check in guest'}
-        </button>}
+      {(visibleError || note) && <div className="mx-5 my-2 p-3 rounded-lg text-[13px]" role={visibleError ? 'alert' : 'status'}
+        style={{ color: visibleError ? '#ff9e9e' : '#7cfc9b', background: visibleError ? '#301919' : '#15271b' }}>
+        {visibleError || note}
       </div>}
-      <div className="flex-1 px-5 pb-5 pt-1 overflow-y-auto">
-        {loading ? (
-          <div className="text-[14px] py-10 text-center" style={{ color: '#8a8a8a' }}>
-            Loading…
-          </div>
-        ) : total === 0 ? (
-          <div className="text-[14px] py-10 text-center" style={{ color: '#8a8a8a' }}>
-            No sign-ins yet tonight. Guests should scan the QR code at the door.
-          </div>
-        ) : shown === 0 ? (
-          <div className="text-[14px] py-10 text-center" style={{ color: '#8a8a8a' }}>
-            Nobody matches that name. Ask the guest to spell it, or confirm they submitted the form.
-          </div>
-        ) : (
-          <ul className="space-y-2">
-            {filtered.map((row, index) => {
-              const isIn = checkedIn.has(row.id);
-              const isBusy = busyId === row.id;
-              return (
-                <li
-                  key={row.id}
-                  className="flex items-center gap-3 px-3 py-2 rounded-xl"
-                  style={{
-                    background: isIn ? 'rgba(124,252,155,0.06)' : 'rgba(255,255,255,0.03)',
-                    opacity: isIn ? 0.7 : 1,
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => { if (selectedGuest?.id !== row.id) setAccessClear(false); setSelectedGuest(row); }}
-                    disabled={isIn || isBusy}
-                    aria-label={isIn ? `${row.full_name} checked in` : `Check in ${row.full_name}`}
-                    aria-pressed={isIn}
-                    className="shrink-0 flex items-center justify-center rounded-lg transition-colors"
-                    style={{
-                      width: 32,
-                      height: 32,
-                      background: isIn ? '#7CFC9B' : 'transparent',
-                      border: isIn
-                        ? '1px solid #7CFC9B'
-                        : '1px solid rgba(255,255,255,0.25)',
-                      cursor: isIn || isBusy ? 'default' : 'pointer',
-                    }}
-                  >
-                    {isIn ? (
-                      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                        <path
-                          d="M4 10.5 L8 14.5 L16 6.5"
-                          stroke="#0a0a0a"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    ) : isBusy ? (
-                      <span
-                        className="inline-block rounded-full"
-                        style={{
-                          width: 12,
-                          height: 12,
-                          border: '2px solid rgba(255,255,255,0.35)',
-                          borderTopColor: '#f5f5f5',
-                          animation: 'fd-spin 0.7s linear infinite',
-                        }}
-                      />
-                    ) : null}
-                  </button>
-                  <span
-                    className="text-[12px] font-bold tabular-nums shrink-0"
-                    style={{ color: '#8a8a8a', minWidth: 22, textAlign: 'right' }}
-                  >
-                    {index + 1}
-                  </span>
-                  <button type="button"
-                    onClick={() => { if (selectedGuest?.id !== row.id) setAccessClear(false); setSelectedGuest(row); }}
-                    className="flex-1 text-left text-[15px] font-semibold truncate"
-                    style={{
-                      color: isIn ? '#8a8a8a' : '#f5f5f5',
-                      textDecoration: isIn ? 'line-through' : 'none',
-                    }}
-                  >
-                    {row.full_name}
-                  </button>
-                  <span
-                    className="text-[12px] tabular-nums shrink-0"
-                    style={{ color: '#8a8a8a' }}
-                  >
-                    {formatTime(row.issued_at)}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+      <div className="px-5 pt-3 pb-2 flex justify-between gap-3 text-[11px]" style={{ color: '#aaa' }}>
+        <span className="font-bold uppercase tracking-[0.12em]">{isSearch ? 'All matching guests' : 'Tonight’s sign-ins'}</span>
+        <span>{!waiting && filtered.length} {!waiting && (isSearch ? 'matches' : 'people')}</span>
       </div>
+      <div className="flex-1 px-3 pb-3 overflow-y-auto" aria-busy={waiting}>
+        {waiting ? <p className="py-10 text-center text-sm" style={{ color: '#aaa' }}>Loading…</p>
+          : isSearch && trimmed.length < 2 ? <p className="py-10 text-center text-sm">Enter at least two letters to search all guests.</p>
+          : visibleError ? <p className="py-10 text-center text-sm" style={{ color: '#aaa' }}>Hold entry until the roster can be refreshed.</p>
+          : filtered.length === 0 ? <p className="py-10 px-2 text-center text-sm" style={{ color: '#aaa' }}>
+            {isSearch ? 'No guests found. Check the spelling or help the guest sign up.'
+              : 'No sign-ins yet tonight. New Trial Pass signups will appear here, or search for a returning guest.'}
+          </p>
+          : <ul>
+            {filtered.map(row => {
+              const isIn = Boolean(row.checked_in_at);
+              const isBusy = busyId === subjectKey(row);
+              return <li key={subjectKey(row)} className="flex items-center gap-3 px-2 py-3 border-t" style={{ borderColor: '#282828' }}>
+                <GuestPhoto guest={row} />
+                <div className="flex-1 min-w-0">
+                  <button type="button" className="text-left text-[15px] font-semibold break-words"
+                    onClick={() => selectGuest(row)}>{row.full_name}</button>
+                  <div className="text-[11px] mt-1 leading-relaxed" style={{ color: '#aaa' }}>
+                    {row.label}{!isSearch && ` · ${row.activity_kind === 'check_in' ? 'Checked in' : 'Signed up'} ${formatTime(row.activity_at)}`}
+                  </div>
+                  {!isIn && row.admission_reason && <span className="text-[11px]" style={{ color: '#ffc269' }}>Review admission</span>}
+                </div>
+                <button type="button" onClick={() => selectGuest(row)} disabled={isIn || isBusy}
+                  aria-label={isIn ? `${row.full_name} checked in` : `${row.admission_reason ? 'Review' : 'Check in'} ${row.full_name}`}
+                  aria-pressed={isIn} className="shrink-0 rounded-lg px-3 py-2 text-[12px] font-semibold border"
+                  style={{ minHeight: 44, borderColor: '#363636', color: isIn ? '#7cfc9b' : '#f5f5f5' }}>
+                  {isIn ? '✓ In' : isBusy ? 'Checking…' : row.admission_reason ? 'Review' : 'Check in'}
+                </button>
+              </li>;
+            })}
+          </ul>}
+      </div>
+      <div className="mx-5 py-3 border-t text-[11px] leading-relaxed" style={{ borderColor: '#272727', color: '#aaa' }}>
+        {isSearch ? <>
+          {searchResults.truncated && <strong className="block" style={{ color: '#ffc269' }}>More matches exist. Enter more of the name.</strong>}
+          Search does not change the roster. Check-in adds the guest at the top.
+        </> : <>Newest signup or check-in first. Later arrivals always appear above earlier ones.
+          {lastUpdated && <span className="block">Updated {formatTime(lastUpdated.toISOString())}</span>}</>}
+      </div>
+
+      <dialog ref={dialogRef} aria-labelledby="roster-guest-title" className="roster-dialog"
+        onCancel={e => { e.preventDefault(); if (!busy.current) setSelectedGuest(null); }}>
+        {selectedGuest && <>
+          <div className="flex items-center gap-4 mb-4">
+            <GuestPhoto key={subjectKey(selectedGuest)} guest={selectedGuest} large onUnavailable={() => setPhotoUnavailable(true)} />
+            <div><div className="text-[11px] uppercase tracking-widest" style={{ color: '#aaa' }}>Confirm guest</div>
+              <h3 id="roster-guest-title" className="text-xl font-bold">{selectedGuest.full_name}</h3>
+              <p className="text-sm mt-1" style={{ color: '#aaa' }}>{selectedGuest.label}</p></div>
+          </div>
+          {selectedGuest.admission_reason && <p className="p-3 rounded-lg text-sm mb-3" style={{ background: '#302719', color: '#ffce82' }}>{selectedGuest.admission_reason}</p>}
+          {photoUnavailable && <p role="alert" className="text-sm" style={{ color: '#ff9e9e' }}>Photo could not load. Close and reopen the guest after refreshing.</p>}
+          <EditLegalName key={`edit:${subjectKey(selectedGuest)}`} subject={{ kind: selectedGuest.kind, id: selectedGuest.id }}
+            fullName={selectedGuest.full_name} onEditing={setEditingName} disabled={Boolean(busyId)}
+            onSaved={fullName => { setSelectedGuest(previous => ({ ...previous, full_name: fullName })); setAccessClear(false); setIdentityConfirmed(false); }} />
+          <AccessCheck key={`access:${subjectKey(selectedGuest)}`} subject={{ kind: selectedGuest.kind, id: selectedGuest.id }} onStatus={setAccessClear} />
+          {selectedGuest.checked_in_at ? <p className="text-sm mt-3" style={{ color: '#7cfc9b' }}>Already checked in tonight.</p> : <>
+            <label className="flex items-start gap-3 text-sm mt-4 leading-relaxed">
+              <input type="checkbox" className="mt-1 shrink-0" checked={identityConfirmed} disabled={Boolean(busyId)}
+                onChange={e => setIdentityConfirmed(e.target.checked)} />I have matched the profile photo to the person at the door.
+            </label>
+            <label className="flex items-start gap-3 text-sm mt-3 leading-relaxed">
+              <input type="checkbox" className="mt-1 shrink-0" checked={admissionConfirmed} disabled={Boolean(busyId)}
+                onChange={e => setAdmissionConfirmed(e.target.checked)} />I have verified any required ticket or entry payment.
+            </label>
+            <p className="text-[11px] mt-2" style={{ color: '#aaa' }}>This records arrival and capacity. It does not redeem a ticket or activate a Trial Pass.</p>
+          </>}
+          {checkInError && <p role="alert" className="text-sm mt-3" style={{ color: '#ff9e9e' }}>{checkInError}</p>}
+          <div className="flex gap-3 mt-5">
+            <button type="button" disabled={Boolean(busyId)} className="flex-1 border border-white/20 rounded-lg p-3"
+              onClick={() => setSelectedGuest(null)}>Close</button>
+            {!selectedGuest.checked_in_at && <button type="button" className="flex-1 rounded-lg p-3 font-bold disabled:opacity-40"
+              style={{ background: '#7cfc9b', color: '#071009' }}
+              disabled={!accessClear || editingName || Boolean(busyId) || !identityConfirmed || !admissionConfirmed || photoUnavailable || Boolean(selectedGuest.admission_reason)}
+              onClick={() => handleToggle(selectedGuest)}>{busyId ? 'Checking in…' : 'Check in guest'}</button>}
+          </div>
+        </>}
+      </dialog>
       <style jsx>{`
-        @keyframes fd-spin {
-          to { transform: rotate(360deg); }
-        }
+        .roster-dialog { color: #f5f5f5; background: #171717; border: 1px solid #424242;
+          border-radius: 16px; padding: 24px; width: min(480px, calc(100vw - 32px));
+          margin: auto; max-height: calc(100dvh - 32px); overflow-y: auto; }
+        .roster-dialog::backdrop { background: rgba(0,0,0,.75); }
+        .roster-dialog input[type=checkbox] { width: 18px; height: 18px; accent-color: #7cfc9b; }
       `}</style>
     </section>
   );
