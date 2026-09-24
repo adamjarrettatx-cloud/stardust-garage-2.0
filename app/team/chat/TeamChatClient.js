@@ -676,10 +676,8 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
     });
   }, []);
 
-  const handleImageSelect = useCallback((e) => {
-    const file = e.target.files?.[0];
-    e.target.value = ''; // allow re-picking the same file later
-    if (!file) return;
+  const stageImage = useCallback((file) => {
+    if (!file || sending || uploadingImage) return;
     const { valid, error } = validateChatImageFile(file);
     if (!valid) {
       setImageError(error);
@@ -688,7 +686,13 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
     setImageError(null);
     clearPendingImage();
     setPendingImage({ file, previewUrl: URL.createObjectURL(file) });
-  }, [clearPendingImage]);
+  }, [clearPendingImage, sending, uploadingImage]);
+
+  const handleImageSelect = useCallback((e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-picking the same file later
+    stageImage(file);
+  }, [stageImage]);
 
   // ---- click-to-reply -------------------------------------------------------
   const scrollToMessage = useCallback((messageId) => {
@@ -1440,7 +1444,7 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingImage}
+                  disabled={sending || uploadingImage}
                   className="px-4 py-3 rounded-full text-[16px] leading-none border transition-colors disabled:opacity-40"
                   style={{ borderColor: t.borderStrong, color: t.muted }}
                   aria-label="Attach an image"
@@ -1453,6 +1457,7 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
                   entities={draftEntities}
                   onChange={handleComposerChange}
                   onSubmit={sendMessage}
+                  onImagePaste={stageImage}
                   userCandidates={mentionCandidates}
                   eventCandidates={eventOptions}
                   onEventSearch={searchEventsRemote}
