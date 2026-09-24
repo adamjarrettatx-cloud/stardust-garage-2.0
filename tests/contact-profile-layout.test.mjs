@@ -62,9 +62,15 @@ test('relationship editing preserves the canonical legacy-aware helpers and rest
 test('administrator and owner actions retain their gates', () => {
   assert.match(detail, /canArchive: isAdmin/);
   assert.match(detail, /portalPanel: isAdmin \?/);
-  assert.match(detail, /isAdmin && isContractor && <TaxProfileSection/);
+  assert.match(detail, /isContractor && <TaxProfileSection/);
+  const tax = read('[id]/TaxProfileSection.js');
+  assert.match(tax, /data\?\.canReview && data\.submissions/);
+  const endpoint = fs.readFileSync(new URL('../app/api/admin/contacts/[id]/tax-profile/route.js', import.meta.url), 'utf8');
+  assert.match(endpoint, /await isW9Reviewer\(admin, user\.id\)/);
+  assert.match(endpoint, /if \(canReview\)/);
+  assert.match(endpoint, /await requireAdminMfa\(\)/);
   assert.match(detail, /isOwner && <PayoutProfileSection/);
-  assert.match(detail, /showTaxStatus: isAdmin && isContractor/);
+  assert.match(detail, /showTaxStatus: isContractor/);
   assert.match(read('[id]/page.js'), /await requireTeam\(\)/);
   assert.match(read('[id]/page.js'), /isOwner=\{isAdmin && user\?\.email === OWNER_EMAIL\}/);
 });
@@ -82,7 +88,8 @@ test('existing save, audit, legal validation and create-contact path are retaine
 
 test('tax changes update both the panel and overview readiness status', () => {
   const tax = read('[id]/TaxProfileSection.js');
-  assert.equal((tax.match(/onChange\?\.\(saved\)/g) || []).length, 3);
+  assert.match(tax, /onChange\?\.\(\{ w9_on_file: result\.status === 'approved', status: result\.status \}\)/);
+  assert.match(tax, /await load\(\); router\.refresh\(\)/);
   assert.match(detail, /onChange=\{setTaxProfile\}/);
   assert.match(detail, /!taxProfile\?\.w9_on_file/);
 });

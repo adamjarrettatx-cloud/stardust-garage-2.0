@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { contactTypeLabel } from '@/lib/contact-helpers';
+import { contactTypeLabel, isContractorContact } from '@/lib/contact-helpers';
 
 // The searchable "pick a Contact" control, shared by every admin surface that
 // attaches a contact to something (the event form's "who is this event with"
@@ -21,10 +21,12 @@ export default function ContactSelect({
   // e.g. CONTRACTOR_CONTACT_TYPES for the Artist Lineup panel. null/omitted
   // shows every contact, matching prior behavior.
   contactTypeIn = null,
+  requireApprovedW9 = false,
 }) {
   const [contacts, setContacts] = useState([]);
   const [loadError, setLoadError] = useState('');
   const [search, setSearch] = useState('');
+  const [w9Gate, setW9Gate] = useState({ enabled: true, approvedContactIds: [] });
 
   useEffect(() => {
     let cancelled = false;
@@ -40,11 +42,19 @@ export default function ContactSelect({
         return;
       }
       setContacts(data || []);
+      if (requireApprovedW9) {
+        try {
+          const response = await fetch('/api/admin/w9/readiness', { cache: 'no-store' });
+          if (!response.ok) throw new Error('W-9 readiness unavailable');
+          const readiness = await response.json();
+          if (!cancelled) setW9Gate(readiness);
+        } catch { if (!cancelled) setLoadError('W-9 approval could not be verified. Refresh before booking.'); }
+      }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [requireApprovedW9]);
 
   const selectable = useMemo(
     () =>
@@ -72,6 +82,7 @@ export default function ContactSelect({
   }, [selectable, search, value]);
 
   const selected = contacts.find((c) => c.id === value) || null;
+  const needsApproval = c => requireApprovedW9 && isContractorContact(c.contact_type) && w9Gate.enabled && !w9Gate.approvedContactIds.includes(c.id);
 
   const inputStyle = {
     background: 'var(--auth-input-bg)',
@@ -106,10 +117,11 @@ export default function ContactSelect({
           — Select a contact —
         </option>
         {visibleContacts.map((c) => (
-          <option key={c.id} value={c.id}>
+          <option key={c.id} value={c.id} disabled={needsApproval(c)}>
             {c.display_name}
             {c.company ? ` · ${c.company}` : ''}
             {c.contact_type?.length ? ` (${c.contact_type.map(contactTypeLabel).join(', ')})` : ''}
+            {needsApproval(c) ? ' · W-9 approval required' : ''}
           </option>
         ))}
       </select>

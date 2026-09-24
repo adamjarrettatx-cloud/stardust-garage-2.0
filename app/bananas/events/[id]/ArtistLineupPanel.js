@@ -374,7 +374,8 @@ export default function ArtistLineupPanel({ eventId }) {
               onChange={setAddContactId}
               excludeIds={bookedContactIds}
               contactTypeIn={CONTRACTOR_CONTACT_TYPES}
-              hint="Only DJ / artist / performer contacts show here. Contacts already in this lineup are hidden — edit their booking instead."
+              requireApprovedW9
+              hint="Only artists with an approved W-9 can be added. Contacts already in this lineup are hidden."
             />
           </div>
           <BookingForm

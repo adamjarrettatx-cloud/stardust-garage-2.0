@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  outputFileTracingIncludes: {
+    '/api/portal/w9': ['./lib/w9/assets/fw9.pdf'],
+    '/api/portal/w9/blank': ['./lib/w9/assets/fw9.pdf'],
+  },
   async redirects() {
     return [
       // Cowork merged into Memberships — preserve any old links.

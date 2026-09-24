@@ -39,11 +39,11 @@ export default async function ContactDetailPage({ params }) {
   // Same admin gate as partner_profiles above, and only fetched at all for
   // contractor-type contacts (DJ/artist/performer) since that's the only place
   // the tax profile section renders.
-  const taxProfile = isAdmin && isContractorContact(contact.contact_type)
+  const taxProfile = isContractorContact(contact.contact_type)
     ? (
         await supabase
           .from('contact_tax_profiles')
-          .select('id, contact_id, entity_type, w9_on_file, w9_document_id, w9_received_at, notes, updated_at')
+          .select('w9_on_file')
           .eq('contact_id', id)
           .maybeSingle()
       ).data

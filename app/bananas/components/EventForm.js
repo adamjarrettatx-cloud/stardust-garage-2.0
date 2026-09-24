@@ -234,7 +234,9 @@ export default function EventForm({
       : await supabase.from('events').insert(payload).select().single();
 
     if (saveError) {
-      setError('Save failed: ' + saveError.message);
+      setError(saveError.message?.includes('w9_approval_required')
+        ? 'This artist needs an approved W-9 before they can be added to an event.'
+        : 'Save failed: ' + saveError.message);
       setSaving(false);
       return;
     }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAdminMfa } from '@/lib/auth-helpers';
+import { taxDocumentAccess } from '@/lib/w9/server';
 import {
   createAdminClient, audit, buildStoragePath, sha256,
   isAllowedMime, MAX_BYTES, DOCUMENT_BUCKET,
@@ -26,6 +27,9 @@ export async function POST(request, { params }) {
   if (file.size > MAX_BYTES)               return NextResponse.json({ error: 'File exceeds 100 MB limit.' }, { status: 400 });
 
   const admin = createAdminClient();
+  if (!await taxDocumentAccess(admin, user.id, id, { write: true })) {
+    return NextResponse.json({ error: 'This tax document is restricted or immutable.' }, { status: 403 });
+  }
 
   // Ensure document exists
   const { data: doc } = await admin.from('documents').select('id').eq('id', id).maybeSingle();

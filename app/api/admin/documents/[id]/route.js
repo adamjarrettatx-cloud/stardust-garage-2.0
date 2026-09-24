@@ -3,6 +3,7 @@ import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient, audit, DOCUMENT_BUCKET, DOCUMENT_CATEGORIES } from '@/lib/document-helpers';
 import { assessContractDeletionImpact, eventHasFinancialInputs } from '@/lib/contract-financial-impact';
 import { resolveEventContract } from '@/lib/event-financials-data';
+import { taxDocumentAccess, isW9Reviewer } from '@/lib/w9/server';
 
 export const runtime = 'nodejs';
 
@@ -59,7 +60,7 @@ async function loadDeletionImpact(admin, documentId) {
 // can warn before removing a financially linked contract. Kept as a query
 // branch on the base route to avoid adding a new file.
 export async function GET(request, { params }) {
-  const { unauthorized, reason } = await requireAdminMfa();
+  const { user, unauthorized, reason } = await requireAdminMfa();
   if (unauthorized) return NextResponse.json({ error: 'Unauthorized', reason }, { status: 401 });
   const { id } = await params;
   if (!UUID.test(id)) return NextResponse.json({ error: 'Bad id' }, { status: 400 });
@@ -70,6 +71,7 @@ export async function GET(request, { params }) {
   }
 
   const admin = createAdminClient();
+  if (!await taxDocumentAccess(admin, user.id, id)) return NextResponse.json({ error: 'Document access denied.' }, { status: 403 });
   const impact = await loadDeletionImpact(admin, id);
   return NextResponse.json({ ok: true, impact });
 }
@@ -100,6 +102,10 @@ export async function PATCH(request, { params }) {
   else if (typeof body.event_id === 'string' && UUID.test(body.event_id)) patch.event_id = body.event_id;
 
   const admin = createAdminClient();
+  if (!await taxDocumentAccess(admin, user.id, id, { write: true })) return NextResponse.json({ error: 'This tax document is restricted or immutable.' }, { status: 403 });
+  const { data: existingDoc } = await admin.from('documents').select('category').eq('id', id).maybeSingle();
+  if (existingDoc?.category === 'tax' && patch.category && patch.category !== 'tax') return NextResponse.json({ error: 'Tax documents cannot be reclassified.' }, { status: 409 });
+  if (patch.category === 'tax' && !await isW9Reviewer(admin, user.id)) return NextResponse.json({ error: 'Tax document access is restricted.' }, { status: 403 });
 
   if (Object.keys(patch).length) {
     const { error } = await admin.from('documents').update(patch).eq('id', id);
@@ -131,6 +137,7 @@ export async function DELETE(request, { params }) {
   if (!UUID.test(id)) return NextResponse.json({ error: 'Bad id' }, { status: 400 });
 
   const admin = createAdminClient();
+  if (!await taxDocumentAccess(admin, user.id, id, { write: true })) return NextResponse.json({ error: 'This tax document is restricted or immutable.' }, { status: 403 });
 
   // Guard: if this document is a contract feeding event financial calculations,
   // require an explicit confirmation flag. This prevents silently removing

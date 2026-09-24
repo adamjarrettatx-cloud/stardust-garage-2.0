@@ -22,6 +22,7 @@ async function loadContract(admin, documentId) {
     .eq('id', documentId)
     .maybeSingle();
   if (!doc) return { doc: null, contract: null };
+  if (doc.category !== 'contracts') return { doc: null, contract: null };
   const { data: contract } = await admin
     .from('document_contracts')
     .select('*')

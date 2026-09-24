@@ -26,7 +26,8 @@ export default function ContactProfileLayout({
 }) {
   const formId = useId();
   const organization = values.profile_kind === 'organization';
-  const [section, setSection] = useState('overview');
+  const [section, setSection] = useState(profile.initialTab || 'overview');
+  useEffect(() => { if (profile.initialTab) setSection(profile.initialTab); }, [profile.initialTab]);
   const [photoDraft, setPhotoDraft] = useState('');
   const [photoError, setPhotoError] = useState('');
   const [typeDraft, setTypeDraft] = useState([]);
@@ -267,9 +268,9 @@ export default function ContactProfileLayout({
                         <button type="button" className={styles.textButton} onClick={() => goTo('legal')}>{profile.organizerGaps.length ? 'Complete signing details' : 'View signing details'}</button>
                       </div>}
                       {profile.showTaxStatus && <div className={profile.w9Missing ? styles.warningBox : styles.readinessItem}>
-                        <h3 className={profile.w9Missing ? styles.warningText : styles.ready}>{profile.w9Missing ? 'W-9 missing' : 'W-9 on file'}</h3>
-                        <p className={styles.hint}>{profile.w9Missing ? 'Needed for 1099 reporting, not for pay requests.' : 'Signed tax document on file.'}</p>
-                        <button type="button" className={styles.textButton} onClick={() => goTo('tax')}>{profile.w9Missing ? 'Upload W-9' : 'View tax profile'}</button>
+                        <h3 className={profile.w9Missing ? styles.warningText : styles.ready}>{profile.w9Status === 'pending' ? 'W-9 awaiting review' : profile.w9Missing ? 'W-9 approval required' : 'W-9 approved'}</h3>
+                        <p className={styles.hint}>{profile.w9Missing ? 'Approval is required before booking or requesting pay.' : 'Signed W-9 approved and securely retained.'}</p>
+                        <button type="button" className={styles.textButton} onClick={() => goTo('tax')}>View W-9 status</button>
                       </div>}
                     </div>
                   </section>

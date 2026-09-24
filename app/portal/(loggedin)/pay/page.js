@@ -3,6 +3,8 @@ import { requirePartner } from '@/lib/auth-helpers';
 import { createClient } from '@/lib/supabase/server';
 import PayBookingCard from './PayBookingCard';
 import { profileCapabilities } from '@/lib/profile-capabilities';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { w9BookingCheck } from '@/lib/w9/server';
 
 export const revalidate = 0;
 
@@ -24,6 +26,7 @@ export default async function PartnerPayPage() {
   }
 
   const bookings = (data || []).filter((b) => b.status !== 'cancelled');
+  const w9Approved = !(await w9BookingCheck(createAdminClient(), partner.contact_id));
 
   return (
     <main className="max-w-[720px] mx-auto px-5 sm:px-6 py-10 sm:py-14">
@@ -41,6 +44,7 @@ export default async function PartnerPayPage() {
         you&rsquo;re cleared to be paid — we&rsquo;ll follow up separately on how the money actually moves.
       </p>
 
+      {!w9Approved && <p className="mb-6 text-sm" role="status">An approved W-9 is required before booking or requesting pay. <a className="underline" href="/account/profile#w9">View your W-9 status</a>.</p>}
       {bookings.length === 0 ? (
         <div className="rounded-[16px] border p-8 sm:p-12 text-center" style={{ background: '#141414', borderColor: 'rgba(255,255,255,0.06)' }}>
           <p className="text-[15px] leading-[1.6]" style={{ color: '#a0a0a0' }}>
@@ -50,7 +54,7 @@ export default async function PartnerPayPage() {
       ) : (
         <div className="space-y-4">
           {bookings.map((booking) => (
-            <PayBookingCard key={booking.id} booking={booking} />
+            <PayBookingCard key={booking.id} booking={booking} w9Approved={w9Approved} />
           ))}
         </div>
       )}

@@ -5,6 +5,7 @@ import { computeBookingAmountCents } from '@/lib/booking-helpers';
 import { isPayRequestEligible } from '@/lib/pay-request-helpers';
 import { notifyAdminsPayRequested } from '@/lib/pay-request-notify';
 import { profileCapabilities } from '@/lib/profile-capabilities';
+import { w9BookingCheck } from '@/lib/w9/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -57,6 +58,9 @@ export async function POST(request, { params }) {
       { status: 400 }
     );
   }
+
+  const w9Error = await w9BookingCheck(admin, partner.contact_id);
+  if (w9Error) return w9Error;
 
   const amountCents = computeBookingAmountCents(booking);
   if (!amountCents || amountCents <= 0) {

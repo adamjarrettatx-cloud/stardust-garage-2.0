@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isContractorContact } from '@/lib/contact-helpers';
+import { w9BookingCheck } from '@/lib/w9/server';
 import { buildBookingPayload, loadEventBookings, auditBooking } from '@/lib/booking-helpers';
 
 export const runtime = 'nodejs';
@@ -74,6 +75,9 @@ export async function POST(request, { params }) {
       { status: 400 }
     );
   }
+
+  const w9Error = await w9BookingCheck(admin, contactId);
+  if (w9Error) return w9Error;
 
   const { data: created, error: insertError } = await admin
     .from('event_bookings')
