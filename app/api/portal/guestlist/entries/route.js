@@ -12,6 +12,7 @@ import {
 } from '@/lib/guestlist-helpers';
 import { sendGuestlistInvite } from '@/lib/email';
 import { resolveSiteUrl } from '@/lib/site-url';
+import { profileCapabilities } from '@/lib/profile-capabilities';
 
 export const runtime = 'nodejs';
 
@@ -44,9 +45,12 @@ export async function POST(request) {
   try {
     // Pass `request` so the same handler serves both the web portal (session
     // cookies) and the mobile app (Authorization: Bearer <supabase jwt>).
-    const { user, unauthorized } = await requirePartner(request);
+    const { user, partner, unauthorized } = await requirePartner(request);
     if (unauthorized) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (!profileCapabilities(partner?.contact_type).guestList) {
+      return NextResponse.json({ error: 'Guest list access is not available.' }, { status: 403 });
     }
 
     const body = await request.json().catch(() => null);

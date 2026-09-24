@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getRequestUser } from '@/lib/auth-helpers';
+import { isRestrictedStaffRole, partnerState } from '@/lib/partner-access';
 
 export const runtime = 'nodejs';
 
@@ -24,11 +25,14 @@ export async function POST(request) {
     }
 
     const body = await request.json().catch(() => null);
-    const fullName = body?.fullName?.trim();
-    const photoPath = body?.photoPath?.trim();
+    const fullName = typeof body?.fullName === 'string' ? body.fullName.trim() : '';
+    const photoPath = typeof body?.photoPath === 'string' ? body.photoPath.trim() : '';
 
     if (!fullName) {
       return NextResponse.json({ error: 'Your name is required.' }, { status: 400 });
+    }
+    if (fullName.length > 120) {
+      return NextResponse.json({ error: 'Your name must be 120 characters or fewer.' }, { status: 400 });
     }
     // Same rule approve-member applies to members: no photo, no active profile.
     if (!photoPath) {
@@ -42,14 +46,25 @@ export async function POST(request) {
 
     const admin = createAdminClient();
 
+    const { data: staff, error: staffError } = await admin
+      .from('team_members').select('role').eq('user_id', user.id).maybeSingle();
+    if (staffError || isRestrictedStaffRole(staff?.role)) {
+      return NextResponse.json({ error: 'Partner activation is not available for this account.' }, { status: 403 });
+    }
     const { data: profile } = await admin
       .from('partner_profiles')
-      .select('id')
+      .select('id, is_active, activated_at')
       .eq('user_id', user.id)
       .maybeSingle();
 
     if (!profile) {
       return NextResponse.json({ error: 'No partner invite found for this account.' }, { status: 404 });
+    }
+    if (partnerState(profile) === 'disabled') {
+      return NextResponse.json({ error: 'Partner access has been disabled. Contact Stardust Garage.' }, { status: 403 });
+    }
+    if (partnerState(profile) === 'active') {
+      return NextResponse.json({ ok: true });
     }
 
     const { error: updateErr } = await admin
@@ -60,7 +75,8 @@ export async function POST(request) {
         is_active: true,
         activated_at: new Date().toISOString(),
       })
-      .eq('id', profile.id);
+      .eq('id', profile.id)
+      .is('activated_at', null);
 
     if (updateErr) {
       console.error('partner activation update failed:', updateErr);

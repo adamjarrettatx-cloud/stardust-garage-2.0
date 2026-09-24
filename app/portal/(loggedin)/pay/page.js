@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { requirePartner } from '@/lib/auth-helpers';
 import { createClient } from '@/lib/supabase/server';
 import PayBookingCard from './PayBookingCard';
+import { profileCapabilities } from '@/lib/profile-capabilities';
 
 export const revalidate = 0;
 
@@ -11,8 +12,9 @@ export const revalidate = 0;
 // events an artist is booked for still render a name and date instead of a
 // blank row — a partner has no select policy on public.events directly.
 export default async function PartnerPayPage() {
-  const { unauthorized } = await requirePartner();
+  const { unauthorized, partner } = await requirePartner();
   if (unauthorized) redirect('/portal/login');
+  if (!profileCapabilities(partner.contact_type).pay) redirect('/account/profile');
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc('partner_bookings');

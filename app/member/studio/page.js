@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth-helpers';
 import { createClient } from '@/lib/supabase/server';
 import { getTodayInAustin } from '@/lib/studio-helpers';
 import StudioBookingClient from './StudioBookingClient';
+import { canBookStudio } from '@/lib/profile-capabilities';
 
 export const revalidate = 0;
 
@@ -15,25 +16,11 @@ export default async function StudioPage() {
   // Verify active member
   const { data: profile } = await supabase
     .from('member_profiles')
-    .select('is_active, full_name')
+    .select('is_active, full_name, subscription_plan, subscription_status')
     .eq('user_id', user.id)
     .maybeSingle();
 
-  if (!profile || !profile.is_active) {
-    return (
-      <main className="max-w-[900px] mx-auto px-6 py-16">
-        <h1
-          className="text-[28px] font-extrabold -tracking-[0.02em] mb-4"
-          style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-        >
-          Membership inactive
-        </h1>
-        <p style={{ color: '#8a8a8a' }}>
-          Your membership isn&apos;t active right now. Contact us at hello@sdgatx.com.
-        </p>
-      </main>
-    );
-  }
+  if (!canBookStudio(profile)) redirect('/member');
 
   // Load settings
   const { data: settings } = await supabase

@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { requirePartner } from '@/lib/auth-helpers';
+import { createRequestScopedClient, requirePartner } from '@/lib/auth-helpers';
 
 export const runtime = 'nodejs';
 
@@ -19,7 +18,7 @@ export const runtime = 'nodejs';
 // body.
 export async function PATCH(request) {
   try {
-    const { user, unauthorized } = await requirePartner();
+    const { user, unauthorized } = await requirePartner(request);
     if (unauthorized) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -30,6 +29,9 @@ export async function PATCH(request) {
 
     if (!fullName) {
       return NextResponse.json({ error: 'Your name is required.' }, { status: 400 });
+    }
+    if (fullName.length > 120) {
+      return NextResponse.json({ error: 'Your name must be 120 characters or fewer.' }, { status: 400 });
     }
 
     const updates = { full_name: fullName };
@@ -49,7 +51,7 @@ export async function PATCH(request) {
       updates.photo_url = photoPath;
     }
 
-    const supabase = await createClient();
+    const supabase = await createRequestScopedClient(request);
     const { error } = await supabase
       .from('partner_profiles')
       .update(updates)

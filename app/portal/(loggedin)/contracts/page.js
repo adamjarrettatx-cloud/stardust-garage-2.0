@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { requirePartner } from '@/lib/auth-helpers';
 import { createClient } from '@/lib/supabase/server';
 import PortalContractCard from './PortalContractCard';
+import { profileCapabilities } from '@/lib/profile-capabilities';
 
 export const revalidate = 0;
 
@@ -18,8 +19,9 @@ export const revalidate = 0;
 // only safe columns, so there is no path from here to another party's contract
 // and no admin RLS was loosened to build this page.
 export default async function PortalContractsPage() {
-  const { unauthorized } = await requirePartner();
+  const { unauthorized, partner } = await requirePartner();
   if (unauthorized) redirect('/portal/login');
+  if (!profileCapabilities(partner.contact_type).contracts) redirect('/account/profile');
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc('partner_contracts');

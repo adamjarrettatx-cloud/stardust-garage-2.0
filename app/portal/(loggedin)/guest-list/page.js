@@ -3,6 +3,7 @@ import { requirePartner } from '@/lib/auth-helpers';
 import { createClient } from '@/lib/supabase/server';
 import { splitGrantsByDate } from '@/lib/guestlist-helpers';
 import GrantCard from './GrantCard';
+import { profileCapabilities } from '@/lib/profile-capabilities';
 
 export const revalidate = 0;
 
@@ -16,8 +17,9 @@ export const revalidate = 0;
 // partner_contact_id(), and it returns the used counts alongside, computed by
 // the same rule the capacity trigger enforces.
 export default async function PartnerGuestListPage() {
-  const { unauthorized } = await requirePartner();
+  const { unauthorized, partner } = await requirePartner();
   if (unauthorized) redirect('/portal/login');
+  if (!profileCapabilities(partner.contact_type).guestList) redirect('/account/profile');
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc('partner_grants');

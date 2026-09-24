@@ -16,21 +16,22 @@ function makeMock({ orders = [], items = [], tickets = [], events = [] } = {}) {
   const rowsByTable = { orders, order_items: items, tickets, events };
 
   function chain(table) {
-    const state = { table, filters: [] };
+    const state = { table, filters: [], start: 0, end: Infinity };
     const q = {
       select() { return q; },
       or(clause) { state.filters.push(['or', clause]); return q; },
       in(col, vals) { state.filters.push(['in', col, vals]); return q; },
       eq(col, val) { state.filters.push(['eq', col, val]); return q; },
       order() { return q; },
-      limit() { return q; },
+      limit(count) { state.end = state.start + count - 1; return q; },
+      range(start, end) { state.start = start; state.end = end; return q; },
       then(res) {
         let rows = rowsByTable[state.table] || [];
         for (const f of state.filters) {
           if (f[0] === 'in') rows = rows.filter((r) => f[2].includes(r[f[1]]));
           if (f[0] === 'eq') rows = rows.filter((r) => r[f[1]] === f[2]);
         }
-        res({ data: rows, error: null });
+        res({ data: rows.slice(state.start, state.end + 1), error: null });
       },
     };
     return q;
@@ -45,6 +46,31 @@ test('venue address constant is intentionally null (address hidden)', () => {
   // cleanly. If a real address is ever added back, keep it in ONE place
   // (lib/wallet/get-orders.js) and update this assertion.
   assert.strictEqual(STARDUST_VENUE_ADDRESS, null, 'address must remain hidden until explicitly re-enabled');
+});
+
+test('all-history mode paginates beyond 100 orders and 500 related tickets without dropping used tickets', async () => {
+  const orders = Array.from({ length: 205 }, (_, i) => ({ id: `order-${i}`, event_id: 'event', status: 'paid' }));
+  const tickets = Array.from({ length: 701 }, (_, i) => ({ id: `ticket-${i}`, order_id: 'order-0', status: i % 2 ? 'used' : 'valid' }));
+  const result = await getWalletOrders({
+    supabaseAdmin: makeMock({ orders, tickets, events: [{ id: 'event', title: 'Example' }] }),
+    user: { id: 'user' }, all: true,
+  });
+  assert.equal(result.orders.length, 205);
+  assert.equal(result.orders[0].tickets.length, 701);
+  assert.ok(result.orders[0].tickets.some((ticket) => ticket.status === 'used'));
+});
+
+test('database failures are not silently presented as an empty wallet', async () => {
+  const q = { select() { return q; }, or() { return q; }, in() { return q; }, order() { return q; }, limit() { return q; }, then(resolve) { resolve({ data: null, error: { message: 'failed' } }); } };
+  await assert.rejects(getWalletOrders({ supabaseAdmin: { from: () => q }, user: { id: 'user' } }), /could not be loaded/);
+});
+
+test('purchase ownership email is quoted as data, not interpreted as filter syntax', async () => {
+  let filter;
+  const q = { select() { return q; }, or(value) { filter = value; return q; }, in() { return q; }, order() { return q; }, limit() { return q; }, then(resolve) { resolve({ data: [], error: null }); } };
+  const email = 'quoted,"comma@example.invalid';
+  await getWalletOrders({ supabaseAdmin: { from: () => q }, user: { id: 'own-user', email } });
+  assert.equal(filter, `user_id.eq.own-user,buyer_email.eq.${JSON.stringify(email)}`);
 });
 
 test('returns an empty orders array when no user is provided', async () => {

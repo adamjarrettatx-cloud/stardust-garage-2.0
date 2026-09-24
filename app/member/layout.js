@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth-helpers';
 import { createClient } from '@/lib/supabase/server';
+import PartnerAccessLink from '@/components/account/PartnerAccessLink';
 
 // Server-authoritative gate for the entire /member area.
 //
@@ -33,5 +34,8 @@ export default async function MemberLayout({ children }) {
     redirect('/');
   }
 
-  return <>{children}</>;
+  return <>
+    <div className="max-w-[1100px] mx-auto px-5 pt-4"><PartnerAccessLink /></div>
+    {children}
+  </>;
 }

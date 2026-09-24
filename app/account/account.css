@@ -1,0 +1,56 @@
+.account-hub{--hub-bg:#090909;--hub-surface:#111;--hub-raised:#191919;--hub-line:#2a2a2a;--hub-text:#f3f2ef;--hub-muted:#aaa7a0;--hub-gold:#d9bd79;--hub-selected:#241f14;color-scheme:dark;background:var(--hub-bg);color:var(--hub-text);min-height:100vh;font-family:Inter,sans-serif;font-size:14px}
+.account-hub[data-theme=light]{--hub-bg:#f6f5f2;--hub-surface:#fff;--hub-raised:#f1efea;--hub-line:#dcd8ce;--hub-text:#22211f;--hub-muted:#67645e;--hub-gold:#745620;--hub-selected:#eee7d8;color-scheme:light}
+.account-hub *{box-sizing:border-box}
+.account-hub-shell{max-width:1180px;margin:auto;padding:28px 24px 80px}
+.account-hub-topline{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:28px;font-size:12px;color:var(--hub-muted)}
+.account-hub-topline button,.account-hub-text-button{background:transparent;border:0;color:var(--hub-gold);min-height:44px;padding:8px;cursor:pointer;font:inherit}
+.account-hub-hero{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:24px;padding-bottom:28px;border-bottom:1px solid var(--hub-line)}
+.account-hub-portrait{display:flex;flex-direction:column;align-items:center}.account-hub-portrait button{font-size:12px}
+.account-hub-identity h1{font:800 clamp(24px,3vw,32px)/1.2 'Plus Jakarta Sans',sans-serif;margin:0;overflow-wrap:anywhere}
+.account-hub-identity>p:last-child{color:var(--hub-muted);margin:10px 0 0;overflow-wrap:anywhere}
+.account-hub-eyebrow{font-size:12px;line-height:1.6;color:var(--hub-gold);margin:0 0 8px;font-weight:600}
+.account-hub-button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 18px;border:1px solid var(--hub-line);border-radius:8px;background:var(--hub-text);color:var(--hub-bg);font:600 14px/1.4 Inter,sans-serif;text-decoration:none;cursor:pointer}
+.account-hub-button.secondary{background:transparent;color:var(--hub-text)}.account-hub button:disabled{opacity:.55;cursor:wait}
+.account-hub-layout{display:block;padding-top:24px}.account-hub-content{min-width:0}
+.account-hub h2{font:700 19px/1.4 'Plus Jakarta Sans',sans-serif;margin:0}.account-hub h3{font:700 15px/1.4 'Plus Jakarta Sans',sans-serif;margin:0}
+.account-hub-intro{margin-bottom:24px}.account-hub-intro p,.account-hub-note{color:var(--hub-muted);line-height:1.7;margin:8px 0 0}
+.account-hub-panel{background:var(--hub-surface);border:1px solid var(--hub-line);border-radius:12px;margin-bottom:20px;overflow:hidden}
+.account-hub-panel-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px 24px;border-bottom:1px solid var(--hub-line)}
+.account-hub-details{margin:0}.account-hub-row{display:grid;grid-template-columns:145px minmax(0,1fr) auto;align-items:center;gap:16px;padding:16px 24px;min-height:68px;border-bottom:1px solid var(--hub-line)}
+.account-hub-row:last-child{border-bottom:0}.account-hub-row dt{color:var(--hub-muted)}.account-hub-row dd{margin:0;overflow-wrap:anywhere;font-weight:500}.account-hub-row small{display:block;color:var(--hub-muted);font-size:12px;line-height:1.7;font-weight:400;margin-top:6px}
+.account-hub-row a{color:var(--hub-gold)}
+.account-hub-form,.account-hub-padded{padding:24px}.account-hub-form label{display:block;margin-bottom:18px;color:var(--hub-muted)}
+.account-hub-form input{display:block;width:100%;min-height:46px;padding:10px 12px;margin-top:8px;border:1px solid var(--hub-line);border-radius:7px;background:var(--hub-bg);color:var(--hub-text);font:inherit}
+.account-hub-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}.account-hub-error{color:#e99797;line-height:1.6}.account-hub-success{color:var(--hub-gold);padding:0 24px 18px}
+.account-hub-dialog{width:min(520px,calc(100% - 32px));max-height:90dvh;overflow:auto;padding:0;background:var(--hub-surface);color:var(--hub-text);border:1px solid var(--hub-line);border-radius:12px}.account-hub-dialog::backdrop{background:#000b}
+.account-hub :focus-visible{outline:2px solid var(--hub-gold);outline-offset:3px}
+.account-hub-work-links{display:flex;flex-direction:column;gap:4px}.account-hub-work-links a{display:block;padding:14px 24px;color:var(--hub-gold);border-bottom:1px solid var(--hub-line)}.account-hub-work-links a:last-child{border:0}
+.portal-section-navigation{max-width:1000px;margin:24px auto 0;padding:0 24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap;border-bottom:1px solid #2a2a2a}.portal-section-navigation nav{display:flex;gap:24px;flex-wrap:wrap}.portal-section-navigation a{display:block;min-height:44px;padding:12px 0;color:#aaa7a0;border-bottom:2px solid transparent;font-size:14px}.portal-section-navigation a[aria-current=page]{color:#f3f2ef;border-color:#d9bd79}.portal-section-navigation select{display:none}
+.account-settings-dialog{width:min(680px,calc(100% - 32px))}
+.account-settings-dialog>.account-hub-panel-heading,.ticket-detail-dialog>.account-hub-panel-heading{position:sticky;top:0;z-index:2;background:var(--hub-surface)}
+.account-settings-body{padding:20px}.account-settings-body>.account-hub-panel{margin-bottom:16px}
+.account-settings-section{border:1px solid var(--hub-line);border-radius:10px;margin-top:12px;overflow:hidden}
+.account-settings-section>summary{min-height:56px;cursor:pointer;padding:18px 20px;font-weight:600}
+.account-settings-section>.account-hub-panel{border:0;border-top:1px solid var(--hub-line);border-radius:0;margin:0}
+.account-workspaces{margin-top:40px;border-top:1px solid var(--hub-line);padding-top:28px}
+.account-workspaces nav{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:18px}
+.account-workspaces a{display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:56px;padding:16px 20px;border:1px solid var(--hub-line);border-radius:8px;color:var(--hub-text);background:var(--hub-surface);text-decoration:none}
+.account-workspaces a:hover{border-color:var(--hub-gold)}
+.profile-tickets{scroll-margin-top:100px}.profile-tickets-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}
+.ticket-event-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:20px;align-items:start}
+.ticket-event-card{display:block;width:100%;aspect-ratio:3/4;overflow:hidden;appearance:none;padding:0;cursor:pointer;border:1px solid var(--hub-line);border-radius:10px;background:var(--hub-surface);color:var(--hub-text);transition:border-color .15s}
+.ticket-event-card:hover{border-color:var(--hub-gold)}
+.ticket-event-card img{display:block;width:100%;height:100%;object-fit:contain}
+.ticket-event-card.is-used img,.ticket-event-card.is-used .ticket-artwork-fallback{filter:grayscale(.7);opacity:.8}
+.ticket-artwork-fallback{display:flex;align-items:center;justify-content:center;width:100%;height:100%;padding:24px;text-align:center;font:700 20px/1.4 'Plus Jakarta Sans',sans-serif;background:var(--hub-raised)}
+.ticket-detail-dialog{width:min(600px,calc(100% - 24px))}
+.ticket-detail{margin-top:20px;border:1px solid var(--hub-line);border-radius:8px;overflow:hidden}
+.ticket-detail>summary{cursor:pointer;min-height:56px;padding:16px;font-weight:600;line-height:1.6}
+.ticket-detail>summary span{float:right;margin-left:12px;color:var(--hub-muted);font-size:12px;font-weight:500}
+.ticket-detail.is-used{background:var(--hub-raised);color:var(--hub-muted)}
+.ticket-detail-body{padding:12px 20px 20px;text-align:center}
+.ticket-detail-qr{width:min(100%,320px);margin:0 auto;background:#fff;border-radius:8px;overflow:hidden}
+.ticket-detail-qr svg{display:block;width:100%;height:auto}
+.ticket-detail-code{font:13px/1.6 ui-monospace,monospace;overflow-wrap:anywhere}
+.ticket-order-receipt{border-top:1px solid var(--hub-line);margin-top:20px;padding-top:12px;color:var(--hub-muted);font-size:12px;overflow-wrap:anywhere;line-height:1.7}
+@media(max-width:760px){.account-hub-shell{padding:20px 16px 48px}.account-hub-topline{margin-bottom:20px}.account-hub-hero{grid-template-columns:88px minmax(0,1fr);gap:16px;align-items:start}.account-hub-hero>.account-hub-button{grid-column:1/-1;width:100%}.account-hub-panel-heading{padding:16px}.account-hub-row{grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;padding:16px}.account-hub-row dt{grid-column:1/-1;font-size:12px}.account-hub-form,.account-hub-padded{padding:16px}.account-settings-body{padding:12px}.ticket-event-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.account-workspaces nav{grid-template-columns:1fr}.portal-section-navigation nav{display:none}.portal-section-navigation select{display:block;width:100%;min-height:48px;background:#191919;color:#fff;border:1px solid #333;border-radius:8px;padding:10px}.ticket-artwork-fallback{padding:12px;font-size:15px}}

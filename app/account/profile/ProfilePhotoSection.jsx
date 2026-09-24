@@ -11,10 +11,12 @@
 // and drop back to placeholder locally without a full page refresh.
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import ProfilePhotoUploader from '@/components/profile-photo/ProfilePhotoUploader';
 import { createClient } from '@/lib/supabase/client';
 
 export default function ProfilePhotoSection({ initialSignedUrl, nameOrEmail }) {
+  const router = useRouter();
   const [signedUrl, setSignedUrl] = useState(initialSignedUrl || null);
   const [removing, setRemoving] = useState(false);
   const [error, setError] = useState('');
@@ -38,6 +40,7 @@ export default function ProfilePhotoSection({ initialSignedUrl, nameOrEmail }) {
         throw new Error(json.error || `Could not remove photo (${res.status}).`);
       }
       setSignedUrl(null);
+      router.refresh();
     } catch (err) {
       setError(err?.message || 'Could not remove photo.');
     } finally {
@@ -65,7 +68,7 @@ export default function ProfilePhotoSection({ initialSignedUrl, nameOrEmail }) {
       <ProfilePhotoUploader
         currentSignedUrl={signedUrl}
         nameOrEmail={nameOrEmail}
-        onUploaded={(res) => setSignedUrl(res?.signedUrl || null)}
+        onUploaded={(res) => { setSignedUrl(res?.signedUrl || null); router.refresh(); }}
       />
       {signedUrl && (
         <div style={{ marginTop: 12 }}>

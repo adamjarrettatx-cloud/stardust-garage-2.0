@@ -104,7 +104,7 @@ test('canSignContracts: true for legal counterparty roles only', () => {
   // These types are the ones SDG signs agreements with, so they get the portal
   // Contracts tab by default.
   assert.equal(canSignContracts(['event_organizer']), true);
-  assert.equal(canSignContracts(['promoter']), true);
+  assert.equal(canSignContracts(['promoter']), false);
   assert.equal(canSignContracts(['venue_renter']), true);
   assert.equal(canSignContracts(['collective']), true);
   assert.equal(canSignContracts(['vendor']), true);
