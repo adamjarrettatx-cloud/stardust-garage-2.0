@@ -8,6 +8,7 @@ import {
   validateChannelName,
   CHANNEL_NAME_MAX_LENGTH,
   validateChatImageFile,
+  chatImageFromClipboard,
   CHAT_IMAGE_MAX_BYTES,
   buildChatImagePath,
   replyPreviewText,
@@ -153,6 +154,62 @@ test('validateChannelName: rejects names over the length limit', () => {
 // ---------------------------------------------------------------------------
 // Image attachments
 // ---------------------------------------------------------------------------
+
+test('chatImageFromClipboard: extracts an image alongside HTML and text representations', () => {
+  const file = { type: 'image/png', size: 1024 };
+  const clipboard = {
+    items: [
+      { kind: 'string', type: 'text/plain' },
+      { kind: 'string', type: 'text/html' },
+      { kind: 'file', type: 'image/png', getAsFile: () => file },
+    ],
+    files: [file],
+  };
+  assert.equal(chatImageFromClipboard(clipboard), file);
+});
+
+test('chatImageFromClipboard: leaves text, HTML-only images and non-image files alone', () => {
+  for (const clipboard of [
+    null, undefined, {},
+    { items: [{ kind: 'string', type: 'text/plain' }] },
+    { items: [{ kind: 'string', type: 'text/html' }] },
+    { items: [{ kind: 'file', type: 'application/pdf', getAsFile: () => ({ type: 'application/pdf' }) }] },
+    { files: [{ type: 'application/pdf' }] },
+  ]) {
+    assert.equal(chatImageFromClipboard(clipboard), null);
+  }
+});
+
+test('chatImageFromClipboard: falls back to the files list, including null item results', () => {
+  const file = { type: 'image/jpeg', size: 123 };
+  assert.equal(chatImageFromClipboard({ files: [file] }), file);
+  assert.equal(chatImageFromClipboard({
+    items: [{ kind: 'file', type: 'image/jpeg', getAsFile: () => null }],
+    files: [file],
+  }), file);
+});
+
+test('chatImageFromClipboard: chooses one image consistently with the file picker', () => {
+  const first = { type: 'image/png', size: 123 };
+  const second = { type: 'image/jpeg', size: 456 };
+  assert.equal(chatImageFromClipboard({
+    items: [first, second].map((file) => ({
+      kind: 'file', type: file.type, getAsFile: () => file,
+    })),
+  }), first);
+  assert.equal(chatImageFromClipboard({ files: [first, second] }), first);
+});
+
+test('chatImageFromClipboard: passes unsupported and oversized images to the shared validator', () => {
+  for (const file of [
+    { type: 'image/svg+xml', size: 100 },
+    { type: 'image/png', size: CHAT_IMAGE_MAX_BYTES + 1 },
+  ]) {
+    const extracted = chatImageFromClipboard({ files: [file] });
+    assert.equal(extracted, file);
+    assert.equal(validateChatImageFile(extracted).valid, false);
+  }
+});
 
 test('validateChatImageFile: accepts an in-range image of an allowed type', () => {
   const file = { type: 'image/png', size: 1024 };

@@ -25,6 +25,7 @@
 // instead of silently pointing at a row the words no longer name.
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { chatImageFromClipboard } from '@/lib/chat';
 import {
   findActiveTrigger,
   insertEntity,
@@ -68,6 +69,7 @@ const REMOTE_SEARCH_DEBOUNCE_MS = 220;
  * @param {import('@/lib/chat-entities').MessageEntity[]} props.entities
  * @param {(next: { text: string, entities: import('@/lib/chat-entities').MessageEntity[] }) => void} props.onChange
  * @param {() => void} props.onSubmit              Enter with no dropdown open.
+ * @param {(file: File) => void} [props.onImagePaste] Stage a clipboard image for preview before sending.
  * @param {Array<object>} props.userCandidates     Mentionable teammates, already permission-filtered by the parent.
  * @param {Array<object>} props.eventCandidates    Events the viewer may link, already permission-filtered.
  * @param {(query: string) => void} [props.onEventSearch] Debounced remote search for events outside the prefetched window.
@@ -82,6 +84,7 @@ export default function EntityComposer({
   entities,
   onChange,
   onSubmit,
+  onImagePaste,
   userCandidates = [],
   eventCandidates = [],
   onEventSearch = null,
@@ -188,6 +191,16 @@ export default function EntityComposer({
     onChange({ text: nextText, entities: nextEntities });
     syncTrigger(nextText, e.target.selectionStart, nextEntities);
   }, [value, entities, onChange, syncTrigger]);
+
+  const handlePaste = useCallback((e) => {
+    if (disabled || !onImagePaste) return;
+    const file = chatImageFromClipboard(e.clipboardData);
+    if (!file) return; // Leave ordinary text paste and entity remapping native.
+    // An image can also carry an HTML/URL representation. Don't insert that
+    // fallback into the text draft when we are attaching the image itself.
+    e.preventDefault();
+    onImagePaste(file);
+  }, [disabled, onImagePaste]);
 
   // The caret can move without the text changing — click, arrow keys, a mobile
   // selection handle. The dropdown has to follow it, otherwise clicking away
@@ -442,6 +455,7 @@ export default function EntityComposer({
           ref={textareaRef}
           value={value}
           onChange={handleChange}
+          onPaste={handlePaste}
           onSelect={handleSelect}
           onKeyDown={handleKeyDown}
           onScroll={syncScroll}
