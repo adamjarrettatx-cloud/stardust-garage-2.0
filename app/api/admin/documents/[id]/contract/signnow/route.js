@@ -387,8 +387,13 @@ export async function POST(request, { params }) {
     }
     console.error('[signnow.send] error', err);
     const status = err instanceof SignNowApiError ? 502 : 500;
+    const detail = String(err?.message || err);
+    // Surface the real reason to the (admin-only, MFA-gated) UI. adminFetch shows
+    // `hint` when present, so without this the admin only ever sees the generic
+    // "SignNow send failed." and cannot tell an expired token from a rejected
+    // field payload from a PDF problem.
     return NextResponse.json(
-      { error: 'SignNow send failed.', code: 'SIGNNOW_SEND_FAILED', detail: String(err?.message || err) },
+      { error: 'SignNow send failed.', code: 'SIGNNOW_SEND_FAILED', detail, hint: `SignNow send failed: ${detail}` },
       { status },
     );
   }
