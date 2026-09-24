@@ -40,8 +40,6 @@ export default function TonightSignInsPanel({ onCheckIn }) {
   const [busyId, setBusyId] = useState(null);
   const [accessClear, setAccessClear] = useState(false);
   const [editingName, setEditingName] = useState(false);
-  const [identityConfirmed, setIdentityConfirmed] = useState(false);
-  const [admissionConfirmed, setAdmissionConfirmed] = useState(false);
   const [photoUnavailable, setPhotoUnavailable] = useState(false);
   const [checkInError, setCheckInError] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -120,8 +118,6 @@ export default function TonightSignInsPanel({ onCheckIn }) {
   const selectGuest = (row) => {
     setAccessClear(false);
     setEditingName(false);
-    setIdentityConfirmed(false);
-    setAdmissionConfirmed(false);
     setPhotoUnavailable(false);
     setCheckInError('');
     setSelectedGuest(row);
@@ -133,7 +129,7 @@ export default function TonightSignInsPanel({ onCheckIn }) {
 
   const handleToggle = async (row) => {
     if (busy.current || row.checked_in_at || !accessClear || editingName
-      || !identityConfirmed || !admissionConfirmed || photoUnavailable || row.admission_reason) return;
+      || photoUnavailable || row.admission_reason) return;
     busy.current = true;
     setBusyId(subjectKey(row));
     setCheckInError('');
@@ -248,26 +244,16 @@ export default function TonightSignInsPanel({ onCheckIn }) {
           {photoUnavailable && <p role="alert" className="text-sm" style={{ color: '#ff9e9e' }}>Photo could not load. Close and reopen the guest after refreshing.</p>}
           <EditLegalName key={`edit:${subjectKey(selectedGuest)}`} subject={{ kind: selectedGuest.kind, id: selectedGuest.id }}
             fullName={selectedGuest.full_name} onEditing={setEditingName} disabled={Boolean(busyId)}
-            onSaved={fullName => { setSelectedGuest(previous => ({ ...previous, full_name: fullName })); setAccessClear(false); setIdentityConfirmed(false); }} />
+            onSaved={fullName => { setSelectedGuest(previous => ({ ...previous, full_name: fullName })); setAccessClear(false); }} />
           <AccessCheck key={`access:${subjectKey(selectedGuest)}`} subject={{ kind: selectedGuest.kind, id: selectedGuest.id }} onStatus={setAccessClear} />
-          {selectedGuest.checked_in_at ? <p className="text-sm mt-3" style={{ color: '#7cfc9b' }}>Already checked in tonight.</p> : <>
-            <label className="flex items-start gap-3 text-sm mt-4 leading-relaxed">
-              <input type="checkbox" className="mt-1 shrink-0" checked={identityConfirmed} disabled={Boolean(busyId)}
-                onChange={e => setIdentityConfirmed(e.target.checked)} />I have matched the profile photo to the person at the door.
-            </label>
-            <label className="flex items-start gap-3 text-sm mt-3 leading-relaxed">
-              <input type="checkbox" className="mt-1 shrink-0" checked={admissionConfirmed} disabled={Boolean(busyId)}
-                onChange={e => setAdmissionConfirmed(e.target.checked)} />I have verified any required ticket or entry payment.
-            </label>
-            <p className="text-[11px] mt-2" style={{ color: '#aaa' }}>This records arrival and capacity. It does not redeem a ticket or activate a Trial Pass.</p>
-          </>}
+          {selectedGuest.checked_in_at && <p className="text-sm mt-3" style={{ color: '#7cfc9b' }}>Already checked in tonight.</p>}
           {checkInError && <p role="alert" className="text-sm mt-3" style={{ color: '#ff9e9e' }}>{checkInError}</p>}
           <div className="flex gap-3 mt-5">
             <button type="button" disabled={Boolean(busyId)} className="flex-1 border border-white/20 rounded-lg p-3"
               onClick={() => setSelectedGuest(null)}>Close</button>
             {!selectedGuest.checked_in_at && <button type="button" className="flex-1 rounded-lg p-3 font-bold disabled:opacity-40"
               style={{ background: '#7cfc9b', color: '#071009' }}
-              disabled={!accessClear || editingName || Boolean(busyId) || !identityConfirmed || !admissionConfirmed || photoUnavailable || Boolean(selectedGuest.admission_reason)}
+              disabled={!accessClear || editingName || Boolean(busyId) || photoUnavailable || Boolean(selectedGuest.admission_reason)}
               onClick={() => handleToggle(selectedGuest)}>{busyId ? 'Checking in…' : 'Check in guest'}</button>}
           </div>
         </>}

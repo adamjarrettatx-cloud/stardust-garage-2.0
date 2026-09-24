@@ -16,9 +16,6 @@ export async function POST(request) {
   if (!UUID.test(body?.id || '') || !['trial_pass','member','guest'].includes(body?.kind)) {
     return response({ error: 'A valid guest reference is required.' }, 400);
   }
-  if (body.identityConfirmed !== true || body.admissionConfirmed !== true) {
-    return response({ error: 'Confirm the guest identity and any required ticket or entry payment.' }, 400);
-  }
   try {
     const admin = createAdminClient();
     const subject = { kind: body.kind, id: body.id };
