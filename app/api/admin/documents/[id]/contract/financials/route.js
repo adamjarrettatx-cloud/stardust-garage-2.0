@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient, audit, DOCUMENT_BUCKET } from '@/lib/document-helpers';
+import { nonTaxStorageCheck } from '@/lib/w9/server';
 import {
   extractContractFinancialTerms,
   buildFinancialTermsPatch,
@@ -42,6 +43,7 @@ async function readLatestVersionText(admin, documentId) {
     .limit(1)
     .maybeSingle();
   if (!ver || !TEXT_MIME.has(ver.mime_type)) return null;
+  if (await nonTaxStorageCheck(admin, ver.storage_path)) return null;
   if (ver.size_bytes && ver.size_bytes > MAX_TEXT_BYTES) return null;
   const { data: blob, error } = await admin.storage.from(DOCUMENT_BUCKET).download(ver.storage_path);
   if (error || !blob) return null;

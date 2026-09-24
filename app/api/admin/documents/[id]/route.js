@@ -3,7 +3,7 @@ import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient, audit, DOCUMENT_BUCKET, DOCUMENT_CATEGORIES } from '@/lib/document-helpers';
 import { assessContractDeletionImpact, eventHasFinancialInputs } from '@/lib/contract-financial-impact';
 import { resolveEventContract } from '@/lib/event-financials-data';
-import { taxDocumentAccess, isW9Reviewer } from '@/lib/w9/server';
+import { taxDocumentAccess, isW9Reviewer, nonTaxStorageCheck } from '@/lib/w9/server';
 
 export const runtime = 'nodejs';
 
@@ -158,6 +158,14 @@ export async function DELETE(request, { params }) {
     .from('document_versions')
     .select('storage_path')
     .eq('document_id', id);
+
+  const { data: deletionDoc } = await admin.from('documents').select('category').eq('id', id).maybeSingle();
+  if (deletionDoc?.category !== 'tax') {
+    for (const version of versions || []) {
+      const taxError = await nonTaxStorageCheck(admin, version.storage_path);
+      if (taxError) return taxError;
+    }
+  }
 
   // Audit BEFORE delete so we still have FK validity
   await audit({
