@@ -12,7 +12,7 @@ const STATE_BADGE = {
   cancelled: { label: 'Cancelled', color: '#8a8a8a', bg: 'rgba(255,255,255,0.06)' },
 };
 
-export default function PayBookingCard({ booking }) {
+export default function PayBookingCard({ booking, w9Approved = false }) {
   const [state, setState] = useState(booking);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -61,7 +61,7 @@ export default function PayBookingCard({ booking }) {
           <button
             type="button"
             onClick={handleRequest}
-            disabled={submitting}
+            disabled={submitting || !w9Approved}
             className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-40"
             style={{ background: '#ffffff', color: '#0a0a0a' }}
           >

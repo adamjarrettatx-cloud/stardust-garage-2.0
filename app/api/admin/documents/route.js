@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAdminMfa } from '@/lib/auth-helpers';
+import { isW9Reviewer } from '@/lib/w9/server';
 import {
   createAdminClient,
   audit,
@@ -48,6 +49,9 @@ export async function POST(request) {
     : [];
 
   const admin = createAdminClient();
+  if (category === 'tax' && !await isW9Reviewer(admin, user.id)) {
+    return NextResponse.json({ error: 'Tax document access is restricted.' }, { status: 403 });
+  }
 
   // 1. Create document row
   const { data: doc, error: docErr } = await admin

@@ -54,6 +54,8 @@ export async function GET(request, { params }) {
   if (!UUID.test(id)) return NextResponse.json({ error: 'Bad id' }, { status: 400 });
 
   const admin = createAdminClient();
+  const { data: parent } = await admin.from('documents').select('category').eq('id', id).maybeSingle();
+  if (!parent || parent.category !== 'contracts') return NextResponse.json({ error: 'Contract document required.' }, { status: 404 });
   const { data: contract } = await admin
     .from('document_contracts')
     .select('status, signature_provider, external_envelope_id, sent_at, completed_at')

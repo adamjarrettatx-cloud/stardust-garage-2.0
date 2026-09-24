@@ -14,6 +14,7 @@ import {
   contactDirectoryTypes,
   contactDirectorySection,
   contactDirectoryHref,
+  isContractorContact,
 } from '@/lib/contact-helpers';
 import {
   ENTITY_TYPE_OPTIONS,
@@ -162,6 +163,10 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
       setError('Choose Active, Do Not Book, or Archived for this contact.');
       return;
     }
+    if (!isEditing && isContractorContact(contactTypes) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Enter the artist’s email so they can finish their profile and W-9.');
+      return;
+    }
 
     // Same pure validator the server route uses, so the client can't produce a
     // payload the API would reject.
@@ -250,7 +255,22 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
       return;
     }
     const category = contactDirectorySection(initialCategory)?.value;
-    router.push(`/bananas/contacts/${saved.id}${category ? `?category=${category}` : ''}`);
+    const query = new URLSearchParams(category ? { category } : {});
+    if (!isEditing && isContractorContact(payload.contact_type)) {
+      // The contact is already saved. An invitation error must never prompt a
+      // second insert; navigate to the saved profile with a safe retry notice.
+      let sent = false;
+      try {
+        const invitation = await fetch('/api/admin/invite-partner', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contactId: saved.id }),
+        });
+        const invitationResult = await invitation.json().catch(() => null);
+        sent = invitation.ok && invitationResult?.emailSent === true;
+      } catch { /* persisted contact remains available for an explicit retry */ }
+      query.set('invite', sent ? 'sent' : 'retry');
+    }
+    router.push(`/bananas/contacts/${saved.id}${query.size ? `?${query}` : ''}`);
     router.refresh();
     } catch (err) {
       setError(err.message || 'Could not save this contact. Please try again.');

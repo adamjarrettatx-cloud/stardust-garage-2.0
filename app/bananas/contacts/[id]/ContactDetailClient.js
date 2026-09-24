@@ -107,7 +107,7 @@ export default function ContactDetailClient({
   ].sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))),
   [events, contracts, venueInquiries, collaborations, microParties]);
 
-  const w9Missing = isAdmin && isContractor && !taxProfile?.w9_on_file;
+  const w9Missing = isContractor && !taxProfile?.w9_on_file;
   const legalSummary = isOrganizer ? (
     <div className={`${styles.banner} ${organizerGaps.length ? styles.bannerWarning : ''}`}>
       {contact.status === 'archived' ? <>
@@ -119,12 +119,12 @@ export default function ContactDetailClient({
       </>}
     </div>
   ) : null;
-  const taxPanel = (isAdmin && isContractor) || isOwner ? (
+  const taxPanel = isContractor || isOwner ? (
     <>
       {w9Missing && <div className={`${styles.banner} ${styles.bannerWarning}`}>
-        <strong>W-9 required for year-end reporting.</strong> A signed W-9 is needed to issue this contractor’s 1099. It is not required to approve or send a pay request.
+        <strong>Approved W-9 required.</strong> This artist cannot be booked or request pay until Adam, Jeyu, or Naish approves their signed W-9.
       </div>}
-      {isAdmin && isContractor && <TaxProfileSection contactId={contact.id} displayName={contact.display_name} taxProfile={taxProfile} onChange={setTaxProfile} />}
+      {isContractor && <TaxProfileSection contactId={contact.id} displayName={contact.display_name} onChange={setTaxProfile} />}
       {isOwner && <PayoutProfileSection contactId={contact.id} displayName={contact.display_name} />}
     </>
   ) : null;
@@ -150,9 +150,12 @@ export default function ContactDetailClient({
       </section>
     </>
   );
-  return (
+  return (<>
+    {searchParams?.get('invite') === 'sent' && <p className={styles.banner} role="status">Artist profile created. The invitation email has been sent.</p>}
+    {searchParams?.get('invite') === 'retry' && <p className={`${styles.banner} ${styles.bannerWarning}`} role="alert">The artist profile was saved, but the invitation was not confirmed. An administrator should use Manage portal access to send the invitation. Do not create another contact.</p>}
     <ContactForm key={contact.id} contact={contact} initialCategory={category} profile={{
-      onSaved: setContact, isAdmin, isOrganizer, organizerGaps, w9Missing, showTaxStatus: isAdmin && isContractor,
+      onSaved: setContact, isAdmin, isOrganizer, organizerGaps, w9Missing, showTaxStatus: isContractor,
+      initialTab: searchParams?.get('tab'), w9Status: taxProfile?.status,
       createdLabel: formatDay(contact.created_at), updatedLabel: formatDay(contact.updated_at),
       canArchive: isAdmin,
       archivedView: searchParams?.get('view') === 'archived',
@@ -160,5 +163,5 @@ export default function ContactDetailClient({
       portalPanel: isAdmin ? <InvitePartnerButton contactId={contact.id} email={contact.email} contactType={contact.contact_type} partnerProfile={partnerProfile} isContractor={isContractor} /> : null,
       legalSummary, taxPanel, activityPanel,
     }} />
-  );
+  </>);
 }

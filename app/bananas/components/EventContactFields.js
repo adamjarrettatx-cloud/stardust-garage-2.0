@@ -76,6 +76,7 @@ export default function EventContactFields({ isSdgOnly, onSdgOnlyChange, contact
             EVENT ORGANIZER <span style={{ color: '#ff8080' }}>*</span>
           </label>
           <ContactSelect
+            requireApprovedW9
             value={contactId}
             onChange={onContactIdChange}
             required
