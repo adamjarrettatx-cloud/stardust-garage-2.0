@@ -159,20 +159,6 @@ export default function EventDetail({ event, preview = false }) {
               className="text-[13px] font-bold mb-2"
               style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
             >
-              Venue
-            </div>
-            <div className="text-sm leading-[1.6]" style={{ color: '#8a8a8a' }}>
-              Stardust Garage<br />
-              St. Elmo Arts District<br />
-              Austin, TX 78745
-            </div>
-          </div>
-
-          <div className="order-7 py-5 border-t" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-            <div
-              className="text-[13px] font-bold mb-2"
-              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-            >
               About
             </div>
             {event.description ? (
