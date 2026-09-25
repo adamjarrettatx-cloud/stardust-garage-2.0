@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import NavLinks from './NavLinks';
 import NavBrand from './NavBrand';
-import { createAdminClient } from '@/lib/supabase/admin';
 
 export default async function Navbar() {
   const supabase = await createClient();
@@ -12,22 +11,12 @@ export default async function Navbar() {
     .single();
 
   const logoUrl = logoSetting?.value || '';
-  const { data: { user } } = await supabase.auth.getUser();
-  let showMembership = true;
-  if (user) {
-    const admin = createAdminClient();
-    const [member, trial] = await Promise.all([
-      admin.from('member_profiles').select('id').eq('user_id', user.id).limit(1),
-      admin.from('trial_passes').select('id').eq('user_id', user.id).limit(1),
-    ]);
-    showMembership = Boolean(!member.error && !trial.error && (member.data?.length || trial.data?.length));
-  }
 
   return (
     <div className="flex justify-center pt-8 px-6">
       <nav className="flex items-center justify-between w-full max-w-[1100px] gap-4">
         <NavBrand logoUrl={logoUrl} />
-        <NavLinks showMembership={showMembership} />
+        <NavLinks />
       </nav>
     </div>
   );

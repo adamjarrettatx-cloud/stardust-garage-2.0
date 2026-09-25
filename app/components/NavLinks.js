@@ -19,8 +19,7 @@ const links = [
   },
 ];
 
-export default function NavLinks({ showMembership = true }) {
-  const visibleLinks = links.filter((link) => link.href !== '/members' || showMembership);
+export default function NavLinks() {
   const pathname = usePathname();
   const isAuthRoute = pathname?.startsWith('/bananas') || pathname?.startsWith('/team');
   const [openDropdown, setOpenDropdown] = useState(null);
@@ -97,7 +96,7 @@ export default function NavLinks({ showMembership = true }) {
     <>
       {/* DESKTOP NAV */}
       <ul className="hidden md:flex gap-9 list-none items-center">
-        {visibleLinks.map((link) => {
+        {links.map((link) => {
           if (link.dropdown) {
             const isOpen = openDropdown === link.label;
             const isDropdownActive = link.dropdown.some((d) => isActive(d.href));
@@ -206,7 +205,7 @@ export default function NavLinks({ showMembership = true }) {
 
           <nav className="px-6 pt-16">
             <ul className="list-none space-y-2">
-              {visibleLinks.map((link) => {
+              {links.map((link) => {
                 if (link.dropdown) {
                   const isExpanded = mobileExpanded === link.label;
                   return (
