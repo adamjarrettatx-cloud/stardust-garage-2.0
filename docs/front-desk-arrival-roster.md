@@ -13,7 +13,7 @@
 
 ## Admission boundaries
 
-This is a named arrival/capacity operation, preserving the previous roster's separation from QR activation and ticket redemption. It does not activate a Trial Pass, send application invitations, redeem tickets, alter membership or grant a new entitlement. The profile photo remains visible and staff commit directly with **Check in guest**, without redundant confirmation checkboxes.
+This is a named arrival/capacity operation, preserving the previous roster's separation from QR activation and ticket redemption. It does not activate a Trial Pass, send application invitations, redeem tickets, alter membership or grant a new entitlement. The profile photo remains visible beside a one-tap check. Tapping the check commits the arrival immediately; tapping the name opens details for name correction. Event eligibility (the Weekend Music Experience flag) governs QR activation and ticket pricing only and does not block a roster check-in.
 
 The server re-reads credential eligibility, resolves explicitly linked identities, and checks access restrictions for each linked subject before writing. Expired Trial Passes, inactive memberships, missing photos, unlinked guest-only records and verification failures are not silently admitted. Guest-only records remain discoverable and direct staff to the established guest-list/ticket admission flow.
 

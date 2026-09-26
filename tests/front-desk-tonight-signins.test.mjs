@@ -71,3 +71,9 @@ test('check-in does not require redundant confirmation checkboxes', () => {
   assert.match(panel, /!accessClear \|\| editingName/);
   assert.match(panel, /photoUnavailable \|\| Boolean\(selectedGuest.admission_reason\)/);
 });
+test('roster check-in is one tap and never blocked by the Weekend Music Experience flag', () => {
+  assert.match(server, /evaluateDoorScan\(\{ pass: primary, event: null \}\)/);
+  assert.match(panel, /onClick=\{\(\) => quickCheckIn\(row\)\}/);
+  assert.ok(!panel.includes("'Review'"));
+  assert.ok(!panel.includes('Review admission'));
+});

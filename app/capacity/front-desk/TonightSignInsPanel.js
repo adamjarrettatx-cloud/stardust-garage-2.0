@@ -42,6 +42,7 @@ export default function TonightSignInsPanel({ onCheckIn }) {
   const [editingName, setEditingName] = useState(false);
   const [photoUnavailable, setPhotoUnavailable] = useState(false);
   const [checkInError, setCheckInError] = useState('');
+  const [rowError, setRowError] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
   const dialogRef = useRef(null);
   const searchRef = useRef(null);
@@ -156,10 +157,39 @@ export default function TonightSignInsPanel({ onCheckIn }) {
     }
   };
 
+  // One tap on the row's check commits the arrival. The server re-reads
+  // eligibility and access restrictions for every linked identity first.
+  const quickCheckIn = async (row) => {
+    if (busy.current || row.checked_in_at) return;
+    if (row.admission_reason) { selectGuest(row); return; }
+    busy.current = true;
+    setBusyId(subjectKey(row));
+    setNote('');
+    setRowError('');
+    try {
+      const result = await onCheckIn(row);
+      if (!result?.row?.checked_in_at) throw new Error('Check-in was not confirmed. Hold entry and refresh.');
+      ++requestVersion.current;
+      const changedShift = shift.current !== result.shiftDay;
+      shift.current = result.shiftDay;
+      setSignins(previous => mergeArrivals(changedShift ? [] : previous, [result.row]));
+      setQuery('');
+      setNote(result.alreadyCheckedIn ? `${row.full_name} is already checked in tonight.`
+        : `${row.full_name} checked in.`);
+      window.dispatchEvent(new Event('sdg:roster-changed'));
+    } catch (err) {
+      setRowError(`${row.full_name}: ${err.message || 'Check-in failed. Hold entry.'}`);
+      window.dispatchEvent(new Event('sdg:access-changed'));
+    } finally {
+      busy.current = false;
+      setBusyId(null);
+    }
+  };
+
   const filtered = isSearch ? (searchResults.query === trimmed ? searchResults.rows : []) : signins;
   const inCount = signins.filter(row => row.checked_in_at).length;
   const waiting = isSearch ? searching || (!searchError && trimmed.length >= 2 && searchResults.query !== trimmed) : loading;
-  const visibleError = isSearch ? searchError : error;
+  const visibleError = rowError || (isSearch ? searchError : error);
   return (
     <section className="rounded-2xl border overflow-hidden flex flex-col"
       style={{ background: '#111', color: '#f5f5f5', borderColor: '#272727', minHeight: 560 }}>
@@ -173,7 +203,7 @@ export default function TonightSignInsPanel({ onCheckIn }) {
       <div className="px-5 pt-4 pb-2">
         <div className="flex gap-2">
           <input ref={searchRef} type="search" value={query} maxLength={120}
-            onChange={e => { setQuery(e.target.value); setNote(''); }}
+            onChange={e => { setQuery(e.target.value); setNote(''); setRowError(''); }}
             className="fd-input min-w-0" placeholder="Search all guests by name…"
             autoComplete="off" autoCorrect="off" spellCheck={false} aria-label="Search all guests by name" />
           {query && <button type="button" className="px-3 rounded-lg text-sm border border-white/20"
@@ -211,13 +241,18 @@ export default function TonightSignInsPanel({ onCheckIn }) {
                   <div className="text-[11px] mt-1 leading-relaxed" style={{ color: '#aaa' }}>
                     {row.label}{!isSearch && ` · ${row.activity_kind === 'check_in' ? 'Checked in' : 'Signed up'} ${formatTime(row.activity_at)}`}
                   </div>
-                  {!isIn && row.admission_reason && <span className="text-[11px]" style={{ color: '#ffc269' }}>Review admission</span>}
+                  {!isIn && row.admission_reason && <span className="block text-[11px]" style={{ color: '#ffc269' }}>{row.admission_reason}</span>}
                 </div>
-                <button type="button" onClick={() => selectGuest(row)} disabled={isIn || isBusy}
-                  aria-label={isIn ? `${row.full_name} checked in` : `${row.admission_reason ? 'Review' : 'Check in'} ${row.full_name}`}
-                  aria-pressed={isIn} className="shrink-0 rounded-lg px-3 py-2 text-[12px] font-semibold border"
-                  style={{ minHeight: 44, borderColor: '#363636', color: isIn ? '#7cfc9b' : '#f5f5f5' }}>
-                  {isIn ? '✓ In' : isBusy ? 'Checking…' : row.admission_reason ? 'Review' : 'Check in'}
+                <button type="button" onClick={() => quickCheckIn(row)} disabled={isIn || isBusy}
+                  aria-label={isIn ? `${row.full_name} checked in` : `Check in ${row.full_name}`}
+                  aria-pressed={isIn} className="shrink-0 flex items-center justify-center rounded-lg border"
+                  style={{ width: 48, height: 48, background: isIn ? '#7cfc9b' : 'transparent',
+                    borderColor: isIn ? '#7cfc9b' : 'rgba(255,255,255,0.35)', cursor: isIn || isBusy ? 'default' : 'pointer' }}>
+                  {isBusy ? <span className="text-[11px]" style={{ color: '#aaa' }}>…</span>
+                    : <svg width="22" height="22" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                      <path d="M4 10.5 L8 14.5 L16 6.5" stroke={isIn ? '#0a0a0a' : 'rgba(255,255,255,0.55)'}
+                        strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>}
                 </button>
               </li>;
             })}
