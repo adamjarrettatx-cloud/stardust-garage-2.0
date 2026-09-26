@@ -71,12 +71,15 @@ describe('directory and arrival projection',()=>{
         shift_day:'2026-09-24',checked_in_at:'2026-09-25T01:05:00Z'}]});
     expect((await loadRoster(db,{now})).signins[0].activity_kind).toBe('check_in');
   });
-  it('keeps expired and photo-less visitors searchable but not eligible for roster admission',async()=>{
-    for(const patch of [{status:'expired'}, {profile_photo_path:null}]){
-      const data=await loadRoster(database({trial_passes:[pass(patch)]}),{query:'Jordan',now});
-      expect(data.signins).toHaveLength(1);
-      expect(data.signins[0].admission_reason).toBeTruthy();
-    }
+  it('keeps expired visitors searchable but not eligible for roster admission',async()=>{
+    const data=await loadRoster(database({trial_passes:[pass({status:'expired'})]}),{query:'Jordan',now});
+    expect(data.signins).toHaveLength(1);
+    expect(data.signins[0].admission_reason).toBeTruthy();
+  });
+  it('lets a photo-less Trial Pass be checked in from the roster',async()=>{
+    const data=await loadRoster(database({trial_passes:[pass({profile_photo_path:null})]}),{query:'Jordan',now});
+    expect(data.signins).toHaveLength(1);
+    expect(data.signins[0].admission_reason).toBeNull();
   });
   it('fails closed for event lookup or identity database errors',async()=>{
     await expect(loadRoster(database({},'guest_profiles'),{query:'Jordan',now})).rejects.toThrow('lookup unavailable');

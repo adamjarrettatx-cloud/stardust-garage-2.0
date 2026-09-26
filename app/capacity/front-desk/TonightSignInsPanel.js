@@ -130,7 +130,7 @@ export default function TonightSignInsPanel({ onCheckIn }) {
 
   const handleToggle = async (row) => {
     if (busy.current || row.checked_in_at || !accessClear || editingName
-      || photoUnavailable || row.admission_reason) return;
+      || row.admission_reason) return;
     busy.current = true;
     setBusyId(subjectKey(row));
     setCheckInError('');
@@ -276,7 +276,7 @@ export default function TonightSignInsPanel({ onCheckIn }) {
               <p className="text-sm mt-1" style={{ color: '#aaa' }}>{selectedGuest.label}</p></div>
           </div>
           {selectedGuest.admission_reason && <p className="p-3 rounded-lg text-sm mb-3" style={{ background: '#302719', color: '#ffce82' }}>{selectedGuest.admission_reason}</p>}
-          {photoUnavailable && <p role="alert" className="text-sm" style={{ color: '#ff9e9e' }}>Photo could not load. Close and reopen the guest after refreshing.</p>}
+          {photoUnavailable && <p className="text-sm" style={{ color: '#aaa' }}>Photo could not load.</p>}
           <EditLegalName key={`edit:${subjectKey(selectedGuest)}`} subject={{ kind: selectedGuest.kind, id: selectedGuest.id }}
             fullName={selectedGuest.full_name} onEditing={setEditingName} disabled={Boolean(busyId)}
             onSaved={fullName => { setSelectedGuest(previous => ({ ...previous, full_name: fullName })); setAccessClear(false); }} />
@@ -288,7 +288,7 @@ export default function TonightSignInsPanel({ onCheckIn }) {
               onClick={() => setSelectedGuest(null)}>Close</button>
             {!selectedGuest.checked_in_at && <button type="button" className="flex-1 rounded-lg p-3 font-bold disabled:opacity-40"
               style={{ background: '#7cfc9b', color: '#071009' }}
-              disabled={!accessClear || editingName || Boolean(busyId) || photoUnavailable || Boolean(selectedGuest.admission_reason)}
+              disabled={!accessClear || editingName || Boolean(busyId) || Boolean(selectedGuest.admission_reason)}
               onClick={() => handleToggle(selectedGuest)}>{busyId ? 'Checking in…' : 'Check in guest'}</button>}
           </div>
         </>}
