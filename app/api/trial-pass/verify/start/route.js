@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { validateTrialPassIntake } from '@/lib/trial-pass';
 import { isTwilioVerifyConfigured, startVerification } from '@/lib/twilio-verify';
-import { findExistingPassByIdentity } from '@/lib/trial-pass-create';
+import { findExistingPassByIdentity, issueTrialPass, TRIAL_PASS_SOURCE_SELF_SERVE } from '@/lib/trial-pass-create';
+import { isSmsBypassActive } from '@/lib/trial-pass-sms-bypass';
+import { isSupabaseConfigured } from '@/lib/supabase/stub';
+import { resolveSiteUrl } from '@/lib/site-url';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,6 +43,40 @@ export async function POST(request) {
   }
 
   const channel = body?.channel === 'call' ? 'call' : 'sms';
+
+  // Temporary SMS bypass (see lib/trial-pass-sms-bypass.js). Issues a new
+  // pass immediately, unverified. Existing passes are never reissued here —
+  // returning guests go to the front desk.
+  if (isSmsBypassActive()) {
+    if (!isSupabaseConfigured()) {
+      return NextResponse.json(
+        { error: 'Passes are temporarily unavailable — please see the front desk.' },
+        { status: 503 },
+      );
+    }
+    const issued = await issueTrialPass({
+      data,
+      siteUrl: resolveSiteUrl(request),
+      signupSource: TRIAL_PASS_SOURCE_SELF_SERVE,
+      phoneVerified: false,
+      createdBy: null,
+      refuseExisting: true,
+    });
+    if (!issued.ok) {
+      return NextResponse.json({ error: issued.error, field: issued.field }, { status: issued.status || 500 });
+    }
+    return NextResponse.json({
+      ok: true,
+      bypassed: true,
+      existing: issued.existing,
+      token: issued.token,
+      passUrl: issued.passUrl,
+      fullName: issued.pass.full_name,
+      expiresAt: issued.pass.expires_at,
+      expiresLabel: issued.expiresLabel,
+      emailed: issued.emailed,
+    });
+  }
 
   if (!isTwilioVerifyConfigured()) {
     // Fail loud in prod: we do not want a misconfigured env to silently
