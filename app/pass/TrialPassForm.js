@@ -76,6 +76,12 @@ export default function TrialPassForm() {
         setBadField(body?.field || null);
         return;
       }
+      if (body?.bypassed && body?.token) {
+        // SMS verification is temporarily off: the pass is already issued.
+        setPass(body);
+        setStep(STEP_PHOTO);
+        return;
+      }
       setChannel(body?.channel === 'call' ? 'call' : 'sms');
       setExisting(Boolean(body?.existing));
       setCode('');
