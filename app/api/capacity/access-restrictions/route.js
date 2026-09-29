@@ -59,11 +59,25 @@ export async function POST(request) {
   let body;
   try { body = await request.json(); } catch { return reply({ error: 'Invalid JSON' }, 400); }
   const action = body?.action;
-  if (!['check', 'create', 'note', 'lift', 'same_person', 'different_person', 'manager'].includes(action)) return reply({ error: 'Invalid action' }, 400);
+  if (!['check', 'acknowledge', 'create', 'note', 'lift', 'same_person', 'different_person', 'manager'].includes(action)) return reply({ error: 'Invalid action' }, 400);
   const admin = createAdminClient();
   if (action === 'check') {
     try { return reply(await accessStatus(admin, body.subject, body.extra)); }
     catch { return reply({ error: 'Access check unavailable. Hold entry and retry.' }, 503); }
+  }
+  if (action === 'acknowledge') {
+    try {
+      if (!Array.isArray(body.incident_ids) || !body.incident_ids.length || body.incident_ids.length > 1000
+        || body.incident_ids.some(id => typeof id !== 'string' || !UUID.test(id))) {
+        return reply({ error: 'Select the warnings you reviewed.' }, 400);
+      }
+      const identity = await resolveAccessIdentity(admin, body.subject, body.extra);
+      const { error } = await admin.rpc('record_security_reminder', {
+        p_actor: gate.user.id, p_keys: identity.identity_keys, p_incidents: [...new Set(body.incident_ids)],
+      });
+      if (error) return reply({ error: 'Reminder could not be recorded. Refresh the guest and retry.' }, 409);
+      return reply({ ok: true });
+    } catch { return reply({ error: 'Reminder could not be recorded. Hold entry and retry.' }, 503); }
   }
   let payload;
   try {

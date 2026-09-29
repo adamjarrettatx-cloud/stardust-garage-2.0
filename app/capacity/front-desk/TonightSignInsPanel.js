@@ -179,6 +179,10 @@ export default function TonightSignInsPanel({ onCheckIn }) {
       window.dispatchEvent(new Event('sdg:roster-changed'));
     } catch (err) {
       setRowError(`${row.full_name}: ${err.message || 'Check-in failed. Hold entry.'}`);
+      // A warning or restriction from the commit guard must open the same
+      // identity/photo panel, rather than leave staff with an error-only row.
+      selectGuest(row);
+      setCheckInError(err.message || 'Check-in failed. Hold entry.');
       window.dispatchEvent(new Event('sdg:access-changed'));
     } finally {
       busy.current = false;

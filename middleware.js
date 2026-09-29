@@ -178,13 +178,14 @@ export async function middleware(request) {
   // Every front-of-house staffer who works the door has their OWN
   // front_desk login so that trial passes, guest check-ins, and capacity
   // +1/-1 events are attributed to the specific human on shift. The role
-  // is ALLOWED on /capacity/front-desk and NOWHERE else this middleware
+  // is ALLOWED on /capacity/front-desk and its /capacity/security workflow.
+  // Every other surface stays locked down by this middleware
   // guards — not the door kiosks, not the scan page, not the tablet
   // guest-list, not /capacity/admin, and none of /bananas, /team/*,
   // /member/*, /portal/*. Same shape as the calendar_viewer branch above.
   const isFrontDesk = teamRole === 'front_desk';
   if (isFrontDesk) {
-    if (pathname === '/capacity/front-desk') {
+    if (pathname === '/capacity/front-desk' || pathname === '/capacity/security') {
       return supabaseResponse;
     }
     const url = request.nextUrl.clone();
