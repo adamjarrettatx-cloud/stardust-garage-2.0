@@ -485,6 +485,7 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
           />
 
           <div className="flex-1" />
+          <Link href="/capacity/security" className="rounded-lg border border-white/20 px-3 py-2 text-sm font-semibold">Security mode</Link>
           <AccessRestrictions />
           <div className="text-right">
             <div className="text-[10px] font-bold tracking-[0.16em] uppercase" style={{ color: '#8a8a8a' }}>

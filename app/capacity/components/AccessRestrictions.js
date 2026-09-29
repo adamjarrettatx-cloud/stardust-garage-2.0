@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { INCIDENT_ACTIONS, INCIDENT_CATEGORIES } from '@/lib/capacity/security-labels';
 
 const API = '/api/capacity/access-restrictions';
 const button = 'rounded-lg border border-white/20 px-3 py-2 text-sm font-semibold disabled:opacity-40';
@@ -73,7 +74,7 @@ export function AccessCheck({ subject, onStatus, extra = null }) {
         if (!alive || current !== serial) return;
         if (!res.ok) throw new Error(json.error || 'Access check unavailable. Hold entry.');
         setData(json); setError('');
-        callback.current?.(json.status === 'clear');
+        callback.current?.(json.status === 'clear' && !json.pending_reminders?.length);
       } catch (err) {
         if (alive && current === serial) { setError(err.message); callback.current?.(false); }
       }
@@ -91,15 +92,40 @@ export function AccessCheck({ subject, onStatus, extra = null }) {
     catch (err) { setError(err.message); }
     finally { setBusy(false); }
   }
+  async function acknowledge() {
+    setBusy(true); setError(''); callback.current?.(false);
+    try { await save({ action: 'acknowledge', subject, extra, incident_ids: data.pending_reminders.map(row => row.id) }); }
+    catch (err) { setError(err.message); }
+    finally { setBusy(false); }
+  }
   return <section className="my-3 rounded-xl border border-white/15 bg-[#151515] p-3" aria-label="Guest access status">
     <div className="flex items-center justify-between gap-2">
-      <strong className={`text-sm ${data?.status === 'blocked' ? 'text-red-300' : data?.status === 'verify' ? 'text-amber-200' : 'text-green-300'}`}>
-        {error ? 'HOLD ENTRY' : !data ? 'Checking access…' : data.status === 'blocked' ? 'DO NOT ADMIT' : data.status === 'verify' ? 'VERIFY IDENTITY' : 'No active restriction found'}
+      <strong className={`text-sm ${data?.status === 'blocked' ? 'text-red-300' : data?.status === 'verify' || data?.pending_reminders?.length ? 'text-amber-200' : 'text-green-300'}`}>
+        {error ? 'HOLD ENTRY' : !data ? 'Checking access…' : data.status === 'blocked' ? 'DO NOT ADMIT' : data.status === 'verify' ? 'VERIFY IDENTITY' : data.pending_reminders?.length ? 'PRIOR RULE WARNING' : 'No active restriction found'}
       </strong>
       <button type="button" className={button} onClick={() => openRestrictions(subject, data?.full_name)}>Restrict / notes</button>
     </div>
     <p className="text-xs text-neutral-400 mt-1">Access restrictions are separate from pass, ticket, and membership eligibility.</p>
     {error && <p role="alert" className="text-sm text-red-300 mt-2">{error}</p>}
+    {data?.status === 'clear' && Boolean(data?.pending_reminders?.length) && <div className="mt-3 rounded-lg border border-amber-300/50 bg-amber-950/30 p-3">
+      <p className="text-sm text-amber-200 font-bold">Remind this guest of the rules before admission.</p>
+      {data.pending_reminders.map(row => <div key={row.id} className="mt-3 text-sm">
+        <strong>{INCIDENT_ACTIONS[row.action]} · {INCIDENT_CATEGORIES[row.category]}</strong>
+        <p className="whitespace-pre-wrap break-words">{row.note}</p>
+        <p className="text-xs text-neutral-400">{date(row.created_at)} · {row.actor_label}</p>
+      </div>)}
+      {data.status === 'clear' && <button type="button" className={`${button} mt-3 w-full bg-white text-black`} disabled={busy}
+        onClick={acknowledge}>{busy ? 'Recording…' : 'Record reminder delivered'}</button>}
+      <p className="text-xs text-neutral-400 mt-2">A reminder never overrides an entry restriction. Recorded for this venue shift only.</p>
+    </div>}
+    {Boolean(data?.incidents?.length) && <details className="mt-3 border-t border-white/15 pt-2">
+      <summary className="text-sm cursor-pointer">Incident history ({data.incidents.length})</summary>
+      {data.incidents.map(row => <div key={row.id} className="mt-3 text-sm border-t border-white/10 pt-2">
+        <strong>{INCIDENT_ACTIONS[row.action]} · {INCIDENT_CATEGORIES[row.category]}</strong>
+        <p className="whitespace-pre-wrap break-words">{row.note}</p>
+        <p className="text-xs text-neutral-400">{date(row.created_at)} · {row.actor_label}</p>
+      </div>)}
+    </details>}
     {data?.matches.map(row => <div key={row.id} className="mt-3 border-t border-white/15 pt-3">
       <div className="font-bold">{row.full_name} · {row.kind === 'banned' ? 'Banned' : row.kind === 'review' ? 'Manager review' : 'Temporary restriction'}</div>
       <p className="text-xs text-amber-200 my-1">{row.match === 'confirmed' ? 'Confirmed profile match. Only an authorized manager can lift this restriction.' : 'Possible match only. Compare identity and identifying notes before deciding.'}</p>

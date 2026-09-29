@@ -24,7 +24,7 @@ const ROLE_CONFIG = {
   },
   front_desk: {
     label: 'Front Desk',
-    description: 'Locked to /capacity/front-desk · nothing else',
+    description: 'Front desk and Security mode only',
     color: '#a78bfa',
     bg: 'rgba(167,139,250,0.10)',
     border: 'rgba(167,139,250,0.32)',

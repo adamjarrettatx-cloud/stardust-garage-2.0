@@ -107,11 +107,12 @@ test('requireTeam still rejects calendar_viewer AND front_desk', () => {
 // Middleware
 // ---------------------------------------------------------------------------
 
-test('middleware pins front_desk to /capacity/front-desk and redirects everything else', () => {
+test('middleware pins front_desk to front desk and security mode, redirecting other surfaces', () => {
   const branch = middleware.match(/const isFrontDesk[\s\S]+?return NextResponse\.redirect\(url\);\s+}/)?.[0] || '';
   assert.ok(branch.length > 0, 'middleware must have a front_desk branch');
   assert.match(branch, /teamRole === 'front_desk'/);
   assert.match(branch, /pathname === '\/capacity\/front-desk'/);
+  assert.match(branch, /pathname === '\/capacity\/security'/);
   assert.match(branch, /url\.pathname = '\/capacity\/front-desk'/);
 });
 

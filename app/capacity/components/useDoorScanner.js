@@ -42,6 +42,7 @@ import { pickDecoder, DECODER_NATIVE, DECODER_JSQR, DECODER_NONE, NO_DECODER_MES
 export const SCAN_INTERVAL_MS = 200; // 5 fps — plenty for a stationary QR at arm's length
 export const DEFAULT_DUPLICATE_WINDOW_MS = 3000;
 
+/** @param {{ enabled?: boolean, onRawScan?: (raw: string) => void, dedupeMs?: number }} options */
 export function useDoorScanner({ enabled, onRawScan, dedupeMs = DEFAULT_DUPLICATE_WINDOW_MS } = {}) {
   const videoRef = useRef(null);
   const detectorRef = useRef(null);        // BarcodeDetector instance when native
