@@ -19,7 +19,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
-  const { user, unauthorized } = await requireFrontDeskOrTeam();
+  const { user, unauthorized } = await requireFrontDeskOrTeam(request);
   if (unauthorized || !user) {
     return NextResponse.json({ error: 'Not authorized' }, { status: 401 });
   }

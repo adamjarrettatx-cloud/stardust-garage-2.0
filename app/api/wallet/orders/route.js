@@ -27,6 +27,21 @@ export async function GET(request) {
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
-  const { orders } = await getWalletOrders({ supabaseAdmin, user });
-  return NextResponse.json({ orders });
+  // Opt-in paging keeps existing app builds compatible while allowing the
+  // new wallet to retrieve the complete history, not just 100 orders.
+  const url = new URL(request.url);
+  const paginated = url.searchParams.has('offset');
+  const offset = Number(url.searchParams.get('offset') || 0);
+  if (!Number.isSafeInteger(offset) || offset < 0 || offset > 100000) {
+    return NextResponse.json({ error: 'Invalid wallet offset' }, { status: 400 });
+  }
+  try {
+    const { orders } = await getWalletOrders({ supabaseAdmin, user, offset, complete: paginated });
+    return NextResponse.json({
+      orders,
+      ...(paginated ? { next_offset: orders.length === 100 ? offset + 100 : null } : {}),
+    }, { headers: { 'Cache-Control': 'private, no-store' } });
+  } catch {
+    return NextResponse.json({ error: 'Tickets could not be loaded. Your purchases have not been removed.' }, { status: 503 });
+  }
 }

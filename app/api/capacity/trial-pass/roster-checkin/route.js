@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 const headers = { 'Cache-Control': 'private, no-store' };
 const response = (body, status = 200) => NextResponse.json(body, { status, headers });
 export async function POST(request) {
-  const gate = await requireFrontDeskOrTeam();
+  const gate = await requireFrontDeskOrTeam(request);
   if (gate.unauthorized || !gate.user?.id) return response({ error: 'Unauthorized' }, 401);
   let body;
   try { body = await request.json(); } catch { return response({ error: 'Invalid JSON' }, 400); }

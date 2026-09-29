@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { safeMobileReturnPath } from '@/lib/mobile-return-path';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,7 +31,7 @@ export async function GET(request) {
   // is the standard open-redirect guard. A malicious link like
   // /handoff?token=X&return_to=https://evil.example.com must not redirect
   // the visitor off-domain.
-  const returnTo = /^\/(?!\/)/.test(rawReturnTo) ? rawReturnTo : '/';
+  const returnTo = safeMobileReturnPath(rawReturnTo, url.origin);
   const returnAbsolute = new URL(returnTo, url.origin).toString();
   const loginFallback = new URL(`/login?next=${encodeURIComponent(returnTo)}`, url.origin).toString();
 
@@ -42,6 +43,8 @@ export async function GET(request) {
   // onto it. We WILL replace this with a redirect below; the cookies survive
   // because we forward them onto the redirect response.
   const response = NextResponse.redirect(returnAbsolute, { status: 302 });
+  response.headers.set('Cache-Control', 'private, no-store');
+  response.headers.set('Referrer-Policy', 'no-referrer');
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,

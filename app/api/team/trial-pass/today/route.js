@@ -10,7 +10,7 @@ const headers = { 'Cache-Control': 'private, no-store' };
 // Empty search = tonight's merged newest-first signup/admission stream.
 // Search = all historical visitor identities, never a filter of tonight alone.
 export async function GET(request) {
-  const { unauthorized } = await requireFrontDeskOrTeam();
+  const { unauthorized } = await requireFrontDeskOrTeam(request);
   if (unauthorized) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers });
   const query = new URL(request.url).searchParams.get('q')?.trim() || '';
   if (query.length > 120) return NextResponse.json({ error: 'Use a name of up to 120 characters.' }, { status: 400, headers });
