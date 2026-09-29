@@ -8,6 +8,7 @@ test('security incidents are private, immutable, atomic, idempotent and preserve
   const db = new PGlite();
   try {
     await db.exec(`create role anon; create role authenticated; create role service_role;
+      alter default privileges in schema public grant all on tables to service_role;
       create schema auth; create table auth.users(id uuid primary key);
       create table team_members(user_id uuid primary key,role text,full_name text,email text);
       create table events(id uuid primary key);
@@ -18,7 +19,7 @@ test('security incidents are private, immutable, atomic, idempotent and preserve
     }
     await db.query('insert into events values($1)', [id(10)]);
     await db.query('insert into door_sessions values($1,$2,now(),null)', [id(11),id(10)]);
-    for (const file of ['20260922000000_access_restrictions.sql','20260922010000_restriction_lift_allowlist.sql','20260929190000_security_incidents.sql']) {
+    for (const file of ['20260922000000_access_restrictions.sql','20260922010000_restriction_lift_allowlist.sql','20260929190000_security_incidents.sql','20260929202000_security_incident_privileges.sql']) {
       await db.exec(await readFile(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8'));
     }
     const input = { request_id:id(20),subject_key:`member:${id(30)}`,identity_keys:[`member:${id(30)}`,`user:${id(31)}`],
@@ -58,7 +59,8 @@ test('security incidents are private, immutable, atomic, idempotent and preserve
       has_table_privilege('authenticated','security_incidents','SELECT') as customer_read,
       has_table_privilege('anon','security_warning_reminders','INSERT') as anon_write,
       has_function_privilege('authenticated','record_security_incident(uuid,jsonb)','EXECUTE') as direct_write,
-      has_table_privilege('service_role','security_incidents','UPDATE') as rewrite`)).rows[0];
-    assert.deepEqual(privileges,{customer_read:false,anon_write:false,direct_write:false,rewrite:false});
+      has_table_privilege('service_role','security_incidents','UPDATE') as rewrite,
+      has_table_privilege('service_role','security_incidents','TRUNCATE') as truncate_history`)).rows[0];
+    assert.deepEqual(privileges,{customer_read:false,anon_write:false,direct_write:false,rewrite:false,truncate_history:false});
   } finally { await db.close(); }
 });

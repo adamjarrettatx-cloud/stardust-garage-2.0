@@ -44,7 +44,7 @@ Active restrictions remain higher priority than reminders. A later warning never
 
 Production approval is required. This implementation does not apply migrations or merge itself.
 
-1. Apply `20260929190000_security_incidents.sql` to the existing production Supabase project, before code deployment. It creates private tables/functions and changes no guest records or permission grants.
+1. Apply `20260929190000_security_incidents.sql`, then `20260929202000_security_incident_privileges.sql`, to the existing production Supabase project before code deployment. These create private tables/functions and explicitly remove default service-role update/delete/truncate grants. They change no guest records or staff permission grants.
 2. Verify RLS, direct-access revocations, immutable triggers, and service-only RPC privileges.
 3. Merge the reviewed PR and verify the existing Vercel deployment is READY at that commit.
 4. Authenticate on a real staff phone. Scan a designated test account, verify photo identity, save a warning, and verify the front-desk reminder and admission guard.
