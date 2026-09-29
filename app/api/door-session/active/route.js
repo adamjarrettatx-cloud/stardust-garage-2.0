@@ -17,8 +17,8 @@ import { getActiveDoorSession } from '@/lib/door-session';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  const { unauthorized } = await requireFrontDeskOrTeam();
+export async function GET(request) {
+  const { unauthorized } = await requireFrontDeskOrTeam(request);
   if (unauthorized) {
     return NextResponse.json({ error: 'Not authorized' }, { status: 401 });
   }

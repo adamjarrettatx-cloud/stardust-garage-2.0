@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   gate: { unauthorized: false, user: { id: 'staff' } },
-  load: vi.fn(), guard: vi.fn(), rpc: vi.fn(), admin: null,
+  load: vi.fn(), guard: vi.fn(), rpc: vi.fn(), auth: vi.fn(), admin: null,
 }));
-vi.mock('@/lib/auth-helpers', () => ({ requireFrontDeskOrTeam: async () => mocks.gate }));
+vi.mock('@/lib/auth-helpers', () => ({ requireFrontDeskOrTeam: async request => { mocks.auth(request); return mocks.gate; } }));
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => mocks.admin }));
 vi.mock('@/lib/capacity/arrival-roster-server', () => ({ loadRoster: (...args) => mocks.load(...args) }));
 vi.mock('@/lib/capacity/access-restrictions', () => ({ restrictionGuard: (...args) => mocks.guard(...args) }));
@@ -24,6 +24,11 @@ beforeEach(() => {
   mocks.rpc.mockResolvedValue({data:{alreadyCheckedIn:false,arrival:{checked_in_at:'2026-09-25T01:03:00Z'}}});
 });
 describe('guest search endpoint', () => {
+  it('passes the native bearer request into the existing role verifier', async () => {
+    const request = new Request('https://example.invalid/?q=Test', { headers: { Authorization: 'Bearer test-mobile-token' } });
+    await GET(request);
+    expect(mocks.auth).toHaveBeenCalledWith(request);
+  });
   it('rejects unauthorized callers before any directory reads', async () => {
     mocks.gate.unauthorized=true;
     expect((await GET(new Request('https://example.invalid/?q=Test'))).status).toBe(401);
@@ -47,6 +52,11 @@ describe('guest search endpoint', () => {
   });
 });
 describe('named arrival check-in endpoint', () => {
+  it('passes the native bearer request into the existing role verifier', async () => {
+    const request = req(body);
+    await POST(request);
+    expect(mocks.auth).toHaveBeenCalledWith(request);
+  });
   it('requires authorization and a typed identity', async () => {
     mocks.gate.unauthorized=true;
     expect((await POST(req(body))).status).toBe(401);

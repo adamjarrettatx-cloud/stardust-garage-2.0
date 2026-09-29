@@ -40,8 +40,8 @@ test('wildcard characters in names cannot enumerate the full directory', () => {
   assert.equal(escapeNameSearch(' %_\\ '), '\\%\\_\\\\');
 });
 test('directory route is role gated and never caches private photos or names', () => {
-  assert.match(route, /requireFrontDeskOrTeam\(\)/);
-  assert.ok(route.indexOf('requireFrontDeskOrTeam()') < route.indexOf('loadRoster(createAdminClient()'));
+  assert.match(route, /requireFrontDeskOrTeam\(request\)/);
+  assert.ok(route.indexOf('requireFrontDeskOrTeam(request)') < route.indexOf('loadRoster(createAdminClient()'));
   assert.match(route, /private, no-store/);
   assert.match(route, /minimumQueryLength: 2/);
   const wire = server.slice(server.indexOf('wire: {'), server.indexOf('export async function loadRoster'));
