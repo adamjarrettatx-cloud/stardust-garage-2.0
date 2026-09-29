@@ -16,13 +16,14 @@ test('parseClock accepts common admin formats', () => {
   assert.deepEqual(parseClock('12:00 AM'), { hour: 0, minute: 0 });
   assert.deepEqual(parseClock('12 PM'), { hour: 12, minute: 0 });
   assert.deepEqual(parseClock('9:00 A.M.'), { hour: 9, minute: 0 });
+  assert.deepEqual(parseClock('13:00'), { hour: 13, minute: 0 });
 });
 
 test('parseClock rejects garbage', () => {
   assert.equal(parseClock(''), null);
   assert.equal(parseClock('LATE'), null);
   assert.equal(parseClock('TBD'), null);
-  assert.equal(parseClock('13:00'), null); // 24h without AM/PM: not accepted
+  assert.equal(parseClock('25:00'), null);
   assert.equal(parseClock(null), null);
 });
 
