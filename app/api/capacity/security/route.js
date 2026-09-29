@@ -21,6 +21,30 @@ const validSubject = subject => subject && ['member', 'trial_pass', 'guest'].inc
 // security scans must not activate passes, consume tickets or increment capacity.
 async function scanSubject(admin, raw) {
   let scan = sniffScan(raw);
+  // The native Trial Pass screen emits encodeTrialPass(code), not a URL:
+  // { v: 1, kind: 'trial', code }. Accept only that explicit envelope and
+  // known credential shapes. Never trust an account ID supplied in a QR.
+  const trimmed = raw.trim();
+  if (trimmed.startsWith('{')) {
+    let payload;
+    try { payload = JSON.parse(trimmed); } catch { /* Reject below. */ }
+    if (payload?.v !== 1 || payload?.kind !== 'trial' || typeof payload?.code !== 'string') {
+      return { error: 'This QR format is not supported. Open the current account pass or use guest search.', status: 400 };
+    }
+    if (isWellFormedPassTokenShape(payload.code)) {
+      scan = { kind: 'trial_pass', token: payload.code };
+    } else if (/^[a-f0-9]{12}$/.test(payload.code)) {
+      // Legacy native trials use a server-issued, unique member profile code.
+      // Read only: security lookup must not use the admission/activation RPC.
+      const { data, error } = await admin.from('member_profiles').select('id')
+        .eq('trial_pass_code', payload.code).eq('subscription_plan', 'trial').maybeSingle();
+      if (error) throw error;
+      return data ? { subject: { kind: 'member', id: data.id } }
+        : { error: 'Trial Pass not found. Use the current QR or guest search.', status: 404 };
+    } else {
+      return { error: 'This Trial Pass QR is not supported. Open the current pass or use guest search.', status: 400 };
+    }
+  }
   // The shared ticket normalizer treats many bare alphabetic tokens as ticket
   // codes. Preserve real account-token shapes here, without accepting a ticket
   // as a buyer identity. URL credentials remain path-disambiguated.
@@ -31,7 +55,9 @@ async function scanSubject(admin, raw) {
     else if (isWellFormedMemberIdentityTokenShape(bare)) scan = { kind: 'member_id', token: bare };
   }
   if (!['member_id', 'trial_pass', 'ambiguous_token'].includes(scan.kind)) {
-    return { error: 'Scan the account QR or Trial Pass, not an event ticket. You can also use guest search.', status: 400 };
+    return { error: scan.kind === 'ticket'
+      ? 'This is an event ticket QR. Scan the account pass instead, or use guest search.'
+      : 'This QR format is not recognized. Open the current account pass or use guest search.', status: 400 };
   }
   if (scan.kind !== 'trial_pass') {
     const { data, error } = await admin.from('member_identity_tokens')
