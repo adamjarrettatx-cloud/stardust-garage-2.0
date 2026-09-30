@@ -6,7 +6,7 @@ import QRCode from 'qrcode';
 import jsQR from 'jsqr';
 import sharp from 'sharp';
 const state=vi.hoisted(()=>({gate:{},db:null,identity:null,roster:null,access:null}));
-vi.mock('@/lib/auth-helpers',()=>({requireFrontDeskOrTeam:async()=>state.gate}));
+vi.mock('@/lib/auth-helpers',()=>({requireSecurityOrTeam:async()=>state.gate}));
 vi.mock('@/lib/supabase/admin',()=>({createAdminClient:()=>state.db}));
 vi.mock('@/lib/rate-limit',()=>({rateLimit:()=>({ok:true})}));
 vi.mock('@/lib/capacity/access-restrictions',()=>({resolveAccessIdentity:async()=>state.identity,accessStatus:async()=>state.access}));

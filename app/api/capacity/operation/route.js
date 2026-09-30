@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireTeam, requireAdmin, requireFrontDeskOrTeam } from '@/lib/auth-helpers';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import {
   CAPACITY_OPERATIONS,
   deriveStatus,
@@ -75,8 +76,12 @@ export async function POST(request) {
     args = { p_source: source, p_note: note };
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc(config.rpc, args);
+  const supabase = gate.station ? createAdminClient() : await createClient();
+  const { data, error } = gate.station
+    ? await supabase.rpc('station_capacity_operation', {
+      p_hash: gate.station.sessionHash, p_op: op, p_source: source, p_note: note,
+    })
+    : await supabase.rpc(config.rpc, args);
 
   if (error) {
     const mapped = mapRpcError(error);

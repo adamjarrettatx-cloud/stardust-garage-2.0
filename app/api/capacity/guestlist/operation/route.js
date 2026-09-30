@@ -39,7 +39,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 //                      created, the signature is filed in private storage and
 //                      the guest is added to the Sign Ups list.
 export async function POST(request) {
-  const { user, unauthorized } = await requireFrontDeskOrTeam();
+  const { user, unauthorized, station } = await requireFrontDeskOrTeam(request);
   if (unauthorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -152,7 +152,8 @@ export async function POST(request) {
     actorEmail: user.email,
     request,
     details: {
-      source: 'door_kiosk',
+      source: station ? 'shared_station' : 'door_kiosk',
+      station_username: station?.username || null,
       entry_id: entry.id,
       grant_id: entry.grant_id,
       event_id: grant?.event_id || null,
@@ -162,7 +163,7 @@ export async function POST(request) {
       new_guest_profile: Boolean(createdProfile),
       consent_warning: warning,
       checked_in_by: staff?.id || null,
-      checked_in_by_name: staff?.full_name || user.email || null,
+      checked_in_by_name: station?.label || staff?.full_name || user.email || null,
     },
   });
 

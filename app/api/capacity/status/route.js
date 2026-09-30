@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireFrontDeskOrTeam } from '@/lib/auth-helpers';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { deriveStatus } from '@/lib/capacity-utils';
 
 export const runtime = 'nodejs';
@@ -11,12 +12,12 @@ export const dynamic = 'force-dynamic';
 // through the user-scoped (RLS-aware) client; the capacity_sessions_team_select
 // policy already restricts this to team members.
 export async function GET() {
-  const { unauthorized } = await requireFrontDeskOrTeam();
+  const { unauthorized, station } = await requireFrontDeskOrTeam();
   if (unauthorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const supabase = await createClient();
+  const supabase = station ? createAdminClient() : await createClient();
   const { data: session, error } = await supabase
     .from('capacity_sessions')
     .select('id, name, max_capacity, current_count, is_active, started_at, ended_at, updated_at')

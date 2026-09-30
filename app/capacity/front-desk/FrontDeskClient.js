@@ -12,6 +12,7 @@ import { pushRecentActivity, formatActivityTime } from '@/lib/scan/recent-activi
 import { mergeCheckinFeed, CHECKIN_FEED_MAX } from '@/lib/capacity/checkin-feed';
 import TonightSignInsPanel from './TonightSignInsPanel';
 import AccessRestrictions from '../components/AccessRestrictions';
+import StationSessionControls from '@/app/components/StationSessionControls';
 
 // /capacity/front-desk client
 //
@@ -33,9 +34,9 @@ import AccessRestrictions from '../components/AccessRestrictions';
 const ROSTER_POLL_MS = 20000;
 const MAX_ROWS = 200; // laptop can show more than the tablet's 60
 
-export default function FrontDeskClient({ staffLabel, staffEmail }) {
+export default function FrontDeskClient({ staffLabel, staffEmail, stationMode = false }) {
   // ---- Live capacity (team mode: no device token) --------------------------
-  const capacity = useCapacity({ pollMs: 4000 });
+  const capacity = useCapacity({ pollMs: 4000, stationMode });
 
   // ---- Guest list roster state --------------------------------------------
   const [events, setEvents] = useState([]);
@@ -485,8 +486,8 @@ export default function FrontDeskClient({ staffLabel, staffEmail }) {
           />
 
           <div className="flex-1" />
-          <Link href="/capacity/security" className="rounded-lg border border-white/20 px-3 py-2 text-sm font-semibold">Security mode</Link>
-          <AccessRestrictions />
+          {stationMode ? <StationSessionControls /> : <Link href="/capacity/security" className="rounded-lg border border-white/20 px-3 py-2 text-sm font-semibold">Security mode</Link>}
+          <AccessRestrictions allowCreate={!stationMode} />
           <div className="text-right">
             <div className="text-[10px] font-bold tracking-[0.16em] uppercase" style={{ color: '#8a8a8a' }}>
               On shift

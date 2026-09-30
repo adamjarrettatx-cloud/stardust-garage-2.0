@@ -2,9 +2,47 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import { teamDocumentPath } from '@/lib/document-access';
 import { partnerRouteRedirect } from '@/lib/partner-access';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { STATION_COOKIE, hashStationToken, sameOrigin, stationCanRequest, stationHome } from '@/lib/station-policy';
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
+
+  // Stations use a separate opaque HTTP-only cookie, not a Supabase JWT.
+  // Handle them BEFORE personal auth, device-token exemptions, and API exits.
+  const stationToken = request.cookies.get(STATION_COOKIE)?.value;
+  const stationEndpoint = pathname === '/staff/login' || pathname === '/api/station/login' || pathname === '/api/station/logout';
+  if (stationToken && !stationEndpoint) {
+    let station = null;
+    try {
+      if (/^[A-Za-z0-9_-]{43}$/.test(stationToken)) {
+        const admin = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        });
+        const { data, error } = await admin.rpc('resolve_station_session', { p_hash: await hashStationToken(stationToken) });
+        if (!error) station = Array.isArray(data) ? data[0] : data;
+      }
+    } catch { /* Fail closed. */ }
+    const api = pathname.startsWith('/api/');
+    const protectedPage = /^\/(bananas|team|member|capacity|portal|account|staff)(\/|$)/.test(pathname);
+    if (api || protectedPage) {
+      if (!station) {
+        if (api) return NextResponse.json({ error: 'Station session expired. Sign in again.' }, { status: 401 });
+        return NextResponse.redirect(new URL('/staff/login', request.url));
+      }
+      if (!stationCanRequest(station.role, pathname, request.method)) {
+        if (api) return NextResponse.json({ error: 'This station cannot access that operation.' }, { status: 403 });
+        return NextResponse.redirect(new URL(stationHome(station.role), request.url));
+      }
+      if (!['GET', 'HEAD'].includes(request.method) && !sameOrigin(request)) {
+        return NextResponse.json({ error: 'Invalid request origin.' }, { status: 403 });
+      }
+      const response = NextResponse.next();
+      response.headers.set('Cache-Control', 'private, no-store');
+      return response;
+    }
+    return NextResponse.next(); // Static assets and public informational pages.
+  }
 
   const isAdminRoute  = pathname.startsWith('/bananas');
   const isTeamRoute   = pathname === '/team' || pathname.startsWith('/team/');
@@ -118,6 +156,9 @@ export async function middleware(request) {
   );
 
   const { data: { user } } = await supabase.auth.getUser();
+  if (user?.app_metadata?.station_account) {
+    return NextResponse.redirect(new URL('/staff/login', request.url));
+  }
 
   // /account/* is gated by its own layout redirect; middleware runs here
   // ONLY to give @supabase/ssr a request in which it is legal to write
