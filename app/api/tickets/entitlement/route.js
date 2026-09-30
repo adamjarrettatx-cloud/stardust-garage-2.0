@@ -28,11 +28,12 @@ export async function GET(request) {
 
   const admin = createAdminClient();
 
-  const { data: event } = await admin
+  const { data: event, error: eventError } = await admin
     .from('events')
-    .select('id, is_weekend_music_experience, member_discount_percent_trial, member_discount_percent_weekender, member_discount_percent_cowork, member_discount_percent_iykyk')
+    .select('id, is_weekend_music_experience, is_weeknight_experience, member_discount_percent_trial, member_discount_percent_weekender, member_discount_percent_cowork, member_discount_percent_iykyk')
     .eq('id', eventId)
     .maybeSingle();
+  if (eventError) return NextResponse.json({ error: 'Could not verify membership pricing. Please retry.' }, { status: 503 });
   if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
 
   let entitlement = null;
@@ -40,7 +41,7 @@ export async function GET(request) {
     entitlement = await resolveBuyerEntitlement(admin, user.id);
   } catch (err) {
     console.error('[tickets.entitlement]', err?.message || err);
-    return NextResponse.json(none);
+    return NextResponse.json({ error: 'Could not verify membership pricing. Please retry.' }, { status: 503 });
   }
 
   const percent = resolveEntitlementPercent(event, entitlement);

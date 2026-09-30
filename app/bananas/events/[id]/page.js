@@ -128,6 +128,7 @@ export default async function EditEventPage({ params }) {
               member_discount_percent_iykyk: event.member_discount_percent_iykyk ?? null,
             }}
             initialIsWeekendMusicExperience={!!event.is_weekend_music_experience}
+            initialIsWeeknightExperience={event.is_weeknight_experience === true}
             // Event start date + free-text start time. The ticketing panel uses
             // these to render the 'Ticket Sales End … hours after doors open'
             // dropdown and to compute the persisted `sales_end_at` timestamp.
