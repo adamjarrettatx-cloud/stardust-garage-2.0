@@ -23,6 +23,7 @@ test('Incoming replaces People and Rentals under Operations for owners and admin
     const operations = visibleAdminTabGroups(isOwner).find(g => g.group === 'OPERATIONS');
     assert.deepEqual(operations.tabs.map(t => t.id), [
       'tasks', 'events', 'chat', 'memberships', 'incoming',
+      ...(isOwner ? ['timekeeping'] : []),
     ]);
   }
 });

@@ -87,7 +87,8 @@ Disable station accounts first, invalidating their sessions. Roll back the web d
 
 ## Candidate verification results
 
-- `npm test`: passed, including 1,922 Node tests plus the configured Vitest/pretest suites.
+- `npm test`: passed on the final candidate rebased onto the time-clock release, including 1,929 Node tests plus the configured Vitest/pretest suites.
+- `npm run test:time-clock`: passed after integration. The legacy Incoming-navigation test now includes the newly merged owner Timekeeping tab; station permissions still deny time-clock endpoints.
 - `npm run test:stations`: 15 API/middleware tests and 5 Node/SQL tests passed.
 - `npm run build`: passed after dependency updates; existing unrelated lint warnings remain.
 - `npm audit`: zero reported vulnerabilities after updates.
