@@ -86,6 +86,14 @@ describe('station authentication boundary', () => {
   });
 });
 describe('owner station controls', () => {
+  it('owner can create an availability station and login lands only in its workspace', async () => {
+    const res = await manage(req('/api/admin/stations', { action: 'create', username: 'bookers', label: 'Bookers', role: 'calendar_availability' }));
+    expect(res.status).toBe(200);
+    expect(state.db.rpc.mock.calls.find(([name]) => name === 'create_station_account')[1].p_role).toBe('calendar_availability');
+    state.db.from().maybeSingle.mockResolvedValueOnce({ data: { ...station, role: 'calendar_availability' } });
+    const signed = await login(req('/api/station/login', { username: 'bookers', password: 'secret' }));
+    expect(await signed.json()).toEqual({ destination: '/staff/availability' });
+  });
   it('requires owner AND MFA even when the existing admin MFA flag is off', async () => {
     process.env.ENFORCE_ADMIN_MFA = 'false';
     state.gate = { unauthorized: true };

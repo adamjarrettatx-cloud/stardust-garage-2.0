@@ -25,7 +25,7 @@ export default function StationLogin() {
     <div className="w-full max-w-[400px]">
       <div className="flex justify-center mb-8"><Wordmark size="md" align="center" /></div>
       <h1 className="text-2xl font-bold text-center mb-3">Station sign in</h1>
-      <p className="text-sm text-[#aaa] text-center mb-8">Shared access for Security and Front Desk.</p>
+      <p className="text-sm text-[#aaa] text-center mb-8">Sign in to your assigned workspace.</p>
       <form onSubmit={submit} className="space-y-5">
         <div><label htmlFor="station-username" className="block text-sm font-semibold mb-2">Username</label>
           <input id="station-username" name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} maxLength={32}

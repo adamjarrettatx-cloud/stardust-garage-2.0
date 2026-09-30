@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { adminFetch } from '@/lib/admin-fetch';
+import { STATION_ROLE_LABELS } from '@/lib/station-policy';
 
 export default function StationManagement() {
   const [stations, setStations] = useState(null);
@@ -36,7 +37,7 @@ export default function StationManagement() {
   return <section className="rounded-xl border p-5 mb-8" style={{ borderColor: 'var(--auth-card-border)' }}>
     <div className="flex flex-wrap items-center justify-between gap-4">
       <div><h2 className="text-xl font-bold">Shared station accounts</h2>
-        <p className="text-sm mt-2" style={{ color: 'var(--auth-muted)' }}>Username and password only. Security or Front Desk access. Owner MFA required.</p></div>
+        <p className="text-sm mt-2" style={{ color: 'var(--auth-muted)' }}>Username and password only. Access is limited to the assigned role. Owner MFA required.</p></div>
       <button className={button} onClick={load} disabled={busy}>{stations ? 'Refresh stations' : 'Manage stations'}</button>
     </div>
     {error && <p role="alert" className="mt-4 text-sm text-red-500">{error}</p>}
@@ -52,7 +53,7 @@ export default function StationManagement() {
         {stations.length === 0 && <p className="text-sm">No station accounts yet.</p>}
         {stations.map(station => <div key={station.id} className="flex flex-wrap items-center justify-between gap-4 border-t pt-4" style={{ borderColor: 'var(--auth-card-border)' }}>
           <div><p className="font-semibold">{station.label}</p>
-            <p className="text-sm mt-1">{station.username} · {station.role === 'security' ? 'Security' : 'Front Desk'} · {station.reset_started_at ? 'Locked for password reset' : station.active ? 'Enabled' : 'Disabled'}</p></div>
+            <p className="text-sm mt-1">{station.username} · {STATION_ROLE_LABELS[station.role] || 'Unknown role'} · {station.reset_started_at ? 'Locked for password reset' : station.active ? 'Enabled' : 'Disabled'}</p></div>
           <div className="flex flex-wrap gap-2">
             {[['reset', 'Rotate password'], ['revoke', 'Sign out all devices'], [station.active ? 'disable' : 'enable', station.active ? 'Disable' : 'Enable']].map(([action, title]) =>
               <button key={action} className={button} disabled={busy || !!credential} onClick={() => setConfirm({ id: station.id, action, title, username: station.username })}>{title}</button>)}
@@ -69,10 +70,10 @@ export default function StationManagement() {
         <div className="grid gap-4 md:grid-cols-3">
           <label className="text-sm">Station name<input className={`${field} mt-2`} style={inputStyle} value={label} onChange={e => setLabel(e.target.value)} maxLength={80} placeholder="Security" required disabled={busy} /></label>
           <label className="text-sm">Username<input className={`${field} mt-2`} style={inputStyle} value={username} onChange={e => setUsername(e.target.value)} autoCapitalize="none" spellCheck={false} pattern="[A-Za-z][A-Za-z0-9-]{2,31}" maxLength={32} placeholder="security" required disabled={busy} /></label>
-          <label className="text-sm">Role<select className={`${field} mt-2`} style={inputStyle} value={role} onChange={e => setRole(e.target.value)} disabled={busy}>
-            <option value="security">Security</option><option value="front_desk">Front Desk</option></select></label>
+          <label className="text-sm">Role<select aria-label="Role" className={`${field} mt-2`} style={inputStyle} value={role} onChange={e => setRole(e.target.value)} disabled={busy}>
+            {Object.entries(STATION_ROLE_LABELS).map(([value, title]) => <option key={value} value={value}>{title}</option>)}</select></label>
         </div>
-        <p className="text-sm" style={{ color: 'var(--auth-muted)' }}>A strong password is generated automatically. Sessions last up to 12 hours. No staff email address is required.</p>
+        <p className="text-sm" style={{ color: 'var(--auth-muted)' }}>A strong password is generated automatically. Sessions last up to 12 hours. No staff email address is required. Calendar Availability shows only open and unavailable dates, with no event details or other backend access.</p>
         <button className={button} disabled={busy || !!credential}>{busy ? 'Working…' : 'Create station and generate password'}</button>
       </form>
       <p className="text-sm mt-5">Station sign-in address: <a className="underline" href="/staff/login">/staff/login</a>. History identifies the shared station, not the person using it.</p>
