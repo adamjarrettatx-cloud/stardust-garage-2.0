@@ -337,10 +337,17 @@ begin
       before_value=before_value || jsonb_build_object('roles',(select jsonb_agg(to_jsonb(a)) from public.tc_assignments a where a.worker_id=w.id));
       update public.tc_workers set name=p_payload->>'name',category=p_payload->>'category',
         active=(p_payload->>'active')::boolean,pay_basis=p_payload->>'pay_basis',
+        credential_version=case when w.active and not (p_payload->>'active')::boolean
+          then gen_random_uuid() else credential_version end,
         flat_cents=(p_payload->>'flat_cents')::integer where tc_workers.id=w.id;
+      -- Turning access off is permanent for existing sessions, even if the
+      -- profile is reactivated before their normal expiry. Keep punches intact.
+      if not (p_payload->>'active')::boolean then
+        delete from public.tc_sessions where worker_id=w.id;
+      end if;
     else
       insert into public.tc_workers(name,category,active,pay_basis,flat_cents,pin_lookup,pin_verifier)
-        values(p_payload->>'name',p_payload->>'category',true,p_payload->>'pay_basis',(p_payload->>'flat_cents')::integer,
+        values(p_payload->>'name',p_payload->>'category',(p_payload->>'active')::boolean,p_payload->>'pay_basis',(p_payload->>'flat_cents')::integer,
           p_payload->>'pin_lookup',p_payload->>'pin_verifier') returning * into w;
     end if;
     delete from public.tc_assignments where worker_id=w.id;
@@ -436,4 +443,7 @@ begin
     execute format('grant execute on function %s to service_role',signature);
   end loop;
 end $$;
+-- Production defaults also grant sequence privileges. Table/RPC revocation
+-- above does not revoke these. SECURITY DEFINER inserts use the owner instead.
+revoke all on sequence public.tc_audit_id_seq from public,anon,authenticated,service_role;
 commit;

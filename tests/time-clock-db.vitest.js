@@ -31,6 +31,13 @@ beforeAll(async () => {
   db = new PGlite();
   await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
     create schema auth; create table auth.users(id uuid primary key); insert into auth.users values('${actor}');`);
+  // Model the live project's inherited grants, including identity sequences.
+  await db.exec(`
+    grant usage on schema public to anon,authenticated,service_role;
+    alter default privileges in schema public grant all on tables to anon,authenticated,service_role;
+    alter default privileges in schema public grant all on functions to anon,authenticated,service_role;
+    alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
+  `);
   await db.exec(
     readFileSync(
       new URL(
@@ -232,6 +239,128 @@ it("worker deactivation revokes PIN access but preserves an open shift for corre
   expect(
     (await db.query("select * from tc_shifts where ended_at is null")).rows,
   ).toHaveLength(1);
+});
+it.each([false, true])(
+  "honors active=%s on profile creation",
+  async (active) => {
+    const fresh = await admin("save_worker", {
+      name: "New profile",
+      category: "contractor",
+      active,
+      pay_basis: "unset",
+      flat_cents: null,
+      roles: [],
+      pin_lookup: "i".repeat(64),
+      pin_verifier: "test-only",
+    });
+    const saved = (
+      await db.query("select * from tc_workers where id=$1", [fresh.id])
+    ).rows[0];
+    expect(saved.active).toBe(active);
+    const attempt = () =>
+      call("tc_start_session", [
+        device,
+        fresh.id,
+        saved.credential_version,
+        "i".repeat(64),
+      ]);
+    if (active) await expect(attempt()).resolves.not.toThrow();
+    else await expect(attempt()).rejects.toThrow("not_authorized");
+  },
+);
+it("reactivation requires a fresh PIN verification and preserves the running shift", async () => {
+  const { shift } = await begin();
+  const payload = {
+    id: worker,
+    name: "Test Worker",
+    category: "employee",
+    pay_basis: "hourly",
+    flat_cents: null,
+    roles: [{ role_id: "bartender", rate_cents: 2200 }],
+  };
+  await admin("save_worker", { ...payload, active: false });
+  const revoked = (
+    await db.query(
+      "select credential_version,pin_lookup from tc_workers where id=$1",
+      [worker],
+    )
+  ).rows[0];
+  expect(revoked.credential_version).not.toBe(version);
+  expect(revoked.pin_lookup).toBe("p".repeat(64));
+  expect(
+    (
+      await db.query(
+        "select count(*)::int as n from tc_sessions where worker_id=$1",
+        [worker],
+      )
+    ).rows[0].n,
+  ).toBe(0);
+  await admin("save_worker", { ...payload, active: true });
+  expect((await state()).authenticated).toBe(false);
+  await expect(begin()).rejects.toThrow("not_authorized");
+  await expect(
+    call("tc_start_session", [device, worker, version, session]),
+  ).rejects.toThrow("not_authorized");
+  await call("tc_start_session", [
+    device,
+    worker,
+    revoked.credential_version,
+    session,
+  ]);
+  const freshState = await state();
+  expect(freshState.authenticated).toBe(true);
+  expect(freshState.shift.id).toBe(shift.id);
+  expect(freshState.shift.ended_at).toBeNull();
+});
+it("ordinary active profile edits do not interrupt a worker's current session", async () => {
+  await admin("save_worker", {
+    id: worker,
+    name: "Updated name",
+    category: "employee",
+    active: true,
+    pay_basis: "hourly",
+    flat_cents: null,
+    roles: [{ role_id: "bartender", rate_cents: 2400 }],
+  });
+  expect((await state()).authenticated).toBe(true);
+  expect(
+    (
+      await db.query("select credential_version from tc_workers where id=$1", [
+        worker,
+      ])
+    ).rows[0].credential_version,
+  ).toBe(version);
+});
+it("revokes all inherited audit sequence privileges while service RPCs still insert audit rows", async () => {
+  for (const role of ["anon", "authenticated", "service_role"]) {
+    for (const privilege of ["USAGE", "SELECT", "UPDATE"]) {
+      expect(
+        (
+          await db.query(
+            "select has_sequence_privilege($1,'public.tc_audit_id_seq',$2) as allowed",
+            [role, privilege],
+          )
+        ).rows[0].allowed,
+      ).toBe(false);
+    }
+  }
+  await db.exec("set role service_role");
+  try {
+    await expect(
+      db.query("select nextval('public.tc_audit_id_seq')"),
+    ).rejects.toThrow(/permission denied/);
+    const result = await begin();
+    expect(result.shift.id).toBeTruthy();
+  } finally {
+    await db.exec("reset role");
+  }
+  expect(
+    (
+      await db.query(
+        "select count(*)::int as n from tc_audit where action='clock_in'",
+      )
+    ).rows[0].n,
+  ).toBe(1);
 });
 it("pairing codes are single use and expire", async () => {
   await expect(

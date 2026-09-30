@@ -43,6 +43,32 @@ Integrated implementation for the approved SDG front-room iPad kiosk and timekee
 
 No production migration or enablement is performed by this branch.
 
+### September 30 review fixes
+
+The three database-review findings are fixed in this branch, not deployed:
+
+- New profiles honor the requested active/inactive state.
+- Deactivation rotates the worker credential version and removes their sessions. Reactivation needs a fresh PIN login; existing shifts remain intact.
+- Audit sequence privileges are explicitly revoked, including inherited Supabase defaults. Privileged RPCs still create audit entries.
+
+The database test bootstrap now reproduces production-like table/function/sequence defaults. The time-clock suite contains 64 passing tests (29 database, 29 API, 6 helpers). Native PostgreSQL tests additionally cover both lock orders when deactivation and a clock-in happen together.
+
+`tests/time-clock/native-postgres-review.py` runs only against a disposable local database named `sdg_timeclock_hardened`, via the local Unix socket. Bootstrap a fresh database with `auth.users`, one synthetic actor with ID `11111111-1111-4111-8111-111111111111`, Supabase-style roles/default grants, and the reviewed migration. It never connects to production. The prior review's PostgreSQL 18.6 run does not replace hosted PostgreSQL 17 validation.
+
+### Hosted test preparation
+
+`scripts/time-clock-staging-smoke.mjs` is prepared for a separately approved, fresh Supabase staging environment. It has not been run on a hosted project yet. It rejects the known production ref, custom production hostname, missing explicit approval, and existing worker records.
+
+Required server-side environment variables:
+
+- `TC_STAGING_APPROVED=yes`
+- `TC_STAGING_PROJECT_REF` and matching `TC_STAGING_URL=https://<ref>.supabase.co`
+- `TC_STAGING_SERVICE_KEY` and `TC_STAGING_PUBLIC_KEY`, both belonging only to that isolated environment
+
+Do not reuse production `.env` files or print the keys. Run `node scripts/time-clock-staging-smoke.mjs` after applying the corrected migration to the approved test target. It creates an email-confirmed synthetic Auth identity without sending an invite, fictional profiles, a kiosk, and test shifts, and retains them for inspection rather than deleting history. Expected checks include real PostgREST nested reports, RPCs, PIN verification, task/break/role changes, approval, deactivation/reactivation, access denials, and device revocation.
+
+The runner does not certify Next.js manager sign-in, browser Origin/cookie/proxy behavior, CSV UI, or the physical iPad. A paid hosted branch still requires organization/cost approval before creation. Do not reuse the failed `owner-view-portal` branch.
+
 1. Review the code and the additive migration `20260930031000_staff_time_clock.sql`.
 2. Verify the intended Supabase project reference from the existing Vercel application's configuration. Do not select by similar project names.
 3. Validate the migration in an isolated Supabase environment, including real PostgREST relationship embedding, RLS, service-role grants, and multi-connection concurrency. The local PGlite tests execute the real SQL but do not emulate PostgREST or separate database connection races.
