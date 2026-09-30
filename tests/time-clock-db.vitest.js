@@ -195,6 +195,19 @@ it("PIN reset immediately invalidates existing sessions and version races", asyn
     call("tc_start_session", [device, worker, version, "z".repeat(64)]),
   ).rejects.toThrow("not_authorized");
 });
+it("refuses resetting to the same PIN without invalidating the current session", async () => {
+  const current = (
+    await db.query("select pin_lookup from tc_workers where id=$1", [worker])
+  ).rows[0];
+  await expect(
+    admin("reset_pin", {
+      id: worker,
+      pin_lookup: current.pin_lookup,
+      pin_verifier: "new-hash",
+    }),
+  ).rejects.toThrow("pin_unchanged");
+  expect((await state()).authenticated).toBe(true);
+});
 it("device revocation blocks reads and punches without closing or deleting worked time", async () => {
   await begin();
   await admin("revoke_kiosk", { id: kiosk });

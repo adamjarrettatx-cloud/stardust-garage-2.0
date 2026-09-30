@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { canManageTimekeeping as timekeepingAccess } from '@/lib/time-clock/access.mjs';
 import {
   visibleAdminTabGroups,
   adminTabBadges,
@@ -164,7 +165,10 @@ export default function AdminShell({
 }) {
   const pathname = usePathname() || '';
   const searchParams = useSearchParams();
-  const groups = visibleAdminTabGroups(isOwner);
+  // Both layouts using this shell have already verified admin membership.
+  // Presentation only: the destination page and every API recheck access.
+  const canManageTimekeeping = timekeepingAccess({ email: userEmail, isAdmin: true });
+  const groups = visibleAdminTabGroups(isOwner, canManageTimekeeping);
   const badges = useMemo(() => adminTabBadges(counts), [counts]);
 
   const isDashboardRoot = pathname === '/bananas' || pathname === '/bananas/';
@@ -199,7 +203,7 @@ export default function AdminShell({
   const pathTab = tabForPath(pathname);
   const activeTab = isDashboardRoot
     ? rootTab
-    : resolveAdminTab(pathTab || DEFAULT_ADMIN_TAB, { isOwner });
+    : resolveAdminTab(pathTab || DEFAULT_ADMIN_TAB, { isOwner, canManageTimekeeping });
 
   // The breadcrumb is not tile-only: Guest List and Artist Pay are opened from
   // an event row rather than a tile, and without a trail there is no marked way

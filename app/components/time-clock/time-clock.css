@@ -59,6 +59,7 @@
 .tc-root .tc-form{margin-block:var(--s6);display:flex;flex-direction:column;gap:var(--s4);max-width:720px}
 .tc-root .tc-form label{display:flex;flex-direction:column;gap:var(--s2);font-size:var(--text-sm)}
 .tc-root .tc-form label.task{flex-direction:row;align-items:center}
+.tc-root .tc-form .task:has(input:checked) span{color:var(--text);text-decoration:none}
 .tc-root .tc-assignment{display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:var(--s4)}
 .tc-root input:not([type=checkbox]),.tc-root select{min-height:48px;border:1px solid var(--border);border-radius:6px;background:var(--panel);color:var(--text);padding:var(--s3);max-width:100%}
 .tc-root.tc-owner input,.tc-root.tc-owner select,.tc-root.tc-owner textarea{background:var(--panel)!important;color:var(--text)!important;border-color:var(--border)!important}
@@ -69,6 +70,8 @@
 .tc-root .tc-confirm{position:fixed;inset:0;background:#000b;z-index:100;display:grid;place-items:center;padding:var(--s6)}
 .tc-root .tc-confirm>.panel{max-width:560px}
 .tc-root .tc-confirm button+button{margin-left:var(--s3)}
+.tc-root .tc-confirm>.tc-form{width:100%;max-height:calc(100dvh - 48px);overflow:auto;margin:0}
+.tc-root .tc-confirm>.tc-form button+button{margin-left:0}
 .tc-root .tc-preserve{white-space:pre-wrap;overflow-wrap:anywhere}
 .tc-root .staffgrid{margin-top:var(--s5)}
 .tc-root button+button{margin-left:0}

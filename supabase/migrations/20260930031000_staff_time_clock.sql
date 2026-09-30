@@ -353,6 +353,9 @@ begin
       values(w.id,p_actor,p_action,jsonb_build_object('before',before_value,'after',p_payload-'pin_lookup'-'pin_verifier'));
     return jsonb_build_object('id',w.id);
   elsif p_action='reset_pin' then
+    select * into w from public.tc_workers where tc_workers.id=(p_payload->>'id')::uuid for update;
+    if w.id is null then raise exception 'worker_not_found'; end if;
+    if w.pin_lookup=p_payload->>'pin_lookup' then raise exception 'pin_unchanged'; end if;
     update public.tc_workers set pin_lookup=p_payload->>'pin_lookup',pin_verifier=p_payload->>'pin_verifier',
       credential_version=gen_random_uuid() where tc_workers.id=(p_payload->>'id')::uuid returning * into w;
     if w.id is null then raise exception 'worker_not_found'; end if;

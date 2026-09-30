@@ -28,6 +28,7 @@ const blankWorker = {
   pay_basis: "unset",
   flat: "",
   roles: {},
+  pin: "",
 };
 const blankRole = { id: "", name: "", active: true, tasks: "", isNew: true };
 export default function Timekeeping({ enabled }) {
@@ -45,6 +46,7 @@ export default function Timekeeping({ enabled }) {
     [disclosure, setDisclosure] = useState(null);
   const [deviceName, setDeviceName] = useState("Front room iPad"),
     [confirm, setConfirm] = useState(null);
+  const [replacementPin, setReplacementPin] = useState("");
   const [correction, setCorrection] = useState(null),
     [notice, setNotice] = useState(""),
     [now, setNow] = useState(Date.now());
@@ -59,7 +61,9 @@ export default function Timekeeping({ enabled }) {
     function trap(e) {
       if (e.key === "Escape" && !mutex.current) setConfirm(null);
       if (e.key !== "Tab") return;
-      const items = [...node.querySelectorAll("button:not(:disabled)")];
+      const items = [
+        ...node.querySelectorAll("button:not(:disabled), input:not(:disabled)"),
+      ];
       if (!items.length) {
         e.preventDefault();
         return;
@@ -176,6 +180,7 @@ export default function Timekeeping({ enabled }) {
           role_id,
           rate_cents: dollarsToCents(rate),
         })),
+        ...(!editWorker.id ? { pin: editWorker.pin } : {}),
       };
       const result = await request(endpoint, {
         action: "save_worker",
@@ -330,12 +335,13 @@ export default function Timekeeping({ enabled }) {
                   setDetail(null);
                   setCorrection(null);
                   setDisclosure(null);
+                  setEditWorker(null);
                 }}
               >
                 {t === "timesheets"
                   ? "Timesheets"
                   : t === "people"
-                    ? "People & rates"
+                    ? "Staff profiles"
                     : t === "roles"
                       ? "Roles & duties"
                       : "Devices"}
@@ -694,21 +700,26 @@ export default function Timekeeping({ enabled }) {
               {tab === "people" && (
                 <>
                   <div className="between">
-                    <h2>People & rates</h2>
+                    <h2>Staff profiles</h2>
                     <button
                       className="primary"
                       onClick={() => chooseWorker(null)}
                     >
-                      Add worker
+                      Add staff profile
                     </button>
                   </div>
                   <p className="sub">
-                    A time-clock profile does not grant access to any other SDG
-                    tools. PINs are shown only once at creation or reset.
+                    Adam and Jeyu can create and edit profiles, assigned roles,
+                    pay settings, and PINs here at any time. A time-clock
+                    profile does not grant access to other SDG tools.
                   </p>
                   {editWorker && (
                     <form className="panel tc-form" onSubmit={saveWorker}>
-                      <h2>{editWorker.id ? "Edit worker" : "New worker"}</h2>
+                      <h2>
+                        {editWorker.id
+                          ? "Edit staff profile"
+                          : "New staff profile"}
+                      </h2>
                       <label>
                         Name
                         <input
@@ -732,6 +743,26 @@ export default function Timekeeping({ enabled }) {
                         Use your established classification; this setting does
                         not determine legal status.
                       </p>
+                      {!editWorker.id && (
+                        <label>
+                          PIN (optional)
+                          <input
+                            type="password"
+                            inputMode="numeric"
+                            autoComplete="new-password"
+                            pattern="[0-9]{6}"
+                            maxLength={6}
+                            value={editWorker.pin}
+                            onChange={(e) => field("pin", e.target.value)}
+                            placeholder="Leave blank to generate"
+                          />
+                          <span className="sub">
+                            Choose six digits or leave blank to generate a PIN.
+                            The saved PIN is displayed once for private
+                            delivery.
+                          </span>
+                        </label>
+                      )}
                       <label>
                         Pay basis
                         <select
@@ -806,7 +837,7 @@ export default function Timekeeping({ enabled }) {
                         </label>
                       )}
                       <button className="primary" disabled={busy}>
-                        Save worker
+                        Save profile
                       </button>
                       <button type="button" onClick={() => setEditWorker(null)}>
                         Cancel
@@ -838,13 +869,15 @@ export default function Timekeeping({ enabled }) {
                           ))}
                         <button onClick={() => chooseWorker(w)}>Edit</button>
                         <button
-                          onClick={() =>
+                          onClick={() => {
+                            setReplacementPin("");
+                            setError("");
                             setConfirm({
                               action: "reset_pin",
                               id: w.id,
                               label: `Reset ${w.name}'s PIN? The old PIN and current PIN session will stop working.`,
-                            })
-                          }
+                            });
+                          }}
                         >
                           Reset PIN
                         </button>
@@ -854,7 +887,7 @@ export default function Timekeeping({ enabled }) {
                   {!data.workers.length && (
                     <div className="empty">
                       Add your first worker, assign roles, and privately provide
-                      their generated PIN.
+                      their PIN.
                     </div>
                   )}
                 </>
@@ -1067,15 +1100,21 @@ export default function Timekeeping({ enabled }) {
               aria-modal="true"
               aria-label="Confirm access change"
             >
-              <div className="panel">
-                <h2>Confirm access change</h2>
-                <p>{confirm.label}</p>
-                <button
-                  className="primary"
-                  disabled={busy}
-                  onClick={() =>
-                    mutate(confirm.action, { id: confirm.id }, (r) => {
+              <form
+                className="panel tc-form"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  mutate(
+                    confirm.action,
+                    {
+                      id: confirm.id,
+                      ...(confirm.action === "reset_pin"
+                        ? { pin: replacementPin }
+                        : {}),
+                    },
+                    (r) => {
                       setConfirm(null);
+                      setReplacementPin("");
                       if (r.pin)
                         setDisclosure({
                           title: "Replacement PIN",
@@ -1083,15 +1122,44 @@ export default function Timekeeping({ enabled }) {
                           text: "Give this privately to the worker. The old PIN no longer works.",
                         });
                       else setNotice("Device access revoked.");
-                    })
-                  }
-                >
+                    },
+                  );
+                }}
+              >
+                <h2>Confirm access change</h2>
+                <p>{confirm.label}</p>
+                {confirm.action === "reset_pin" && (
+                  <label>
+                    New PIN (optional)
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      autoComplete="new-password"
+                      pattern="[0-9]{6}"
+                      maxLength={6}
+                      value={replacementPin}
+                      onChange={(e) => setReplacementPin(e.target.value)}
+                      placeholder="Leave blank to generate"
+                      disabled={busy}
+                    />
+                    <span className="sub">
+                      Choose six digits or leave blank to generate a
+                      replacement. Current PINs cannot be viewed.
+                    </span>
+                  </label>
+                )}
+                {error && <p role="alert">{error}</p>}
+                <button className="primary" disabled={busy}>
                   Confirm
                 </button>
-                <button disabled={busy} onClick={() => setConfirm(null)}>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => setConfirm(null)}
+                >
                   Cancel
                 </button>
-              </div>
+              </form>
             </section>
           )}
         </>

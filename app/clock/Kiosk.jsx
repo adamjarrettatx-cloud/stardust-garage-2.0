@@ -248,8 +248,8 @@ export default function Kiosk({ enabled }) {
         <span className="eyebrow">DEVICE SETUP</span>
         <h1>Pair this iPad</h1>
         <p className="muted">
-          The owner creates a one-time pairing code in Timekeeping → Devices. Do
-          not sign the shared iPad into an owner account.
+          Adam or Jeyu creates a one-time pairing code in Timekeeping → Devices.
+          Do not sign the shared iPad into an owner account.
         </p>
         <form
           onSubmit={(e) => {
@@ -312,8 +312,8 @@ export default function Kiosk({ enabled }) {
       <section className="helpbox panel">
         <h1>Need help with your shift?</h1>
         <p>
-          Ask the owner if you forgot your PIN, missed a punch, or need a time
-          correction. Do not use someone else’s PIN.
+          Ask Adam or Jeyu if you forgot your PIN, missed a punch, or need a
+          time correction. Do not use someone else’s PIN.
         </p>
         <button onClick={() => setScreen("pin")}>Back to PIN</button>
       </section>

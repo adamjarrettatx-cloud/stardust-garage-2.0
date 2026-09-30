@@ -1,6 +1,6 @@
 import {
   handle,
-  owner,
+  manager,
   body,
   db,
   rpc,
@@ -16,6 +16,14 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const safeWorkerColumns =
   "id,name,category,active,pay_basis,flat_cents,created_at";
+function assignedPin(value) {
+  if (value === undefined || value === "") return newPin();
+  if (typeof value !== "string" || !/^\d{6}$/.test(value))
+    throw new ClockError(
+      "Choose exactly six digits, or leave PIN blank to generate one.",
+    );
+  return value;
+}
 function checked(result) {
   if (result.error)
     throw new ClockError("Timekeeping is temporarily unavailable.", 503);
@@ -23,7 +31,7 @@ function checked(result) {
 }
 export async function GET(request) {
   return handle(async () => {
-    await owner(request);
+    await manager(request);
     const client = db(),
       url = new URL(request.url);
     if (url.searchParams.has("shift")) {
@@ -146,7 +154,7 @@ export async function GET(request) {
 }
 export async function POST(request) {
   return handle(async () => {
-    const actor = await owner(request, true),
+    const actor = await manager(request, true),
       input = await body(request),
       client = db();
     const action = input.action,
@@ -227,17 +235,21 @@ export async function POST(request) {
         roles,
       };
       if (!p.id) {
-        const pin = newPin();
+        const pin = assignedPin(p.pin);
         payload.pin_lookup = hash("pin-lookup", pin);
         payload.pin_verifier = await hashPin(
           pin,
           process.env.TIME_CLOCK_SECRET,
         );
-        disclosure = { pin }; // Only returned once to the gated owner; never persisted plaintext.
+        disclosure = { pin }; // Returned once to the gated manager; never persisted plaintext.
+      } else if (p.pin !== undefined && p.pin !== "") {
+        throw new ClockError(
+          "Use Reset PIN to change an existing profile's PIN.",
+        );
       }
     } else if (action === "reset_pin") {
       if (!UUID.test(p.id ?? "")) throw new ClockError("Invalid worker ID.");
-      const pin = newPin();
+      const pin = assignedPin(p.pin);
       payload = {
         id: p.id,
         pin_lookup: hash("pin-lookup", pin),

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { ownerPageGate } from "@/lib/auth-helpers";
+import { timekeepingPageGate } from "@/lib/time-clock/auth";
 import { enabled } from "@/lib/time-clock/server";
 import Timekeeping from "./Timekeeping";
 
@@ -9,7 +9,7 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 export default async function TimekeepingPage() {
-  const { redirect: gate } = await ownerPageGate();
+  const { redirect: gate } = await timekeepingPageGate();
   if (gate) redirect(gate);
   return <Timekeeping enabled={enabled()} />;
 }

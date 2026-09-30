@@ -1,19 +1,19 @@
 # Staff time clock
 
-Integrated implementation for the approved SDG front-room iPad kiosk and owner timekeeping view. This feature is off by default and is not a payroll processor.
+Integrated implementation for the approved SDG front-room iPad kiosk and timekeeping management view. Adam and Jeyu manage the roster themselves; there is no developer-mediated onboarding step. This feature is off by default and is not a payroll processor.
 
 ## Routes and access
 
 - `/clock`: standalone shared-device kiosk. No owner links, public navbar, sound toggle, or marketing attribution. The response blocks framing and third-party scripts/connections.
 - `/api/time-clock/[action]`: paired device plus short-lived worker session. No staff Supabase account is required and no general application permission is granted.
-- `/bananas/timekeeping`: existing owner page gate, owner-only sidebar destination. The existing owner identity is unchanged.
-- `/api/admin/time-clock`: existing `requireOwnerMfa()` gate on every read/write, including CSV. MFA follows the repository's existing `ENFORCE_ADMIN_MFA` policy.
+- `/bananas/timekeeping`: dedicated `timekeepingPageGate()` and sidebar visibility for Adam (`adam@sdgatx.com`) and Jeyu (`jeyu@sdgatx.com`), each also requiring verified `team_members.role = admin`.
+- `/api/admin/time-clock`: dedicated `requireTimekeepingManager()` on every read/write, including CSV and PIN reset. Uses verified Auth email, not editable metadata. MFA follows the repository's existing `ENFORCE_ADMIN_MFA` policy through `requireAdminMfa()`. Global owner gates and access to financials, Artist Pay, settings, and View Portal remain unchanged.
 
 ## Implemented
 
-- Owner-managed independent worker roster, employee/contractor label, role assignments, optional hourly rates or flat shift fee.
+- Backend **Timekeeping → Staff profiles**: Adam/Jeyu can create and edit names, employee/contractor labels, multiple role assignments, hourly rates per role or flat shift fees, and active/inactive status. Profiles do not require staff email addresses, Supabase logins, or developer input.
 - Custom role names and responsibility templates; snapshots preserve old duties and rate values.
-- Random six-digit PIN, one-time owner display on creation/reset, HMAC lookup plus salted scrypt verification. No plaintext PIN persistence or logs.
+- Manager-chosen six-digit PIN or random generation when left blank, on creation and reset. Leading zeros preserved. One-time management display, HMAC lookup plus salted scrypt verification. No stored PIN recovery, plaintext persistence or logs. Duplicate PINs rejected atomically; reset invalidates old credentials and current worker sessions.
 - One-time eight-digit device pairing, 15-minute pairing expiry, 90-day device credential, immediate owner revocation.
 - HttpOnly, SameSite=Strict device/session cookies, Secure and `__Host-` names in production.
 - Durable PostgreSQL attempt limits; PIN limit is device-scoped and survives wrong-PIN transactions. Pairing has global and per-forwarded-IP limits; production trusted-proxy/WAF settings still require operational verification.
@@ -49,8 +49,8 @@ No production migration or enablement is performed by this branch.
 4. Install a server-only random secret of at least 32 bytes, encoded as 43+ base64url characters, as `TIME_CLOCK_SECRET`. Do not expose it with a `NEXT_PUBLIC_` prefix or paste it into a ticket.
 5. Apply the reviewed migration to the selected environment.
 6. Set `TIME_CLOCK_ENABLED=true` in that environment and deploy the reviewed feature branch. Missing flag or secret fails closed. Do not enable a preview against production Supabase without explicit approval.
-7. Owner opens Timekeeping. Add real workers, review assigned roles and rates, and privately provide generated PINs.
-8. Owner creates a kiosk pairing code; enter it at `/clock` on the front-room iPad without leaving an owner session on the device. Verify iPad browser lockdown and loss/revocation procedures operationally.
+7. Adam or Jeyu opens Timekeeping → Staff profiles. Create and update real profiles, assigned roles, and rates in the backend, and privately provide chosen/generated PINs. No roster needs to be supplied to a developer. Verify both permitted admin accounts can access the page, and other admins cannot.
+8. Adam or Jeyu creates a kiosk pairing code; enter it at `/clock` on the front-room iPad without leaving an admin session on the device. Verify iPad browser lockdown and loss/revocation procedures operationally.
 9. Perform a real worker test: clock in, refresh, switch role, record responsibility, clock out, owner sees exact record, export, and revoke a test device. Do not treat branch merge as proof of successful operation.
 10. Confirm pay model, fixed workweek, pay period, break policy and overtime treatment before extending base estimates into payroll.
 
@@ -68,7 +68,7 @@ No production migration or enablement is performed by this branch.
 
 Observed browser QA: device pairing, PIN entry, clock-in, saved task/note, reload persistence, break start/end, role switch, incomplete-task clock-out, receipt, owner review, Austin correction and reapproval, CSV, 93-day filter, custom role creation, flat-fee worker creation, PIN reset, pairing-code creation, lost-response retry, offline lockout and kiosk-to-owner access denial.
 
-Validation at implementation handoff:
+Validation at initial implementation handoff (before staff-management access update):
 
 - 23 database tests, 13 API tests, and 6 pure-helper/crypto tests passed (42 time-clock tests).
 - 83 admin-navigation tests and 12 authenticated-theme tests passed (95 regression tests).
@@ -80,3 +80,13 @@ Validation at implementation handoff:
 - The observed lost-response test committed a clock-in but dropped its HTTP response, then retried with the same request ID. Exactly one open shift existed afterward.
 
 The feature remains subject to production rollout and real-device verification even when every local check passes.
+
+## Staff-management update, September 30
+
+- Self-service management for Adam and Jeyu, with no access expansion to other owner-only sections.
+- Staff profiles renamed and documented; choose or generate six-digit PINs on create/reset. Same-PIN reset and duplicate PINs rejected. No extra production migration has been run; the original unapplied migration includes the same-PIN guard.
+- 59 time-clock tests passed: 24 database, 29 API/access/PIN, 6 helper/crypto.
+- 96 navigation/theme tests passed; existing security suite remained green (30 API and 17 Node/database).
+- Browser checks against real UI/API and isolated SQL: create contractor with two role rates and leading-zero PIN; reload persisted values; edit name/classification to employee and flat fee; duplicate reset rejected; chosen replacement accepted by kiosk while old PIN rejected; deactivate/reactivate and verify kiosk denial; blank reset generated a replacement. No page errors.
+- Desktop, tablet and mobile staff forms/reset states inspected. Corrected selected-role styling so assignment checkboxes are not struck through. Reset dialog traps focus and supports viewport scrolling.
+- Sample-data preview now includes editable staff profiles. It remains a separate in-memory demonstration, not the production database.
