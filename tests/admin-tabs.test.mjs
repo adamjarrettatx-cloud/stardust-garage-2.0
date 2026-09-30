@@ -84,6 +84,19 @@ test('owners see every tab', () => {
   assert.equal(visibleAdminTabs(true).length, ADMIN_TABS.length);
 });
 
+test('timekeeping managers see staff management without owner-only financial tools', () => {
+  const tabs = visibleAdminTabs(false, true).map(t => t.id);
+  assert.ok(tabs.includes('timekeeping'));
+  for (const id of ['analytics', 'artist-pay', 'settings', 'view-portal']) {
+    assert.ok(!tabs.includes(id));
+    assert.equal(resolveAdminTab(id, { canManageTimekeeping: true }), DEFAULT_ADMIN_TAB);
+  }
+  assert.ok(!visibleAdminTabs(false).some(t => t.id === 'timekeeping'));
+  assert.equal(resolveAdminTab('timekeeping'), DEFAULT_ADMIN_TAB);
+  assert.equal(resolveAdminTab('timekeeping', { canManageTimekeeping: true }), 'timekeeping');
+  assert.match(fs.readFileSync(path.join(REPO_ROOT, 'app/bananas/timekeeping/page.js'), 'utf8'), /timekeepingPageGate/);
+});
+
 test('View Portal is a direct owner-only destination under ADMIN', () => {
   const tab = adminTabById('view-portal');
   assert.equal(tab.label, 'View Portal');

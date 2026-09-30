@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "test:time-clock": "vitest run tests/time-clock-db.vitest.js tests/api/time-clock.vitest.js && node --test tests/time-clock-core.test.mjs",
+    "qa:time-clock": "node tests/time-clock/start-harness.mjs",
     "test:weeknight": "vitest run tests/api/weeknight-checkout.vitest.js && node --test tests/weeknight-pricing.test.mjs tests/tickets-entitlement.test.mjs tests/tickets-pricing.test.mjs tests/pricing-tax-and-target-total.test.mjs tests/event-discount-display.test.mjs",
     "test:security": "vitest run tests/api/security-incidents.vitest.js tests/api/security-history.vitest.js tests/api/capacity/access-restrictions.vitest.js && node --test tests/security-incidents-db.test.mjs tests/restriction-lift-allowlist.test.mjs tests/access-restrictions-wiring.test.mjs tests/front-desk-role.test.mjs",
     "test:arrival-roster": "vitest run tests/api/arrival-roster.vitest.js tests/api/arrival-roster-server.vitest.js && node --test tests/front-desk-tonight-signins.test.mjs tests/front-desk-arrivals-db.test.mjs tests/access-restrictions-wiring.test.mjs",
@@ -46,6 +48,7 @@
     "@types/node": "^20.19.43",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "esbuild": "^0.28.2",
     "eslint": "^9",
     "eslint-config-next": "15.5.26",
     "tailwindcss": "^4",
