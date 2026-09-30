@@ -2,20 +2,24 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { adminMfaReturnTo, verifyAdminSecondFactor } from '@/lib/admin-mfa-step-up';
 
 // Functional TOTP enrollment for admins/team using Supabase Auth MFA.
 //
 // IMPORTANT: This component performs REAL enrollment against Supabase
-// (enroll -> challenge -> verify). It is NOT a mock. However, MFA is not yet
-// *enforced* on any route — enforcement flips on via the ENFORCE_ADMIN_MFA
-// server flag once everyone has enrolled (see lib/auth-helpers requireAdminMfa).
-export default function MfaEnrollClient() {
+// (enroll -> challenge -> verify), plus step-up with an existing factor.
+// Sensitive station controls require aal2 regardless of the general MFA flag.
+export default function MfaEnrollClient({ required = false, enforced = false, returnTo = '/bananas', currentLevel = null }) {
   const supabase = createClient();
 
   const [loading, setLoading] = useState(true);
   const [factors, setFactors] = useState([]);
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
+  const [level, setLevel] = useState(currentLevel);
+  const [factorId, setFactorId] = useState('');
+  const [sessionCode, setSessionCode] = useState('');
+  const [steppingUp, setSteppingUp] = useState(false);
 
   // Enrollment-in-progress state
   const [enrolling, setEnrolling] = useState(false);
@@ -29,6 +33,10 @@ export default function MfaEnrollClient() {
       const { data, error: listErr } = await supabase.auth.mfa.listFactors();
       if (listErr) throw listErr;
       setFactors(data?.totp || []);
+      const verified = (data?.totp || []).filter(f => f.status === 'verified');
+      setFactorId(value => verified.some(f => f.id === value) ? value : verified[0]?.id || '');
+      const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      setLevel(assuranceError ? null : assurance?.currentLevel || null);
     } catch (err) {
       setError(err.message || 'Failed to load MFA factors');
     } finally {
@@ -37,6 +45,21 @@ export default function MfaEnrollClient() {
   }, [supabase]);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  async function stepUp(event) {
+    event.preventDefault();
+    if (steppingUp) return;
+    setSteppingUp(true); setError(null); setNotice(null);
+    try {
+      await verifyAdminSecondFactor(supabase, factorId, sessionCode.trim());
+      setSessionCode('');
+      window.location.assign(adminMfaReturnTo(returnTo));
+    } catch (err) {
+      setSessionCode('');
+      setError(err.message || 'Verification failed. Please retry.');
+      setSteppingUp(false);
+    }
+  }
 
   async function startEnroll() {
     setError(null); setNotice(null); setEnrolling(true);
@@ -71,6 +94,12 @@ export default function MfaEnrollClient() {
         code: code.trim(),
       });
       if (vErr) throw vErr;
+      if (required) {
+        const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (assuranceError || assurance?.currentLevel !== 'aal2') throw new Error('Your session could not be verified. Please refresh and retry.');
+        window.location.assign(adminMfaReturnTo(returnTo));
+        return;
+      }
       setNotice('Authenticator verified and active.');
       setPending(null);
       setEnrolling(false);
@@ -109,7 +138,7 @@ export default function MfaEnrollClient() {
   return (
     <div className="space-y-5">
       {error && (
-        <div className="p-3 rounded-[10px] text-[13px]" style={{ background: 'var(--auth-danger-bg)', border: '1px solid var(--auth-danger-border)', color: 'var(--auth-danger)' }}>
+        <div role="alert" className="p-3 rounded-[10px] text-[13px]" style={{ background: 'var(--auth-danger-bg)', border: '1px solid var(--auth-danger-border)', color: 'var(--auth-danger)' }}>
           {error}
         </div>
       )}
@@ -118,6 +147,30 @@ export default function MfaEnrollClient() {
           {notice}
         </div>
       )}
+
+      {level !== 'aal2' && factors.some(f => f.status === 'verified') && <form onSubmit={stepUp}
+        className="rounded-[14px] border p-5 space-y-4" style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}>
+        <div><h2 className="text-[16px] font-semibold">Verify your current session</h2>
+          <p className="text-[13px] mt-2" style={{ color: 'var(--auth-muted)' }}>Open your authenticator app and enter its current 6-digit code. This unlocks protected owner controls for this session.</p></div>
+        {factors.filter(f => f.status === 'verified').length > 1 && <label className="block text-[13px]">Authenticator
+          <select aria-label="Authenticator" value={factorId} onChange={e => setFactorId(e.target.value)} disabled={steppingUp}
+            className="block w-full mt-2 p-3 rounded-[10px]" style={{ background:'var(--auth-input-bg)', color:'var(--auth-input-text)', border:'1px solid var(--auth-input-border)' }}>
+            {factors.filter(f => f.status === 'verified').map(f => <option key={f.id} value={f.id}>{f.friendly_name || 'Authenticator'}</option>)}
+          </select></label>}
+        <label className="block text-[13px] font-semibold">Authenticator code
+          <input aria-label="Authenticator code" value={sessionCode} onChange={e => setSessionCode(e.target.value.replace(/\D/g, '').slice(0,6))}
+            type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required disabled={steppingUp}
+            placeholder="6-digit code" className="block w-full max-w-[240px] mt-2 p-3 text-base rounded-[10px]"
+            style={{ background:'var(--auth-input-bg)', color:'var(--auth-input-text)', border:'1px solid var(--auth-input-border)' }} />
+        </label>
+        <button type="submit" disabled={steppingUp || sessionCode.length !== 6}
+          className="px-5 py-3 text-[13px] font-semibold rounded-[10px] disabled:opacity-50"
+          style={{ background:'var(--auth-text-strong)', color:'var(--auth-strong-surface-text)' }}>{steppingUp ? 'Verifying…' : 'Verify and continue'}</button>
+      </form>}
+      {required && level === 'aal2' && <div className="rounded-[14px] border p-5 space-y-3" style={{ borderColor:'var(--auth-card-border)' }}>
+        <p className="text-[13px]">Your current session is verified.</p>
+        <a className="underline text-[13px] font-semibold" href={adminMfaReturnTo(returnTo)}>Continue to your admin workspace</a>
+      </div>}
 
       <div className="rounded-[14px] border p-5" style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}>
         <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase mb-3" style={{ color: 'var(--auth-muted)' }}>
@@ -140,7 +193,7 @@ export default function MfaEnrollClient() {
                     {f.status}
                   </span>
                 </div>
-                <button onClick={() => removeFactor(f.id)}
+                <button onClick={() => removeFactor(f.id)} disabled={steppingUp}
                   className="text-[12px] px-3 py-1.5 rounded-[8px]"
                   style={{ border: '1px solid var(--auth-danger-border)', color: 'var(--auth-danger)' }}>
                   Remove
@@ -151,7 +204,7 @@ export default function MfaEnrollClient() {
         )}
 
         {!enrolling && (
-          <button onClick={startEnroll}
+          <button onClick={startEnroll} disabled={steppingUp}
             className="px-5 py-2.5 text-[13px] font-semibold rounded-[10px] tracking-[0.06em] uppercase"
             style={{ background: 'var(--auth-text-strong)', color: 'var(--auth-strong-surface-text)' }}>
             Add authenticator
@@ -198,8 +251,7 @@ export default function MfaEnrollClient() {
       </div>
 
       <p className="text-[12px]" style={{ color: 'var(--auth-faint)' }}>
-        Two-factor authentication is currently <strong>optional</strong>. Once all admins and team
-        members have enrolled, it will be required at sign-in.
+        {enforced ? 'Two-factor authentication is required for admin access.' : 'Two-factor authentication is required for sensitive owner actions, including managing station accounts, even when general admin MFA enforcement is optional.'}
       </p>
     </div>
   );
