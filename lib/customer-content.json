@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "membership": {
+    "heading": "Three ways to belong.",
+    "intro": "Apply for the tier that fits how you want to spend your time with us. Every membership is application-based and accepted on a rolling basis.",
+    "trial": {
+      "heading": "The 30-Day Trial Pass",
+      "body": "30 days of full venue access. Your window starts the night you walk in, not the day you sign up.",
+      "cta": "GET YOUR TRIAL PASS"
+    },
+    "plans": [
+      {
+        "key": "weekender",
+        "name": "The Weekender",
+        "slug": "weekender",
+        "price": "$48",
+        "period": "/ month",
+        "featured": false,
+        "kicker": "FOR THE WEEKEND CROWD",
+        "tagline": "Your access pass to Stardust Garage for Weekend Music Experiences.",
+        "benefits": [
+          "Your access pass to Stardust Garage for Weekend Music Experiences",
+          "20% off weeknight experiences (Wellness Wednesday, Movie Night, and more)"
+        ]
+      },
+      {
+        "key": "cowork",
+        "name": "The Builder",
+        "slug": "cowork",
+        "price": "$155",
+        "period": "/ month",
+        "featured": false,
+        "kicker": "FOR THE WORKDAY",
+        "tagline": "For people who do their best work somewhere that isn’t home and that isn’t a traditional coffee shop.",
+        "benefits": [
+          "Cowork access, 8AM – 5PM, Mon–Fri",
+          "Gigabit fiber, refreshments, curated room",
+          "3 guest passes per month",
+          "20% off weeknight experiences (Wellness Wednesday, Movie Night, and more)",
+          "A community of artists, builders, and culturally aligned people"
+        ]
+      },
+      {
+        "key": "iykyk",
+        "name": "The Insider",
+        "slug": "cowork-party",
+        "price": "$225",
+        "period": "/ month",
+        "featured": false,
+        "kicker": "WORKDAYS + WEEKENDS",
+        "tagline": "The true Stardust Garage experience.",
+        "benefits": [
+          "Everything in The Builder + The Weekender",
+          "Up to 60% off SDG event tickets",
+          "20% off weeknight experiences (Wellness Wednesday, Movie Night, and more)",
+          "Insider-only hours and experiences",
+          "The Insider only access line",
+          "Priority access to Space Rentals",
+          "Exclusive Studio Rental Access",
+          "Unlisted benefits"
+        ]
+      }
+    ],
+    "lockers": {
+      "heading": "Lockers",
+      "note": "Requires membership",
+      "benefits": ["Two sizes — small and large", "Combination lock and built-in fast charger"]
+    },
+    "closing": {
+      "heading": "Now accepting members.",
+      "body": "We accept on a rolling basis as the room has space. Tell us a little about yourself."
+    }
+  }
+}

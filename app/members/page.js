@@ -1,58 +1,8 @@
 import Link from 'next/link';
+import customerContent from '@/lib/customer-content.json';
 
-const plans = [
-  {
-    name: 'The Weekender',
-    slug: 'weekender',
-    price: '$48',
-    period: '/ month',
-    featured: false,
-    kicker: 'FOR THE WEEKEND CROWD',
-    tagline: 'Your access pass to Stardust Garage for Weekend Music Experiences.',
-    benefits: [
-      'Your access pass to Stardust Garage for Weekend Music Experiences',
-      '20% off weeknight experiences (Wellness Wednesday, Movie Night, and more)',
-    ],
-  },
-  {
-    name: 'The Builder',
-    slug: 'cowork',
-    price: '$155',
-    period: '/ month',
-    featured: false,
-    kicker: 'FOR THE WORKDAY',
-    tagline: 'For people who do their best work somewhere that isn’t home and that isn’t a traditional coffee shop.',
-    benefits: [
-      'Cowork access, 8AM – 5PM, Mon–Fri',
-      'Gigabit fiber, refreshments, curated room',
-      '3 guest passes per month',
-      '20% off weeknight experiences (Wellness Wednesday, Movie Night, and more)',
-      'A community of artists, builders, and culturally aligned people',
-    ],
-  },
-  {
-    // NOTE: slug stays 'cowork-party' — renaming would ripple through Stripe,
-    // activation, applications, and existing member records. Only the display
-    // name changes (previously "IYKYK", then "Experience", now "The Insider").
-    name: 'The Insider',
-    slug: 'cowork-party',
-    price: '$225',
-    period: '/ month',
-    featured: false,
-    kicker: 'WORKDAYS + WEEKENDS',
-    tagline: 'The true Stardust Garage experience.',
-    benefits: [
-      'Everything in The Builder + The Weekender',
-      'Up to 60% off SDG event tickets',
-      '20% off weeknight experiences (Wellness Wednesday, Movie Night, and more)',
-      'Insider-only hours and experiences',
-      'The Insider only access line',
-      'Priority access to Space Rentals',
-      'Exclusive Studio Rental Access',
-      'Unlisted benefits',
-    ],
-  },
-];
+const content = customerContent.membership;
+const plans = content.plans;
 
 function CheckIcon() {
   return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f5f5f5" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 4 }}><polyline points="20 6 9 17 4 12" /></svg>);
@@ -66,10 +16,10 @@ export default function MembersPage() {
         <div className="mb-12 max-w-[720px]">
           <div className="text-[11px] font-semibold tracking-[0.28em] mb-3" style={{ color: 'rgba(255,255,255,0.5)' }}>MEMBERSHIP</div>
           <h1 className="text-[28px] md:text-[40px] font-extrabold -tracking-[0.02em] leading-[1.05] mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Three ways to belong.
+            {content.heading}
           </h1>
           <p className="text-[15px] leading-[1.65]" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            Apply for the tier that fits how you want to spend your time with us. Every membership is application-based and accepted on a rolling basis.
+            {content.intro}
           </p>
         </div>
 
@@ -87,10 +37,10 @@ export default function MembersPage() {
               TRY US BEFORE YOU JOIN
             </div>
             <h3 className="text-[22px] font-bold -tracking-[0.01em] mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-              The 30-Day Trial Pass
+              {content.trial.heading}
             </h3>
             <p className="text-[14px] leading-[1.55] max-w-[560px]" style={{ color: 'rgba(255,255,255,0.65)' }}>
-              30 days of full venue access. Your window starts the night you walk in, not the day you sign up.
+              {content.trial.body}
             </p>
           </div>
 
@@ -103,7 +53,7 @@ export default function MembersPage() {
                 color: '#0a0a0a',
               }}
             >
-              GET YOUR TRIAL PASS
+              {content.trial.cta}
             </Link>
           </div>
         </div>
@@ -141,12 +91,11 @@ export default function MembersPage() {
         <div className="mt-5 rounded-[18px] p-8 md:p-9 border flex flex-col md:flex-row md:items-center gap-7" style={{ background: '#141418', borderColor: 'rgba(255,255,255,0.06)' }}>
           <div className="md:w-[260px] flex-shrink-0">
             <div className="text-[10px] font-semibold tracking-[0.24em] mb-2" style={{ color: 'rgba(255,255,255,0.45)' }}>ADD-ON</div>
-            <h3 className="text-[22px] font-bold -tracking-[0.01em] mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Lockers</h3>
-            <p className="text-[12.5px]" style={{ color: 'rgba(255,255,255,0.5)' }}>Requires membership</p>
+            <h3 className="text-[22px] font-bold -tracking-[0.01em] mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{content.lockers.heading}</h3>
+            <p className="text-[12.5px]" style={{ color: 'rgba(255,255,255,0.5)' }}>{content.lockers.note}</p>
           </div>
           <ul className="list-none flex-1 space-y-2">
-            <li className="flex items-start gap-3 text-[14px] leading-[1.55]"><CheckIcon /><span>Two sizes — small and large</span></li>
-            <li className="flex items-start gap-3 text-[14px] leading-[1.55]"><CheckIcon /><span>Combination lock and built-in fast charger</span></li>
+            {content.lockers.benefits.map(benefit => <li key={benefit} className="flex items-start gap-3 text-[14px] leading-[1.55]"><CheckIcon /><span>{benefit}</span></li>)}
           </ul>
         </div>
       </section>
@@ -154,9 +103,9 @@ export default function MembersPage() {
       {/* CLOSING */}
       <section className="max-w-[1100px] mx-auto px-6 pb-24 md:pb-32">
         <div className="rounded-[20px] border p-10 md:p-14 text-center" style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'radial-gradient(120% 80% at 50% 0%, rgba(180,135,70,0.18) 0%, rgba(20,18,22,0.9) 60%, rgba(10,10,14,1) 100%)' }}>
-          <h2 className="text-[32px] md:text-[44px] font-extrabold -tracking-[0.02em] leading-[1.05] mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Now accepting members.</h2>
+          <h2 className="text-[32px] md:text-[44px] font-extrabold -tracking-[0.02em] leading-[1.05] mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{content.closing.heading}</h2>
           <p className="text-[15px] leading-[1.65] max-w-[480px] mx-auto mb-9" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            We accept on a rolling basis as the room has space. Tell us a little about yourself.
+            {content.closing.body}
           </p>
           <Link href="/members/apply/cowork" className="inline-block px-8 py-4 rounded-full text-[12px] font-semibold tracking-[0.2em] transition-all hover:-translate-y-0.5" style={{ background: '#ffffff', color: '#0a0a0a' }}>APPLY NOW</Link>
         </div>
