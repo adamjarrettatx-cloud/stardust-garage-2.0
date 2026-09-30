@@ -20,7 +20,7 @@ import { deriveStatus } from '@/lib/capacity-utils';
 // screen instead of an empty counter.
 //
 // Returns { session, status, connected, loading, error, unauthorized, refresh, runOp }.
-export function useCapacity({ pollMs = 4000, token = null } = {}) {
+export function useCapacity({ pollMs = 4000, token = null, stationMode = false } = {}) {
   const isDevice = Boolean(token);
 
   const [session, setSession] = useState(null);
@@ -35,7 +35,7 @@ export function useCapacity({ pollMs = 4000, token = null } = {}) {
   const tokenRef = useRef(token);
   tokenRef.current = token;
 
-  if (supabaseRef.current === null && !isDevice) {
+  if (supabaseRef.current === null && !isDevice && !stationMode) {
     supabaseRef.current = createClient();
   }
 

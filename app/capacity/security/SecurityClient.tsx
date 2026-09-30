@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { useDoorScanner } from '../components/useDoorScanner';
 import { INCIDENT_ACTIONS, INCIDENT_CATEGORIES } from '@/lib/capacity/security-labels';
 import type { IncidentAction, IncidentCategory, SecurityIncident } from '@/lib/capacity/security-incidents';
+import StationSessionControls from '@/app/components/StationSessionControls';
 import styles from './security.module.css';
 
 type Subject = { kind: 'member' | 'trial_pass' | 'guest'; id: string };
@@ -32,7 +33,7 @@ function Camera({ onScan, enabled }: { onScan: (raw: string) => void; enabled: b
   </section>;
 }
 
-export default function SecurityClient({ staffLabel }: { staffLabel: string }) {
+export default function SecurityClient({ staffLabel, stationMode = false }: { staffLabel: string; stationMode?: boolean }) {
   const [guest, setGuest] = useState<Guest | null>(null);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchRow[]>([]);
@@ -84,7 +85,7 @@ export default function SecurityClient({ staffLabel }: { staffLabel: string }) {
     const timer = setTimeout(async () => {
       setSearching(true); setError('');
       try {
-        const res = await fetch(`/api/team/trial-pass/today?q=${encodeURIComponent(query.trim())}`, { signal: controller.signal, cache: 'no-store' });
+        const res = await fetch(`${stationMode ? '/api/station/guest-search' : '/api/team/trial-pass/today'}?q=${encodeURIComponent(query.trim())}`, { signal: controller.signal, cache: 'no-store' });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Search unavailable.');
         if (!controller.signal.aborted) setResults(data.signins || []);
@@ -92,7 +93,7 @@ export default function SecurityClient({ staffLabel }: { staffLabel: string }) {
       finally { if (!controller.signal.aborted) setSearching(false); }
     }, 300);
     return () => { controller.abort(); clearTimeout(timer); };
-  }, [query, guest]);
+  }, [query, guest, stationMode]);
   function changed() { requestId.current = null; setMessage(''); }
   async function save(restrictionConfirmed = false) {
     if (!guest || lock.current || refreshNeeded) return;
@@ -117,7 +118,7 @@ export default function SecurityClient({ staffLabel }: { staffLabel: string }) {
   function nextGuest() { if (lock.current) return; setGuest(null); setError(''); setMessage(''); setQuery(''); setResults([]); requestId.current = null; }
 
   return <main className={styles.page}>
-    <header className={styles.header}><Link href="/capacity/front-desk">Front desk</Link><span>Stardust Garage</span></header>
+    <header className={styles.header}>{stationMode ? <StationSessionControls /> : <Link href="/capacity/front-desk">Front desk</Link>}<span>Stardust Garage</span></header>
     <section className={styles.card}>
       <div className={styles.heading}><div className={styles.eyebrow}>Team / Security</div><h1>Guest incident</h1><p>{staffLabel}</p><p>{eventLabel}</p></div>
       <div className={styles.body}>

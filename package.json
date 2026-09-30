@@ -5,6 +5,7 @@
   "scripts": {
     "test:time-clock": "vitest run tests/time-clock-db.vitest.js tests/api/time-clock.vitest.js && node --test tests/time-clock-core.test.mjs",
     "qa:time-clock": "node tests/time-clock/start-harness.mjs",
+    "test:stations": "vitest run tests/api/station-auth.vitest.js tests/api/station-gates.vitest.js && node --test tests/station-policy.test.mjs tests/station-db.test.mjs",
     "test:weeknight": "vitest run tests/api/weeknight-checkout.vitest.js && node --test tests/weeknight-pricing.test.mjs tests/tickets-entitlement.test.mjs tests/tickets-pricing.test.mjs tests/pricing-tax-and-target-total.test.mjs tests/event-discount-display.test.mjs",
     "test:security": "vitest run tests/api/security-incidents.vitest.js tests/api/security-history.vitest.js tests/api/capacity/access-restrictions.vitest.js && node --test tests/security-incidents-db.test.mjs tests/restriction-lift-allowlist.test.mjs tests/access-restrictions-wiring.test.mjs tests/front-desk-role.test.mjs",
     "test:arrival-roster": "vitest run tests/api/arrival-roster.vitest.js tests/api/arrival-roster-server.vitest.js && node --test tests/front-desk-tonight-signins.test.mjs tests/front-desk-arrivals-db.test.mjs tests/access-restrictions-wiring.test.mjs",
@@ -12,7 +13,7 @@
     "test:artist-pay": "TZ=UTC vitest run tests/artist-pay/*.spec.js",
     "test:profile-photos": "TZ=UTC vitest run tests/profile-photo-validation-*.vitest.js",
     "typecheck:profile-photos": "tsc -p tsconfig.profile-photo.json",
-    "pretest": "npm run typecheck:profile-photos && npm run test:profile-photos && npm run test:security && npm run test:weeknight",
+    "pretest": "npm run typecheck:profile-photos && npm run test:profile-photos && npm run test:security && npm run test:weeknight && npm run test:stations",
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start -H 0.0.0.0 -p 3000",
@@ -25,7 +26,7 @@
     "next": {
       "postcss": "8.5.28"
     },
-    "sharp": "0.34.5"
+    "sharp": "0.35.5"
   },
   "dependencies": {
     "@aws-sdk/client-rekognition": "^3.1138.0",
@@ -39,7 +40,7 @@
     "qrcode": "^1.5.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "sharp": "0.34.5"
+    "sharp": "0.35.5"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",

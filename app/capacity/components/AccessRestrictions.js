@@ -149,7 +149,7 @@ export function AccessCheck({ subject, onStatus, extra = null }) {
   </section>;
 }
 
-export default function AccessRestrictions() {
+export default function AccessRestrictions({ allowCreate = true }) {
   const [open, setOpen] = useState(false);
   const [subject, setSubject] = useState(null);
   const [creating, setCreating] = useState(false);
@@ -227,10 +227,10 @@ export default function AccessRestrictions() {
         <p className="text-sm text-neutral-400">Private staff records. Record specific conduct and relevant identifying details, not assumptions or protected characteristics.</p>
         {error && <p role="alert" className="rounded-lg border border-red-500/40 p-3 text-sm text-red-300">{error}</p>}
         <div className="flex gap-2">
-          <button className={button} type="button" onClick={() => { setCreating(true); setSelected(null); setSubject(null); setName(''); }}>Add person manually</button>
+          {allowCreate && <button className={button} type="button" onClick={() => { setCreating(true); setSelected(null); setSubject(null); setName(''); }}>Add person manually</button>}
           <button className={button} type="button" onClick={() => { setCreating(false); setSelected(null); }}>View list</button>
         </div>
-        {creating ? <form className="space-y-3" onSubmit={create}>
+        {creating && allowCreate ? <form className="space-y-3" onSubmit={create}>
           {subject && <p className="text-sm text-amber-200">Linked to this guest profile. Confirm the person&apos;s identity before restricting.</p>}
           <label className="block text-sm">Full name<input autoFocus required maxLength={160} name="full_name" className={field} value={name} onChange={e => setName(e.target.value)} /></label>
           <label className="block text-sm">Known aliases, comma-separated<input name="aliases" className={field} maxLength={1000} /></label>

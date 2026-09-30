@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireFrontDeskOrTeam } from '@/lib/auth-helpers';
+import { requireSecurityOrTeam } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { rateLimit } from '@/lib/rate-limit';
 import { sniffScan } from '@/lib/scan/sniff';
@@ -74,7 +74,7 @@ async function scanSubject(admin, raw) {
 }
 
 export async function POST(request) {
-  const gate = await requireFrontDeskOrTeam(request);
+  const gate = await requireSecurityOrTeam(request);
   if (gate.unauthorized || !gate.user?.id) return reply({ error: 'Unauthorized' }, 401);
   const limit = rateLimit({ key: `security:${gate.user.id}`, limit: 120, windowMs: 60_000 });
   if (!limit.ok) return reply({ error: 'Too many requests. Wait a moment and retry.' }, 429);

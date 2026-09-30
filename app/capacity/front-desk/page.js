@@ -38,8 +38,9 @@ export default async function FrontDeskPage() {
   // requireTeam() (or requireAdmin() for /capacity/admin), so this role
   // cannot fall through to the door kiosks, guest-list tablet, scan page,
   // or capacity admin. The middleware bounces it back here if it tries.
-  const { user, unauthorized } = await requireFrontDeskOrTeam();
+  const { user, unauthorized, station } = await requireFrontDeskOrTeam();
   if (unauthorized) redirect('/team/login');
+  if (station) return <FrontDeskClient staffLabel={`${station.label} · Shared station`} staffEmail={null} stationMode />;
 
   // Small nicety: show which team member is on shift in the header so the
   // captured "created_by" on any trial pass / audit trail is obvious to the

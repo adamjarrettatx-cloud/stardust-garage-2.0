@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ownerPageGate } from '@/lib/auth-helpers';
 import TeamManagementClient from './TeamManagementClient';
+import StationManagement from './StationManagement';
 
 export const revalidate = 0;
 
@@ -19,5 +20,5 @@ export default async function TeamManagementPage() {
     .select('*')
     .order('created_at', { ascending: true });
 
-  return <TeamManagementClient members={members || []} />;
+  return <><StationManagement /><TeamManagementClient members={members || []} /></>;
 }

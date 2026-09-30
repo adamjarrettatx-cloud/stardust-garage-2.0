@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireFrontDeskOrTeam } from '@/lib/auth-helpers';
+import { requireDoorRead } from '@/lib/auth-helpers';
 import { getActiveDoorSession } from '@/lib/door-session';
 
 // GET /api/door-session/active
@@ -18,7 +18,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
-  const { unauthorized } = await requireFrontDeskOrTeam(request);
+  const { unauthorized } = await requireDoorRead(request);
   if (unauthorized) {
     return NextResponse.json({ error: 'Not authorized' }, { status: 401 });
   }

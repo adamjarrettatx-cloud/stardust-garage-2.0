@@ -59,6 +59,9 @@ export async function POST(request) {
   let body;
   try { body = await request.json(); } catch { return reply({ error: 'Invalid JSON' }, 400); }
   const action = body?.action;
+  if (gate.station && !['check', 'acknowledge', 'note', 'same_person', 'different_person'].includes(action)) {
+    return reply({ error: 'This station cannot perform that action.' }, 403);
+  }
   if (!['check', 'acknowledge', 'create', 'note', 'lift', 'same_person', 'different_person', 'manager'].includes(action)) return reply({ error: 'Invalid action' }, 400);
   const admin = createAdminClient();
   if (action === 'check') {
