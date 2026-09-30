@@ -1,0 +1,82 @@
+# Staff time clock
+
+Integrated implementation for the approved SDG front-room iPad kiosk and owner timekeeping view. This feature is off by default and is not a payroll processor.
+
+## Routes and access
+
+- `/clock`: standalone shared-device kiosk. No owner links, public navbar, sound toggle, or marketing attribution. The response blocks framing and third-party scripts/connections.
+- `/api/time-clock/[action]`: paired device plus short-lived worker session. No staff Supabase account is required and no general application permission is granted.
+- `/bananas/timekeeping`: existing owner page gate, owner-only sidebar destination. The existing owner identity is unchanged.
+- `/api/admin/time-clock`: existing `requireOwnerMfa()` gate on every read/write, including CSV. MFA follows the repository's existing `ENFORCE_ADMIN_MFA` policy.
+
+## Implemented
+
+- Owner-managed independent worker roster, employee/contractor label, role assignments, optional hourly rates or flat shift fee.
+- Custom role names and responsibility templates; snapshots preserve old duties and rate values.
+- Random six-digit PIN, one-time owner display on creation/reset, HMAC lookup plus salted scrypt verification. No plaintext PIN persistence or logs.
+- One-time eight-digit device pairing, 15-minute pairing expiry, 90-day device credential, immediate owner revocation.
+- HttpOnly, SameSite=Strict device/session cookies, Secure and `__Host-` names in production.
+- Durable PostgreSQL attempt limits; PIN limit is device-scoped and survives wrong-PIN transactions. Pairing has global and per-forwarded-IP limits; production trusted-proxy/WAF settings still require operational verification.
+- One open shift per worker, role segments, counted breaks, saved shift notes, responsibility completion, recent personal shift history.
+- Server timestamped transaction and audit, same-request idempotent retry, stale shift-ID protection, role validation, request-body allowlists. Browser identity, time, rates and pay basis are ignored.
+- 90-second idle expiry and a 15-minute maximum worker session; device/PIN revocation rechecked server-side. Activity-triggered touch only, never polling-based extension.
+- Owner filtered reports, CSV, review notes, approvals, long-running-shift alerts, and audited start/end corrections in Austin time. Corrections reopen approval and preserve original punch events.
+- UTC storage, America/Chicago display. Local correction conversion rejects nonexistent spring-forward times and explicitly disambiguates repeated fall-back hours.
+- RLS on all timekeeping tables. Browser roles have no table or RPC grants; service-role direct writes are also revoked. Mutations occur through named server-only transactional RPCs.
+
+## Scope and intentional limits
+
+- Amounts are BASE ESTIMATES, not payable wages. No overtime, mixed-rate overtime, tip allocation, tax, withholding, deductions, regular-rate adjustment, salary allocation, or payroll-provider sync.
+- Breaks are counted/paid time; there is no unattended deduction or auto-clock-out.
+- Worker classification is an owner-provided operational label, not a legal determination.
+- Review approval never sends money or creates an Artist Pay request.
+- Role-rate edits apply to future segments; previous captured rates remain unchanged. Corrections do not alter rates.
+- Reports select shifts by their start timestamp in a rolling 7/14/31/93-day window; they are not workweek-allocation reports. The range is capped at 500 shifts and requires narrowing if exceeded. Active-shift count includes all dates.
+- Owner corrections adjust first/last role boundaries. They cannot trim through interior role changes/breaks. Segment-specific corrections, historical rate adjustments, and manually entering an entirely missed shift are not yet supported.
+- This roster is independent of existing team/contact profiles. No automatic identity linking or application-access grants.
+- No offline punches, biometric checks, GPS, worker surveillance scores, or task-based wage withholding.
+- Online Chromium QA is not physical iPad Safari certification.
+- Fresh device access should open `/clock` directly. Do not leave an owner login on the kiosk.
+- Keep `TIME_CLOCK_SECRET` stable; rotating it invalidates device hashes, pairing codes, and PIN lookup/verifiers. Rotation requires reenrollment and PIN resets with a controlled migration.
+
+## Reviewed rollout required
+
+No production migration or enablement is performed by this branch.
+
+1. Review the code and the additive migration `20260930031000_staff_time_clock.sql`.
+2. Verify the intended Supabase project reference from the existing Vercel application's configuration. Do not select by similar project names.
+3. Validate the migration in an isolated Supabase environment, including real PostgREST relationship embedding, RLS, service-role grants, and multi-connection concurrency. The local PGlite tests execute the real SQL but do not emulate PostgREST or separate database connection races.
+4. Install a server-only random secret of at least 32 bytes, encoded as 43+ base64url characters, as `TIME_CLOCK_SECRET`. Do not expose it with a `NEXT_PUBLIC_` prefix or paste it into a ticket.
+5. Apply the reviewed migration to the selected environment.
+6. Set `TIME_CLOCK_ENABLED=true` in that environment and deploy the reviewed feature branch. Missing flag or secret fails closed. Do not enable a preview against production Supabase without explicit approval.
+7. Owner opens Timekeeping. Add real workers, review assigned roles and rates, and privately provide generated PINs.
+8. Owner creates a kiosk pairing code; enter it at `/clock` on the front-room iPad without leaving an owner session on the device. Verify iPad browser lockdown and loss/revocation procedures operationally.
+9. Perform a real worker test: clock in, refresh, switch role, record responsibility, clock out, owner sees exact record, export, and revoke a test device. Do not treat branch merge as proof of successful operation.
+10. Confirm pay model, fixed workweek, pay period, break policy and overtime treatment before extending base estimates into payroll.
+
+## Validation
+
+- `npm run test:time-clock`: real migration/state machine via PGlite plus API authorization/validation tests and crypto/pay/time helpers.
+- `node --test tests/admin-tabs.test.mjs`: navigation regression suite.
+- `npm run test:security`: existing restricted front-desk and security workflow regressions.
+- `npx eslint --ext .js,.jsx,.mjs app/clock app/components/time-clock app/bananas/timekeeping lib/time-clock app/api/admin/time-clock 'app/api/time-clock/[action]'`.
+- `npm run build`: production Next.js bundle and route compile.
+- `npm run qa:time-clock`: localhost-only harness on 127.0.0.1:8090. Bundles the real React screens and API handlers with an isolated PGlite database. The Supabase transport and owner identity boundary are replaced only in this harness; it is not a production auth path.
+  - Kiosk: `/clock`, pairing `12345678`, synthetic PIN `123456`.
+  - Owner screen: `/owner`; automated QA injects a local test-only cookie `tc-qa-owner=local-test`. This cookie is read ONLY in the nonproduction harness and is meaningless to deployed app routes.
+  - All data is synthetic/in-memory and resets on server restart. Generated output is ignored under `.time-clock-qa/`. No live credentials are required.
+
+Observed browser QA: device pairing, PIN entry, clock-in, saved task/note, reload persistence, break start/end, role switch, incomplete-task clock-out, receipt, owner review, Austin correction and reapproval, CSV, 93-day filter, custom role creation, flat-fee worker creation, PIN reset, pairing-code creation, lost-response retry, offline lockout and kiosk-to-owner access denial.
+
+Validation at implementation handoff:
+
+- 23 database tests, 13 API tests, and 6 pure-helper/crypto tests passed (42 time-clock tests).
+- 83 admin-navigation tests and 12 authenticated-theme tests passed (95 regression tests).
+- Existing security suite passed: 30 API tests and 17 Node/database tests.
+- Production Next.js build passed and the new routes compiled.
+- Actual local Next.js production server returned `/clock` with `X-Frame-Options: DENY` and its restrictive CSP. With the feature disabled, the page showed setup pending and the state API returned 503.
+- Integrated screens inspected at desktop 1440px, iPad landscape 1024×768, and mobile 375×812; no page-level horizontal overflow in the tested kiosk/owner states. Light and dark kiosk states checked.
+- Browser idle lock was observed; revoking the paired device caused the kiosk to return to pairing. No browser page errors occurred in the tested integrated flow.
+- The observed lost-response test committed a clock-in but dropped its HTTP response, then retried with the same request ID. Exactly one open shift existed afterward.
+
+The feature remains subject to production rollout and real-device verification even when every local check passes.

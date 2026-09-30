@@ -16,7 +16,7 @@ export default function GlobalSoundToggle() {
   const { soundOn, toggleSound, ready } = useSound();
 
   if (!ready) return null;
-  if (pathname === '/' || (pathname && pathname.startsWith('/capacity'))) {
+  if (pathname === '/' || pathname === '/clock' || pathname?.startsWith('/clock/') || (pathname && pathname.startsWith('/capacity'))) {
     return null;
   }
 
