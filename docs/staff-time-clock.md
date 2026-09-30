@@ -57,7 +57,7 @@ The database test bootstrap now reproduces production-like table/function/sequen
 
 ### Hosted test preparation
 
-`scripts/time-clock-staging-smoke.mjs` is prepared for a separately approved, fresh Supabase staging environment. It has not been run on a hosted project yet. It rejects the known production ref, custom production hostname, missing explicit approval, and existing worker records.
+`scripts/time-clock-staging-smoke.mjs` is prepared for a separately approved, fresh Supabase staging environment. Its checks passed on hosted Supabase on September 30, using the protected Edge-function wrapper described below. It rejects the known production ref, custom production hostname, missing explicit approval, and existing worker records.
 
 Required server-side environment variables:
 
@@ -68,6 +68,30 @@ Required server-side environment variables:
 Do not reuse production `.env` files or print the keys. Run `node scripts/time-clock-staging-smoke.mjs` after applying the corrected migration to the approved test target. It creates an email-confirmed synthetic Auth identity without sending an invite, fictional profiles, a kiosk, and test shifts, and retains them for inspection rather than deleting history. Expected checks include real PostgREST nested reports, RPCs, PIN verification, task/break/role changes, approval, deactivation/reactivation, access denials, and device revocation.
 
 The runner does not certify Next.js manager sign-in, browser Origin/cookie/proxy behavior, CSV UI, or the physical iPad. A paid hosted branch still requires organization/cost approval before creation. Do not reuse the failed `owner-view-portal` branch.
+
+### Hosted validation completed, September 30
+
+Adam approved a temporary branch in the Stardust Garage organization at the provider's quoted $0.01344/hour and its removal after testing. Branch `sdg-timeclock-validation` (`cdtfxaedbevjovledvsc`) was created at 15:26 UTC and removed after the tests at approximately 15:30 UTC. Deletion succeeded and a follow-up branch listing confirmed it was absent. The original main and View Portal branches were not modified.
+
+The inherited website migration replay reported `MIGRATIONS_FAILED` before the time-clock migration was installed. Only two inherited public tables existed; no production users/data were copied. The time-clock migration has no dependency on those missing website tables, so its exact reviewed file was applied successfully and independently validated. This was not a full-site staging deployment.
+
+Hosted tests ran on PostgreSQL 17.11 through real Supabase Auth and PostgREST. A branch-only Edge function wrapped the committed smoke-test logic, required both JWT validation and a random test-only authorization token, and used Supabase's built-in service key internally. No service-role key was exported, exposed to the browser, or copied into a file. The function and fictional records were removed with the branch.
+
+Observed HTTP 200 / PASS:
+
+- Real PIN lookup and scrypt verification.
+- Pairing, session creation, clock-in, same-request retry without a duplicate.
+- Responsibility completion, break start/end, role change, clock-out.
+- Exact nested management-report query returned the worker, two role segments, six tasks and one break.
+- Review/approval of the closed shift.
+- Deactivation/reactivation rejected the old session and credential version, then accepted a fresh session.
+- New inactive profile persisted as inactive.
+- Anonymous table and RPC requests denied; direct service-role UPDATE denied.
+- Kiosk revocation blocked subsequent access.
+
+Post-test SQL confirmed 12 RLS-enabled tables, no anonymous/authenticated table or RPC grants, no audit-sequence exposure, two fictional profiles, one approved closed shift, and one revoked kiosk. A separate read-only production query still found zero time-clock relations/functions/migrations.
+
+Next.js manager sign-in, deployed cookie/Origin/proxy behavior, hosted CSV UI, backup recovery readiness and the real iPad pilot remain separate release gates. The time clock is not enabled in production.
 
 1. Review the code and the additive migration `20260930031000_staff_time_clock.sql`.
 2. Verify the intended Supabase project reference from the existing Vercel application's configuration. Do not select by similar project names.
