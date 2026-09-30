@@ -20,6 +20,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { WaiverGate } from '@/components/waiver/WaiverGate';
 import { entitlementDiscountCents, pickDiscountCents } from '@/lib/tickets/entitlement';
+import { isEntitlementDiscountable } from '@/lib/tickets/pricing';
 
 function formatMoney(cents, currency = 'usd') {
   if (typeof cents !== 'number' || Number.isNaN(cents)) return '';
@@ -60,6 +61,8 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
   // while it's still loading / for a signed-out buyer. No code to type: if the
   // buyer has standing, the price just reflects it.
   const [entitlement, setEntitlement] = useState(null);
+  const [entitlementStatus, setEntitlementStatus] = useState('loading');
+  const [entitlementAttempt, setEntitlementAttempt] = useState(0);
 
   // Discount code state
   const [discountInput, setDiscountInput] = useState('');
@@ -98,17 +101,23 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
 
   // Resolve the buyer's automatic entitlement. Runs on mount; by this point
   // InternalTicketModal's AccountGate has established a session, so the cookie
-  // this reads is present. Soft-fails to "no entitlement" — the hold route
-  // re-resolves it server-side and is what actually sets the price, so a miss
-  // here costs a preview line, not the discount.
+  // this reads is present. Never present a failed lookup as full-price
+  // eligibility. The hold route also re-resolves this before reserving stock.
   useEffect(() => {
     let cancelled = false;
+    setEntitlement(null);
+    setEntitlementStatus('loading');
     fetch(`/api/tickets/entitlement?event_id=${encodeURIComponent(eventId)}`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => { if (!cancelled && data?.entitled) setEntitlement(data); })
-      .catch(() => { /* soft-fail: buyer simply sees list price in the preview */ });
+      .then((r) => { if (!r.ok) throw new Error('Pricing unavailable'); return r.json(); })
+      .then((data) => {
+        if (cancelled) return;
+        if (typeof data?.entitled !== 'boolean') throw new Error('Invalid pricing response');
+        setEntitlement(data);
+        setEntitlementStatus('ready');
+      })
+      .catch(() => { if (!cancelled) setEntitlementStatus('error'); });
     return () => { cancelled = true; };
-  }, [eventId]);
+  }, [eventId, entitlementAttempt]);
 
   // Fetch the current active waiver payload once on mount.
   useEffect(() => {
@@ -183,7 +192,10 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
   // worth more. pickDiscountCents() is the same helper computeHoldSnapshot uses
   // server-side, so this preview and the Stripe total agree.
   const codeDiscountCents = discount?.discount_cents || 0;
-  const entDiscountCents = entitlementDiscountCents(subtotalCents, entitlement?.percent || 0);
+  const entitlementBaseCents = state.products.reduce((sum, product) =>
+    sum + (isEntitlementDiscountable(product)
+      ? (product.price?.cents || 0) * Number(quantities[product.product_id] || 0) : 0), 0);
+  const entDiscountCents = entitlementDiscountCents(entitlementBaseCents, entitlement?.percent || 0);
   const { discountCents, source: discountSource } = pickDiscountCents({
     codeCents: codeDiscountCents,
     entitlementCents: entDiscountCents,
@@ -236,6 +248,7 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
 
   async function onCheckout(e) {
     e.preventDefault();
+    if (preview || entitlementStatus !== 'ready') return;
     setSubmitError(null);
     setSubmitting(true);
 
@@ -757,12 +770,18 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
           }}
         >
           <span>Total</span>
-          <span>{formatMoney(totalCents, currency)}</span>
+          <span>{entitlementStatus === 'ready' ? formatMoney(totalCents, currency) : 'Verifying pricing…'}</span>
         </div>
       </div>
 
       {submitError && (
         <div style={{ color: DANGER, fontSize: 13, marginTop: 12 }}>{submitError}</div>
+      )}
+      {entitlementStatus === 'error' && (
+        <div role="alert" style={{ color: DANGER, fontSize: 13, marginTop: 12 }}>
+          Could not verify your membership pricing. No checkout has been started.{' '}
+          <button type="button" onClick={() => setEntitlementAttempt(value => value + 1)}>Retry pricing</button>
+        </div>
       )}
 
       {/* Liability waiver — must be accepted on every ticket purchase.
@@ -778,7 +797,7 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
           so once you're inside the modal the primary action still reads on-brand. */}
       <button
         type="submit"
-        disabled={preview || submitting || totalQty === 0 || !waiverState?.accepted}
+        disabled={preview || entitlementStatus !== 'ready' || submitting || totalQty === 0 || !waiverState?.accepted}
         style={{
           marginTop: 16,
           width: '100%',
@@ -796,6 +815,8 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
       >
         {preview
           ? 'CHECKOUT DISABLED IN PREVIEW'
+          : entitlementStatus !== 'ready'
+            ? 'VERIFY MEMBERSHIP PRICING TO CONTINUE'
           : submitting
             ? 'STARTING CHECKOUT…'
             : totalQty === 0

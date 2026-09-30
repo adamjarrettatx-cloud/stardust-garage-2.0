@@ -29,6 +29,7 @@ import {
   resolveTicketDiscountPercent,
   defaultTicketDiscountPercent,
   WEEKEND_MUSIC_FIXED_PERCENT,
+  WEEKNIGHT_MEMBER_DISCOUNT_PERCENT,
 } from '@/lib/membership-tiers';
 import { isEntitlementDiscountable } from '@/lib/tickets/pricing';
 
@@ -116,6 +117,7 @@ export default function TicketingPanel({
   // membership's default.
   initialMemberDiscounts = {},
   initialIsWeekendMusicExperience = false,
+  initialIsWeeknightExperience = false,
   // Event start (date + free-text time) — forwarded to ProductEditor so its
   // 'Ticket Sales End … hours after doors open' control can compute the
   // persisted `sales_end_at` timestamp relative to doors.
@@ -160,6 +162,8 @@ export default function TicketingPanel({
   // percents it drives, and had never been switched on for a single event.
   const [isWeekendMusic, setIsWeekendMusic] = useState(!!initialIsWeekendMusicExperience);
   const [savedIsWeekendMusic, setSavedIsWeekendMusic] = useState(!!initialIsWeekendMusicExperience);
+  const [isWeeknight, setIsWeeknight] = useState(initialIsWeeknightExperience === true);
+  const [savedIsWeeknight, setSavedIsWeeknight] = useState(initialIsWeeknightExperience === true);
 
   const [percents, setPercents] = useState(() => {
     const seed = {};
@@ -175,6 +179,7 @@ export default function TicketingPanel({
 
   const memberDiscountsDirty =
     isWeekendMusic !== savedIsWeekendMusic ||
+    isWeeknight !== savedIsWeeknight ||
     MEMBER_PRICING_ROWS.some((row) => percents[row.key] !== savedPercents[row.key]);
 
   // Clamped to the row's own ceiling rather than a flat 100. Typing 80 in the
@@ -193,7 +198,7 @@ export default function TicketingPanel({
     setSavingMemberDiscounts(true);
     setMemberDiscountError(null);
     try {
-      const patch = { is_weekend_music_experience: isWeekendMusic };
+      const patch = { is_weekend_music_experience: isWeekendMusic, is_weeknight_experience: isWeeknight };
       for (const row of MEMBER_PRICING_ROWS) {
         patch[row.discountColumn] = parsePercentOrNull(
           percents[row.key],
@@ -204,6 +209,7 @@ export default function TicketingPanel({
       if (error) throw error;
       setSavedPercents(percents);
       setSavedIsWeekendMusic(isWeekendMusic);
+      setSavedIsWeeknight(isWeeknight);
     } catch (e) {
       setMemberDiscountError(String(e.message || e));
     } finally {
@@ -215,7 +221,7 @@ export default function TicketingPanel({
   // status pills reflect unsaved edits while still going through the one
   // resolver that prices the real checkout.
   const draftEvent = (() => {
-    const draft = { is_weekend_music_experience: isWeekendMusic };
+    const draft = { is_weekend_music_experience: isWeekendMusic, is_weeknight_experience: isWeeknight };
     for (const row of MEMBER_PRICING_ROWS) {
       const raw = String(percents[row.key] ?? '').trim();
       draft[row.discountColumn] = raw === '' ? null : Number(raw);
@@ -409,6 +415,7 @@ export default function TicketingPanel({
         <p style={{ margin: '5px 0 18px 0', fontSize: 12, opacity: 0.7, lineHeight: 1.5 }}>
           What each membership pays for a ticket on this event. Set any percent you like on any membership;
           leave a box blank to use that membership&rsquo;s standard rate.
+          Eligible weeknight experiences have a guaranteed 20% minimum for paid tiers, even if a lower value is entered.
         </p>
 
         <label
@@ -431,6 +438,21 @@ export default function TicketingPanel({
             <span style={{ display: 'block', fontSize: 11.5, opacity: 0.65, marginTop: 3, lineHeight: 1.45 }}>
               Fri&ndash;Sun music night. Turning this on makes {WEEKEND_MUSIC_FIXED_PERCENT}% the standard rate
               for The Weekender and Trial SDG Pass holders &mdash; their standing benefit. Any box below still overrides it.
+            </span>
+          </span>
+        </label>
+
+        <label style={{ display: 'flex', gap: 11, alignItems: 'flex-start', cursor: 'pointer',
+          padding: '13px 14px', border: '1px solid var(--auth-border, #333)', borderRadius: 8, marginBottom: 20 }}>
+          <input type="checkbox" checked={isWeeknight} disabled={savingMemberDiscounts}
+            onChange={e => setIsWeeknight(e.target.checked)}
+            style={{ marginTop: 2, width: 16, height: 16 }} />
+          <span style={{ fontSize: 13 }}>
+            <b style={{ fontWeight: 600 }}>Eligible weeknight experience</b>
+            <span style={{ display: 'block', fontSize: 11.5, opacity: 0.65, marginTop: 3, lineHeight: 1.45 }}>
+              Guarantees at least {WEEKNIGHT_MEMBER_DISCOUNT_PERCENT}% off ticket products for active Weekender, Builder and Insider members.
+              Higher discounts win; percentages do not stack. No discount on rentals or booking fees.
+              Select for approved programming such as Wellness Wednesday and Movie Night, not simply because the date falls on a weekday.
             </span>
           </span>
         </label>
@@ -484,6 +506,7 @@ export default function TicketingPanel({
                     />
                     {' %'}
                     <span style={memberNoteStyle}>
+                      {isWeeknight && row.ticketDiscount.weeknightMinimumPercent ? `${WEEKNIGHT_MEMBER_DISCOUNT_PERCENT}% minimum applies. ` : ''}
                       {isOverridden
                         ? `Set for this event \u00b7 max ${max}`
                         : fallback > 0

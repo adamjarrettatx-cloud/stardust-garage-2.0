@@ -5,6 +5,7 @@ import { resolveSiteUrl } from '@/lib/site-url';
 import { isInternalTicketingEnabled } from '@/lib/feature-flags';
 import { rateLimit, keyFromRequest } from '@/lib/rate-limit';
 import { selectActiveTier, isProductOnSale, computeHoldSnapshot } from '@/lib/tickets/pricing';
+import { discountedCheckoutLines } from '@/lib/tickets/checkout-lines';
 import { resolveBuyerEntitlement } from '@/lib/tickets/entitlement-lookup';
 import { resolveEntitlementPercent, entitlementLabel } from '@/lib/tickets/entitlement';
 import { generateHoldToken } from '@/lib/tickets/codes';
@@ -52,32 +53,6 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const HOLD_TTL_MS = 15 * 60 * 1000; // 15 minutes
-
-// Distribute a total discount proportionally across an array of items,
-// mutating unit_price_cents so Stripe sees the discounted price. Handles
-// integer rounding by giving the remainder to the last item so the
-// pennies always add up. Never allows a unit price below zero.
-function applyDiscountToLines(items, totalDiscountCents) {
-  if (!totalDiscountCents || totalDiscountCents <= 0) return items;
-  const eligibleSubtotal = items.reduce((s, l) => s + l.unit_price_cents * l.quantity, 0);
-  if (eligibleSubtotal <= 0) return items;
-
-  let allocated = 0;
-  const out = items.map((line, idx) => {
-    const lineSubtotal = line.unit_price_cents * line.quantity;
-    let lineDiscount;
-    if (idx === items.length - 1) {
-      lineDiscount = totalDiscountCents - allocated; // remainder
-    } else {
-      lineDiscount = Math.floor((lineSubtotal * totalDiscountCents) / eligibleSubtotal);
-    }
-    allocated += lineDiscount;
-    const discountedSubtotal = Math.max(0, lineSubtotal - lineDiscount);
-    const perUnit = Math.floor(discountedSubtotal / line.quantity);
-    return { ...line, unit_price_cents: perUnit };
-  });
-  return out;
-}
 
 export async function POST(request) {
   if (!isInternalTicketingEnabled()) {
@@ -158,7 +133,7 @@ export async function POST(request) {
     .select(
       'id, title, status, visibility, share_token, ticketing_mode, ' +
       'booking_fee_cents_default, required_membership_tier, ' +
-      'is_weekend_music_experience, member_discount_percent_trial, ' +
+      'is_weekend_music_experience, is_weeknight_experience, member_discount_percent_trial, ' +
       'member_discount_percent_weekender, member_discount_percent_cowork, ' +
       'member_discount_percent_iykyk'
     )
@@ -185,11 +160,14 @@ export async function POST(request) {
   // subscription_plan + is_active are also loaded here for the SDG-only /
   // tier-gate check below — we need to know if the buyer is an active member
   // and what tier they hold BEFORE reserving inventory or hitting Stripe.
-  const { data: memberProfile } = await supabaseAdmin
+  const { data: memberProfile, error: memberProfileError } = await supabaseAdmin
     .from('member_profiles')
-    .select('id, email, full_name, stripe_customer_id, subscription_plan, is_active')
+    .select('id, email, full_name, stripe_customer_id, subscription_plan, subscription_status, is_active')
     .eq('user_id', user.id)
     .maybeSingle();
+  if (memberProfileError) {
+    return NextResponse.json({ error: 'Could not verify membership pricing. Please retry.', code: 'membership_pricing_unavailable' }, { status: 503 });
+  }
 
   // --- Access gate: required_membership_tier only -------------------------
   // is_sdg_only is NOT an access gate — it just means SDG is producing the
@@ -313,15 +291,14 @@ export async function POST(request) {
     entitlement = await resolveBuyerEntitlement(supabaseAdmin, user.id, { memberProfile });
     entitlementPercent = resolveEntitlementPercent(event, entitlement);
   } catch (err) {
-    // Never block a sale on this. Worst case the buyer pays list price, which
-    // is recoverable by support; a 500 here loses the sale outright.
+    // Do not silently overcharge a member when an entitlement lookup fails.
     console.error('[tickets.hold.entitlement]', err?.message || err);
-    entitlement = null;
-    entitlementPercent = 0;
+    return NextResponse.json({ error: 'Could not verify membership pricing. Please retry.', code: 'membership_pricing_unavailable' }, { status: 503 });
   }
 
   // --- Compute the authoritative snapshot ---------------------------------
   let snapshot;
+  let discountedItems;
   try {
     snapshot = computeHoldSnapshot({
       selections,
@@ -331,6 +308,7 @@ export async function POST(request) {
       discountCode,
       entitlementPercent,
     });
+    discountedItems = discountedCheckoutLines(snapshot, productsById, discountCode);
   } catch (err) {
     return NextResponse.json({ error: err.message || 'Invalid selection' }, { status: 400 });
   }
@@ -446,7 +424,6 @@ export async function POST(request) {
   // Fold the discount into per-line unit prices proportionally, then add a
   // separate "Booking fee" line item so buyers see the fee broken out. Total
   // ends up equal to snapshot.totalCents.
-  const discountedItems = applyDiscountToLines(snapshot.items, snapshot.discountCents || 0);
   const productLineDescriptors = discountedItems.map((line) => {
     const product = productsById.get(line.product_id);
     const productKind = product.kind || 'tickets';
