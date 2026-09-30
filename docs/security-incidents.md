@@ -6,6 +6,8 @@ Security Mode lives at `/capacity/security`, linked from the existing front desk
 
 Member-account and Trial Pass QR credentials resolve server-side without admission writes. Revoked member credentials do not fall through to trial credentials; network errors are never treated as a missing account. Event tickets are deliberately rejected because they identify the buyer, not necessarily the person standing in front of the guard. Name-search fallback requires staff to confirm identity. No facial recognition is added.
 
+Security lookup also accepts the native app's version-1 `{v:1,kind:"trial",code}` envelope. Current 43-character trial tokens resolve through `trial_passes.qr_token_hash`; legacy 12-character lowercase hex codes resolve through the unique `member_profiles.trial_pass_code`, restricted to trial-plan profiles. These are identity lookups, not admission eligibility checks. Unknown formats are not labeled as tickets. This compatibility fix requires no schema migration, permission change, or native app release.
+
 The guard confirms identity, selects a category, records observed facts, and chooses Warning, Final warning, Manager review, or Immediate ban. Restriction confirmation names the guest. `record_security_incident` independently verifies the staff role and commits the incident, restriction, and existing restriction audit together. It derives actor name, timestamp, and active event/door session server-side. An actor-scoped request UUID makes retries idempotent and rejects changed payloads under the same UUID.
 
 The existing restriction manager allowlist remains unchanged: Adam, Naish, and Jeyu can lift; other admins and front-desk staff cannot. Only the existing permission owner can change that list.
