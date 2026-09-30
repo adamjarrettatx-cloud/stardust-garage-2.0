@@ -12,7 +12,8 @@ test('station SQL enforces owner control, scoped operations, revocation, expiry,
       alter default privileges in schema public grant all on tables to service_role;
       create schema auth; create table auth.users(id uuid primary key);
       create table team_members(user_id uuid primary key,role text,full_name text,email text);
-      create table events(id uuid primary key);
+      create table events(id uuid primary key,event_date date,title text,status text,visibility text);
+      create table team_events(id uuid primary key,event_date date,title text);
       create table door_sessions(id uuid primary key,event_id uuid,opened_at timestamptz,closed_at timestamptz);
       create table capacity_sessions(id uuid primary key,current_count integer,max_capacity integer,is_active boolean);
       create table capacity_events(session_id uuid,action text,delta integer,count_after integer,max_capacity integer,actor_id uuid,source text,note text);
@@ -33,7 +34,8 @@ test('station SQL enforces owner control, scoped operations, revocation, expiry,
     await db.query('insert into capacity_sessions values($1,0,20,true)', [id(50)]);
     for (const file of ['20260922000000_access_restrictions.sql', '20260922010000_restriction_lift_allowlist.sql',
       '20260929190000_security_incidents.sql', '20260929202000_security_incident_privileges.sql',
-      '20260924170000_front_desk_arrivals.sql', '20260930190000_shared_station_accounts.sql']) {
+      '20260924170000_front_desk_arrivals.sql', '20260930190000_shared_station_accounts.sql',
+      '20260930220000_station_calendar_availability.sql']) {
       await db.exec(await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
     }
     const create = async (n, role, username) => {
@@ -52,6 +54,30 @@ test('station SQL enforces owner control, scoped operations, revocation, expiry,
     assert.equal(await open(desk, 'b'.repeat(64)), true);
     assert.equal((await resolve('a'.repeat(64)))[0].role, 'security');
     assert.equal((await resolve('c'.repeat(64))).length, 0);
+    const calendar = await create(14, 'calendar_availability', 'bookers');
+    const hash = 'f'.repeat(64);
+    assert.equal(await open(calendar, hash), true);
+    const availability = async token => (await db.query('select * from station_calendar_availability($1)', [token])).rows;
+    const firstDay = (await db.query("select to_char((now() at time zone 'America/Chicago')::date,'YYYY-MM-DD') d")).rows[0].d;
+    await db.query(`insert into events values
+      ($1,$4::date,'SECRET internal hold','draft','internal'),
+      ($2,$4::date+1,'SECRET unlisted booking','published','unlisted'),
+      ($3,$4::date+2,'SECRET public booking','published','public')`, [id(100),id(101),id(102),firstDay]);
+    await db.query("insert into team_events values($1,$3::date+3,'SECRET team hold'),($2,$3::date,'SECRET duplicate hold')", [id(103),id(104),firstDay]);
+    await db.exec('set role service_role');
+    const dates = await availability(hash);
+    await db.exec('reset role');
+    assert.equal(dates.length,365);
+    assert.equal(dates[0].date,firstDay);
+    assert.deepEqual(dates.slice(0,4).map(d => d.available),[false,false,false,false]);
+    assert.equal(dates[4].available,true);
+    assert.equal(JSON.stringify(dates).includes('SECRET'),false);
+    assert.deepEqual(Object.keys(dates[0]).sort(),['available','date']);
+    for (let i=1;i<365;i++) assert.equal(Date.parse(dates[i].date)-Date.parse(dates[i-1].date),86400000);
+    for (const token of ['a'.repeat(64),'b'.repeat(64),'0'.repeat(64)]) await assert.rejects(availability(token),/Not authorized/);
+    await assert.rejects(db.query('select station_capacity_operation($1,$2,$3,$4)',[hash,'check_in','front_door','attempt']),/Not authorized/);
+    await db.query("select manage_station_access($1,$2,'disable',null)",[id(1),calendar.id]);
+    await assert.rejects(availability(hash),/Not authorized/);
     const capacity = async (hash, op) => db.query('select station_capacity_operation($1,$2,$3,$4)', [hash, op, 'front_door', 'Station test']);
     await assert.rejects(capacity('a'.repeat(64), 'check_in'), /Not authorized/);
     await assert.rejects(capacity('b'.repeat(64), 'reset'), /Not authorized/);
@@ -105,6 +131,7 @@ test('station SQL enforces owner control, scoped operations, revocation, expiry,
       }
       assert.equal((await db.query('select has_function_privilege($1,$2,$3) ok', [role, 'resolve_station_session(text)', 'EXECUTE'])).rows[0].ok, false);
       assert.equal((await db.query('select has_function_privilege($1,$2,$3) ok', [role, 'station_capacity_operation(text,text,text,text)', 'EXECUTE'])).rows[0].ok, false);
+      assert.equal((await db.query('select has_function_privilege($1,$2,$3) ok', [role, 'station_calendar_availability(text)', 'EXECUTE'])).rows[0].ok, false);
     }
     for (let n = 1; n <= 12; n++) {
       assert.equal((await db.query('select consume_station_login_limit($1,10,900) ok', ['account-hash'])).rows[0].ok, n <= 10);

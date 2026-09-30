@@ -38,7 +38,7 @@ export default function RootLayout({ children }) {
         <script
           id="mcjs"
           dangerouslySetInnerHTML={{
-            __html: `!function(c,h,i,m,p){if(/^\\/clock(?:\\/|$)/.test(location.pathname))return;m=c.createElement(h),p=c.getElementsByTagName(h)[0],m.async=1,m.src=i,p.parentNode.insertBefore(m,p)}(document,"script","https://chimpstatic.com/mcjs-connected/js/users/2f35fafd0eb753cd9b691177e/e783a1da3d152253632af49c9.js");`,
+            __html: `!function(c,h,i,m,p){if(/^\\/clock(?:\\/|$)/.test(location.pathname)||/^\\/staff(?:\\/|$)/.test(location.pathname))return;m=c.createElement(h),p=c.getElementsByTagName(h)[0],m.async=1,m.src=i,p.parentNode.insertBefore(m,p)}(document,"script","https://chimpstatic.com/mcjs-connected/js/users/2f35fafd0eb753cd9b691177e/e783a1da3d152253632af49c9.js");`,
           }}
         />
       </head>

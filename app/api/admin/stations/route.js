@@ -37,7 +37,7 @@ export async function POST(request) {
       const username = normalizeStationUsername(body.username);
       const label = typeof body.label === 'string' ? body.label.trim() : '';
       if (!username || !label || label.length > 80 || !STATION_ROLES.includes(body.role)) {
-        return reply({ error: 'Use a 3–32 character username, a station name, and Security or Front Desk.' }, 400);
+        return reply({ error: 'Use a 3–32 character username, a station name, and a supported station role.' }, 400);
       }
       const password = randomBytes(24).toString('base64url');
       const email = `${randomUUID()}@station.sdgatx.invalid`;

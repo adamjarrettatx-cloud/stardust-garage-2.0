@@ -30,6 +30,7 @@ export default function MailchimpAttribution() {
 
   useEffect(() => {
     if (pathname === '/clock' || pathname?.startsWith('/clock/')) return;
+    if (pathname === '/staff' || pathname?.startsWith('/staff/')) return;
     const mcCid = searchParams?.get('mc_cid');
     const mcEid = searchParams?.get('mc_eid');
     if (!mcCid && !mcEid) return;

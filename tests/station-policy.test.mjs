@@ -13,7 +13,7 @@ test('station allowlists enforce both exact path and method', () => {
   assert.equal(stationCanRequest('security', '/api/capacity/security', 'POST'), true);
   assert.equal(stationCanRequest('security', '/api/station/guest-search'), true);
   assert.equal(stationCanRequest('front_desk', '/api/capacity/trial-pass/roster-checkin', 'POST'), true);
-  for (const role of ['security', 'front_desk']) {
+  for (const role of ['security', 'front_desk', 'calendar_availability']) {
     for (const path of ['/bananas', '/team/calendar', '/api/admin/stations', '/api/admin/invite-team-member', '/api/capacity/admin', '/api/account/profile', '/api/artist-pay/payouts', '/api/station/guest-search/extra', '/api/time-clock', '/api/team/time-clock']) {
       assert.equal(stationCanRequest(role, path), false, `${role}: ${path}`);
       assert.equal(stationCanRequest(role, path, 'POST'), false);
@@ -25,6 +25,20 @@ test('station allowlists enforce both exact path and method', () => {
   assert.equal(stationCanRequest('front_desk', '/api/capacity/security', 'POST'), false);
   assert.equal(stationCanRequest('front_desk', '/capacity/security'), false);
   assert.equal(stationCanRequest('admin', '/capacity/security'), false);
+});
+test('availability has only its workspace, sanitized read endpoint, session and logout', () => {
+  for (const path of ['/staff/availability','/api/station/availability','/api/station/session']) {
+    assert.equal(stationCanRequest('calendar_availability', path), true);
+    assert.equal(stationCanRequest('calendar_availability', path, 'POST'), false);
+  }
+  assert.equal(stationCanRequest('calendar_availability', '/api/station/logout', 'POST'), true);
+  for (const path of ['/api/door-session/active','/api/station/guest-search','/api/capacity/security','/capacity/security','/capacity/front-desk','/api/station/availability/extra']) {
+    assert.equal(stationCanRequest('calendar_availability', path), false);
+    assert.equal(stationCanRequest('calendar_availability', path, 'POST'), false);
+  }
+  for (const role of ['security','front_desk','admin','calendar_viewer','__proto__']) {
+    assert.equal(stationCanRequest(role, '/api/station/availability'), false);
+  }
 });
 test('CSRF rejects missing, null, cross-site and sibling-domain origins', () => {
   for (const origin of [null, 'null', 'https://evil.example', 'https://sdgatx.com']) {

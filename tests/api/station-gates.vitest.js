@@ -61,4 +61,20 @@ describe('station middleware and server gates', () => {
     state.error = { message: 'offline' };
     expect((await middleware(request('/api/capacity/security', 'POST'))).status).toBe(401);
   });
+  it('availability cannot access full calendar, door metadata, or any staff/admin operations', async () => {
+    state.station.role = 'calendar_availability';
+    for (const gate of [requireTeam, requireAdmin, requireFrontDeskOrTeam, requireSecurityOrTeam]) {
+      expect((await gate()).unauthorized).toBe(true);
+    }
+    for (const path of ['/api/door-session/active','/api/admin/stations','/api/station/guest-search','/api/capacity/security']) {
+      expect((await middleware(request(path))).status).toBe(403);
+    }
+    for (const path of ['/team/calendar','/bananas','/capacity/security','/portal']) {
+      expect((await middleware(request(path))).headers.get('location')).toBe('https://www.sdgatx.com/staff/availability');
+    }
+    expect((await middleware(request('/api/station/availability'))).status).toBe(200);
+    expect((await middleware(request('/staff/availability'))).status).toBe(200);
+    expect((await middleware(request('/api/station/availability', 'POST'))).status).toBe(403);
+    expect(state.personalCalls).toBe(0);
+  });
 });
