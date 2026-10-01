@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { formatEventTime } from '@/lib/events/format-event-time';
 import styles from './door.module.css';
 
@@ -78,9 +79,9 @@ export default function DoorTickets({ initial }) {
 
   return <main className={styles.page}>
     <header className={styles.header}>
-      <a href="/home" aria-label="Stardust Garage home" data-testid="door-home">
+      <Link href="/home" prefetch={false} aria-label="Stardust Garage home" data-testid="door-home">
         <img src="/logos/wordmark-white.svg" alt="Stardust Garage" width="112" height="42" />
-      </a>
+      </Link>
     </header>
     <div className={styles.content} aria-live="polite">
       {failed ? <section className={styles.empty} data-testid="door-error">
@@ -92,7 +93,7 @@ export default function DoorTickets({ initial }) {
         <p className={styles.eyebrow}>DOOR TICKETS</p>
         <h1>No event is currently happening</h1>
         <p>Tickets for the current event appear here one hour before it starts. If you are waiting in line, please ask the door team.</p>
-        <a className={styles.button} href="/events" data-testid="door-upcoming">VIEW UPCOMING EVENTS</a>
+        <Link className={styles.button} href="/events" prefetch={false} data-testid="door-upcoming">VIEW UPCOMING EVENTS</Link>
       </section> : <>
         {data?.state === 'choose' && <section className={styles.choice}>
           <h1>Choose your event</h1><p>More than one event is happening. Confirm the event you are attending before purchasing.</p>
@@ -108,7 +109,7 @@ export default function DoorTickets({ initial }) {
         </article>)}
       </>}
       <footer className={styles.footer}>
-        <a href="/account/tickets" data-testid="door-wallet">Already purchased? View my tickets</a>
+        <Link href="/account/tickets" prefetch={false} data-testid="door-wallet">Already purchased? View my tickets</Link>
       </footer>
     </div>
   </main>;
