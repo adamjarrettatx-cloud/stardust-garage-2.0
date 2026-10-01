@@ -5,6 +5,7 @@ import { adminPageGate } from '@/lib/auth-helpers';
 import { resolveMemberPhotoUrls } from '@/lib/member-photo';
 import ApplicationsList from './ApplicationsList';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
+import { applicationAgeReview } from '@/lib/membership-age-review';
 
 export const revalidate = 0;
 
@@ -27,6 +28,7 @@ export default async function ApplicationsPage() {
   const appsWithPhotos = (applications || []).map((a) => ({
     ...a,
     display_photo_url: photoMap.get(a.id) || null,
+    age_review: applicationAgeReview(a),
   }));
 
   return (

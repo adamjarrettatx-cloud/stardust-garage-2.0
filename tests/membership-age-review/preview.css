@@ -1,0 +1,32 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; min-width: 320px; }
+body { font-family: Arial, sans-serif; }
+button, input { font: inherit; }
+button { cursor: pointer; }
+a { text-decoration: none; }
+.preview {
+  min-height: 100vh; color: var(--text-light); background: var(--bg-dark);
+  --bg-dark: #0a0a0a; --bg-card: #141414; --text-light: #f5f5f5;
+  --auth-text: #ededed; --auth-text-strong: #fff; --auth-muted: #aaa;
+  --auth-card-bg: #161616; --auth-card-bg-alt: #222; --auth-card-border: #333;
+  --auth-card-border-strong: #555; --auth-accent: #dbc89b; --auth-accent-strong: #dbc89b;
+  --auth-warn-bg: #302712; --auth-warn-border: #705524; --auth-warn-strong: #f4dba0;
+}
+.preview.light {
+  --bg-dark: #f5f5f5; --bg-card: #fff; --text-light: #171717;
+  --auth-text: #222; --auth-text-strong: #111; --auth-muted: #666;
+  --auth-card-bg: #fff; --auth-card-bg-alt: #eee; --auth-card-border: #ddd;
+  --auth-card-border-strong: #aaa; --auth-accent: #836115; --auth-accent-strong: #836115;
+  --auth-warn-bg: #fff6dd; --auth-warn-border: #c6a756; --auth-warn-strong: #5a4308;
+}
+.preview.light .membership-quiz { --line: #ccc; --inverse: #fff; --muted: #666; --soft: #eee; --selected: #eee; color-scheme: light; }
+.preview-nav { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--auth-card-border); font-size: 12px; }
+.preview-nav span { margin-right: auto; }
+.preview-nav button, .preview-disabled { border: 1px solid var(--auth-card-border-strong); color: var(--auth-text); background: var(--auth-card-bg); border-radius: 20px; padding: 8px 12px; }
+.preview-nav button[aria-pressed=true] { background: var(--auth-card-bg-alt); font-weight: 700; }
+.preview-review { max-width: 1120px; margin: auto; padding: 36px 24px; }
+.preview-review > h1, .preview-form > h1 { font-size: 30px; line-height: 1.2; margin: 0 0 12px; font-weight: 750; }
+.preview-review > p, .preview-form > p { font-size: 14px; color: var(--auth-muted); margin: 0 0 30px; }
+.preview-detail-title { font-size: 22px; margin: 36px 0 18px; }
+.preview-disabled { opacity: .6; cursor: not-allowed; }
+.preview-form { max-width: 680px; margin: auto; padding: 36px 24px; }

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Wordmark from "@/app/components/Wordmark";
+import { AGE_REVIEW_TITLE, AGE_REVIEW_NOTICE, needsMembershipAgeReview } from "@/lib/membership-age-review";
 import {
   emptyQuiz,
   QUIZ_QUESTIONS,
@@ -48,6 +49,7 @@ export default function MembershipQuiz({
     setError("");
   }, [step]);
   const q = step === 5 ? branchQuestion(answers) : QUIZ_QUESTIONS[step - 1];
+  const ageReviewRequired = needsMembershipAgeReview(answers.age);
   async function saveResults(selected) {
     const response = await fetch("/api/members/quiz", {
       method: "POST",
@@ -182,10 +184,11 @@ export default function MembershipQuiz({
           {step === -1 ? (
             <>
               <span className="eyebrow">MEMBERSHIP ELIGIBILITY</span>
-              {h1("For ages 21 and up.")}
+              {h1("Membership applications start at 21.")}
               <p>
-                Stardust Garage is a 21+ venue. You’ll need to be at least 21 to
-                continue with membership discovery.
+                Stardust Garage is a 23+ club. Applicants ages 21–22 may be
+                considered following additional screening. You must be at least
+                21 to apply for membership.
               </p>
               <button className="primary" onClick={() => setStep(0)}>
                 Change my age <span>←</span>
@@ -222,7 +225,7 @@ export default function MembershipQuiz({
                     placeholder="Your age"
                     required
                     value={answers.age}
-                    aria-describedby={error ? "quiz-error" : undefined}
+                    aria-describedby={[ageReviewRequired && "membership-age-review", error && "quiz-error"].filter(Boolean).join(" ") || undefined}
                     aria-invalid={!!error}
                     onChange={(e) => {
                       setAnswers({ ...answers, age: e.target.value });
@@ -231,6 +234,14 @@ export default function MembershipQuiz({
                   />
                   <span>years old</span>
                 </div>
+                <div aria-live="polite" aria-atomic="true">
+                  {ageReviewRequired && (
+                    <aside id="membership-age-review" className="age-review-notice" data-testid="age-review-notice">
+                      <h2>{AGE_REVIEW_TITLE}</h2>
+                      <p>{AGE_REVIEW_NOTICE}</p>
+                    </aside>
+                  )}
+                </div>
                 {error && (
                   <p id="quiz-error" className="error" role="alert">
                     {error}
@@ -238,7 +249,7 @@ export default function MembershipQuiz({
                 )}
                 <div className="actions">
                   <button className="primary" data-testid="button-continue">
-                    Continue <span>→</span>
+                    {ageReviewRequired ? "Continue to application" : "Continue"} <span>→</span>
                   </button>
                 </div>
               </form>

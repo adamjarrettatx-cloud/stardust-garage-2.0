@@ -5,6 +5,7 @@ import Link from 'next/link';
 import SubmissionTabs from '@/app/bananas/components/SubmissionTabs';
 import { filterSubmissionRowsByStatus } from '@/lib/submission-workflow';
 import styles from './applications.module.css';
+import ApplicationAgeReview from './ApplicationAgeReview';
 
 function initials(name) {
   return (name || '').trim().split(/\s+/).slice(0, 2)
@@ -85,6 +86,7 @@ export default function ApplicationsList({ applications }) {
                     <p className={styles.preferred}>
                       {a.preferred_name ? `Goes by ${a.preferred_name}` : '\u00A0'}
                     </p>
+                    <ApplicationAgeReview review={a.age_review} compact />
                   </div>
                   <dl className={styles.details}>
                     <div><dt>Email</dt><dd>{a.email || 'Not provided'}</dd></div>
