@@ -12,6 +12,14 @@ const nextConfig = {
     }];
   },
   outputFileTracingIncludes: {
+    // sharp resolves native addons and libvips at runtime. Next 15's tracing
+    // can omit these optional platform packages even when the build succeeds.
+    // Include both packages (and the email SVG) in Node API function bundles.
+    '/api/**/*': [
+      './node_modules/sharp/**/*',
+      './node_modules/@img/sharp-*/**/*',
+      './public/logos/wordmark-white.svg',
+    ],
     '/api/portal/w9': ['./lib/w9/assets/fw9.pdf'],
     '/api/portal/w9/blank': ['./lib/w9/assets/fw9.pdf'],
   },
