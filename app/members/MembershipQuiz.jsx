@@ -34,7 +34,6 @@ export default function MembershipQuiz({
   );
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [theme, setTheme] = useState("light");
   const heading = useRef(null),
     dialog = useRef(null);
   const plans = Object.fromEntries(
@@ -43,13 +42,6 @@ export default function MembershipQuiz({
       sourcePlans.find((p) => p.slug === slug),
     ]),
   );
-  useEffect(() => {
-    setTheme(
-      window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light",
-    );
-  }, []);
   useEffect(() => {
     heading.current?.focus({ preventScroll: true });
     window.scrollTo(0, 0);
@@ -164,7 +156,7 @@ export default function MembershipQuiz({
       : result.primary
     : null;
   return (
-    <div className="membership-quiz" data-theme={theme}>
+    <div className="membership-quiz">
       <header className="header">
         <Link href="/" className="brand" aria-label="Stardust Garage home">
           <Wordmark />
@@ -173,13 +165,6 @@ export default function MembershipQuiz({
           <Link className="text-button" href="/home">
             Back to site
           </Link>
-          <button
-            className="theme"
-            aria-label="Switch color theme"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          >
-            ◐
-          </button>
         </div>
       </header>
       <main className="quiz-main">

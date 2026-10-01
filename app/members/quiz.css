@@ -1,20 +1,17 @@
 @import url("https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap");
-.membership-quiz[data-theme="light"] .brand img {
-  filter: invert(1);
-}
 .membership-quiz .alternate-label {
   margin-top: 32px;
 }
 .membership-quiz {
-  --bg: #fafaf8;
-  --surface: #fff;
-  --text: #20201e;
-  --muted: #676763;
-  --line: #d7d7d1;
-  --selected: #eeeee8;
-  --inverse: #fafaf8;
-  --soft: #f1f1ec;
-  --error: #a12727;
+  --bg: var(--bg-dark, #0a0a0a);
+  --surface: var(--bg-card, #141414);
+  --text: var(--text-light, #f5f5f5);
+  --muted: #aaa;
+  --line: rgba(255, 255, 255, 0.18);
+  --selected: #262626;
+  --inverse: #0a0a0a;
+  --soft: #1c1c1c;
+  --error: #ffaaaa;
   --text-xs: clamp(0.75rem, 0.73rem + 0.1vw, 0.8125rem);
   --text-sm: clamp(0.875rem, 0.84rem + 0.15vw, 0.9375rem);
   --text-base: clamp(1rem, 0.97rem + 0.15vw, 1.0625rem);
@@ -31,19 +28,8 @@
   --s16: 64px;
   font-family: "Satoshi", sans-serif;
   color: var(--text);
-  background: var(--bg);
-  color-scheme: light;
-}
-.membership-quiz[data-theme="dark"] {
-  --bg: #171716;
-  --surface: #20201e;
-  --text: #f4f4ee;
-  --muted: #b4b4a9;
-  --line: #484841;
-  --selected: #34342f;
-  --inverse: #171716;
-  --soft: #272723;
-  --error: #ffaaaa;
+  /* RootLayout already renders the shared CosmosBackground behind this page. */
+  background: transparent;
   color-scheme: dark;
 }
 .membership-quiz * {
