@@ -14,6 +14,7 @@ import { useSound } from './SoundProvider';
 export default function GlobalSoundToggle() {
   const pathname = usePathname();
   const { soundOn, toggleSound, ready } = useSound();
+  if (pathname === '/door') return null;
   if (pathname === '/staff' || pathname?.startsWith('/staff/')) return null;
 
   if (!ready) return null;

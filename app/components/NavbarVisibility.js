@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 
 export default function NavbarVisibility({ children }) {
   const pathname = usePathname();
+  if (pathname === '/door') return null;
   if (pathname === '/staff' || pathname.startsWith('/staff/')) return null;
 
   // Hide navbar on the splash page (root /) and on the full-screen capacity
