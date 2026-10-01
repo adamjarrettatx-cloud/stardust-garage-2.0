@@ -1,0 +1,22 @@
+.page{--text-small:clamp(.8125rem,.79rem + .1vw,.875rem);--text-body:1rem;--text-title:clamp(1.45rem,1.3rem + .6vw,1.75rem);--text-label:.75rem;min-height:100svh;background:#0a0a0a;color:#f5f5f5;font-family:'Plus Jakarta Sans',sans-serif;position:relative;padding-bottom:env(safe-area-inset-bottom)}
+.header{height:66px;border-bottom:1px solid #262626;display:flex;align-items:center;justify-content:center}
+.header a{display:flex;min-height:44px;align-items:center}
+.header img{width:112px;height:42px;object-fit:contain}
+.content{width:100%;max-width:460px;margin:0 auto;padding:28px 24px 32px}
+.eyebrow{font-size:var(--text-label);font-weight:600;letter-spacing:2px;color:#d1d1d1;margin:0 0 20px}
+.artwork{display:block;width:100%;max-height:34svh;object-fit:contain;background:#111;border-radius:8px}
+.event h1,.empty h1,.choice h1{font-size:var(--text-title);font-weight:800;line-height:1.25;letter-spacing:-.6px;margin:24px 0 12px;overflow-wrap:anywhere}
+.date{font-size:var(--text-small);line-height:1.85;color:#ccc;margin:0 0 24px}
+.button{display:flex;align-items:center;justify-content:center;min-height:52px;width:100%;padding:16px 20px;background:#fff;border:1px solid #fff;border-radius:100px;color:#090909;text-align:center;font-size:var(--text-small);font-weight:800;letter-spacing:.7px;text-decoration:none;cursor:pointer}
+.button:hover{background:#e0e0e0}
+.button:focus-visible,.header a:focus-visible,.footer a:focus-visible{outline:2px solid #ffb84d;outline-offset:5px}
+.instruction{font-size:var(--text-small);color:#aaa;line-height:1.7;text-align:center;margin:20px 12px 28px}
+.footer{border-top:1px solid #292929;margin-top:28px;padding-top:20px;text-align:center}
+.footer a{display:inline-flex;align-items:center;min-height:44px;font-size:var(--text-small);color:#ddd;text-decoration:underline;text-underline-offset:4px}
+.empty{padding:32px 0 12px}
+.empty p:not(.eyebrow),.choice p{font-size:var(--text-body);color:#b5b5b5;line-height:1.75;margin:20px 0 28px}
+.status{border:1px solid #444;border-radius:12px;text-align:center;padding:20px;font-size:var(--text-small)}
+.status strong{letter-spacing:1px}.status p{margin:12px 0 0;color:#b5b5b5;line-height:1.6}
+.choice{border-bottom:1px solid #333;margin-bottom:28px}
+.event+.event{border-top:1px solid #333;margin-top:32px;padding-top:28px}
+@media(min-width:768px){.content{padding-top:40px}.artwork{max-height:360px}}
