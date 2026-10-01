@@ -12,6 +12,7 @@ await build({
   outfile: dir + "/app.js",
   platform: "browser",
   jsx: "automatic",
+  loader: { ".js": "jsx" },
   alias: { "@": root },
   define: { "process.env.NODE_ENV": '"development"' },
 });
