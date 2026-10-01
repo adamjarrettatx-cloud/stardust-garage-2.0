@@ -94,10 +94,16 @@ export async function POST(request) {
     // (e.g. someone applied twice). If so, link to the existing user
     // rather than failing.
     const email = application.email.trim().toLowerCase();
-    const { data: existing } = await supabaseAdmin.auth.admin.listUsers();
-    const existingUser = existing?.users?.find(
-      (u) => u.email?.toLowerCase() === email
-    );
+    let existingUser;
+    if (application.applicant_user_id) {
+      const { data: linked, error: linkedError } = await supabaseAdmin.auth.admin.getUserById(application.applicant_user_id);
+      if (linkedError || !linked?.user) return NextResponse.json({ error: 'The applicant account could not be verified.' }, { status: 409 });
+      existingUser = linked.user;
+    } else {
+      // Keep the legacy application path; new applications use the verified ID.
+      const { data: existing } = await supabaseAdmin.auth.admin.listUsers();
+      existingUser = existing?.users?.find((u) => u.email?.toLowerCase() === email);
+    }
 
     let userId;
     let tempPassword = null;

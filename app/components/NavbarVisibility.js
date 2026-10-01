@@ -9,7 +9,7 @@ export default function NavbarVisibility({ children }) {
   // Hide navbar on the splash page (root /) and on the full-screen capacity
   // counter pages (the two Jelly2 door stations) so they stay chrome-free with
   // maximal tap targets.
-  if (pathname === '/' || pathname === '/clock' || pathname.startsWith('/clock/') || pathname.startsWith('/capacity')) {
+  if (pathname === '/' || pathname === '/members' || pathname === '/clock' || pathname.startsWith('/clock/') || pathname.startsWith('/capacity')) {
     return null;
   }
 
