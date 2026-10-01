@@ -76,9 +76,8 @@ function blankProduct(eventId) {
     capacity: null,
     display_order: 0,
     is_active: true,
-    // Fixed at 10: reveal the next tier when the current one has ≤ 10 left.
-    // Manually 'hidden' tiers never appear regardless of this threshold, which
-    // is why the field is no longer editable in the admin UI.
+    // Legacy persisted field; buyer visibility is current-tier-only.
+    // Active tiers advance automatically, while Hidden tiers stay excluded.
     tier_reveal_threshold: 10,
     // Event-wide ticket-sales cutoff. Enforced by lib/tickets/pricing.js
     // (canBuyProduct). Blank = no cutoff — sales run until event ends.
@@ -110,8 +109,7 @@ function toEditShape(p) {
   return {
     ...p,
     description: p.description || '',
-    // Always 10 — the field is no longer editable but the DB column stays
-    // so pricing/availability logic keeps working unchanged.
+    // Preserve the legacy field; it no longer controls public visibility.
     tier_reveal_threshold: 10,
     capacity: p.capacity ?? null,
     sales_start_at: p.sales_start_at || null,
@@ -407,8 +405,7 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
       name: 'Tickets',
       kind: 'tickets',
       description: p.description?.trim() || null,
-      // Hardcoded default: always reveal the next tier at ≤ 10 remaining.
-      // Next-tier visibility is controlled per-tier via status='hidden'.
+      // Legacy field retained for compatibility, not future-tier previews.
       tier_reveal_threshold: 10,
       // Product-level capacity is no longer used — stock is per tier now.
       // Pass null so the API leaves the per-product ticket_inventory row
