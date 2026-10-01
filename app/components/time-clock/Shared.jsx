@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useOptionalAuthenticatedTheme } from "@/app/components/AuthenticatedThemeProvider";
 import { duration, elapsedMs, estimateCents } from "@/lib/time-clock/core.mjs";
 import "./time-clock.css";
 
@@ -42,7 +43,11 @@ export async function request(path, payload, signal) {
   return data;
 }
 export function Frame({ children, owner = false }) {
-  const [theme, setTheme] = useState("dark");
+  const authenticatedTheme = useOptionalAuthenticatedTheme();
+  const [kioskTheme, setKioskTheme] = useState("dark");
+  // Embedded timekeeping follows the surrounding Admin setting. Only the
+  // standalone kiosk owns a separate appearance control.
+  const theme = owner ? (authenticatedTheme?.theme ?? "dark") : kioskTheme;
   return (
     <div className={`tc-root ${owner ? "tc-owner" : ""}`} data-theme={theme}>
       {!owner && (
@@ -65,24 +70,12 @@ export function Frame({ children, owner = false }) {
               type="button"
               className="theme"
               aria-label="Toggle light and dark theme"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              onClick={() => setKioskTheme(theme === "dark" ? "light" : "dark")}
             >
               ◐
             </button>
           </nav>
         </header>
-      )}
-      {owner && (
-        <div className="right">
-          <button
-            type="button"
-            className="theme"
-            aria-label="Toggle timekeeping theme"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          >
-            ◐
-          </button>
-        </div>
       )}
       <main>{children}</main>
       {!owner && (
