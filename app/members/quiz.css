@@ -136,6 +136,13 @@
   gap: var(--s3);
   margin-bottom: var(--s12);
 }
+.membership-quiz .welcome-main {
+  padding-top: clamp(40px, 9vh, 100px);
+}
+.membership-quiz a.primary {
+  color: var(--inverse);
+  text-decoration: none;
+}
 .membership-quiz .progress span {
   flex: 1;
   font-size: var(--text-xs);
