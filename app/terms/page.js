@@ -13,7 +13,11 @@ If you use the Services for an organization, you represent that you are authoriz
 
 ## 2. Eligibility and age requirements
 
-You must be at least 18 years old to create an account, buy or claim admission, join a membership, or access the venue, unless we expressly designate an all-ages event and a parent or legal guardian completes the required minor waiver. You must be at least 21 years old to purchase, possess, or consume alcohol, and you must present valid government-issued identification when requested.
+Stardust Garage is a 23+ venue. Guests must be at least 23 years old to enter unless Stardust Garage expressly designates the event as all ages. For attendees under 18 at an all-ages event, a parent or legal guardian must complete the required minor waiver.
+
+You must be at least 18 years old to create an account, buy or claim admission, or join a membership. Having an account, ticket, RSVP, or membership does not override the venue admission age requirement.
+
+You must be at least 21 years old to purchase, possess, or consume alcohol, and you must present valid government-issued identification when requested.
 
 We may refuse entry, service, or access for any lawful reason, including age, identification, safety, conduct, capacity, or compliance concerns. Nothing in these Terms requires us to serve alcohol to any person. We reserve the right to refuse alcohol service and to follow all applicable Texas Alcoholic Beverage Commission (TABC) requirements and other laws.
 
@@ -196,7 +200,7 @@ export default function TermsPage() {
         <h1>Terms of Service</h1>
         <p className="legal-lede">The terms that apply when you use Stardust Garage online, through SDG Mobile, or at the venue.</p>
         <div className="legal-meta" aria-label="Document information">
-          <span><strong>Effective:</strong> 2026-09-10</span>
+          <span><strong>Effective:</strong> 2026-09-30</span>
           <span><strong>Operator:</strong> Simple Boring Office LLC d/b/a Stardust Garage</span>
           <span><strong>Contact:</strong> <a href="mailto:hello@sdgatx.com">hello@sdgatx.com</a></span>
         </div>
