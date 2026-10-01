@@ -12,14 +12,14 @@ export default function MembershipWelcome() {
         <Link href="/home" className="text-button">Back to site</Link>
       </header>
       <main className="quiz-main welcome-main">
-        <h1>Find your kind of Stardust.</h1>
+        <h1>Find the membership that fits you.</h1>
         <p className="intro">
-          Workdays, weekend nights, and everything in between. Answer a few
-          questions about how you’d like to spend your time here, and we’ll help
-          you find the membership that fits you.
+          A place to work, a reason to go out, a community to connect with.
+          Tell us what brings you to Stardust Garage, and we’ll help you find
+          your fit.
         </p>
         <Link className="primary" href="/members?start=1" data-testid="button-start-quiz">
-          Find my membership <span aria-hidden="true">→</span>
+          Find my fit <span aria-hidden="true">→</span>
         </Link>
         <p className="footnote">Your results will be saved to your Stardust account.</p>
       </main>
