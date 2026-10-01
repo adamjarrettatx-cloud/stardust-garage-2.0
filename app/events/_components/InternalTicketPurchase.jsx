@@ -4,8 +4,8 @@
 //
 // Feature set:
 //   * Fetches /api/tickets/availability, which returns per-product current
-//     price (with active tier's booking fee), availability, and a projection
-//     of any additional visible tiers (revealed by tier_reveal_threshold).
+//     price (with active tier's booking fee), availability, and only the
+//     currently purchasable tier. Future tiers are never previewed.
 //   * Access-code input: if the buyer has one, resubmit availability with
 //     ?codes= so gated tiers unlock inline.
 //   * Discount-code input: POSTs to /api/tickets/discount-code/validate for
@@ -465,16 +465,6 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
           {p.description && (
             <div style={{ fontSize: 12, color: ROW_MUTED, marginTop: 6, opacity: 0.85 }}>
               {p.description}
-            </div>
-          )}
-          {p.tiers && p.tiers.length > 1 && (
-            <div style={{ fontSize: 11, color: ROW_FAINT, marginTop: 6 }}>
-              Coming next:{' '}
-              {p.tiers
-                .filter((t) => !t.buyable)
-                .slice(0, 2)
-                .map((t) => `${t.name} ${formatMoney(t.price_cents, t.currency)}`)
-                .join(' · ')}
             </div>
           )}
         </div>
