@@ -1,115 +1,19 @@
-import Link from 'next/link';
 import customerContent from '@/lib/customer-content.json';
+import MembershipQuiz from './MembershipQuiz';
+import { createClient } from '@/lib/supabase/server';
+import ApplicationAccountGate from './apply/[plan]/ApplicationAccountGate';
+export const dynamic = 'force-dynamic';
 
-const content = customerContent.membership;
-const plans = content.plans;
-
-function CheckIcon() {
-  return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f5f5f5" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 4 }}><polyline points="20 6 9 17 4 12" /></svg>);
-}
-
-export default function MembersPage() {
-  return (
-    <main style={{ viewTransitionName: 'portal-members' }}>
-      {/* JOIN — tiles now lead the page */}
-      <section id="join" className="max-w-[1100px] mx-auto px-6 pt-20 pb-16 md:pt-28 md:pb-20 scroll-mt-24">
-        <div className="mb-12 max-w-[720px]">
-          <div className="text-[11px] font-semibold tracking-[0.28em] mb-3" style={{ color: 'rgba(255,255,255,0.5)' }}>MEMBERSHIP</div>
-          <h1 className="text-[28px] md:text-[40px] font-extrabold -tracking-[0.02em] leading-[1.05] mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            {content.heading}
-          </h1>
-          <p className="text-[15px] leading-[1.65]" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            {content.intro}
-          </p>
-        </div>
-
-        {/* Trial Pass — highlighted gold band above the three membership tiles. */}
-        <div
-          className="relative mb-8 rounded-[18px] p-7 md:p-8 border flex flex-col md:flex-row md:items-center gap-6 md:gap-8"
-          style={{
-            background: 'linear-gradient(180deg, rgba(201,168,107,0.06), rgba(255,255,255,0.015))',
-            borderColor: 'rgba(201,168,107,0.55)',
-            boxShadow: '0 0 0 1px rgba(201,168,107,0.12), 0 30px 60px -30px rgba(201,168,107,0.20)',
-          }}
-        >
-          <div className="flex-1">
-            <div className="text-[10px] font-semibold tracking-[0.28em] mb-2" style={{ color: 'rgba(201,168,107,0.85)' }}>
-              TRY US BEFORE YOU JOIN
-            </div>
-            <h3 className="text-[22px] font-bold -tracking-[0.01em] mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-              {content.trial.heading}
-            </h3>
-            <p className="text-[14px] leading-[1.55] max-w-[560px]" style={{ color: 'rgba(255,255,255,0.65)' }}>
-              {content.trial.body}
-            </p>
-          </div>
-
-          <div className="flex-shrink-0 w-full md:w-auto">
-            <Link
-              href="/pass"
-              className="block w-full md:w-auto md:min-w-[200px] px-8 py-3.5 rounded-full text-[12px] font-semibold tracking-[0.2em] text-center transition-all hover:-translate-y-0.5"
-              style={{
-                background: '#f5f5f0',
-                color: '#0a0a0a',
-              }}
-            >
-              {content.trial.cta}
-            </Link>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {plans.map((plan) => (
-            <div key={plan.slug} className="relative rounded-[18px] p-9 md:p-10 border flex flex-col" style={{ background: '#141418', borderColor: 'rgba(255,255,255,0.06)', color: '#f5f5f5' }}>
-              <div className="text-[10px] font-semibold tracking-[0.28em] mb-3" style={{ color: 'rgba(255,255,255,0.5)' }}>{plan.kicker}</div>
-              <h3 className="text-[22px] font-bold -tracking-[0.01em] mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{plan.name}</h3>
-              <p className="text-[14px] leading-[1.55] mb-7" style={{ color: 'rgba(255,255,255,0.6)' }}>{plan.tagline}</p>
-
-              <div className="flex items-baseline gap-2 mb-8">
-                <span className="text-[36px] md:text-[44px] font-extrabold -tracking-[0.02em] leading-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{plan.price}</span>
-                <span className="text-[13px]" style={{ color: 'rgba(255,255,255,0.5)' }}>{plan.period}</span>
-              </div>
-
-              <ul className="list-none mb-9 flex-1 space-y-2.5">
-                {plan.benefits.map((benefit) => (
-                  <li key={benefit} className="flex items-start gap-3 text-[14px] leading-[1.55]">
-                    <CheckIcon />
-                    <span>{benefit}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <Link href={`/members/apply/${plan.slug}`} className="w-full py-3.5 rounded-full text-[12px] font-semibold tracking-[0.2em] transition-all hover:-translate-y-0.5 text-center" style={{ background: '#f5f5f0', color: '#0a0a0a' }}>APPLY</Link>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* THE SPACE — Lockers add-on */}
-      <section id="space" className="max-w-[1100px] mx-auto px-6 pb-20 md:pb-28 scroll-mt-24">
-        {/* Lockers add-on */}
-        <div className="mt-5 rounded-[18px] p-8 md:p-9 border flex flex-col md:flex-row md:items-center gap-7" style={{ background: '#141418', borderColor: 'rgba(255,255,255,0.06)' }}>
-          <div className="md:w-[260px] flex-shrink-0">
-            <div className="text-[10px] font-semibold tracking-[0.24em] mb-2" style={{ color: 'rgba(255,255,255,0.45)' }}>ADD-ON</div>
-            <h3 className="text-[22px] font-bold -tracking-[0.01em] mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{content.lockers.heading}</h3>
-            <p className="text-[12.5px]" style={{ color: 'rgba(255,255,255,0.5)' }}>{content.lockers.note}</p>
-          </div>
-          <ul className="list-none flex-1 space-y-2">
-            {content.lockers.benefits.map(benefit => <li key={benefit} className="flex items-start gap-3 text-[14px] leading-[1.55]"><CheckIcon /><span>{benefit}</span></li>)}
-          </ul>
-        </div>
-      </section>
-
-      {/* CLOSING */}
-      <section className="max-w-[1100px] mx-auto px-6 pb-24 md:pb-32">
-        <div className="rounded-[20px] border p-10 md:p-14 text-center" style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'radial-gradient(120% 80% at 50% 0%, rgba(180,135,70,0.18) 0%, rgba(20,18,22,0.9) 60%, rgba(10,10,14,1) 100%)' }}>
-          <h2 className="text-[32px] md:text-[44px] font-extrabold -tracking-[0.02em] leading-[1.05] mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{content.closing.heading}</h2>
-          <p className="text-[15px] leading-[1.65] max-w-[480px] mx-auto mb-9" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            {content.closing.body}
-          </p>
-          <Link href="/members/apply/cowork" className="inline-block px-8 py-4 rounded-full text-[12px] font-semibold tracking-[0.2em] transition-all hover:-translate-y-0.5" style={{ background: '#ffffff', color: '#0a0a0a' }}>APPLY NOW</Link>
-        </div>
-      </section>
-    </main>
-  );
+export const metadata = {
+  title: 'Find your membership | Stardust Garage',
+  description: 'Find the Stardust Garage membership that fits your workdays, weekend nights, and community.',
+};
+export default async function MembersPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return <ApplicationAccountGate quiz />;
+  const { data, error } = await supabase.from('membership_quiz_results')
+    .select('answers,selected_plan').eq('user_id', user.id).maybeSingle();
+  if (error) return <main className="max-w-[568px] mx-auto px-6 py-16"><h1 className="text-2xl mb-4">Your membership quiz</h1><p>Your saved results could not be loaded. Please try again shortly.</p><a className="inline-block underline mt-6" href="/members">Try again</a></main>;
+  return <MembershipQuiz plans={customerContent.membership.plans} savedQuiz={data} />;
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
+import { getRequestUser } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/stub';
 import { rateLimit, keyFromRequest } from '@/lib/rate-limit';
@@ -15,8 +16,8 @@ import {
 // Body: multipart form-data with:
 //   - `photo` (image file)
 //
-// Public, unauthenticated. Applicants haven't created an account yet, so
-// there's no bearer token to check. Rate-limited by IP to stop misuse.
+// Authenticated application upload. Account-scoped paths prevent one applicant
+// from attaching another person's photo by guessing or reusing its path.
 //
 // Returns `{ photoPath, signedUrl, uploadedAt }`. The client then submits
 // the application form with `photoPath` in the payload, and the /apply
@@ -40,6 +41,11 @@ function memberAppStoragePath(applicationTempId, ext) {
 }
 
 export async function POST(request) {
+  if (request.headers.get('origin') !== new URL(request.url).origin) {
+    return NextResponse.json({ error: 'Invalid request origin.' }, { status: 403 });
+  }
+  const user = await getRequestUser(request);
+  if (!user) return NextResponse.json({ error: 'Please sign in to apply.' }, { status: 401 });
   if (!isSupabaseConfigured()) {
     return NextResponse.json({ error: 'Storage is not configured.' }, { status: 503 });
   }
@@ -85,7 +91,7 @@ export async function POST(request) {
 
   const applicationTempId = randomUUID();
   const ext = extForMime(file.type);
-  const path = memberAppStoragePath(applicationTempId, ext);
+  const path = memberAppStoragePath(`${user.id}/${applicationTempId}`, ext);
 
   const admin = createAdminClient();
   const arrayBuffer = await file.arrayBuffer();

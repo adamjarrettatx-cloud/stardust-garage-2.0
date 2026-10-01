@@ -1,13 +1,19 @@
-'use client';
+"use client";
 
-import { useState, useRef } from 'react';
-import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
-import LegalNameInput from '@/app/components/LegalNameInput';
-import { validateLegalName } from '@/lib/legal-name';
+import { useState, useRef } from "react";
+import Link from "next/link";
+import { QUIZ_QUESTIONS } from "@/lib/membership-quiz";
+import LegalNameInput from "@/app/components/LegalNameInput";
+import { validateLegalName } from "@/lib/legal-name";
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
-const ACCEPTED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+const ACCEPTED_PHOTO_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+];
 
 // Photo is REQUIRED for paid-membership applications as of PR B.3.
 // Door staff match the photo to the person at check-in; without one, the
@@ -15,46 +21,62 @@ const ACCEPTED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/he
 // the photo should be told to come apply at the door in person instead.
 const PHOTO_REQUIRED = true;
 
-export default function ApplyForm({ planSlug, planName, planPrice }) {
+export default function ApplyForm({
+  planSlug,
+  planName,
+  planPrice,
+  accountEmail,
+  accountName,
+  quiz,
+}) {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const fileInputRef = useRef(null);
+  const submissionKey = useRef(null);
   const [photoFile, setPhotoFile] = useState(null);
-  const [photoPreview, setPhotoPreview] = useState('');
-  const [photoError, setPhotoError] = useState('');
+  const [photoPreview, setPhotoPreview] = useState("");
+  const [photoError, setPhotoError] = useState("");
 
   const [form, setForm] = useState({
-    full_name: '',
-    preferred_name: '',
-    email: '',
-    phone: '',
-    social_handle: '',
-    website: '',
-    birthday: '',
-    why_stardust: '',
-    how_did_you_hear: '',
-    how_contribute: '',
-    what_experiences: '',
+    full_name: accountName || "",
+    preferred_name: "",
+    email: accountEmail || "",
+    phone: "",
+    social_handle: "",
+    website: "",
+    birthday: "",
+    why_stardust: "",
+    how_did_you_hear: "",
+    how_contribute: "",
+    what_experiences: quiz
+      ? QUIZ_QUESTIONS.find((q) => q.key === "activities")
+          .options.filter(
+            ([value]) => quiz.activities.includes(value) && value !== "unsure",
+          )
+          .map(([, label]) => label)
+          .join(", ")
+      : "",
     agreed_ethos: false,
     agreed_renewal: false,
     agreed_house_rules: false,
   });
 
-  const update = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
+  const update = (field, value) =>
+    setForm((prev) => ({ ...prev, [field]: value }));
 
   const handlePhotoChange = (e) => {
-    setPhotoError('');
+    setPhotoError("");
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!ACCEPTED_PHOTO_TYPES.includes(file.type)) {
-      setPhotoError('Please choose a JPG, PNG or WebP image.');
+      setPhotoError("Please choose a JPG, PNG or WebP image.");
       return;
     }
     if (file.size > MAX_PHOTO_BYTES) {
-      setPhotoError('That photo is over 5MB. Please choose a smaller file.');
+      setPhotoError("That photo is over 5MB. Please choose a smaller file.");
       return;
     }
 
@@ -65,84 +87,70 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
     const name = validateLegalName(form.full_name);
-    if (!name.valid) { setError(name.error); return; }
+    if (!name.valid) {
+      setError(name.error);
+      return;
+    }
 
     // Check all required agreements
-    if (!form.agreed_ethos || !form.agreed_renewal || !form.agreed_house_rules) {
-      setError('Please check all three agreement boxes to continue.');
+    if (
+      !form.agreed_ethos ||
+      !form.agreed_renewal ||
+      !form.agreed_house_rules
+    ) {
+      setError("Please check all three agreement boxes to continue.");
       return;
     }
 
     // Photo is required. Door staff can’t match a face without one, and the
     // scanner UI will bounce a member with no photo on file.
     if (PHOTO_REQUIRED && !photoFile) {
-      setError('Please add a face photo. Door staff use it at check-in.');
+      setError("Please add a face photo. Door staff use it at check-in.");
       return;
     }
 
     setSubmitting(true);
-    const supabase = createClient();
-
-    // Upload photo through the members-apply-photo endpoint. This writes to
-    // the PRIVATE `profile-photos` bucket (not the legacy public
-    // `member-photos` bucket) and returns a server-generated storage path
-    // we submit alongside the application row.
-    let profilePhotoPath = null;
-    if (photoFile) {
-      const uploadForm = new FormData();
-      uploadForm.append('photo', photoFile, photoFile.name);
-      const uploadRes = await fetch('/api/members/apply/photo', {
-        method: 'POST',
-        body: uploadForm,
-      });
-      const uploadJson = await uploadRes.json().catch(() => ({}));
-      if (!uploadRes.ok) {
-        setSubmitting(false);
-        setError(uploadJson?.error || 'Could not upload your photo. Please try again.');
-        return;
+    submissionKey.current ||= crypto.randomUUID();
+    try {
+      // Upload photo through the members-apply-photo endpoint. This writes to
+      // the PRIVATE `profile-photos` bucket (not the legacy public
+      // `member-photos` bucket) and returns a server-generated storage path
+      // we submit alongside the application row.
+      let profilePhotoPath = null;
+      if (photoFile) {
+        const uploadForm = new FormData();
+        uploadForm.append("photo", photoFile, photoFile.name);
+        const uploadRes = await fetch("/api/members/apply/photo", {
+          method: "POST",
+          body: uploadForm,
+        });
+        const uploadJson = await uploadRes.json().catch(() => ({}));
+        if (!uploadRes.ok) {
+          setSubmitting(false);
+          setError(
+            uploadJson?.error ||
+              "Could not upload your photo. Please try again.",
+          );
+          return;
+        }
+        profilePhotoPath = uploadJson?.photoPath || null;
       }
-      profilePhotoPath = uploadJson?.photoPath || null;
-    }
 
-    const { error: insertError } = await supabase.from('membership_applications').insert({
-      plan: planSlug,
-      photo_url: null, // legacy public column, kept nullable for old rows
-      profile_photo_path: profilePhotoPath,
-      profile_photo_uploaded_at: profilePhotoPath ? new Date().toISOString() : null,
-      full_name: form.full_name.trim(),
-      preferred_name: form.preferred_name.trim() || null,
-      email: form.email.trim(),
-      phone: form.phone.trim(),
-      social_handle: form.social_handle.trim(),
-      website: form.website.trim() || null,
-      birthday: form.birthday,
-      why_stardust: form.why_stardust.trim(),
-      how_did_you_hear: form.how_did_you_hear.trim(),
-      how_contribute: form.how_contribute.trim(),
-      what_experiences: form.what_experiences.trim(),
-      agreed_ethos: form.agreed_ethos,
-      agreed_renewal: form.agreed_renewal,
-      agreed_house_rules: form.agreed_house_rules,
-    });
-
-    setSubmitting(false);
-
-    if (insertError) {
-      setError('Something went wrong. Please try again or contact us directly.');
-      return;
-    }
-
-    // Fire-and-forget email notifications
-    fetch('/api/notify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        formType: 'membership_application',
-        data: {
+      const submitRes = await fetch("/api/members/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          submission_key: submissionKey.current,
           plan: planSlug,
+          photo_url: null, // legacy public column, kept nullable for old rows
+          profile_photo_path: profilePhotoPath,
+          profile_photo_uploaded_at: profilePhotoPath
+            ? new Date().toISOString()
+            : null,
           full_name: form.full_name.trim(),
+          preferred_name: form.preferred_name.trim() || null,
           email: form.email.trim(),
           phone: form.phone.trim(),
           social_handle: form.social_handle.trim(),
@@ -152,13 +160,56 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
           how_did_you_hear: form.how_did_you_hear.trim(),
           how_contribute: form.how_contribute.trim(),
           what_experiences: form.what_experiences.trim(),
-        },
-        email: form.email.trim(),
-      }),
-    }).catch(() => {});
+          agreed_ethos: form.agreed_ethos,
+          agreed_renewal: form.agreed_renewal,
+          agreed_house_rules: form.agreed_house_rules,
+        }),
+      });
+      const submitResult = await submitRes.json().catch(() => ({}));
 
-    setSubmitted(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+      setSubmitting(false);
+
+      if (!submitRes.ok) {
+        setError(
+          submitResult.error ||
+            "Something went wrong. Please try again or contact us directly.",
+        );
+        return;
+      }
+
+      // Fire-and-forget email notifications
+      if (!submitResult.alreadySubmitted)
+        fetch("/api/notify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            formType: "membership_application",
+            data: {
+              plan: planSlug,
+              full_name: form.full_name.trim(),
+              email: form.email.trim(),
+              phone: form.phone.trim(),
+              social_handle: form.social_handle.trim(),
+              website: form.website.trim() || null,
+              birthday: form.birthday,
+              why_stardust: form.why_stardust.trim(),
+              how_did_you_hear: form.how_did_you_hear.trim(),
+              how_contribute: form.how_contribute.trim(),
+              what_experiences: form.what_experiences.trim(),
+            },
+            email: form.email.trim(),
+          }),
+        }).catch(() => {});
+
+      setSubmitted(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch {
+      setError(
+        "Could not submit your application. Check your connection and try again.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -166,9 +217,18 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
       <main className="max-w-[700px] mx-auto px-4 md:px-6 py-20 md:py-24 text-center">
         <div
           className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-8"
-          style={{ background: 'rgba(255,255,255,0.08)' }}
+          style={{ background: "rgba(255,255,255,0.08)" }}
         >
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f5f5f5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#f5f5f5"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>
@@ -178,13 +238,17 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
         >
           Application received
         </h1>
-        <p className="text-[16px] leading-[1.6] mb-10" style={{ color: '#8a8a8a' }}>
-          Thanks for applying. We review every application personally and will be in touch soon with next steps.
+        <p
+          className="text-[16px] leading-[1.6] mb-10"
+          style={{ color: "#8a8a8a" }}
+        >
+          Thanks for applying. We review every application personally and will
+          be in touch soon with next steps.
         </p>
         <Link
           href="/"
           className="inline-block px-8 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5"
-          style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
+          style={{ borderColor: "rgba(255,255,255,0.15)", color: "#f5f5f5" }}
         >
           BACK TO HOME
         </Link>
@@ -193,22 +257,24 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
   }
 
   const inputStyle = {
-    background: '#141414',
-    borderColor: 'rgba(255,255,255,0.1)',
-    color: '#f5f5f5',
+    background: "#141414",
+    borderColor: "rgba(255,255,255,0.1)",
+    color: "#f5f5f5",
   };
 
-  const labelClass = 'block text-[11px] font-semibold tracking-[0.16em] mb-2';
-  const labelStyle = { color: '#a0a0a0' };
-  const inputClass = 'w-full px-5 py-3.5 rounded-[10px] text-[14px] outline-none border transition-colors focus:border-white/30';
-  const textareaClass = 'w-full px-5 py-3.5 rounded-[10px] text-[14px] outline-none border transition-colors focus:border-white/30 resize-y';
+  const labelClass = "block text-[11px] font-semibold tracking-[0.16em] mb-2";
+  const labelStyle = { color: "#a0a0a0" };
+  const inputClass =
+    "w-full px-5 py-3.5 rounded-[10px] text-[14px] outline-none border transition-colors focus:border-white/30";
+  const textareaClass =
+    "w-full px-5 py-3.5 rounded-[10px] text-[14px] outline-none border transition-colors focus:border-white/30 resize-y";
 
   return (
     <main className="max-w-[700px] mx-auto px-4 md:px-6 py-12 md:py-16">
       <Link
         href="/members"
         className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70"
-        style={{ color: '#8a8a8a' }}
+        style={{ color: "#8a8a8a" }}
       >
         ← BACK TO MEMBERSHIP
       </Link>
@@ -217,8 +283,8 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
         <div
           className="inline-block text-[11px] font-semibold tracking-[0.2em] px-3.5 py-1.5 rounded-full mb-6"
           style={{
-            color: '#8a8a8a',
-            border: '1px solid rgba(255,255,255,0.12)',
+            color: "#8a8a8a",
+            border: "1px solid rgba(255,255,255,0.12)",
           }}
         >
           {planName.toUpperCase()} · {planPrice}
@@ -229,10 +295,10 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
         >
           Membership
         </h1>
-        <p className="text-[15px] italic" style={{ color: '#8a8a8a' }}>
+        <p className="text-[15px] italic" style={{ color: "#8a8a8a" }}>
           Join the Constellation. Amplify the Frequency.
         </p>
-        <p className="text-[12px] mt-4" style={{ color: '#666' }}>
+        <p className="text-[12px] mt-4" style={{ color: "#666" }}>
           * indicates required
         </p>
       </div>
@@ -240,17 +306,27 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div
           className="rounded-[14px] p-6 md:p-8 border space-y-6"
-          style={{ background: '#0f0f0f', borderColor: 'rgba(255,255,255,0.05)' }}
+          style={{
+            background: "#0f0f0f",
+            borderColor: "rgba(255,255,255,0.05)",
+          }}
         >
-          <LegalNameInput value={form.full_name} onChange={(e) => update('full_name', e.target.value)}
-            inputClassName={inputClass} inputStyle={inputStyle} disabled={submitting} />
+          <LegalNameInput
+            value={form.full_name}
+            onChange={(e) => update("full_name", e.target.value)}
+            inputClassName={inputClass}
+            inputStyle={inputStyle}
+            disabled={submitting}
+          />
 
           <div>
-            <label className={labelClass} style={labelStyle}>PREFERRED NAME / ALIAS</label>
+            <label className={labelClass} style={labelStyle}>
+              PREFERRED NAME / ALIAS
+            </label>
             <input
               type="text"
               value={form.preferred_name}
-              onChange={(e) => update('preferred_name', e.target.value)}
+              onChange={(e) => update("preferred_name", e.target.value)}
               placeholder="what we should call you"
               className={inputClass}
               style={inputStyle}
@@ -258,12 +334,15 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
           </div>
 
           <div>
-            <label className={labelClass} style={labelStyle}>EMAIL ADDRESS *</label>
+            <label className={labelClass} style={labelStyle}>
+              EMAIL ADDRESS *
+            </label>
             <input
               type="email"
               required
+              readOnly
               value={form.email}
-              onChange={(e) => update('email', e.target.value)}
+              onChange={(e) => update("email", e.target.value)}
               placeholder="your@email.com"
               className={inputClass}
               style={inputStyle}
@@ -271,12 +350,14 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
           </div>
 
           <div>
-            <label className={labelClass} style={labelStyle}>PHONE NUMBER *</label>
+            <label className={labelClass} style={labelStyle}>
+              PHONE NUMBER *
+            </label>
             <input
               type="tel"
               required
               value={form.phone}
-              onChange={(e) => update('phone', e.target.value)}
+              onChange={(e) => update("phone", e.target.value)}
               placeholder="your phone number"
               className={inputClass}
               style={inputStyle}
@@ -284,12 +365,14 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
           </div>
 
           <div>
-            <label className={labelClass} style={labelStyle}>INSTAGRAM / SOCIAL MEDIA *</label>
+            <label className={labelClass} style={labelStyle}>
+              INSTAGRAM / SOCIAL MEDIA *
+            </label>
             <input
               type="text"
               required
               value={form.social_handle}
-              onChange={(e) => update('social_handle', e.target.value)}
+              onChange={(e) => update("social_handle", e.target.value)}
               placeholder="@handle"
               className={inputClass}
               style={inputStyle}
@@ -297,11 +380,13 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
           </div>
 
           <div>
-            <label className={labelClass} style={labelStyle}>WEBSITE / PORTFOLIO</label>
+            <label className={labelClass} style={labelStyle}>
+              WEBSITE / PORTFOLIO
+            </label>
             <input
               type="text"
               value={form.website}
-              onChange={(e) => update('website', e.target.value)}
+              onChange={(e) => update("website", e.target.value)}
               placeholder="yoursite.com"
               className={inputClass}
               style={inputStyle}
@@ -309,20 +394,27 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
           </div>
 
           <div>
-            <label className={labelClass} style={labelStyle}>BIRTHDAY *</label>
+            <label className={labelClass} style={labelStyle}>
+              BIRTHDAY *
+            </label>
             <input
               type="date"
               required
               value={form.birthday}
-              onChange={(e) => update('birthday', e.target.value)}
+              onChange={(e) => update("birthday", e.target.value)}
               className={inputClass}
               style={inputStyle}
             />
           </div>
 
           <div>
-            <label className={labelClass} style={labelStyle}>PROFILE PHOTO *</label>
-            <p className="text-[12px] leading-[1.5] mb-3" style={{ color: '#8a8a8a' }}>
+            <label className={labelClass} style={labelStyle}>
+              PROFILE PHOTO *
+            </label>
+            <p
+              className="text-[12px] leading-[1.5] mb-3"
+              style={{ color: "#8a8a8a" }}
+            >
               One clear photo of your face. Door staff sees this next to your
               name at check-in. JPG, PNG, WebP or HEIC, max 5MB.
             </p>
@@ -341,7 +433,7 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
                   src={photoPreview}
                   alt="Profile preview"
                   className="w-[72px] h-[72px] flex-shrink-0 object-cover"
-                  style={{ borderRadius: '14px', border: '1px solid #2a2a2a' }}
+                  style={{ borderRadius: "14px", border: "1px solid #2a2a2a" }}
                 />
               )}
               <div className="min-w-0">
@@ -349,12 +441,18 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   className="px-5 py-3 rounded-[10px] text-[12px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5"
-                  style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
+                  style={{
+                    borderColor: "rgba(255,255,255,0.15)",
+                    color: "#f5f5f5",
+                  }}
                 >
-                  {photoFile ? 'CHANGE PHOTO' : 'CHOOSE PHOTO'}
+                  {photoFile ? "CHANGE PHOTO" : "CHOOSE PHOTO"}
                 </button>
                 {photoFile && (
-                  <div className="text-[12px] mt-2 truncate" style={{ color: '#8a8a8a' }}>
+                  <div
+                    className="text-[12px] mt-2 truncate"
+                    style={{ color: "#8a8a8a" }}
+                  >
                     {photoFile.name}
                   </div>
                 )}
@@ -368,15 +466,20 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
 
         <div
           className="rounded-[14px] p-6 md:p-8 border space-y-6"
-          style={{ background: '#0f0f0f', borderColor: 'rgba(255,255,255,0.05)' }}
+          style={{
+            background: "#0f0f0f",
+            borderColor: "rgba(255,255,255,0.05)",
+          }}
         >
           <div>
-            <label className={labelClass} style={labelStyle}>WHAT BRINGS YOU TO STARDUST? *</label>
+            <label className={labelClass} style={labelStyle}>
+              WHAT BRINGS YOU TO STARDUST? *
+            </label>
             <textarea
               required
               rows={4}
               value={form.why_stardust}
-              onChange={(e) => update('why_stardust', e.target.value)}
+              onChange={(e) => update("why_stardust", e.target.value)}
               placeholder="your answer"
               className={textareaClass}
               style={inputStyle}
@@ -391,7 +494,7 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
               required
               rows={3}
               value={form.how_did_you_hear}
-              onChange={(e) => update('how_did_you_hear', e.target.value)}
+              onChange={(e) => update("how_did_you_hear", e.target.value)}
               placeholder="your answer"
               className={textareaClass}
               style={inputStyle}
@@ -399,12 +502,14 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
           </div>
 
           <div>
-            <label className={labelClass} style={labelStyle}>HOW DO YOU WISH TO CONTRIBUTE TO THE COLLECTIVE? *</label>
+            <label className={labelClass} style={labelStyle}>
+              HOW DO YOU WISH TO CONTRIBUTE TO THE COLLECTIVE? *
+            </label>
             <textarea
               required
               rows={4}
               value={form.how_contribute}
-              onChange={(e) => update('how_contribute', e.target.value)}
+              onChange={(e) => update("how_contribute", e.target.value)}
               placeholder="your answer"
               className={textareaClass}
               style={inputStyle}
@@ -412,12 +517,14 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
           </div>
 
           <div>
-            <label className={labelClass} style={labelStyle}>WHAT KIND OF EXPERIENCES DO YOU MOST WANT TO SEE HERE? *</label>
+            <label className={labelClass} style={labelStyle}>
+              WHAT KIND OF EXPERIENCES DO YOU MOST WANT TO SEE HERE? *
+            </label>
             <textarea
               required
               rows={4}
               value={form.what_experiences}
-              onChange={(e) => update('what_experiences', e.target.value)}
+              onChange={(e) => update("what_experiences", e.target.value)}
               placeholder="your answer"
               className={textareaClass}
               style={inputStyle}
@@ -427,9 +534,15 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
 
         <div
           className="rounded-[14px] p-6 md:p-8 border"
-          style={{ background: '#0f0f0f', borderColor: 'rgba(255,255,255,0.05)' }}
+          style={{
+            background: "#0f0f0f",
+            borderColor: "rgba(255,255,255,0.05)",
+          }}
         >
-          <h3 className={labelClass} style={{ ...labelStyle, marginBottom: 20 }}>
+          <h3
+            className={labelClass}
+            style={{ ...labelStyle, marginBottom: 20 }}
+          >
             CREATIVE ALIGNMENT *
           </h3>
 
@@ -437,11 +550,12 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
             <input
               type="checkbox"
               checked={form.agreed_ethos}
-              onChange={(e) => update('agreed_ethos', e.target.checked)}
+              onChange={(e) => update("agreed_ethos", e.target.checked)}
               className="mt-0.5 w-4 h-4 flex-shrink-0 accent-white"
             />
             <span className="text-[14px] leading-[1.5]">
-              I agree to uphold the Stardust ethos of respect, awareness, and co-creation.
+              I agree to uphold the Stardust ethos of respect, awareness, and
+              co-creation.
             </span>
           </label>
 
@@ -449,7 +563,7 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
             <input
               type="checkbox"
               checked={form.agreed_renewal}
-              onChange={(e) => update('agreed_renewal', e.target.checked)}
+              onChange={(e) => update("agreed_renewal", e.target.checked)}
               className="mt-0.5 w-4 h-4 flex-shrink-0 accent-white"
             />
             <span className="text-[14px] leading-[1.5]">
@@ -461,11 +575,12 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
             <input
               type="checkbox"
               checked={form.agreed_house_rules}
-              onChange={(e) => update('agreed_house_rules', e.target.checked)}
+              onChange={(e) => update("agreed_house_rules", e.target.checked)}
               className="mt-0.5 w-4 h-4 flex-shrink-0 accent-white"
             />
             <span className="text-[14px] leading-[1.5]">
-              I agree to follow all house rules, safety guidelines, and consent to culture practices.
+              I agree to follow all house rules, safety guidelines, and consent
+              to culture practices.
             </span>
           </label>
         </div>
@@ -480,9 +595,9 @@ export default function ApplyForm({ planSlug, planName, planPrice }) {
           type="submit"
           disabled={submitting}
           className="w-full py-5 rounded-full text-[13px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
-          style={{ background: '#ffffff', color: '#0a0a0a' }}
+          style={{ background: "#ffffff", color: "#0a0a0a" }}
         >
-          {submitting ? 'SUBMITTING...' : 'REQUEST ACCESS'}
+          {submitting ? "SUBMITTING..." : "REQUEST ACCESS"}
         </button>
       </form>
     </main>

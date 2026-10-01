@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { adminPageGate } from '@/lib/auth-helpers';
 import { createProfilePhotoSignedUrl } from '@/lib/profile-photo';
 import ApplicationActions from './ApplicationActions';
+import { QUIZ_QUESTIONS } from '@/lib/membership-quiz';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import { WhatsAppButton } from '@/app/bananas/components/ContactButtons';
@@ -143,6 +144,14 @@ export default async function ApplicationDetail({ params }) {
           </DetailGrid>
         </DetailSection>
 
+        {app.quiz_answers && <DetailSection title="MEMBERSHIP DISCOVERY">
+          <DetailGrid>
+            <DetailItem label="AGE WHEN QUIZ COMPLETED">{app.quiz_answers.age}</DetailItem>
+            <DetailItem label="SELF-IDENTIFIED GENDER">{({ male: 'Male', female: 'Female', other: 'Other' })[app.gender_identity] || 'Not provided'}</DetailItem>
+            {QUIZ_QUESTIONS.filter(q => ['interests', 'activities'].includes(q.key)).map(q => <DetailItem key={q.key} label={q.title.toUpperCase()} full>{q.options.filter(([v]) => app.quiz_answers[q.key]?.includes(v)).map(([, text]) => text).join(' · ')}</DetailItem>)}
+            <DetailItem label="QUIZ RECOMMENDATION">{({ weekender: 'The Weekender', cowork: 'The Builder', 'cowork-party': 'The Insider' })[app.quiz_answers.recommended_plan]}</DetailItem>
+          </DetailGrid>
+        </DetailSection>}
         <DetailSection title="RESPONSES">
           <DetailGrid>
             <DetailItem label="WHAT BRINGS YOU TO STARDUST?" full>{app.why_stardust}</DetailItem>
