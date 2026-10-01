@@ -1,4 +1,4 @@
-import { beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({ user: null, reads: [], writes: [], previous: null, failed: false, photoExists: true }));
 vi.mock('@/lib/auth-helpers', () => ({ getRequestUser: async () => state.user }));
 vi.mock('@/lib/rate-limit', () => ({ rateLimit: () => ({ ok: true }) }));
@@ -26,6 +26,16 @@ const body = {
 };
 const request=(payload=body,origin='https://sdg.invalid')=>new Request('https://sdg.invalid/api/members/apply',{method:'POST',headers:{origin},body:JSON.stringify(payload)});
 beforeEach(()=>{state.user=user;state.reads=[];state.writes=[];state.previous=null;state.failed=false;state.photoExists=true;});
+afterEach(()=>vi.useRealTimers());
+it('21–22 applicants stay new and cannot supply approval or suppress review through client flags',async()=>{
+  vi.useFakeTimers();vi.setSystemTime(new Date('2026-10-01T15:00:00Z'));
+  for(const birthday of ['2005-01-01','2004-01-01']){
+    expect((await POST(request({...body,birthday,status:'approved',account_created:true,age_review:{required:false}}))).status).toBe(200);
+    const row=state.writes.at(-1);
+    expect(row.status).toBe('new');expect(row.birthday).toBe(birthday);
+    expect(row).not.toHaveProperty('account_created');expect(row).not.toHaveProperty('age_review');
+  }
+});
 it('requires authentication and same-origin requests before privileged reads',async()=>{
   state.user=null;expect((await POST(request())).status).toBe(401);
   state.user=user;expect((await POST(request(body,'https://evil.invalid'))).status).toBe(403);

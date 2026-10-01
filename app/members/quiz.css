@@ -2,6 +2,25 @@
 .membership-quiz .alternate-label {
   margin-top: 32px;
 }
+.membership-quiz .age-review-notice {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.membership-quiz .age-review-notice h2 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.membership-quiz .age-review-notice p {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.65;
+}
 .membership-quiz {
   --bg: var(--bg-dark, #0a0a0a);
   --surface: var(--bg-card, #141414);

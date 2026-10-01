@@ -5,6 +5,7 @@ import Link from "next/link";
 import { QUIZ_QUESTIONS } from "@/lib/membership-quiz";
 import LegalNameInput from "@/app/components/LegalNameInput";
 import { validateLegalName } from "@/lib/legal-name";
+import { AGE_REVIEW_TITLE, AGE_REVIEW_NOTICE, ageOnAustinDate, needsMembershipAgeReview } from "@/lib/membership-age-review";
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const ACCEPTED_PHOTO_TYPES = [
@@ -65,6 +66,7 @@ export default function ApplyForm({
 
   const update = (field, value) =>
     setForm((prev) => ({ ...prev, [field]: value }));
+  const ageReviewRequired = needsMembershipAgeReview(ageOnAustinDate(form.birthday));
 
   const handlePhotoChange = (e) => {
     setPhotoError("");
@@ -394,17 +396,27 @@ export default function ApplyForm({
           </div>
 
           <div>
-            <label className={labelClass} style={labelStyle}>
+            <label htmlFor="application-birthday" className={labelClass} style={labelStyle}>
               BIRTHDAY *
             </label>
             <input
+              id="application-birthday"
               type="date"
               required
               value={form.birthday}
+              aria-describedby={ageReviewRequired ? "application-age-review" : undefined}
               onChange={(e) => update("birthday", e.target.value)}
               className={inputClass}
               style={inputStyle}
             />
+            <div aria-live="polite" aria-atomic="true">
+              {ageReviewRequired && (
+                <aside id="application-age-review" className="mt-4 rounded-xl border p-5 text-sm leading-relaxed" style={{ borderColor: '#444', background: '#191919', color: '#f5f5f5' }}>
+                  <h3 className="font-semibold mb-2">{AGE_REVIEW_TITLE}</h3>
+                  <p>{AGE_REVIEW_NOTICE}</p>
+                </aside>
+              )}
+            </div>
           </div>
 
           <div>

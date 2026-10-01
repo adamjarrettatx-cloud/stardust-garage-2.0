@@ -4,6 +4,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { adminPageGate } from '@/lib/auth-helpers';
 import { createProfilePhotoSignedUrl } from '@/lib/profile-photo';
 import ApplicationActions from './ApplicationActions';
+import ApplicationAgeReview from '../ApplicationAgeReview';
+import { applicationAgeReview } from '@/lib/membership-age-review';
 import { QUIZ_QUESTIONS } from '@/lib/membership-quiz';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
@@ -117,6 +119,7 @@ export default async function ApplicationDetail({ params }) {
         </div>
       )}
 
+      <ApplicationAgeReview review={applicationAgeReview(app)} />
       <ApplicationActions
         applicationId={app.id}
         currentStatus={app.status || 'new'}
