@@ -139,6 +139,22 @@
 .membership-quiz .welcome-main {
   padding-top: clamp(40px, 9vh, 100px);
 }
+.membership-quiz .welcome-main h1 {
+  margin-bottom: 28px;
+  line-height: 1.3;
+}
+.membership-quiz .welcome-main .intro {
+  max-width: 520px;
+  margin-bottom: 40px;
+  line-height: 1.8;
+}
+.membership-quiz .welcome-main .primary {
+  width: calc(100% - 32px);
+  max-width: 480px;
+}
+.membership-quiz .welcome-main .footnote {
+  margin-top: 32px;
+}
 .membership-quiz a.primary {
   color: var(--inverse);
   text-decoration: none;
