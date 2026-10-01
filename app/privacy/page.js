@@ -19,7 +19,7 @@ We collect information you provide, information generated through your use of th
 
 When you create or use an account, we may collect your first and last name, display name, email address, phone number, birthdate, account credentials, and authentication information. Passwords are handled through Supabase Auth; we do not keep your plaintext password. If you choose Apple or Google sign-in, our authentication providers may process provider account identifiers and authentication tokens needed to sign you in.
 
-We use birthdate to help verify age eligibility for our 18+ venue and account rules and, where applicable, 21+ alcohol-service areas. We do not use birthdate to make automated decisions about you.
+We use birthdate to help verify age eligibility for our 23+ venue admission policy (except for events expressly designated as all ages) and our account rules. We do not use birthdate to make automated decisions about you.
 
 ### Membership, ticket, and venue records
 
@@ -64,7 +64,7 @@ We use personal information to:
 - create and secure accounts, authenticate users, and prevent fraud, abuse, and unauthorized access;
 - process membership applications, subscriptions, ticket orders, refunds, and related communications;
 - issue, validate, and administer tickets, QR credentials, check-ins, and venue access;
-- verify eligibility and enforce our age, safety, conduct, and alcohol-service rules;
+- verify eligibility and enforce our age, safety, and conduct rules;
 - obtain, preserve, and enforce waivers, contracts, releases, and other agreements;
 - send transactional messages, security notices, event updates, membership information, and, if you opt in, marketing communications;
 - deliver requested push notifications;
@@ -114,7 +114,9 @@ We use reasonable administrative, technical, and organizational safeguards desig
 
 ## 9. Children and age restrictions
 
-The Services are not directed to children under 18, and users must be at least 18 to create an account or access the venue unless Stardust Garage expressly designates an all-ages event and a parent or legal guardian completes any required minor waiver. We do not knowingly collect personal information from children under 13. If you believe a child has provided us personal information in violation of this Policy, contact us at hello@sdgatx.com.
+Stardust Garage is a 23+ venue. Guests must be at least 23 years old to enter unless Stardust Garage expressly designates the event as all ages. For attendees under 18 at an all-ages event, a parent or legal guardian must complete any required minor waiver.
+
+Online account creation is limited to users age 18 or older. An account does not establish eligibility for venue admission. We do not knowingly collect personal information from children under 13. If you believe a child has provided us personal information in violation of this Policy, contact us at hello@sdgatx.com.
 
 ## 10. International users
 
@@ -166,7 +168,7 @@ export default function PrivacyPage() {
         <h1>Privacy Policy</h1>
         <p className="legal-lede">A clear explanation of the information Stardust Garage handles and the choices available to you.</p>
         <div className="legal-meta" aria-label="Document information">
-          <span><strong>Effective:</strong> 2026-09-10</span>
+          <span><strong>Effective:</strong> 2026-09-30</span>
           <span><strong>Operator:</strong> Simple Boring Office LLC d/b/a Stardust Garage</span>
           <span><strong>Contact:</strong> <a href="mailto:hello@sdgatx.com">hello@sdgatx.com</a></span>
         </div>
