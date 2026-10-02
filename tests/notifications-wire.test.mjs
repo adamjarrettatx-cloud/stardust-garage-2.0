@@ -94,14 +94,13 @@ test('broadcast is admin-only', () => {
 // ---------------------------------------------------------------------------
 
 test('member-id verify fires door_checkin notification', () => {
-  const src = read('app/api/scan/member-id/route.js');
+  const src = read('lib/capacity/admission-followup.ts');
   assert.match(src, /notify.*door_checkin/s);
   // Should be wrapped so a failure doesn't 500 the door.
   const notifyIdx = src.indexOf("type: 'door_checkin'");
   assert.ok(notifyIdx > -1);
-  // The nearest preceding 'try {' should be within 400 chars
-  const preceding = src.slice(Math.max(0, notifyIdx - 400), notifyIdx);
-  assert.match(preceding, /try\s*\{/);
+  const commit = read('lib/capacity/commit-admission.ts');
+  assert.match(commit, /after\(async[\s\S]*try[\s\S]*sendAdmissionFollowup[\s\S]*catch/);
 });
 
 test('member-id select includes user_id for notification routing', () => {
@@ -110,10 +109,10 @@ test('member-id select includes user_id for notification routing', () => {
 });
 
 test('trial-pass activation fires trial_activated notification', () => {
-  const src = read('app/api/capacity/trial-pass/scan/route.js');
+  const src = read('lib/capacity/admission-followup.ts');
   assert.match(src, /trial_activated/);
   // Guarded on member_profile_id \u2014 no user_id, no notification
-  assert.match(src, /pass\.member_profile_id/);
+  assert.match(src, /activated && pass\.user_id/);
 });
 
 // ---------------------------------------------------------------------------

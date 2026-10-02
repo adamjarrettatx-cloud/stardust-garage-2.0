@@ -24,6 +24,7 @@ const uiSrc = readFileSync(
   new URL('../app/scan/UnifiedScanClient.js', import.meta.url),
   'utf8',
 );
+const transaction = readFileSync(new URL('../supabase/migrations/20261002011000_atomic_door_admission.sql', import.meta.url), 'utf8');
 
 // ---- Route wiring ----
 
@@ -45,43 +46,24 @@ test('preview mode still has NO writes (pure read)', () => {
   assert.equal(/\.update\(/.test(previewBlock), false, 'preview must not update rows');
 });
 
-test('verify mode redeems linked ticket with the atomic status="valid" WHERE guard', () => {
-  // The critical race guard: the ticket flip must be conditional on
-  // status='valid' so two doors scanning the same buyer at once can't
-  // double-consume the same ticket.
-  const verifyBlock = sliceBetween(routeSrc, '// MODE: verify', '  return NextResponse.json({');
-  assert.ok(verifyBlock, 'expected a verify block');
-  assert.match(verifyBlock, /\.eq\('status',\s*'valid'\)/);
-  assert.match(verifyBlock, /update\(\{ status: 'used', used_at:/);
+test('verify mode delegates all admission writes to the single transaction', () => {
+  assert.match(routeSrc, /if \(mode === 'verify'\)[\s\S]*?return commitAdmission\(admin,/);
+  assert.doesNotMatch(routeSrc, /update\(\{ status: 'used'/);
+  assert.match(transaction, /update public\.tickets set status='used'.*status='valid'/);
 });
 
 test('verify mode logs the ticket-side check-in into ticket_checkins', () => {
-  const verifyBlock = sliceBetween(routeSrc, '// MODE: verify', '  return NextResponse.json({');
-  assert.match(verifyBlock, /ticket_checkins/);
-  assert.match(verifyBlock, /via_member_id/);
+  assert.match(transaction, /insert into public\.ticket_checkins/);
+  assert.match(transaction, /insert into public\.member_id_scans/);
 });
 
-test('verify mode still logs the member scan even when no ticket is linked', () => {
-  // The member scan insert must live OUTSIDE the "if (linkedTicket.ticket)"
-  // block \u2014 members without tickets still walk in on their base credential.
-  const verifyBlock = sliceBetween(routeSrc, '// MODE: verify', '  return NextResponse.json({');
-  const memberInsertIdx = verifyBlock.indexOf("from('member_id_scans')");
-  const linkedTicketIdx = verifyBlock.indexOf('if (linkedTicket.ticket)');
-  // Matched on the destructuring of the member_id_scans insert, which now also
-  // pulls out the inserted row id so the door feed can key the scan.
-  const linkedTicketEnd = verifyBlock.indexOf('  }\n\n  const { data: verifyRow, error }');
-  assert.ok(memberInsertIdx > 0);
-  assert.ok(linkedTicketIdx > 0);
-  assert.ok(linkedTicketEnd > 0);
-  assert.ok(
-    memberInsertIdx > linkedTicketEnd,
-    'member_id_scans insert must come after the linked-ticket block closes',
-  );
+test('no-ticket failure happens before any admission or ticket write', () => {
+  assert.ok(transaction.indexOf('if t.id is null then raise exception') < transaction.indexOf('update public.tickets'));
+  assert.match(transaction, /unique\(event_id,person_key\)/);
 });
 
 test('verify mode returns a ticket outcome payload for the UI', () => {
-  const verifyBlock = sliceBetween(routeSrc, '// MODE: verify', /}\s*$/);
-  assert.match(verifyBlock, /ticket: ticketOutcome/);
+  assert.match(transaction, /'ticket',jsonb_build_object\('result','valid','ticket_id',t.id\)/);
 });
 
 // ---- Linked-ticket helper ----

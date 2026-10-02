@@ -52,6 +52,12 @@ describe('guest search endpoint', () => {
   });
 });
 describe('named arrival check-in endpoint', () => {
+  it('cannot bypass pass and ticket checks during an active event', async () => {
+    const data=roster();data.context.session={id:'session',event_id:'event'};
+    mocks.load.mockResolvedValue(data);
+    expect((await POST(req(body))).status).toBe(409);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
   it('passes the native bearer request into the existing role verifier', async () => {
     const request = req(body);
     await POST(request);

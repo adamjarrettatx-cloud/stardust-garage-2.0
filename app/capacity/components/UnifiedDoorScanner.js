@@ -142,6 +142,13 @@ export default function UnifiedDoorScanner({
   const [rejectNote, setRejectNote] = useState('');
   const [decisionBusy, setDecisionBusy] = useState(false);
   const [softNotice, setSoftNotice] = useState(null); // brief "Not a valid QR" hint
+  const [groupTicketCode, setGroupTicketCode] = useState(null);
+  useEffect(() => { setGroupTicketCode(null); }, [eventId, doorSessionId]);
+  useEffect(() => {
+    if (!groupTicketCode) return;
+    const timer = setTimeout(() => { setGroupTicketCode(null); setPreview(null); setPhase('scanning'); }, 120000);
+    return () => clearTimeout(timer);
+  }, [groupTicketCode]);
 
   const softNoticeTimerRef = useRef(null);
   const resultHoldTimerRef = useRef(null);
@@ -162,17 +169,6 @@ export default function UnifiedDoorScanner({
     const sniff = sniffScan(raw);
     const plan = planScanAttempts(sniff, { eventId, doorSessionId });
 
-    // DIAGNOSTIC: log every scan so we can trace mysterious rejections.
-    // Remove once the trial-pass scan bug is understood.
-    try {
-      console.log('[scan.diag]', {
-        rawLen: typeof raw === 'string' ? raw.length : null,
-        rawPreview: typeof raw === 'string' ? raw.slice(0, 120) : String(raw),
-        sniffKind: sniff?.kind || null,
-        attempts: plan.attempts.length,
-      });
-    } catch {}
-
     if (plan.requiresEvent) {
       // A ticket QR was scanned but no door session is running. Surface a
       // friendly, actionable result card instead of firing a doomed POST.
@@ -187,11 +183,8 @@ export default function UnifiedDoorScanner({
     if (plan.attempts.length === 0) {
       // DIAGNOSTIC: surface the first ~60 chars of what was scanned so we can
       // see live what the camera decoded. Remove once resolved.
-      const preview = typeof raw === 'string' ? raw.slice(0, 60) : '';
       showSoftNoticeRef.current?.(
-        preview
-          ? `Not a valid QR — scanned: ${preview}${raw.length > 60 ? '…' : ''}`
-          : 'Not a valid QR — try again.',
+        'Not a valid SDG QR. Try again.',
       );
       return;
     }
@@ -321,6 +314,7 @@ export default function UnifiedDoorScanner({
   } = useDoorScanner({ enabled: scannerActive && phase === 'scanning', onRawScan });
 
   function resetToScanning() {
+    setGroupTicketCode(null);
     setPreview(null);
     setResult(null);
     setRejectPicker(false);
@@ -336,12 +330,19 @@ export default function UnifiedDoorScanner({
   // ---- Commit (Check In / Verify) ----
   const commitAdmit = useCallback(async () => {
     if (!preview || decisionBusy) return;
+    if (preview.source === 'ticket') {
+      setGroupTicketCode(preview.token);
+      setPreview(null);
+      setPhase('scanning');
+      return;
+    }
     setDecisionBusy(true);
     setBusyLabel(preview.source === 'member_id' ? 'Verifying…' : 'Checking in…');
     setPhase('busy');
 
     const endpoint = endpointFor(preview.source);
     const body = buildCommitBody({ source: preview.source, preview, action: 'admit' });
+    body.ticket_code = groupTicketCode;
     attachEventContext(body, preview.source, eventId, doorSessionId);
 
     try {
@@ -378,7 +379,7 @@ export default function UnifiedDoorScanner({
         || (preview.source === 'ticket' && (json.result === 'valid' || json.result === 'override'));
 
       let bumpWarning = null;
-      if (admitted && getBumpWarning) {
+      if (admitted && getBumpWarning && !json.capacity_managed) {
         try {
           bumpWarning = await getBumpWarning({ source: preview.source });
         } catch {
@@ -386,6 +387,7 @@ export default function UnifiedDoorScanner({
         }
         onAdmitted?.({ source: preview.source });
       }
+      if (admitted && json.capacity_managed) onAdmitted?.({ source: preview.source });
 
       const theme = admitted ? 'green' : (json.result?.startsWith('denied') ? 'amber' : 'red');
       const headline = admitted
@@ -429,8 +431,9 @@ export default function UnifiedDoorScanner({
       });
     } finally {
       setDecisionBusy(false);
+      setGroupTicketCode(null);
     }
-  }, [preview, decisionBusy, showResult, onAdmitted, getBumpWarning, onActivity, eventId, doorSessionId]);
+  }, [preview, decisionBusy, showResult, onAdmitted, getBumpWarning, onActivity, eventId, doorSessionId, groupTicketCode]);
 
   // ---- Commit (Reject) ----
   const commitReject = useCallback(async (reasonCode) => {
@@ -528,6 +531,9 @@ export default function UnifiedDoorScanner({
 
       {/* Camera stage — fixed aspect so the panel doesn't reflow between
           scan / preview / result. */}
+      {groupTicketCode && <button type="button" className="p-4 text-left" onClick={resetToScanning}>
+        Ticket ready. Scan this guest’s own My Pass QR. No entry recorded yet. Tap to cancel pairing.
+      </button>}
       <div className="relative w-full" style={{ aspectRatio: '4 / 3', background: '#000' }}>
         <video
           ref={videoRef}
@@ -665,7 +671,7 @@ function buildPreviewVM(source, requestBody, json) {
       warningBanner: isAllowed && !buyer.hasPhoto
         ? 'No photo on file for the buyer. Verify ID or reject with “no photo on file.”'
         : (!isAllowed ? (json.reason || 'This ticket cannot be checked in.') : null),
-      buttonLabel: isAllowed ? 'Check In' : 'Check In (override)',
+      buttonLabel: isAllowed ? 'Scan guest’s own pass' : 'Ticket not valid',
       themeAccent: isAllowed ? '#7CFC9B' : '#ff8a8a',
     };
   }
@@ -964,7 +970,7 @@ function PreviewCard({
           <button
             type="button"
             onClick={onCheckIn}
-            disabled={decisionBusy || !accessClear}
+            disabled={decisionBusy || !preview.isAllowed || (preview.source !== 'ticket' && !accessClear)}
             className="w-full rounded-xl py-3 text-[16px] font-extrabold active:scale-[0.98] transition-transform"
             style={{
               background: '#7CFC9B',

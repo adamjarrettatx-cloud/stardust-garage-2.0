@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getWalletOrders } from '@/lib/wallet/get-orders';
 import { renderTicketQrSvg } from '@/lib/tickets/qr';
 import TicketEventGrid from './TicketEventGrid';
-import { createProfilePhotoSignedUrl } from '@/lib/profile-photo';
+import { createAccountPhotoSignedUrl } from '@/lib/profile-photo';
 import { validateLegalName } from '@/lib/legal-name';
 import CompleteProfileNudge from '@/app/account/tickets/CompleteProfileNudge';
 import WalletPhotoNudge from '@/components/profile-photo/WalletPhotoNudge';
@@ -23,7 +23,7 @@ export default async function ProfileTickets() {
     if (personalResult.error) throw new Error('Profile could not be loaded.');
     const personal = personalResult.data;
     const needsCompletion = !personal?.phone || !validateLegalName(personal?.full_name || '').valid;
-    const photo = await createProfilePhotoSignedUrl(admin, personal?.profile_photo_path);
+    const photo = await createAccountPhotoSignedUrl(admin, personal?.profile_photo_path, user.id);
     const withQrs = orders.map((order) => ({
       ...order,
       tickets: order.tickets.map((ticket) => ({

@@ -10,6 +10,7 @@ const memberIdRoute = readFileSync(new URL('../app/api/scan/member-id/route.js',
 const trialPassRoute = readFileSync(new URL('../app/api/capacity/trial-pass/scan/route.js', import.meta.url), 'utf8');
 const ticketsRoute = readFileSync(new URL('../app/api/tickets/scan/route.js', import.meta.url), 'utf8');
 const clientSrc = readFileSync(new URL('../app/scan/UnifiedScanClient.js', import.meta.url), 'utf8');
+const transaction = readFileSync(new URL('../supabase/migrations/20261002011000_atomic_door_admission.sql', import.meta.url), 'utf8');
 
 test('member-id route reads door_session_id from body', () => {
   assert.match(memberIdRoute, /door_session_id/);
@@ -18,7 +19,9 @@ test('member-id route reads door_session_id from body', () => {
 
 test('member-id route inserts door_session_id on both verify and reject', () => {
   const inserts = memberIdRoute.match(/member_id_scans'\)\.insert\({[\s\S]+?}\)/g) || [];
-  assert.ok(inserts.length >= 2, 'expected at least verify + reject inserts');
+  assert.equal(inserts.length, 1, 'reject stays in route; successful admission is transactional');
+  assert.match(transaction, /insert into public.member_id_scans\([^)]*door_session_id\)/);
+  assert.match(memberIdRoute, /sessionId: doorSessionId/);
   for (const block of inserts) {
     assert.match(block, /door_session_id/);
   }
@@ -32,18 +35,20 @@ test('member-id route uses correct requireTeam gate shape', () => {
 });
 
 test('trial-pass scan route inserts door_session_id on both verify and reject', () => {
-  assert.match(trialPassRoute, /doorSessionId\s*=\s*typeof body\?\.door_session_id/);
+  assert.match(trialPassRoute, /doorSessionId = UUID.test\(body.door_session_id/);
   const inserts = trialPassRoute.match(/trial_pass_checkins'\)\.insert\({[\s\S]+?}\)/g) || [];
-  assert.ok(inserts.length >= 2, 'expected at least verify + reject inserts');
+  assert.equal(inserts.length, 1);
+  assert.match(transaction, /insert into public.trial_pass_checkins\([^)]*door_session_id\)/);
   for (const block of inserts) {
     assert.match(block, /door_session_id/);
   }
 });
 
 test('tickets scan route inserts door_session_id on every audit write', () => {
-  assert.match(ticketsRoute, /doorSessionId\s*=\s*typeof body\?\.door_session_id/);
+  assert.match(ticketsRoute, /door_session_id:body.door_session_id/);
   const inserts = ticketsRoute.match(/ticket_checkins'\)\.insert\({[\s\S]+?}\)/g) || [];
-  assert.ok(inserts.length >= 3, 'expected preview/checkin/reject/lost_race inserts');
+  assert.equal(inserts.length, 1, 'only rejection writes remain on the ticket-only route');
+  assert.match(transaction, /insert into public.ticket_checkins\([^)]*door_session_id/);
   for (const block of inserts) {
     assert.match(block, /door_session_id/);
   }

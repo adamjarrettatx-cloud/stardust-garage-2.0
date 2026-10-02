@@ -4,10 +4,10 @@ import { readFileSync } from 'node:fs';
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const content = JSON.parse(read('lib/customer-content.json'));
 test('website and public endpoint consume one membership catalog', () => {
-  for (const file of ['app/members/page.js', 'app/members/apply/[plan]/page.js', 'app/api/public/customer-content/route.js']) {
+  for (const file of ['app/members/page.jsx', 'app/members/apply/[plan]/page.js', 'app/api/public/customer-content/route.js']) {
     assert.match(read(file), /customer-content\.json/);
   }
-  assert.doesNotMatch(read('app/members/page.js'), /const plans = \[/);
+  assert.doesNotMatch(read('app/members/page.jsx'), /const plans = \[/);
   assert.doesNotMatch(read('app/members/apply/[plan]/page.js'), /const VALID_PLANS/);
 });
 test('public contract contains only display information and preserves current offer', () => {

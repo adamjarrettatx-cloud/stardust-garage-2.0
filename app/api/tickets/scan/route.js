@@ -1,275 +1,64 @@
 import { NextResponse } from 'next/server';
-import { restrictionGuard } from '@/lib/capacity/access-restrictions';
-import { fetchPriorDenials, fetchDoorSessionStart } from '@/lib/capacity/denial-lookup';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { requireFrontDeskOrTeam } from '@/lib/auth-helpers';
 import { isTicketScannerEnabled, isInternalTicketingEnabled } from '@/lib/feature-flags';
 import { rateLimit, keyFromRequest } from '@/lib/rate-limit';
 import { normalizeTicketCode } from '@/lib/tickets/codes';
-import {
-  validateTicketScan,
-  CHECKIN_RESULTS,
-  isValidRejectReason,
-} from '@/lib/tickets/checkin';
+import { validateTicketScan, isValidRejectReason } from '@/lib/tickets/checkin';
 import { buildBuyerPreview } from '@/lib/tickets/buyer-preview';
-import { sendPushToUser } from '@/lib/notifications/send';
+import { fetchPriorDenials, fetchDoorSessionStart } from '@/lib/capacity/denial-lookup';
 
-// POST /api/tickets/scan
-//
-// Body shape (mode gates the behavior):
-//
-//   1. mode: 'preview' (default when omitted)
-//      { code, event_id, device_label?, mode: 'preview' }
-//      Validates the ticket + returns buyer name/email + a signed URL to the
-//      buyer's profile photo so door staff can visually verify the person.
-//      Does NOT flip tickets.status. The scanner UI then presents:
-//        - Big Check In button   → follow-up POST with mode:'checkin'
-//        - Reject Buyer Not Present → follow-up POST with mode:'reject'
-//
-//   2. mode: 'checkin'
-//      { code, event_id, device_label?, mode: 'checkin', override?, note? }
-//      Atomically flips tickets.status to 'used' (or errors out with
-//      already_used etc). Logs to ticket_checkins with result='valid' or
-//      'override'.
-//
-//   3. mode: 'reject'
-//      { code, event_id, device_label?, mode: 'reject', reject_reason, note? }
-//      Logs a rejection into ticket_checkins with result='rejected' and the
-//      supplied reason. Does NOT flip tickets.status \u2014 the actual buyer
-//      can still enter if the rejected person was a friend they forwarded
-//      the QR to.
-//
-// `override=true` requires an admin caller and is only honored on
-// mode:'checkin' when the decision would otherwise be non-valid.
+export const runtime='nodejs';
+export const dynamic='force-dynamic';
+const response=(body,status=200)=>NextResponse.json(body,{status,headers:{'Cache-Control':'no-store'}});
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
-
-const VALID_MODES = new Set(['preview', 'checkin', 'reject']);
-
+// Ticket scan prepares a group ticket; it does not identify the actual guest.
+// Admission must use the guest's member/trial endpoint with this ticket code.
 export async function POST(request) {
-  if (!isInternalTicketingEnabled() || !isTicketScannerEnabled()) {
-    return NextResponse.json({ error: 'Scanner disabled' }, { status: 404 });
+  if (!isInternalTicketingEnabled() || !isTicketScannerEnabled()) return response({error:'Scanner disabled'},404);
+  const gate=await requireFrontDeskOrTeam(request);
+  if (gate.unauthorized || !gate.user?.id) return response({error:'Unauthorized'},401);
+  if (!rateLimit({key:keyFromRequest(request,'ticket_scan'),limit:300,windowMs:60_000}).ok)
+    return response({error:'Too many scans'},429);
+  const body=await request.json().catch(()=>null);
+  if (!body) return response({error:'Invalid JSON'},400);
+  const mode=body.mode || 'preview';
+  if (mode==='checkin') return response({
+    error:'Scan this guest’s own My Pass QR to validate their pass and redeem this ticket together.',
+    code:'guest_pass_required',
+  },409);
+  if (!['preview','reject'].includes(mode)) return response({error:'Invalid mode'},400);
+  const code=normalizeTicketCode(body.code);
+  const eventId=body.event_id;
+  if (!code || !eventId) return response({error:'Missing code or event_id'},400);
+  if (mode==='reject' && !isValidRejectReason(body.reject_reason)) return response({error:'Invalid reject reason'},400);
+  const admin=createAdminClient();
+  const {data:ticket,error}=await admin.from('tickets')
+    .select('id,order_id,event_id,product_id,status,used_at').eq('ticket_code',code).maybeSingle();
+  if (error) return response({error:'Ticket lookup unavailable. Hold entry.'},503);
+  const decision=validateTicketScan({ticket,eventId});
+  if (mode==='reject') {
+    const {data,error:logError}=await admin.from('ticket_checkins').insert({
+      ticket_id:ticket?.id || null,event_id:eventId,ticket_code_attempted:code,result:'rejected',
+      reject_reason:body.reject_reason,scanned_by:gate.user.id,
+      door_session_id:body.door_session_id || null,
+      device_label:typeof body.device_label==='string' ? body.device_label.slice(0,120) : null,
+      note:typeof body.note==='string' ? body.note.slice(0,280) : null,
+    }).select('id').single();
+    if (logError) return response({error:'Rejection could not be recorded'},503);
+    return response({mode,result:'rejected',reject_reason:body.reject_reason,checkin_id:data.id});
   }
-
-  const rl = rateLimit({ key: keyFromRequest(request, 'ticket_scan'), limit: 300, windowMs: 60_000 });
-  if (!rl.ok) {
-    return NextResponse.json(
-      { error: 'Too many scans' },
-      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSeconds) } },
-    );
-  }
-
-  const gate = await requireFrontDeskOrTeam(request);
-  if (gate.unauthorized) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const { user, isAdmin } = gate;
-
-  let body;
-  try { body = await request.json(); }
-  catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
-
-  const rawCode = body?.code;
-  const eventId = body?.event_id;
-  const deviceLabel = body?.device_label || null;
-  const doorSessionId = typeof body?.door_session_id === 'string' && body.door_session_id ? body.door_session_id : null;
-  const wantOverride = body?.override === true;
-  const note = body?.note || null;
-  const mode = body?.mode && VALID_MODES.has(body.mode) ? body.mode : 'preview';
-  const rejectReason = body?.reject_reason || null;
-
-  const code = normalizeTicketCode(rawCode);
-  if (!code || !eventId) {
-    return NextResponse.json({ error: 'Missing code or event_id' }, { status: 400 });
-  }
-  if (mode === 'reject' && !isValidRejectReason(rejectReason)) {
-    return NextResponse.json(
-      { error: 'Missing or invalid reject_reason. Allowed: photo_mismatch, no_photo_on_file, id_mismatch, manual.' },
-      { status: 400 },
-    );
-  }
-
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  );
-
-  const { data: ticket } = await supabaseAdmin
-    .from('tickets')
-    .select('id, order_id, event_id, product_id, status, used_at')
-    .eq('ticket_code', code)
-    .maybeSingle();
-
-  const decision = validateTicketScan({ ticket, eventId });
-  if (ticket && mode === 'checkin') {
-    const blocked = await restrictionGuard(supabaseAdmin, { kind: 'ticket', id: ticket.id });
-    if (blocked) return blocked;
-  }
-
-  // ------------------------------------------------------------------
-  // mode: 'preview' \u2014 return decision + buyer preview, no side effects.
-  // ------------------------------------------------------------------
-  if (mode === 'preview') {
-    const buyer = await buildBuyerPreview(supabaseAdmin, ticket);
-    // Prior denials for the PERSON, all-time, so the door sees "turned away
-    // twice tonight" before deciding. Never allowed to fail the scan: a
-    // history read that throws degrades to no history at all.
-    let priorDenials = [];
-    let sessionStartedAt = null;
-    if (ticket?.id) {
-      try {
-        [priorDenials, sessionStartedAt] = await Promise.all([
-          fetchPriorDenials(supabaseAdmin, { kind: 'ticket', ticketId: ticket.id }),
-          fetchDoorSessionStart(supabaseAdmin, doorSessionId),
-        ]);
-      } catch (err) {
-        console.error('[tickets.scan.priorDenials]', err?.message || err);
-      }
-    }
-    return NextResponse.json({
-      access_subject: ticket ? { kind: 'ticket', id: ticket.id } : null,
-      mode: 'preview',
-      result: decision.result,
-      reason: decision.reason,
-      ticket: ticket
-        ? { id: ticket.id, status: ticket.status, used_at: ticket.used_at }
-        : null,
-      buyer,
-      prior_denials: priorDenials,
-      session_started_at: sessionStartedAt,
-    });
-  }
-
-  // ------------------------------------------------------------------
-  // mode: 'reject' \u2014 log the rejection, do NOT flip ticket status.
-  // Allowed even if the ticket lookup itself was NOT_FOUND \u2014 staff
-  // reject the person, not the ticket.
-  // ------------------------------------------------------------------
-  if (mode === 'reject') {
-    // `.select('id')` so the response can carry the row id. The front-desk
-    // feed keys denial entries on the SCAN, not the ticket -- two rejections of
-    // the same ticket are two separate facts and must not collapse into one row.
-    const { data: rejectRow } = await supabaseAdmin.from('ticket_checkins').insert({
-      ticket_id: ticket?.id || null,
-      event_id: eventId,
-      ticket_code_attempted: code,
-      result: CHECKIN_RESULTS.REJECTED,
-      reject_reason: rejectReason,
-      scanned_by: user.id,
-      device_label: deviceLabel,
-      door_session_id: doorSessionId,
-      note,
-    }).select('id').maybeSingle();
-    return NextResponse.json({
-      mode: 'reject',
-      result: CHECKIN_RESULTS.REJECTED,
-      reject_reason: rejectReason,
-      checkin_id: rejectRow?.id || null,
-      ticket: ticket ? { id: ticket.id, status: ticket.status } : null,
-    });
-  }
-
-  // ------------------------------------------------------------------
-  // mode: 'checkin' \u2014 flip status + log, with optional admin override.
-  // ------------------------------------------------------------------
-  let effective = decision.result;
-  if (wantOverride && isAdmin && effective !== CHECKIN_RESULTS.VALID) {
-    effective = CHECKIN_RESULTS.OVERRIDE;
-  }
-
-  const { data: checkinRow } = await supabaseAdmin.from('ticket_checkins').insert({
-    ticket_id: ticket?.id || null,
-    event_id: eventId,
-    ticket_code_attempted: code,
-    result: effective,
-    scanned_by: user.id,
-    device_label: deviceLabel,
-    door_session_id: doorSessionId,
-    note,
-  }).select('id').maybeSingle();
-  let checkinId = checkinRow?.id || null;
-
-  if (effective === CHECKIN_RESULTS.VALID) {
-    const { data: flipped } = await supabaseAdmin
-      .from('tickets')
-      .update({ status: 'used', used_at: new Date().toISOString() })
-      .eq('id', ticket.id)
-      .eq('status', 'valid') // race guard
-      .select('id')
-      .maybeSingle();
-    if (!flipped) {
-      const { data: raceRow } = await supabaseAdmin.from('ticket_checkins').insert({
-        ticket_id: ticket.id,
-        event_id: eventId,
-        ticket_code_attempted: code,
-        result: CHECKIN_RESULTS.ALREADY_USED,
-        scanned_by: user.id,
-        device_label: deviceLabel,
-        door_session_id: doorSessionId,
-        note: 'lost_race',
-      }).select('id').maybeSingle();
-      // The already-used row is the one that describes what happened at the
-      // door, so it -- not the optimistic row above -- is what the feed shows.
-      if (raceRow?.id) checkinId = raceRow.id;
-      return NextResponse.json({
-        mode: 'checkin',
-        result: CHECKIN_RESULTS.ALREADY_USED,
-        reason: 'LOST_RACE',
-        checkin_id: checkinId,
-      });
-    }
-  }
-
-  if (effective === CHECKIN_RESULTS.OVERRIDE) {
-    await supabaseAdmin.from('ticket_audit_log').insert({
-      event_id: eventId,
-      order_id: ticket?.order_id || null,
-      ticket_id: ticket?.id || null,
-      actor_user_id: user.id,
-      actor_role: 'admin',
-      action: 'checkin.override',
-      detail: { reason: decision.reason, note },
-    });
-  }
-
-  // Notify the ticket holder only after a successful check-in. Resolve the
-  // account through the order rather than trusting any scanner-supplied data.
-  if (
-    (effective === CHECKIN_RESULTS.VALID || effective === CHECKIN_RESULTS.OVERRIDE) &&
-    ticket?.order_id
-  ) {
-    try {
-      const { data: order } = await supabaseAdmin
-        .from('orders')
-        .select('user_id')
-        .eq('id', ticket.order_id)
-        .maybeSingle();
-      if (order?.user_id) {
-        await sendPushToUser({
-          userId: order.user_id,
-          type: 'door_checkin',
-          title: 'You’re in',
-          body: 'Welcome to Stardust Garage',
-          data: { event_id: eventId, ticket_id: ticket.id, url: '/tickets' },
-        });
-      }
-    } catch (err) {
-      console.error('[tickets.scan.push]', err?.message || err);
-    }
-  }
-
-  return NextResponse.json({
-    mode: 'checkin',
-    result: effective,
-    reason: decision.reason,
-    checkin_id: checkinId,
-    ticket: ticket
-      ? {
-          id: ticket.id,
-          status: effective === CHECKIN_RESULTS.VALID || effective === CHECKIN_RESULTS.OVERRIDE
-            ? 'used'
-            : ticket.status,
-        }
-      : null,
-  });
+  const buyer=await buildBuyerPreview(admin,ticket);
+  let priorDenials=[];
+  let sessionStartedAt=null;
+  try {
+    [priorDenials,sessionStartedAt]=await Promise.all([
+      ticket ? fetchPriorDenials(admin,{kind:'ticket',ticketId:ticket.id}) : [],
+      fetchDoorSessionStart(admin,body.door_session_id || null),
+    ]);
+  } catch { /* Advisory buyer history; actual guest is checked on pass commit. */ }
+  return response({mode:'preview',result:decision.result,reason:decision.reason,
+    access_subject:ticket ? {kind:'ticket',id:ticket.id} : null,
+    ticket:ticket ? {id:ticket.id,status:ticket.status,used_at:ticket.used_at} : null,
+    buyer,prior_denials:priorDenials,session_started_at:sessionStartedAt,guest_pass_required:true});
 }

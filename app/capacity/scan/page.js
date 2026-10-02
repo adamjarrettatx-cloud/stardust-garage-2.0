@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { requireTeam } from '@/lib/auth-helpers';
-import ScanClient from './ScanClient';
+import UnifiedScanClient from '@/app/scan/UnifiedScanClient';
 
 export const revalidate = 0;
 export const dynamic = 'force-dynamic';
@@ -36,5 +36,5 @@ export default async function CapacityScanPage() {
   const { unauthorized } = await requireTeam();
   if (unauthorized) redirect('/team/login');
 
-  return <ScanClient />;
+  return <UnifiedScanClient />;
 }

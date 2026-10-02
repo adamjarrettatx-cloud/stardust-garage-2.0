@@ -9,6 +9,8 @@ import {
   extForMime,
   profilePhotoStoragePath,
   createProfilePhotoSignedUrl,
+  createAccountPhotoSignedUrl,
+  ownsAccountPhoto,
 } from '@/lib/profile-photo';
 
 // User-authenticated profile-photo endpoint.
@@ -188,7 +190,7 @@ export async function GET(request) {
   if (!row?.profile_photo_path) {
     return NextResponse.json({ signedUrl: null, uploadedAt: null });
   }
-  const signed = await createProfilePhotoSignedUrl(admin, row.profile_photo_path);
+  const signed = await createAccountPhotoSignedUrl(admin, row.profile_photo_path, user.id);
   return NextResponse.json({
     signedUrl: signed?.signedUrl || null,
     signedUrlExpiresAt: signed?.expiresAt || null,
@@ -212,7 +214,7 @@ export async function DELETE(request) {
     .select('profile_photo_path')
     .eq('user_id', user.id)
     .maybeSingle();
-  if (row?.profile_photo_path) {
+  if (row?.profile_photo_path && await ownsAccountPhoto(admin, row.profile_photo_path, user.id)) {
     try { await admin.storage.from(PROFILE_PHOTO_BUCKET).remove([row.profile_photo_path]); }
     catch { /* ignore — DB unlink below is what matters */ }
   }
