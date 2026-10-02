@@ -72,6 +72,7 @@ export default function UnifiedScanClient() {
   const [rejectPickerOpen, setRejectPickerOpen] = useState(false);
   const [rejectNote, setRejectNote] = useState('');
   const [decisionBusy, setDecisionBusy] = useState(false);
+  const [groupTicketCode, setGroupTicketCode] = useState(null);
   const [cameraErrorMessage, setCameraErrorMessage] = useState(null);
   const [notOursMessage, setNotOursMessage] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -82,6 +83,12 @@ export default function UnifiedScanClient() {
   // member IDs do NOT.
   const [events, setEvents] = useState([]);
   const [eventId, setEventId] = useState('');
+  useEffect(() => { setGroupTicketCode(null); }, [eventId]);
+  useEffect(() => {
+    if (!groupTicketCode) return;
+    const timer = setTimeout(() => { setGroupTicketCode(null); setPreview(null); setPhase('idle'); }, 120000);
+    return () => clearTimeout(timer);
+  }, [groupTicketCode]);
   const [eventPickerOpen, setEventPickerOpen] = useState(false);
   const [pendingTicketCode, setPendingTicketCode] = useState(null);
 
@@ -191,6 +198,7 @@ export default function UnifiedScanClient() {
 
   // --- reset back to idle scanning ---
   const resetToIdle = useCallback(() => {
+    setGroupTicketCode(null);
     if (resetTimerRef.current) {
       clearTimeout(resetTimerRef.current);
       resetTimerRef.current = null;
@@ -321,6 +329,12 @@ export default function UnifiedScanClient() {
   // --- decision handlers ---
   const commitVerify = useCallback(async () => {
     if (!preview || decisionBusy) return;
+    if (preview.kind === 'ticket') {
+      setGroupTicketCode(preview.payload);
+      setPreview(null);
+      setPhase('idle');
+      return;
+    }
     setDecisionBusy(true);
     const { kind, payload } = preview;
 
@@ -330,13 +344,13 @@ export default function UnifiedScanClient() {
         res = await fetch('/api/capacity/trial-pass/scan', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ token: payload, mode: 'checkin', eventId: eventId || undefined, door_session_id: sessionId }),
+          body: JSON.stringify({ token: payload, mode: 'checkin', eventId: eventId || undefined, door_session_id: sessionId, ticket_code: groupTicketCode }),
         });
       } else if (kind === 'member_id') {
         res = await fetch('/api/scan/member-id', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ token: payload, mode: 'verify', event_id: eventId || undefined, door_session_id: sessionId }),
+          body: JSON.stringify({ token: payload, mode: 'verify', event_id: eventId || undefined, door_session_id: sessionId, ticket_code: groupTicketCode }),
         });
       } else if (kind === 'ticket') {
         if (!eventId) {
@@ -382,9 +396,10 @@ export default function UnifiedScanClient() {
       setPhase('error');
     } finally {
       setDecisionBusy(false);
+      setGroupTicketCode(null);
       resetTimerRef.current = setTimeout(resetToIdle, RESULT_HOLD_MS);
     }
-  }, [preview, decisionBusy, resetToIdle, eventId, sessionId]);
+  }, [preview, decisionBusy, resetToIdle, eventId, sessionId, groupTicketCode]);
 
   const commitReject = useCallback(async (reasonCode) => {
     if (!preview || decisionBusy) return;
@@ -545,6 +560,10 @@ export default function UnifiedScanClient() {
   // --- render ---
   return (
     <div style={styles.root}>
+      {groupTicketCode && <button onClick={() => { setGroupTicketCode(null); resetToIdle(); }}
+        style={{ position: 'absolute', top: 100, left: 16, right: 16, zIndex: 40, padding: 16, background: '#222', color: '#fff' }}>
+        Ticket ready. Scan this guest’s own My Pass QR. No entry recorded yet. Tap to cancel pairing.
+      </button>}
       <video ref={videoRef} style={styles.video} playsInline muted />
 
       <div style={styles.header}>
@@ -816,6 +835,7 @@ function verifyLabelForKind(kind) {
 // communicate the combined action.
 function verifyLabelForPreview(preview) {
   if (!preview) return 'Verify';
+  if (preview.kind === 'ticket') return 'Scan guest’s own pass';
   if (preview.kind === 'member_id' && preview.data?.linked_ticket) return 'Verify + Check In';
   if (preview.kind === 'trial_pass' && preview.data?.linked_ticket) return 'Check In + Ticket';
   return verifyLabelForKind(preview.kind);

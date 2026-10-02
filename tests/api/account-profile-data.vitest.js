@@ -5,7 +5,7 @@ vi.mock('react', () => ({ cache: (fn) => fn }));
 vi.mock('next/navigation', () => ({ redirect: vi.fn((url) => { throw new Error(`redirect:${url}`); }) }));
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }));
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: vi.fn() }));
-vi.mock('@/lib/profile-photo', () => ({ createProfilePhotoSignedUrl: vi.fn(async () => null) }));
+vi.mock('@/lib/profile-photo', () => ({ createAccountPhotoSignedUrl: vi.fn(async () => null) }));
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAccountProfile } from '../../lib/account-profile-data.js';

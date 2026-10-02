@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { sealHandoff } from '@/lib/mobile-handoff-token.mjs';
+import { safeMobileReturnPath } from '@/lib/mobile-return-path';
+import { rateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,12 +32,8 @@ export const dynamic = 'force-dynamic';
 // Security notes:
 //   - Server verifies the incoming bearer against auth.getUser() BEFORE
 //     minting the token. A forged/expired bearer gets 401.
-//   - The minted token is Supabase's own magic-link hashed_token; verifying
-//     it via verifyOtp() on the web is single-use and expires per Supabase
-//     defaults (recommended: shorten Auth > URL Configuration > OTP expiry
-//     if not already short — Supabase defaults are 3600s; we're fine even
-//     with the default since the window between "user taps Buy" and "Safari
-//     redeems it" is seconds).
+//   - The inner Supabase hash is encrypted; only /handoff can unwrap it,
+//     within a server-enforced 60 seconds. Supabase enforces single-use.
 //   - No returnTo is trusted verbatim: the /handoff route validates that
 //     return_to is a same-origin path (starts with '/'), and rejects
 //     absolute URLs or schemes to prevent open-redirect abuse.
@@ -57,6 +56,18 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
   }
   const user = userData.user;
+  if (user.app_metadata?.station_account) {
+    return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
+  }
+  const limit = rateLimit({ key: `mobile_handoff:${user.id}`, limit: 10, windowMs: 60000 });
+  if (!limit.ok) return NextResponse.json({ error: 'Too many handoffs. Please try again shortly.' },
+    { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } });
+  let body;
+  try { body = await request.json(); } catch { return NextResponse.json({ error: 'Invalid request.' }, { status: 400 }); }
+  // Older installed apps send {}. They still get encrypted short-lived tokens,
+  // but their destination is restricted at redemption rather than bound here.
+  const returnTo = typeof body?.returnTo === 'string'
+    ? safeMobileReturnPath(body.returnTo, new URL(request.url).origin) : null;
   if (!user.email) {
     // A user with no email cannot receive a magic-link token. In practice
     // every Supabase auth path we support attaches an email (Apple private
@@ -69,16 +80,14 @@ export async function POST(request) {
     type: 'magiclink',
     email: user.email,
   });
-  if (linkErr || !link?.properties?.hashed_token) {
-    console.error('[mobile.handoff-token] could not generate link', linkErr);
+  if (linkErr || !link?.properties?.hashed_token || link.user?.id !== user.id) {
+    console.error('[mobile.handoff-token] could not generate same-account link');
     return NextResponse.json({ error: 'Could not create handoff.' }, { status: 500 });
   }
 
   return NextResponse.json({
     ok: true,
-    token: link.properties.hashed_token,
-    // Client uses this to know how long they can hold the token; do not
-    // rely on this value to gate anything — expiry is enforced by Supabase.
+    token: sealHandoff({ tokenHash: link.properties.hashed_token, userId: user.id, returnTo }, process.env.SUPABASE_SERVICE_ROLE_KEY),
     expires_in_seconds: 60,
-  });
+  }, { headers: { 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' } });
 }

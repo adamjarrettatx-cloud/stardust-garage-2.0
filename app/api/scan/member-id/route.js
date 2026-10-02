@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { restrictionGuard } from '@/lib/capacity/access-restrictions';
 import { fetchPriorDenials, fetchDoorSessionStart } from '@/lib/capacity/denial-lookup';
 import { createClient } from '@supabase/supabase-js';
 import { requireFrontDeskOrTeam, getCurrentUser } from '@/lib/auth-helpers';
@@ -14,7 +13,7 @@ import {
   isValidMemberIdRejectReason,
 } from '@/lib/member-id-preview';
 import { findMemberLinkedTicket } from '@/lib/member-id-linked-ticket';
-import { CHECKIN_RESULTS } from '@/lib/tickets/checkin';
+import { commitAdmission } from '@/lib/capacity/commit-admission';
 
 // POST /api/scan/member-id
 //
@@ -28,17 +27,15 @@ import { CHECKIN_RESULTS } from '@/lib/tickets/checkin';
 //
 //   2. mode: 'verify'
 //      { token, event_id?, device_label?, mode: 'verify', note? }
-//      Logs the door decision as 'verified' in member_id_scans. Does NOT
-//      flip any membership state \u2014 a member scan is pure audit, the same
-//      badge is scanned every visit.
+//      Requires the active door event, eligible pass, photo and valid ticket.
+//      Admission, ticket use, scan history and capacity commit together.
 //
 //   3. mode: 'reject'
 //      { token, event_id?, device_label?, mode: 'reject', reject_reason, note? }
 //      Logs 'rejected' with a whitelisted reason.
 //
-// Unlike ticket check-in, there is no 'used' state to protect and no
-// atomic race \u2014 the same badge is legitimately scanned by every event
-// the member attends. Ordering does not matter; the log is append-only.
+// The badge is reusable across events, not across admissions to the same
+// event. A repeat returns already-used without consuming another group ticket.
 //
 // Auth: requires a team caller. No device-token path here \u2014 the
 // door scanner is a supervised device.
@@ -123,8 +120,10 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Member not found' }, { status: 404 });
   }
   if (mode === 'verify') {
-    const blocked = await restrictionGuard(admin, { kind: 'member', id: member.id });
-    if (blocked) return blocked;
+    return commitAdmission(admin, {
+      actorId: gate.user?.id, stationHash: gate.station?.sessionHash, kind: 'member', subjectId: member.id,
+      tokenHash, eventId, sessionId: doorSessionId, ticketCode: body.ticket_code,
+    });
   }
 
   // MODE: preview \u2014 pure read + photo signed URL, no writes.
@@ -200,102 +199,5 @@ export async function POST(request) {
     });
   }
 
-  // MODE: verify \u2014 log the verified member scan AND, if the member has
-  // a ticket for the current event, redeem that ticket in the same call.
-  // One QR, one tap, both credentials cleared.
-  const { user } = await getCurrentUser(request);
-
-  // Look up linked ticket first so we can attempt the atomic ticket flip
-  // BEFORE we log the member scan. This ordering means: if the ticket flip
-  // loses a race (someone else scanned the same buyer at another door),
-  // the member scan still gets logged \u2014 they still walk in on their
-  // member credential \u2014 but we surface a "ticket already used" note so
-  // staff know the redemption didn't happen here.
-  const linkedTicket = eventId
-    ? await findMemberLinkedTicket(admin, {
-        memberProfileId: member.id,
-        memberEmail: member.email,
-        eventId,
-      })
-    : { ticket: null, productLabel: null, matchedVia: null, candidateCount: 0 };
-
-  let ticketOutcome = null; // { result, ticket_id, product_label, matched_via }
-  if (linkedTicket.ticket) {
-    const nowIso = new Date().toISOString();
-    const { data: flipped } = await admin
-      .from('tickets')
-      .update({ status: 'used', used_at: nowIso })
-      .eq('id', linkedTicket.ticket.id)
-      .eq('status', 'valid') // race guard
-      .select('id')
-      .maybeSingle();
-
-    const chosenResult = flipped ? CHECKIN_RESULTS.VALID : CHECKIN_RESULTS.ALREADY_USED;
-
-    // Log the ticket-side check-in in ticket_checkins so the door log
-    // matches what /api/tickets/scan writes for the manual path.
-    await admin.from('ticket_checkins').insert({
-      ticket_id: linkedTicket.ticket.id,
-      event_id: eventId,
-      ticket_code_attempted: linkedTicket.ticket.ticket_code,
-      result: chosenResult,
-      scanned_by: user?.id || null,
-      device_label: deviceLabel,
-      door_session_id: doorSessionId,
-      note: flipped
-        ? `via_member_id (matched=${linkedTicket.matchedVia})`
-        : 'via_member_id lost_race',
-    });
-
-    ticketOutcome = {
-      result: chosenResult,
-      ticket_id: linkedTicket.ticket.id,
-      product_label: linkedTicket.productLabel,
-      matched_via: linkedTicket.matchedVia,
-    };
-  }
-
-  const { data: verifyRow, error } = await admin.from('member_id_scans').insert({
-    member_profile_id: member.id,
-    event_id: eventId,
-    result: 'verified',
-    reject_reason: null,
-    notes: note || null,
-    scanned_by: user?.id || null,
-    door_device_id: deviceLabel,
-    door_session_id: doorSessionId,
-  }).select('id').maybeSingle();
-  if (error) {
-    console.error('[member-id-scan.verify]', error.message);
-    return NextResponse.json({ error: 'Failed to log verification' }, { status: 500 });
-  }
-
-  // Fire a silent in-app notification confirming the door check-in. Wrapped
-  // in a try so a notification failure never blocks the door.
-  try {
-    const { notify } = await import('@/lib/notifications/send');
-    if (member.user_id) {
-      await notify(admin, {
-        userId: member.user_id,
-        type: 'door_checkin',
-        title: 'You\u2019re in',
-        body: 'Welcome to Stardust Garage',
-        data: { event_id: eventId, url: '/notifications' },
-      });
-    }
-  } catch (err) {
-    console.error('[member-id-scan.notify]', err?.message || err);
-  }
-
-  return NextResponse.json({
-    mode: 'verify',
-    result: 'verified',
-    checkin_id: verifyRow?.id || null,
-    member: {
-      memberProfileId: member.id,
-      firstName: (member.full_name || 'Member').split(/\s+/)[0],
-      isActive: Boolean(member.is_active),
-    },
-    ticket: ticketOutcome,
-  });
+  return NextResponse.json({ error: 'Unsupported scan mode.' }, { status: 400 });
 }

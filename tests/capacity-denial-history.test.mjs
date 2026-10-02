@@ -434,5 +434,5 @@ test('door eligibility reads the manual flag, not the category', () => {
 test('the door query actually selects the flag it now depends on', () => {
   // Forgetting this column would read undefined and deny every trial pass.
   const src = readFileSync(new URL('../app/api/capacity/trial-pass/scan/route.js', import.meta.url), 'utf8');
-  assert.match(src, /select\('id, title, event_date, category, is_weekend_music_experience'\)/);
+  assert.match(src, /select\('id,title,event_date,is_weekend_music_experience'\)/);
 });

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { buildTicketEventGrid, isUsableTicket } from '@/lib/wallet/event-grid';
+import GuestTicketControl from './GuestTicketControl';
 
 function EventArtwork({ event }) {
   const [failed, setFailed] = useState(false);
@@ -81,6 +82,7 @@ export default function TicketEventGrid({ orders, initialNow, loadError = false 
             return <details className={`ticket-detail${!usable ? ' is-used' : ''}`} key={ticket.id} open={index === 0}>
               <summary>{item?.product_name_snapshot || 'Ticket'}{item?.tier_name_snapshot ? ` · ${item.tier_name_snapshot}` : ''}<span>{ticket.status === 'used' ? 'Used' : ticket.status === 'valid' || ticket.status === 'active' ? 'Valid' : ticket.status || 'Status unavailable'}</span></summary>
               <div className="ticket-detail-body">
+                <GuestTicketControl ticket={ticket} />
                 {usable && ticket._qrSvg ? <div className="ticket-detail-qr" role="img" aria-label={`QR code for ticket ${ticket.ticket_code}`} dangerouslySetInnerHTML={{ __html: ticket._qrSvg }} /> : <p>This ticket is {ticket.status || 'unavailable'} and cannot be used for entry.</p>}
                 <p className="ticket-detail-code">{ticket.ticket_code}</p>
               </div>

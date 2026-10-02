@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { safeMobileReturnPath } from '@/lib/mobile-return-path';
+import { openHandoff } from '@/lib/mobile-handoff-token.mjs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,9 +36,14 @@ export async function GET(request) {
   const returnAbsolute = new URL(returnTo, url.origin).toString();
   const loginFallback = new URL(`/login?next=${encodeURIComponent(returnTo)}`, url.origin).toString();
 
-  if (!token) {
-    return NextResponse.redirect(loginFallback, { status: 302 });
+  function fallback() {
+    const response = NextResponse.redirect(loginFallback, { status: 302 });
+    response.headers.set('Cache-Control', 'private, no-store');
+    response.headers.set('Referrer-Policy', 'no-referrer');
+    return response;
   }
+  const handoff = openHandoff(token, process.env.SUPABASE_SERVICE_ROLE_KEY);
+  if (!handoff || (handoff.returnTo !== null && handoff.returnTo !== returnTo)) return fallback();
 
   // Prepare a response so createServerClient can attach Set-Cookie headers
   // onto it. We WILL replace this with a redirect below; the cookies survive
@@ -63,14 +69,14 @@ export async function GET(request) {
     },
   );
 
-  const { error } = await supabase.auth.verifyOtp({
-    token_hash: token,
+  const { data, error } = await supabase.auth.verifyOtp({
+    token_hash: handoff.tokenHash,
     type: 'magiclink',
   });
 
-  if (error) {
-    console.error('[handoff] verifyOtp failed', error.message);
-    return NextResponse.redirect(loginFallback, { status: 302 });
+  if (error || data?.user?.id !== handoff.userId) {
+    // Discard the cookie-bearing response if identity validation failed.
+    return fallback();
   }
 
   // Session cookies are on `response`; the 302 to returnAbsolute carries

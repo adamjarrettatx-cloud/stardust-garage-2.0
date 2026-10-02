@@ -6,12 +6,22 @@ test('all named admission routes guard before their first admission mutation', (
   const paths = [
     ['app/api/capacity/trial-pass/scan/route.js', ".from('trial_pass_checkins')"],
     ['app/api/scan/member-id/route.js', ".from('member_id_scans')"],
-    ['app/api/tickets/scan/route.js', ".from('ticket_checkins')"],
     ['app/api/capacity/guestlist/operation/route.js', 'const resolved = await resolveGuestProfile'],
     ['app/api/capacity/trial-pass/roster-checkin/route.js', 'admin.rpc('],
   ];
+  const ticket = read('app/api/tickets/scan/route.js');
+  assert.match(ticket, /guest_pass_required/);
+  assert.doesNotMatch(ticket, /\.update\(/);
   for (const [path, marker] of paths) {
     const source = read(path);
+    if (source.includes('return commitAdmission(admin,')) {
+      const shared = read('lib/capacity/commit-admission.ts');
+      assert.match(shared, /const blocked = await restrictionGuard/);
+      assert.match(shared, /if \(blocked\) return blocked/);
+      assert.ok(shared.indexOf('restrictionGuard(admin,') < shared.indexOf("admin.rpc('commit_door_admission'"));
+      assert.ok(source.indexOf('return commitAdmission(admin,') < source.indexOf(marker), path);
+      continue;
+    }
     assert.match(source, /const blocked = await restrictionGuard/);
     assert.match(source, /if \(blocked\) return blocked/);
     assert.ok(source.indexOf('const blocked = await restrictionGuard') < source.indexOf(marker), path);

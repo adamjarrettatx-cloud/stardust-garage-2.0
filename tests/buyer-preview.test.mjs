@@ -14,7 +14,8 @@ const src = readFileSync(new URL('../lib/tickets/buyer-preview.js', import.meta.
 
 test('imports the shared profile-photo helper', () => {
   assert.match(src, /from\s+'@\/lib\/profile-photo'/);
-  assert.match(src, /createProfilePhotoSignedUrl/);
+  assert.match(src, /createAccountPhotoSignedUrl/);
+  assert.match(src, /acct.profile_photo_path, order.user_id/);
 });
 
 test('reads from free_accounts.profile_photo_path (never the legacy public bucket)', () => {

@@ -55,6 +55,12 @@ export async function POST(request) {
   if (!isDoorOperation(op)) {
     return NextResponse.json({ error: 'Unknown operation' }, { status: 400 });
   }
+  if (op === 'check_in') {
+    return NextResponse.json({
+      error: 'Guest-list entry alone no longer admits a person. Issue a valid event ticket (including a comp ticket if applicable), then scan the guest’s own My Pass QR with that ticket.',
+      code: 'pass_ticket_scan_required',
+    }, { status: 409, headers: { 'Cache-Control': 'no-store' } });
+  }
 
   const entryId = body?.entryId;
   if (typeof entryId !== 'string' || !UUID.test(entryId)) {
