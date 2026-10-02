@@ -19,6 +19,9 @@ import {
   chicagoToIso,
 } from "@/lib/time-clock/core.mjs";
 
+import ScheduleCalendar from "./ScheduleCalendar";
+import EmployeeLogin from "./EmployeeLogin";
+
 const endpoint = "/api/admin/time-clock";
 const blankWorker = {
   name: "",
@@ -32,7 +35,7 @@ const blankWorker = {
 const blankRole = { id: "", name: "", active: true, tasks: "", isNew: true };
 export default function Timekeeping({ enabled }) {
   const [data, setData] = useState(null),
-    [tab, setTab] = useState("timesheets"),
+    [tab, setTab] = useState("schedule"),
     [error, setError] = useState("");
   const [busy, setBusy] = useState(false),
     [days, setDays] = useState("14"),
@@ -320,7 +323,7 @@ export default function Timekeeping({ enabled }) {
             </section>
           )}
           <nav className="tabs" aria-label="Timekeeping sections">
-            {["timesheets", "people", "roles", "devices"].map((t) => (
+            {["schedule", "timesheets", "people", "roles", "devices"].map((t) => (
               <button
                 key={t}
                 type="button"
@@ -334,7 +337,9 @@ export default function Timekeeping({ enabled }) {
                   setEditWorker(null);
                 }}
               >
-                {t === "timesheets"
+                {t === "schedule"
+                  ? "Schedule"
+                  : t === "timesheets"
                   ? "Timesheets"
                   : t === "people"
                     ? "Staff profiles"
@@ -350,6 +355,13 @@ export default function Timekeeping({ enabled }) {
             </div>
           ) : (
             <>
+              {tab === "schedule" && (
+                <ScheduleCalendar
+                  workers={data.workers}
+                  roles={data.roles}
+                  assignments={data.assignments}
+                />
+              )}
               {tab === "timesheets" && (
                 <>
                   <div className="metrics metrics-two">
@@ -866,6 +878,16 @@ export default function Timekeeping({ enabled }) {
                         >
                           Reset PIN
                         </button>
+                        <EmployeeLogin
+                          worker={w}
+                          busy={busy}
+                          run={run}
+                          onDone={async ({ notice: text, disclosure: shown }) => {
+                            if (text) setNotice(text);
+                            if (shown) setDisclosure(shown);
+                            await load();
+                          }}
+                        />
                       </section>
                     ))}
                   </div>
