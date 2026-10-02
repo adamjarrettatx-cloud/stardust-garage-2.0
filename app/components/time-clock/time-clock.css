@@ -112,3 +112,4 @@
 .tc-root .emp-section{margin-top:var(--s8)}.tc-root .emp-rates{display:flex;flex-wrap:wrap;gap:var(--s3)}
 @media(max-width:700px){.tc-root .emp-next{grid-template-columns:1fr}.tc-root .emp-list li{flex-direction:column;gap:var(--s1)}}
 .tc-root .tabs button{white-space:nowrap;flex-shrink:0}
+.tc-root .donebtn{min-height:52px;padding:var(--s3) var(--s6);font-weight:600;font-size:var(--text-base)}.tc-root .donebig{min-height:64px;font-size:var(--text-lg);margin-bottom:var(--s3)}.tc-root .donebar{margin:var(--s6) 0 var(--s3)}.tc-root .successbox .wide+.wide{margin-top:var(--s1)}.tc-root .successbox>.sub.small{margin-top:var(--s4)}
