@@ -11,7 +11,8 @@ export async function middleware(request) {
   // Stations use a separate opaque HTTP-only cookie, not a Supabase JWT.
   // Handle them BEFORE personal auth, device-token exemptions, and API exits.
   const stationToken = request.cookies.get(STATION_COOKIE)?.value;
-  const stationEndpoint = pathname === '/staff/login' || pathname === '/api/station/login' || pathname === '/api/station/logout';
+  const stationEndpoint = pathname === '/staff/login' || pathname === '/api/station/login' || pathname === '/api/station/logout'
+    || pathname === '/employee/login' || pathname === '/api/employee/login';
   if (stationToken && !stationEndpoint) {
     let station = null;
     try {
@@ -24,7 +25,7 @@ export async function middleware(request) {
       }
     } catch { /* Fail closed. */ }
     const api = pathname.startsWith('/api/');
-    const protectedPage = /^\/(bananas|team|member|capacity|portal|account|staff)(\/|$)/.test(pathname);
+    const protectedPage = /^\/(bananas|team|member|capacity|portal|account|staff|employee)(\/|$)/.test(pathname);
     if (api || protectedPage) {
       if (!station) {
         if (api) return NextResponse.json({ error: 'Station session expired. Sign in again.' }, { status: 401 });
@@ -75,8 +76,11 @@ export async function middleware(request) {
   // through the createServerClient block below purely so @supabase/ssr
   // can write refreshed cookies, then early-return before any gating.
   const isEventsRoute = pathname === '/events' || pathname.startsWith('/events/');
+  // Employee portal: session refresh only. /employee pages and
+  // /api/employee/* verify the linked staff profile server-side.
+  const isEmployeeRoute = pathname === '/employee' || pathname.startsWith('/employee/');
 
-  if (!isAdminRoute && !isTeamRoute && !isMemberRoute && !isCapacityRoute && !isPartnerRoute && !isAccountRoute && !isEventsRoute) {
+  if (!isAdminRoute && !isTeamRoute && !isMemberRoute && !isCapacityRoute && !isPartnerRoute && !isAccountRoute && !isEventsRoute && !isEmployeeRoute) {
     return NextResponse.next();
   }
 
@@ -166,7 +170,7 @@ export async function middleware(request) {
   // this path — an unauthenticated visitor is fine here (the layout will
   // redirect them, with a proper `next=` for the specific subpath), and role
   // checks below (admin/team/partner) are meaningless for ticket buyers.
-  if (isAccountRoute || isEventsRoute) {
+  if (isAccountRoute || isEventsRoute || isEmployeeRoute) {
     // Both routes are publicly viewable \u2014 middleware ran only to refresh
     // the auth cookie for the client-side supabase.auth.getUser() call
     // that the ticket modal (and /account layout) does. No gating here.

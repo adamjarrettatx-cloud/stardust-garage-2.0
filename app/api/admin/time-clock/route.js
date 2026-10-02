@@ -11,12 +11,28 @@ import {
 import { newPin, pairingCode, hashPin } from "@/lib/time-clock/crypto.mjs";
 import { UUID, shiftsCsv } from "@/lib/time-clock/core.mjs";
 import { isValidPin } from "@/lib/time-clock/pin.mjs";
+import { isInternalEmployeeEmail } from "@/lib/time-clock/employee.mjs";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const safeWorkerColumns =
-  "id,name,category,active,pay_basis,flat_cents,created_at";
+  "id,name,category,active,pay_basis,flat_cents,created_at,user_id,username,login_enabled,login_managed";
+// Display-only email for linked employee logins. Internal placeholder
+// addresses for username-only logins are never shown.
+async function withLoginEmails(client, workers) {
+  return Promise.all(
+    workers.map(async ({ user_id, ...w }) => {
+      let login_email = null;
+      if (user_id) {
+        const { data } = await client.auth.admin.getUserById(user_id).catch(() => ({}));
+        const email = data?.user?.email || null;
+        login_email = email && !isInternalEmployeeEmail(email) ? email : null;
+      }
+      return { ...w, has_login: Boolean(user_id), login_email };
+    }),
+  );
+}
 function assignedPin(value) {
   if (value === undefined || value === "") return newPin();
   if (!isValidPin(value))
@@ -113,8 +129,11 @@ export async function GET(request) {
         },
       });
     }
-    const workers = checked(
-      await client.from("tc_workers").select(safeWorkerColumns).order("name"),
+    const workers = await withLoginEmails(
+      client,
+      checked(
+        await client.from("tc_workers").select(safeWorkerColumns).order("name"),
+      ),
     );
     const roles = checked(
       await client

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "test:admission": "node --test tests/atomic-door-admission.test.mjs tests/account-photo-ownership.test.mjs tests/api/member/identity-token.test.js && vitest run tests/api/atomic-admission.vitest.js tests/api/admission-boundaries.vitest.js tests/api/guest-ticket.vitest.js",
-    "test:time-clock": "vitest run tests/time-clock-db.vitest.js tests/api/time-clock.vitest.js && node --test tests/time-clock-core.test.mjs",
+    "test:time-clock": "vitest run tests/time-clock-db.vitest.js tests/time-clock-schedule-db.vitest.js tests/api/time-clock.vitest.js && node --test tests/time-clock-core.test.mjs",
     "qa:time-clock": "node tests/time-clock/start-harness.mjs",
     "test:stations": "vitest run tests/api/station-auth.vitest.js tests/api/station-gates.vitest.js tests/api/station-availability.vitest.js tests/api/admin-mfa-redirect.vitest.js && node --test tests/station-policy.test.mjs tests/station-db.test.mjs tests/admin-mfa-step-up.test.mjs",
     "test:weeknight": "vitest run tests/api/weeknight-checkout.vitest.js && node --test tests/weeknight-pricing.test.mjs tests/tickets-entitlement.test.mjs tests/tickets-pricing.test.mjs tests/pricing-tax-and-target-total.test.mjs tests/event-discount-display.test.mjs",
