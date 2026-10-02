@@ -26,8 +26,13 @@ begin
     and profile_photo_path is distinct from p_profile_photo_path) then
     raise exception 'Use the authenticated photo upload endpoint' using errcode='42501';
   end if;
-  update public.member_profiles set full_name=p_display_name,phone=p_phone,
-    notification_preferences=p_notification_preferences where user_id=auth.uid();
+  -- Production member_profiles has no phone/notification_preferences columns.
+  -- Those settings use their dedicated verified APIs; keep the legacy signature
+  -- without pretending to save unsupported values.
+  if nullif(p_phone,'') is not null or coalesce(p_notification_preferences,'{}'::jsonb)<>'{}'::jsonb then
+    raise exception 'Use the authenticated profile settings endpoint' using errcode='42501';
+  end if;
+  update public.member_profiles set full_name=p_display_name where user_id=auth.uid();
 end;
 $$;
 

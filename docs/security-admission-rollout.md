@@ -43,6 +43,12 @@ Do not submit to Apple yet. Remaining gates include the exact mobile candidate o
 
 The current implementation deliberately fails closed if the admission RPC is absent, the event changes, ticket validation fails, or any transaction write fails. A build passing tests is not a claim that no exploitable vulnerability exists.
 
+## Subsequent release preflight
+
+Production schema inspection found the legacy member display RPC referencing phone and notification-preference columns absent from member_profiles. The photo hardening migration now retains its signature but only saves the supported name field; unsupported settings are rejected with a dedicated-settings message.
+
+The browser handoff now encrypts its inner Supabase auth hash using AES-GCM, binds the verified identity, and enforces a 60-second lifetime before OTP verification. New mobile clients also bind the destination; old clients that send an empty body still use the same-origin return-path validator. Raw legacy handoff hashes are no longer accepted. Existing in-flight handoff links may require reopening from the app.
+
 ## Rollback
 
 Do not revert to ticket-optional admission as a routine rollback. Keep the new functions/table in place and stop admissions with an explicit staff notice if a defect is found; prefer a forward fix.
