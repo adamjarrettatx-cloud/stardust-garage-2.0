@@ -13,6 +13,7 @@ import { duration, elapsedMs } from "@/lib/time-clock/core.mjs";
 import { PIN_LENGTH } from "@/lib/time-clock/pin.mjs";
 
 const api = (action, body) => request(`/api/time-clock/${action}`, body);
+const AUTO_RETURN_SECONDS = 10;
 export default function Kiosk({ enabled }) {
   const [data, setData] = useState(null),
     [screen, setScreen] = useState("pin");
@@ -131,6 +132,22 @@ export default function Kiosk({ enabled }) {
       window.removeEventListener("keydown", activity);
     };
   }, [lock]);
+  // After a clock-in or clock-out confirmation, return to the PIN pad on its
+  // own so the next person can clock in even if "Done" is not tapped.
+  const [countdown, setCountdown] = useState(0);
+  useEffect(() => {
+    if (screen !== "clockedin" && screen !== "success") return;
+    setCountdown(AUTO_RETURN_SECONDS);
+    const started = Date.now();
+    const timer = setInterval(() => {
+      const left = AUTO_RETURN_SECONDS - Math.floor((Date.now() - started) / 1000);
+      if (left <= 0) {
+        clearInterval(timer);
+        lock();
+      } else setCountdown(left);
+    }, 250);
+    return () => clearInterval(timer);
+  }, [screen, lock]);
   async function run(fn) {
     if (mutex.current) return;
     mutex.current = true;
@@ -213,7 +230,13 @@ export default function Kiosk({ enabled }) {
         const next = await refresh();
         if (dirty && !["note", "clock_in"].includes(operation.action))
           setNote(draft);
-        setScreen(next.shift ? "shift" : "roles");
+        setScreen(
+          operation.action === "clock_in" && next.shift
+            ? "clockedin"
+            : next.shift
+              ? "shift"
+              : "roles",
+        );
       }
     });
   }
@@ -221,14 +244,28 @@ export default function Kiosk({ enabled }) {
     worker = data?.worker,
     onBreak = shift?.breaks?.some((b) => !b.ended_at);
   const disabled = busy || Boolean(pending) || !online;
+  async function done() {
+    if (shift && note !== shift.note && !disabled) {
+      try {
+        await api("operation", {
+          request_id: crypto.randomUUID(),
+          action: "note",
+          payload: { shift_id: shift.id, note },
+        });
+      } catch {
+        /* The note stays unsaved; the shift itself is already recorded. */
+      }
+    }
+    lock();
+  }
   const header = worker && (
     <div className="between workhead">
       <div className="identity">
         <h1>{worker.name}</h1>
         <span className="sub">Staff time clock</span>
       </div>
-      <button type="button" disabled={busy} onClick={lock}>
-        Lock screen
+      <button type="button" className="donebtn" disabled={busy} onClick={done}>
+        Done · next person
       </button>
     </div>
   );
@@ -336,9 +373,35 @@ export default function Kiosk({ enabled }) {
             <span>{time(receipt.ended_at)}</span>
           </div>
         </div>
-        <button className="primary wide" onClick={lock}>
-          Done
+        <button className="primary wide donebig" onClick={lock}>
+          Done · next person
         </button>
+        <p className="sub small">Returning to the PIN pad in {countdown}s.</p>
+      </section>
+    );
+  else if (screen === "clockedin" && shift)
+    content = (
+      <section className="successbox">
+        <div className="successmark">✓</div>
+        <span className="eyebrow">CLOCKED IN</span>
+        <h1>You&apos;re on the clock, {worker?.name?.split(" ")[0]}.</h1>
+        <div className="receipt">
+          <div className="between">
+            <span>Role</span>
+            <strong>{shift.segments.at(-1)?.role_name}</strong>
+          </div>
+          <div className="between">
+            <span>Clock-in</span>
+            <span>{time(shift.started_at)}</span>
+          </div>
+        </div>
+        <button className="primary wide donebig" onClick={lock}>
+          Done · next person
+        </button>
+        <button className="wide" onClick={() => setScreen("shift")}>
+          View my shift and responsibilities
+        </button>
+        <p className="sub small">Returning to the PIN pad in {countdown}s.</p>
       </section>
     );
   else if (!data?.authenticated)
@@ -640,8 +703,12 @@ export default function Kiosk({ enabled }) {
             </span>
           </section>
         </div>
+        <button className="primary wide donebig donebar" disabled={busy} onClick={done}>
+          Done · back to PIN pad
+        </button>
         <p className="sub small">
-          The screen locks after 90 seconds of inactivity. Your shift keeps
+          Tap Done when you are finished so the next person can clock in. The
+          screen also locks after 90 seconds of inactivity. Your shift keeps
           running.
         </p>
       </section>
