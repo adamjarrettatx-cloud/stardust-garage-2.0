@@ -88,7 +88,7 @@ it("rejects cross-origin and missing-Origin writes before touching credentials",
 });
 it("rejects absent device cookie and never looks up a PIN", async () => {
   const r = await POST(
-    req("pin", { pin: "123456" }, { headers: { Cookie: "" } }),
+    req("pin", { pin: "1234" }, { headers: { Cookie: "" } }),
     ctx("pin"),
   );
   expect(r.status).toBe(401);
@@ -99,7 +99,7 @@ it("verifies the kiosk and applies durable throttling before PIN lookup", async 
     data: name === "tc_take_limit" ? false : {},
     error: null,
   }));
-  const r = await POST(req("pin", { pin: "123456" }), ctx("pin"));
+  const r = await POST(req("pin", { pin: "1234" }), ctx("pin"));
   expect(r.status).toBe(429);
   expect(client.from).not.toHaveBeenCalled();
   expect(client.rpc.mock.calls.map((c) => c[0])).toEqual([
@@ -108,7 +108,7 @@ it("verifies the kiosk and applies durable throttling before PIN lookup", async 
   ]);
 });
 it("wrong/unknown PIN has a generic response and no session", async () => {
-  const r = await POST(req("pin", { pin: "123456" }), ctx("pin"));
+  const r = await POST(req("pin", { pin: "1234" }), ctx("pin"));
   expect(r.status).toBe(401);
   expect((await r.json()).code).toBe("invalid_pin");
   expect(client.rpc.mock.calls.map((c) => c[0])).not.toContain(
@@ -120,11 +120,11 @@ it("correct PIN creates an HttpOnly session but returns no verifier or PIN", asy
     data: {
       id: actor,
       credential_version: requestId,
-      pin_verifier: await hashPin("123456", secret),
+      pin_verifier: await hashPin("1234", secret),
     },
     error: null,
   });
-  const r = await POST(req("pin", { pin: "123456" }), ctx("pin"));
+  const r = await POST(req("pin", { pin: "1234" }), ctx("pin"));
   expect(r.status).toBe(200);
   expect(await r.json()).toEqual({ ok: true });
   expect(r.headers.get("set-cookie")).toContain("HttpOnly");
@@ -274,7 +274,7 @@ it.each(["save_worker", "reset_pin"])(
   async (action) => {
     const payload =
       action === "reset_pin"
-        ? { id: actor, pin: "045678" }
+        ? { id: actor, pin: "0456" }
         : {
             name: "Test worker",
             category: "contractor",
@@ -282,11 +282,11 @@ it.each(["save_worker", "reset_pin"])(
             pay_basis: "flat",
             flat_cents: 17500,
             roles: [],
-            pin: "045678",
+            pin: "0456",
           };
     const r = await ownerPost(req("owner", { action, payload }));
     expect(r.status).toBe(200);
-    expect((await r.json()).pin).toBe("045678");
+    expect((await r.json()).pin).toBe("0456");
     const stored = client.rpc.mock.calls.find((c) => c[0] === "tc_admin")[1]
       .p_payload;
     expect(stored).not.toHaveProperty("pin");
@@ -298,19 +298,42 @@ it.each(["save_worker", "reset_pin"])(
     );
   },
 );
-it.each(["12345", "1234567", "abcdef", 123456, null])(
+it.each(["123", "12345", "123456", "1234567", "abcd", "1234\n", " 1234", "１２３４", 1234, null])(
   "rejects malformed chosen PIN %s before writing",
   async (pin) => {
-    expect(
-      (
-        await ownerPost(
-          req("owner", { action: "reset_pin", payload: { id: actor, pin } }),
-        )
-      ).status,
-    ).toBe(400);
+    for (const action of ["reset_pin", "save_worker"]) {
+      const payload = action === "reset_pin"
+        ? { id: actor, pin }
+        : { name: "Test worker", category: "employee", active: true, pay_basis: "unset", roles: [], pin };
+      expect((await ownerPost(req("owner", { action, payload }))).status).toBe(400);
+    }
     expect(client.rpc).not.toHaveBeenCalled();
   },
 );
+it.each(["123", "12345", "123456", "1234\n", "abcd", 1234, null])(
+  "rejects non-four-digit kiosk PIN %s without a worker lookup",
+  async (pin) => {
+    expect((await POST(req("pin", { pin }), ctx("pin"))).status).toBe(400);
+    expect(client.from).not.toHaveBeenCalled();
+    expect(client.rpc.mock.calls.map((c) => c[0])).not.toContain("tc_start_session");
+  },
+);
+it("preserves leading-zero four-digit PIN on login", async () => {
+  query.maybeSingle.mockResolvedValue({
+    data: { id: actor, credential_version: requestId, pin_verifier: await hashPin("0007", secret) },
+    error: null,
+  });
+  expect((await POST(req("pin", { pin: "0007" }), ctx("pin"))).status).toBe(200);
+  expect(query.eq).toHaveBeenCalledWith("pin_lookup", keyedHash("pin-lookup", "0007", secret));
+});
+it("generates a four-digit replacement PIN when reset is left blank", async () => {
+  const r = await ownerPost(req("owner", { action: "reset_pin", payload: { id: actor, pin: "" } }));
+  expect(r.status).toBe(200);
+  const { pin } = await r.json();
+  expect(pin).toMatch(/^[0-9]{4}$/);
+  const stored = client.rpc.mock.calls.find((c) => c[0] === "tc_admin")[1].p_payload;
+  expect(await verifyPin(pin, stored.pin_verifier, secret)).toBe(true);
+});
 it("does not disclose a PIN when uniqueness fails", async () => {
   client.rpc.mockResolvedValue({
     error: { code: "23505", message: "private DB details" },
@@ -318,13 +341,13 @@ it("does not disclose a PIN when uniqueness fails", async () => {
   const r = await ownerPost(
     req("owner", {
       action: "reset_pin",
-      payload: { id: actor, pin: "045678" },
+      payload: { id: actor, pin: "0456" },
     }),
   );
   expect(r.status).toBe(409);
   const result = await r.json();
   expect(result).not.toHaveProperty("pin");
-  expect(JSON.stringify(result)).not.toContain("045678");
+  expect(JSON.stringify(result)).not.toContain("0456");
 });
 it("requires correction reason and timezone-qualified input", async () => {
   const base = {
@@ -354,11 +377,12 @@ it("never logs/persists a plaintext owner-created PIN", async () => {
     }),
   );
   const result = await r.json();
-  expect(result.pin).toMatch(/^\d{6}$/);
+  expect(result.pin).toMatch(/^\d{4}$/);
   const p = client.rpc.mock.calls.find((c) => c[0] === "tc_admin")[1].p_payload;
   expect(p.pin_lookup).toHaveLength(64);
   expect(p.pin_verifier).toMatch(/^scrypt-v1:/);
-  expect(JSON.stringify(p)).not.toContain(result.pin);
+  expect(p).not.toHaveProperty("pin");
+  expect(JSON.stringify(p)).not.toContain(JSON.stringify(result.pin));
 });
 it("rejects oversized payloads and does not leak raw database errors", async () => {
   const huge = await POST(

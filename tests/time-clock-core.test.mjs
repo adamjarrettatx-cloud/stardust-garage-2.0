@@ -9,7 +9,18 @@ import {
   chicagoInput,
   chicagoToIso,
 } from "../lib/time-clock/core.mjs";
-import { keyedHash, hashPin, verifyPin } from "../lib/time-clock/crypto.mjs";
+import { keyedHash, hashPin, verifyPin, newPin, pairingCode } from "../lib/time-clock/crypto.mjs";
+import { PIN_LENGTH, isValidPin } from "../lib/time-clock/pin.mjs";
+test("staff PIN policy is exactly four ASCII digits, preserving leading zeros", () => {
+  assert.equal(PIN_LENGTH, 4);
+  for (const value of ["0000", "0007", "1234", "9999"]) assert(isValidPin(value));
+  for (const value of ["", "123", "12345", "123456", "1234\n", " 1234", "１２３４", "abcd", 1234, null])
+    assert.equal(isValidPin(value), false);
+});
+test("generated staff PINs are four digits and pairing codes stay eight digits", () => {
+  for (let i = 0; i < 1000; i++) assert(isValidPin(newPin()));
+  assert.match(pairingCode(), /^[0-9]{8}$/);
+});
 test("exact overnight/DST elapsed time and final-only base estimate", () => {
   const s = {
     started_at: "2026-11-01T00:30:00-05:00",
@@ -69,16 +80,16 @@ test("Austin corrections respect DST and reject skipped/ambiguous hours", () => 
 });
 test("salted slow PIN verifier, keyed purpose separation and unknown lookups", async () => {
   const secret = "test-only-secret-".repeat(4);
-  const a = await hashPin("123456", secret),
-    b = await hashPin("123456", secret);
+  const a = await hashPin("1234", secret),
+    b = await hashPin("1234", secret);
   assert.notEqual(a, b);
-  assert(!a.includes("123456"));
-  assert(await verifyPin("123456", a, secret));
-  assert(!(await verifyPin("654321", a, secret)));
-  assert(!(await verifyPin("123456", null, secret)));
+  assert.match(a, /^scrypt-v1:[a-f0-9]{32}:[a-f0-9]{64}$/);
+  assert(await verifyPin("1234", a, secret));
+  assert(!(await verifyPin("4321", a, secret)));
+  assert(!(await verifyPin("1234", null, secret)));
   assert.notEqual(
     keyedHash("device", "value", secret),
     keyedHash("session", "value", secret),
   );
-  assert.throws(() => keyedHash("pin", "123456", "short"));
+  assert.throws(() => keyedHash("pin", "1234", "short"));
 });

@@ -20,7 +20,7 @@ export async function initialize() {
       "utf8",
     ),
   );
-  const pin = "123456",
+  const pin = "1234",
     secret = process.env.TIME_CLOCK_SECRET;
   const worker = await createAdminClient().rpc("tc_admin", {
     p_actor: ownerId,

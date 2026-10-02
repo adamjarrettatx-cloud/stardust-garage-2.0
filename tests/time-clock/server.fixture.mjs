@@ -81,6 +81,6 @@ http
   })
   .listen(8090, "127.0.0.1", () =>
     console.log(
-      "Isolated time-clock QA on http://127.0.0.1:8090; PIN 123456, pair 12345678. No external database.",
+      "Isolated time-clock QA on http://127.0.0.1:8090; PIN 1234, pair 12345678. No external database.",
     ),
   );

@@ -10,6 +10,7 @@ import {
 } from "@/lib/time-clock/server";
 import { newPin, pairingCode, hashPin } from "@/lib/time-clock/crypto.mjs";
 import { UUID, shiftsCsv } from "@/lib/time-clock/core.mjs";
+import { isValidPin } from "@/lib/time-clock/pin.mjs";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -18,9 +19,9 @@ const safeWorkerColumns =
   "id,name,category,active,pay_basis,flat_cents,created_at";
 function assignedPin(value) {
   if (value === undefined || value === "") return newPin();
-  if (typeof value !== "string" || !/^\d{6}$/.test(value))
+  if (!isValidPin(value))
     throw new ClockError(
-      "Choose exactly six digits, or leave PIN blank to generate one.",
+      "Choose exactly four digits, or leave PIN blank to generate one.",
     );
   return value;
 }

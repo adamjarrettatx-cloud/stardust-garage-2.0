@@ -13,7 +13,8 @@ Integrated implementation for the approved SDG front-room iPad kiosk and timekee
 
 - Backend **Timekeeping → Staff profiles**: Adam/Jeyu can create and edit names, employee/contractor labels, multiple role assignments, hourly rates per role or flat shift fees, and active/inactive status. Profiles do not require staff email addresses, Supabase logins, or developer input.
 - Custom role names and responsibility templates; snapshots preserve old duties and rate values.
-- Manager-chosen six-digit PIN or random generation when left blank, on creation and reset. Leading zeros preserved. One-time management display, HMAC lookup plus salted scrypt verification. No stored PIN recovery, plaintext persistence or logs. Duplicate PINs rejected atomically; reset invalidates old credentials and current worker sessions.
+- Manager-chosen four-digit PIN or random generation when left blank, on creation and reset. Leading zeros preserved. One-time management display, HMAC lookup plus salted scrypt verification. No stored PIN recovery, plaintext persistence or logs. Duplicate PINs rejected atomically; reset invalidates old credentials and current worker sessions.
+- Four-digit-only update (October 2): existing six-digit PINs need manager reset through Staff profiles before the next PIN login. Never truncate or guess old PINs. No database migration, secret rotation, worker deletion, or iPad re-pairing is needed; hours/pay records and open shifts are preserved. Eight-digit device-pairing codes and existing rate limits are unchanged. A four-digit PIN has fewer combinations than a six-digit PIN; paired-device restriction and server throttling remain in place.
 - One-time eight-digit device pairing, 15-minute pairing expiry, 90-day device credential, immediate owner revocation.
 - HttpOnly, SameSite=Strict device/session cookies, Secure and `__Host-` names in production.
 - Durable PostgreSQL attempt limits; PIN limit is device-scoped and survives wrong-PIN transactions. Pairing has global and per-forwarded-IP limits; production trusted-proxy/WAF settings still require operational verification.
@@ -112,7 +113,7 @@ Next.js manager sign-in, deployed cookie/Origin/proxy behavior, hosted CSV UI, b
 - `npx eslint --ext .js,.jsx,.mjs app/clock app/components/time-clock app/bananas/timekeeping lib/time-clock app/api/admin/time-clock 'app/api/time-clock/[action]'`.
 - `npm run build`: production Next.js bundle and route compile.
 - `npm run qa:time-clock`: localhost-only harness on 127.0.0.1:8090. Bundles the real React screens and API handlers with an isolated PGlite database. The Supabase transport and owner identity boundary are replaced only in this harness; it is not a production auth path.
-  - Kiosk: `/clock`, pairing `12345678`, synthetic PIN `123456`.
+  - Kiosk: `/clock`, pairing `12345678`, synthetic PIN `1234`.
   - Owner screen: `/owner`; automated QA injects a local test-only cookie `tc-qa-owner=local-test`. This cookie is read ONLY in the nonproduction harness and is meaningless to deployed app routes.
   - All data is synthetic/in-memory and resets on server restart. Generated output is ignored under `.time-clock-qa/`. No live credentials are required.
 
