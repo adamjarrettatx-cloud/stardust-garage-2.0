@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 const id=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
-test('admission transaction enforces identity, ticket, event, capacity, roles, retry safety and rollback', async () => {
+async function fixture() {
   const db=new PGlite();
   try {
     await db.exec(`
@@ -23,6 +23,7 @@ test('admission transaction enforces identity, ticket, event, capacity, roles, r
         activated_at timestamptz,signup_expires_at timestamptz,expires_at timestamptz,extended_until timestamptz,profile_photo_path text,updated_at timestamptz);
       create table orders(id uuid primary key,event_id uuid,user_id uuid,member_profile_id uuid,buyer_email text,status text);
       create table tickets(id uuid primary key,event_id uuid,order_id uuid,created_at timestamptz default now(),ticket_code text,status text,used_at timestamptz);
+      create table ticket_audit_log(event_id uuid,order_id uuid,ticket_id uuid,actor_user_id uuid,actor_role text,action text,detail jsonb);
       create table ticket_checkins(id uuid primary key default gen_random_uuid(),ticket_id uuid,event_id uuid,ticket_code_attempted text,result text,scanned_by uuid,door_session_id uuid,note text);
       create table member_id_scans(id uuid primary key default gen_random_uuid(),member_profile_id uuid,event_id uuid,result text,scanned_by uuid,door_session_id uuid);
       create table trial_pass_checkins(id uuid primary key default gen_random_uuid(),trial_pass_id uuid,event_id uuid,result text,
@@ -33,6 +34,7 @@ test('admission transaction enforces identity, ticket, event, capacity, roles, r
       create table front_desk_arrivals(subject_kind text,subject_id uuid,identity_keys text[],shift_day date,
         checked_in_by uuid,capacity_session_id uuid,door_session_id uuid,unique(shift_day,subject_kind,subject_id));
     `);
+    await db.exec(await readFile(new URL('../supabase/migrations/20261002010500_guest_ticket_reservation.sql',import.meta.url),'utf8'));
     await db.exec(await readFile(new URL('../supabase/migrations/20261002011000_atomic_door_admission.sql',import.meta.url),'utf8'));
     await db.exec(`
       insert into team_members values('${id(1)}','${id(2)}','front_desk'),('${id(3)}','${id(4)}','calendar_viewer');
@@ -57,6 +59,15 @@ test('admission transaction enforces identity, ticket, event, capacity, roles, r
       return (await db.query('select commit_door_admission($1,$2,$3,$4,$5,$6,$7,$8,$9) result',
         [p.actor,p.device,p.kind,p.subject,p.hash,p.event,p.session,p.code,p.station])).rows[0].result;
     };
+    const reserve=async(ticket=50, reserved=true, actor=10, expected=!reserved)=>
+      (await db.query('select set_ticket_guest_reservation($1,$2,$3,$4) result',
+        [id(actor),id(ticket),reserved,expected])).rows[0].result;
+    return {db,run,reserve};
+  } catch(error) { await db.close(); throw error; }
+}
+test('admission transaction enforces identity, ticket, event, capacity, roles, retry safety and rollback', async () => {
+  const {db,run}=await fixture();
+  try {
     await assert.rejects(run({actor:id(4)}),/authorization/);
     await db.exec(`insert into test_station_sessions values('station-hash','${id(6)}','front_desk',true),
       ('calendar-hash','${id(7)}','calendar_viewer',true)`);
@@ -112,4 +123,83 @@ test('admission transaction enforces identity, ticket, event, capacity, roles, r
       'commit_door_admission(uuid,uuid,text,uuid,text,uuid,uuid,text,text)','EXECUTE') allowed`)).rows[0];
     assert.equal(grant.allowed,false);
   } finally {await db.close();}
+});
+
+test('guest screenshot sent BEFORE buyer entry stays usable when buyer arrives first', async()=>{
+  const {db,run,reserve}=await fixture();
+  try {
+    // Reserve the oldest ticket specifically: without the new filter the buyer consumes it.
+    assert.equal((await reserve()).reserved_for_guest,true);
+    assert.equal((await reserve()).reserved_for_guest,true); // safe retry after lost response
+    assert.equal((await db.query('select count(*)::int n from ticket_audit_log')).rows[0].n,1);
+    assert.equal((await run()).ticket.ticket_id,id(51));
+    assert.equal((await db.query(`select status from tickets where id='${id(50)}'`)).rows[0].status,'valid');
+    assert.equal((await run()).result,'already_used');
+    assert.equal((await run({subject:id(31),hash:'guest-hash',code:'FIRST'})).ticket.ticket_id,id(50));
+    await assert.rejects(run({kind:'trial_pass',subject:id(32),hash:'trial-hash',code:'FIRST'}),/valid unused ticket/);
+    assert.equal((await db.query('select current_count from capacity_sessions')).rows[0].current_count,2);
+    await assert.rejects(reserve(50,false),/unused valid ticket/);
+  }finally{await db.close();}
+});
+
+test('guest may arrive first, and reserving every ticket does not silently redeem a guest ticket',async()=>{
+  const {db,run,reserve}=await fixture();
+  try{
+    await reserve(50); await reserve(51); await reserve(52);
+    await assert.rejects(run(),/For a guest/);
+    assert.equal((await db.query('select count(*)::int n from door_admissions')).rows[0].n,0);
+    assert.equal((await run({subject:id(31),hash:'guest-hash',code:'FIRST'})).ok,true);
+    await assert.rejects(run(),/For a guest/);
+    await reserve(51,false);
+    assert.equal((await run()).ticket.ticket_id,id(51));
+    assert.equal((await db.query(`select status from tickets where id='${id(52)}'`)).rows[0].status,'valid');
+  }finally{await db.close();}
+});
+
+test('trial buyer automatic admission also skips guest tickets',async()=>{
+  const {db,run,reserve}=await fixture();
+  try{
+    await db.exec(`update orders set user_id='${id(12)}',member_profile_id=null where id='${id(40)}'`);
+    await reserve(50,true,12);
+    assert.equal((await run({kind:'trial_pass',subject:id(32),hash:'trial-hash'})).ticket.ticket_id,id(51));
+    assert.equal((await run({subject:id(31),hash:'guest-hash',code:'FIRST'})).ticket.ticket_id,id(50));
+  }finally{await db.close();}
+});
+
+test('reservation checks ownership, verified legacy email, ticket status, RPC privileges and audit rollback',async()=>{
+  const {db,reserve}=await fixture();
+  try{
+    await assert.rejects(reserve(50,true,11),/not found/);
+    await assert.rejects(reserve(99),/not found/);
+    for(const status of ['used','refunded','void']){
+      await db.exec(`update tickets set status='${status}' where id='${id(50)}'`);
+      await assert.rejects(reserve(),/unused valid ticket/);
+    }
+    await db.exec(`update tickets set status='valid'; update orders set status='refunded' where id='${id(40)}'`);
+    await assert.rejects(reserve(),/unused valid ticket/);
+    await db.exec(`update orders set status='partial_refund' where id='${id(40)}'`);
+    await db.exec(`alter table ticket_audit_log add constraint fail_audit check(action<>'ticket.guest_reservation')`);
+    await assert.rejects(reserve(),/fail_audit/);
+    assert.equal((await db.query(`select reserved_for_guest from tickets where id='${id(50)}'`)).rows[0].reserved_for_guest,false);
+    await db.exec('alter table ticket_audit_log drop constraint fail_audit');
+    await reserve();
+    assert.equal((await reserve(50,false)).reserved_for_guest,false);
+    // An unverified email, or a matching email on someone else's linked order, is not ownership.
+    await db.exec(`update auth.users set email='owner@example.invalid' where id='${id(11)}'`);
+    await assert.rejects(reserve(50,true,11),/not found/);
+    await db.exec(`update orders set user_id=null,member_profile_id=null where id='${id(40)}';
+      update auth.users set email_confirmed_at=null where id='${id(10)}'`);
+    await assert.rejects(reserve(),/not found/);
+    await db.exec(`update auth.users set email_confirmed_at=now() where id='${id(10)}';
+      update orders set buyer_email='OWNER@EXAMPLE.INVALID' where id='${id(40)}'`);
+    assert.equal((await reserve()).reserved_for_guest,true);
+    for(const role of ['anon','authenticated']){
+      assert.equal((await db.query(`select has_function_privilege('${role}',
+        'set_ticket_guest_reservation(uuid,uuid,boolean,boolean)','EXECUTE') allowed`)).rows[0].allowed,false);
+    }
+    // Even a permissive table grant/RLS policy must not expose this column for direct client writes.
+    await db.exec(`set request.jwt.claims='{"role":"authenticated"}'`);
+    await assert.rejects(db.exec(`update tickets set reserved_for_guest=false where id='${id(50)}'`),/authenticated guest ticket endpoint/);
+    await db.exec(`reset request.jwt.claims`);
+  }finally{await db.close();}
 });

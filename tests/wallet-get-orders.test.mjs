@@ -104,7 +104,7 @@ test('joins events + items + tickets onto each order row', async () => {
     ],
     tickets: [
       { id: 't1', order_id: 'ord_1', order_item_id: 'item_1', ticket_code: 'CODE1', status: 'active' },
-      { id: 't2', order_id: 'ord_1', order_item_id: 'item_1', ticket_code: 'CODE2', status: 'active' },
+      { id: 't2', order_id: 'ord_1', order_item_id: 'item_1', ticket_code: 'CODE2', status: 'active', reserved_for_guest: true },
     ],
   });
 
@@ -116,6 +116,7 @@ test('joins events + items + tickets onto each order row', async () => {
   assert.equal(orders.length, 1, 'should return one enriched order');
   const o = orders[0];
   assert.equal(o.id, 'ord_1');
+  assert.equal(o.tickets.find(ticket => ticket.id === 't2').reserved_for_guest, true, 'website and mobile preserve the guest designation');
   assert.equal(o.event?.title, 'Cosmic Cabaret');
   assert.equal(o.event?.image_url, 'https://x/flyer.jpg', 'flyer must survive the join');
   assert.equal(o.items.length, 1);

@@ -115,10 +115,10 @@ begin
     where ti.event_id=ds.event_id and ord.event_id=ds.event_id
       and ti.status='valid' and ord.status in ('paid','partial_refund')
       and (case when nullif(p_ticket_code,'') is not null then ti.ticket_code=p_ticket_code
-        else (ord.user_id=uid or ord.member_profile_id=mid or
-          (ord.user_id is null and verified_email is not null and lower(trim(ord.buyer_email))=verified_email)) end)
+        else (not ti.reserved_for_guest and (ord.user_id=uid or ord.member_profile_id=mid or
+          (ord.user_id is null and verified_email is not null and lower(trim(ord.buyer_email))=verified_email))) end)
     order by ti.created_at,ti.id limit 1 for update of ti,ord;
-  if t.id is null then raise exception 'A valid unused ticket for this event is required. For a group ticket, scan the ticket first, then this guest''s pass.' using errcode='P0001'; end if;
+  if t.id is null then raise exception 'A valid unused ticket for this event is required. Tickets marked For a guest are excluded from automatic pass check-in. For a group ticket, scan the ticket first, then this guest''s pass.' using errcode='P0001'; end if;
 
   select * into cap from public.capacity_sessions where is_active=true for update;
   if cap.id is null then raise exception 'Start the capacity session before admitting guests' using errcode='P0001'; end if;

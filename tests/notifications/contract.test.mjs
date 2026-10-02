@@ -45,7 +45,12 @@ test('ticket confirmation emits ticket_purchased', () => {
 });
 
 test('door check-in emits door_checkin', () => {
-  assertPushCall('app/api/tickets/scan/route.js', 'door_checkin');
+  // Ticket preview is no longer an admission. Notify the actual attendee only
+  // after the atomic pass + ticket commit, through the shared notification helper.
+  assert.match(read('lib/capacity/admission-followup.ts'), /notify\(admin,\s*\{[\s\S]{0,120}type: 'door_checkin'/);
+  assert.match(read('lib/notifications/send.js'), /door_checkin: 'door_checkin'/);
+  assert.match(read('lib/notifications/send.js'), /await sendPushToUser\(\{/);
+  assert.doesNotMatch(read('app/api/tickets/scan/route.js'), /sendPushToUser\(/);
 });
 
 test('trial approval emits trial_approved', () => {
