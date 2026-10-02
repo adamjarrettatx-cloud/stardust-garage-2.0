@@ -77,3 +77,4 @@
 .tc-root button+button{margin-left:0}
 .tc-root .notice button{margin:var(--s2)}
 @media(max-width:600px){.tc-root.tc-owner{padding:var(--s3)}.tc-root .tc-assignment{grid-template-columns:1fr}.tc-root .tabs{gap:var(--s3)}}
+.tc-root .metrics.metrics-two{grid-template-columns:repeat(2,1fr)}.tc-root .metrics.metrics-two .metric:nth-child(-n+2){border-bottom:0}.tc-root .metrics.metrics-two .metric:first-child{border-right:1px solid var(--border)}
