@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { PIN_LENGTH, PIN_PATTERN } from "@/lib/time-clock/pin.mjs";
 import {
   Frame,
   ShiftTable,
@@ -713,6 +714,11 @@ export default function Timekeeping({ enabled }) {
                     pay settings, and PINs here at any time. A time-clock
                     profile does not grant access to other SDG tools.
                   </p>
+                  <p className="sub">
+                    Staff PINs must be four digits. If a profile still uses a
+                    six-digit PIN, use Reset PIN to replace it before the next
+                    clock-in. Saved hours and iPad pairing are unchanged.
+                  </p>
                   {editWorker && (
                     <form className="panel tc-form" onSubmit={saveWorker}>
                       <h2>
@@ -750,14 +756,14 @@ export default function Timekeeping({ enabled }) {
                             type="password"
                             inputMode="numeric"
                             autoComplete="new-password"
-                            pattern="[0-9]{6}"
-                            maxLength={6}
+                            pattern={PIN_PATTERN}
+                            maxLength={PIN_LENGTH}
                             value={editWorker.pin}
                             onChange={(e) => field("pin", e.target.value)}
                             placeholder="Leave blank to generate"
                           />
                           <span className="sub">
-                            Choose six digits or leave blank to generate a PIN.
+                            Choose four digits or leave blank to generate a PIN.
                             The saved PIN is displayed once for private
                             delivery.
                           </span>
@@ -1135,15 +1141,15 @@ export default function Timekeeping({ enabled }) {
                       type="password"
                       inputMode="numeric"
                       autoComplete="new-password"
-                      pattern="[0-9]{6}"
-                      maxLength={6}
+                      pattern={PIN_PATTERN}
+                      maxLength={PIN_LENGTH}
                       value={replacementPin}
                       onChange={(e) => setReplacementPin(e.target.value)}
                       placeholder="Leave blank to generate"
                       disabled={busy}
                     />
                     <span className="sub">
-                      Choose six digits or leave blank to generate a
+                      Choose four digits or leave blank to generate a
                       replacement. Current PINs cannot be viewed.
                     </span>
                   </label>

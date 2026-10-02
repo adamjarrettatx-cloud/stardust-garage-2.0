@@ -62,7 +62,7 @@ async function admin(action, payload) {
     p_payload: payload,
   });
 }
-const pin = "045678";
+const pin = "0456";
 const profile = {
   name: "Synthetic time-clock staging test",
   category: "contractor",
@@ -187,8 +187,8 @@ const inactive = await admin("save_worker", {
   ...profile,
   name: "Synthetic inactive profile",
   active: false,
-  pin_lookup: hash("pin-lookup", "056789"),
-  pin_verifier: await hashPin("056789", secret),
+  pin_lookup: hash("pin-lookup", "0567"),
+  pin_verifier: await hashPin("0567", secret),
 });
 assert.equal(
   (

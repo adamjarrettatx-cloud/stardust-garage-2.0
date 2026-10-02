@@ -10,6 +10,7 @@ import {
   date,
 } from "@/app/components/time-clock/Shared";
 import { duration, elapsedMs } from "@/lib/time-clock/core.mjs";
+import { PIN_LENGTH } from "@/lib/time-clock/pin.mjs";
 
 const api = (action, body) => request(`/api/time-clock/${action}`, body);
 export default function Kiosk({ enabled }) {
@@ -177,7 +178,7 @@ export default function Kiosk({ enabled }) {
         return;
       if (/^\d$/.test(e.key)) {
         e.preventDefault();
-        setPin((p) => (p + e.key).slice(0, 6));
+        setPin((p) => (p + e.key).slice(0, PIN_LENGTH));
       } else if (e.key === "Backspace") {
         e.preventDefault();
         setPin((p) => p.slice(0, -1));
@@ -373,17 +374,17 @@ export default function Kiosk({ enabled }) {
           className="pinpanel"
           onSubmit={(e) => {
             e.preventDefault();
-            if (pin.length === 6) identify();
+            if (pin.length === PIN_LENGTH) identify();
           }}
         >
-          <h2>Enter your 6-digit PIN</h2>
+          <h2>Enter your {PIN_LENGTH}-digit PIN</h2>
           <p className="sub">Your time. Your shift.</p>
           <div
             className="pin-dots"
             role="status"
-            aria-label={`${pin.length} of 6 PIN digits entered`}
+            aria-label={`${pin.length} of ${PIN_LENGTH} PIN digits entered`}
           >
-            {Array.from({ length: 6 }, (_, i) => (
+            {Array.from({ length: PIN_LENGTH }, (_, i) => (
               <i key={i} className={i < pin.length ? "filled" : ""} />
             ))}
           </div>
@@ -399,7 +400,7 @@ export default function Kiosk({ enabled }) {
                       ? ""
                       : k === "Delete"
                         ? p.slice(0, -1)
-                        : (p + k).slice(0, 6),
+                        : (p + k).slice(0, PIN_LENGTH),
                   )
                 }
               >
@@ -409,7 +410,7 @@ export default function Kiosk({ enabled }) {
           </div>
           <button
             className="primary wide"
-            disabled={pin.length !== 6 || busy || !online}
+            disabled={pin.length !== PIN_LENGTH || busy || !online}
           >
             {busy ? "Checking…" : "Continue"}
           </button>

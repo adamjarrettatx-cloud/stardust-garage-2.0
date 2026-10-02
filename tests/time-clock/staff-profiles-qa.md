@@ -4,7 +4,7 @@
 
 - Staff profiles: clearly labeled tab, create and edit profile, name and employee/contractor category, active toggle. Confirm saved values after reload.
 - Compensation: assign multiple roles, hourly rate per role, change to flat fee. Verify values saved; historical snapshots covered by database tests.
-- PIN: create with chosen six digits including leading zero; reset with chosen PIN or blank for generated PIN; one-time disclosure/hide. Confirm old PIN rejected and new PIN accepted at kiosk.
+- PIN: create with chosen four digits including leading zero; reset with chosen PIN or blank for generated PIN; one-time disclosure/hide. Confirm old PIN rejected and new PIN accepted at kiosk. Reject three-, five- and six-digit inputs; pairing codes remain eight digits.
 - Access: verified Adam/Jeyu admin allowlist and page/API denials covered by API tests; unrelated owner navigation remains hidden in navigation tests.
 - Edge cases: duplicate PIN fails without changing the existing PIN; malformed PIN rejected; reset cancel preserves state; deactivated profile denied.
 - Visual: desktop 1440px, iPad landscape 1024×768, mobile 375×812. Inspect staff form and reset modal, focus trap, readable labels, no horizontal overflow. Physical Safari remains a rollout check.

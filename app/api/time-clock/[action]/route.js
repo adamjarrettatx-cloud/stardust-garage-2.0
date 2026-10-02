@@ -17,6 +17,7 @@ import {
 } from "@/lib/time-clock/server";
 import { token, verifyPin } from "@/lib/time-clock/crypto.mjs";
 import { UUID } from "@/lib/time-clock/core.mjs";
+import { isValidPin } from "@/lib/time-clock/pin.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,8 +59,8 @@ export async function POST(request, { params }) {
       // Verify the device before consuming a PIN lookup or running the KDF.
       await state(request);
       await limit(client, `pin:${c.device}`, 10, 60);
-      if (!/^\d{6}$/.test(input.pin ?? ""))
-        throw new ClockError("Enter your six-digit PIN.");
+      if (!isValidPin(input.pin))
+        throw new ClockError("Enter your four-digit PIN.");
       const { data: worker, error } = await client
         .from("tc_workers")
         .select("id,pin_verifier,credential_version")
