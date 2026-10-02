@@ -11,9 +11,7 @@ import {
   money,
 } from "@/app/components/time-clock/Shared";
 import {
-  ESTIMATE_NOTICE,
   duration,
-  elapsedMs,
   estimateCents,
   dollarsToCents,
   chicagoInput,
@@ -297,9 +295,6 @@ export default function Timekeeping({ enabled }) {
         </div>
       ) : (
         <>
-          <div className="notice small">
-            {ESTIMATE_NOTICE} Timesheet approval does not send money.
-          </div>
           {error && (
             <div className="notice tc-error" role="alert">
               {error}
@@ -356,23 +351,7 @@ export default function Timekeeping({ enabled }) {
             <>
               {tab === "timesheets" && (
                 <>
-                  <div className="metrics">
-                    <div className="metric">
-                      <span className="sub">On shift now</span>
-                      <b>{data.open.length}</b>
-                      <span className="sub small">
-                        All dates · refreshes every 30s
-                      </span>
-                    </div>
-                    <div className="metric">
-                      <span className="sub">Closed-shift hours</span>
-                      <b>
-                        {(
-                          closed.reduce((n, s) => n + elapsedMs(s), 0) / 3600000
-                        ).toFixed(2)}
-                      </b>
-                      <span className="sub small">Current filters</span>
-                    </div>
+                  <div className="metrics metrics-two">
                     <div className="metric">
                       <span className="sub">Known base estimate</span>
                       <b>
@@ -932,9 +911,6 @@ export default function Timekeeping({ enabled }) {
                           },
                           () => {
                             setEditRole(null);
-                            setNotice(
-                              "Role saved. Existing shift history is unchanged.",
-                            );
                           },
                         );
                       }}
