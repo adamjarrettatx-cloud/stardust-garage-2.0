@@ -73,3 +73,7 @@
   .filters { flex-direction: column; align-items: stretch; }
   .header h1 { font-size: 22px; }
 }
+
+.sendCell { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; align-items: flex-start; }
+.sentNote { font-size: 12px; font-weight: 600; color: #1f7a3a; }
+.failedNote { font-size: 12px; font-weight: 600; color: #b42318; }

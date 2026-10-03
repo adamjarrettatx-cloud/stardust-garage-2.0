@@ -35,6 +35,7 @@ export default function EventAttendeesClient({ event }) {
   const [eventFilter, setEventFilter] = useState('all');
   const [selected, setSelected] = useState(new Set());
   const [refundOrders, setRefundOrders] = useState(null);
+  const [emailState, setEmailState] = useState({});
   const eventId = event?.id;
 
   useEffect(() => {
@@ -114,6 +115,23 @@ export default function EventAttendeesClient({ event }) {
     });
   }
   function refreshed() { setReload((n) => n + 1); }
+
+  // Sends the order's tickets to the purchaser's email and waits for the
+  // email provider to accept it, so "Sent" means the email actually left.
+  async function sendTickets(row) {
+    setEmailState((s) => ({ ...s, [row.id]: { status: 'sending' } }));
+    try {
+      const res = await fetch(`/api/admin/tickets/orders/${row.id}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'resend' }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Send failed');
+      setEmailState((s) => ({ ...s, [row.id]: { status: 'sent', to: data.to, at: data.sent_at } }));
+    } catch (err) {
+      setEmailState((s) => ({ ...s, [row.id]: { status: 'failed', error: err.message } }));
+    }
+  }
 
   function exportCsv() {
     const csv = tab === 'purchasers'
@@ -258,7 +276,18 @@ export default function EventAttendeesClient({ event }) {
                       <td>{row.tickets.length}</td>
                       <td>{row.tickets.filter((t) => t.status === 'used').length} / {row.tickets.length}</td>
                       <td>{money(row.total_cents, row.currency)}{row.refunded_cents > 0 && <span className={styles.secondary}>{money(row.refunded_cents, row.currency)} refunded</span>}</td>
-                      <td>{row.can_refund ? <button className={styles.button} onClick={() => setRefundOrders([row])}>Refund</button>
+                      <td>
+                        {['paid', 'partial_refund'].includes(row.status) && row.buyer_email && (() => {
+                          const st = emailState[row.id] || {};
+                          return <div className={styles.sendCell}>
+                            <button className={styles.primaryButton} disabled={st.status === 'sending'} onClick={() => sendTickets(row)}>
+                              {st.status === 'sending' ? 'Sending…' : st.status === 'sent' ? 'Send again' : 'Send to their email'}
+                            </button>
+                            {st.status === 'sent' && <span className={styles.sentNote} role="status">Sent to {st.to} at {new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' }).format(new Date(st.at))}</span>}
+                            {st.status === 'failed' && <span className={styles.failedNote} role="alert">Not sent: {st.error}</span>}
+                          </div>;
+                        })()}
+                        {row.can_refund ? <button className={styles.button} onClick={() => setRefundOrders([row])}>Refund</button>
                         : <span className={styles.secondary}>{row.status === 'refunded' ? 'Fully refunded' : 'Not refundable'}</span>}</td>
                     </tr>
                   ) : (
