@@ -534,7 +534,17 @@ export default function UnifiedDoorScanner({
       {groupTicketCode && <button type="button" className="p-4 text-left" onClick={resetToScanning}>
         Ticket ready. Scan this guest’s own My Pass QR. No entry recorded yet. Tap to cancel pairing.
       </button>}
-      <div className="relative w-full" style={{ aspectRatio: '4 / 3', background: '#000' }}>
+      {/* Compact stage: the preview card and its Check In button must fit on
+          the same screen as the camera without scrolling. While a card is up
+          the camera shrinks to a thin strip. */}
+      <div
+        className="relative w-full flex-shrink-0"
+        style={{
+          height: phase === 'preview' || phase === 'result' ? 96 : 'clamp(170px, 30vh, 280px)',
+          background: '#000',
+          transition: 'height 160ms ease',
+        }}
+      >
         <video
           ref={videoRef}
           className="absolute inset-0 w-full h-full object-cover"
@@ -551,8 +561,8 @@ export default function UnifiedDoorScanner({
               <div
                 className="rounded-2xl border-2"
                 style={{
-                  width: 'min(60%, 320px)',
-                  height: 'min(60%, 320px)',
+                  height: '78%',
+                  aspectRatio: '1 / 1',
                   borderColor: 'rgba(124,252,155,0.9)',
                   boxShadow: '0 0 0 9999px rgba(0,0,0,0.30)',
                 }}
