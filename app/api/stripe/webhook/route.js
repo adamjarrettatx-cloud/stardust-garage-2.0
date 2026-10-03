@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { lookupPlanByPriceId } from '@/lib/stripe-prices';
 import { getEventSeriesTicketTypes } from '@/lib/tickettailor';
@@ -22,6 +22,7 @@ import { handleTicketRefundEvent } from '@/lib/tickets/refunds';
 export const dynamic = 'force-dynamic';
 // TT discount generation uses Node APIs (crypto), so pin to the Node runtime.
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 function todayDateString() {
   return new Intl.DateTimeFormat('en-CA', {
@@ -211,11 +212,22 @@ export async function POST(request) {
         .from('stripe_event_ingest')
         .update({ processed_at: new Date().toISOString(), outcome: ticketResult.error ? 'error' : 'ok' })
         .eq('stripe_event_id', event.id);
-      const response = NextResponse.json({ received: true });
-      for (const fn of ticketResult.followups || []) {
-        Promise.resolve().then(fn).catch((err) => console.error('[webhook] followup failed:', err));
+      // Ticket emails and pushes must run inside after(): an unawaited promise
+      // is frozen by Vercel once the response is sent, so buyers were paid and
+      // ticketed but never received the confirmation email.
+      const followups = ticketResult.followups || [];
+      if (followups.length) {
+        after(async () => {
+          await Promise.allSettled(
+            followups.map((fn) =>
+              Promise.resolve()
+                .then(fn)
+                .catch((err) => console.error('[webhook] followup failed:', err)),
+            ),
+          );
+        });
       }
-      return response;
+      return NextResponse.json({ received: true });
     }
 
     // Helper to find member profile by Stripe customer ID

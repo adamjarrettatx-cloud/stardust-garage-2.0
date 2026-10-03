@@ -117,8 +117,14 @@ export async function POST(request, { params }) {
       }),
     );
 
-    await sendTicketConfirmation({
-      to: body.to_email || order.buyer_email,
+    const toEmail = (body.to_email || order.buyer_email || '').trim();
+    if (!toEmail) return NextResponse.json({ error: 'This order has no email address' }, { status: 400 });
+    if (!(tickets.data || []).length) return NextResponse.json({ error: 'This order has no active tickets to send' }, { status: 400 });
+
+    let sent;
+    try {
+      sent = await sendTicketConfirmation({
+      to: toEmail,
       orderId: order.id,
       orderDate: order.created_at,
       eventTitle: eventCtx.eventTitle,
@@ -135,15 +141,23 @@ export async function POST(request, { params }) {
         totalCents: order.total_cents,
       },
       currency: order.currency,
-    });
+      });
+    } catch (err) {
+      console.error('[admin.resend] email failed', { orderId: order.id, err });
+      return NextResponse.json({ error: `Email provider rejected the send: ${err?.message || 'unknown error'}` }, { status: 502 });
+    }
+    const providerId = sent?.id || null;
+    if (!providerId) {
+      return NextResponse.json({ error: 'Email provider did not confirm the send. Try again.' }, { status: 502 });
+    }
 
     await supabaseAdmin.from('ticket_audit_log').insert({
       event_id: order.event_id, order_id: order.id,
       actor_user_id: gate.user.id, actor_role: 'admin',
       action: 'order.resend',
-      detail: { to: body.to_email || order.buyer_email },
+      detail: { to: toEmail, provider_id: providerId, tickets: tickets.data.length },
     });
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, to: toEmail, provider_id: providerId, sent_at: new Date().toISOString() });
   }
 
   if (action === 'comp_note') {
