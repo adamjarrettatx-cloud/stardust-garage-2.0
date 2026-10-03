@@ -77,7 +77,12 @@ export default function TonightSignInsPanel({ onCheckIn }) {
     active.current = true;
     load();
     const refresh = () => { load(); setRefreshKey(key => key + 1); };
-    const interval = setInterval(refresh, POLL_MS);
+    // Skip background polls while the tab is hidden; catch up the moment the
+    // screen is visible again so staff never act on a stale roster.
+    const tick = () => { if (document.visibilityState !== 'hidden') refresh(); };
+    const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
+    const interval = setInterval(tick, POLL_MS);
+    document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('focus', refresh);
     window.addEventListener('sdg:roster-changed', refresh);
     window.addEventListener('sdg:legal-name-changed', refresh);
@@ -87,6 +92,7 @@ export default function TonightSignInsPanel({ onCheckIn }) {
       // eslint-disable-next-line react-hooks/exhaustive-deps
       ++requestVersion.current;
       clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', refresh);
       window.removeEventListener('sdg:roster-changed', refresh);
       window.removeEventListener('sdg:legal-name-changed', refresh);

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('@/lib/profile-photo', () => ({
+  PROFILE_PHOTO_BUCKET: 'profile-photos',
   createProfilePhotoSignedUrl: async (_admin, path) => path ? { signedUrl:'https://example.invalid/signed-photo' } : null,
 }));
 vi.mock('@/lib/member-photo', () => ({
