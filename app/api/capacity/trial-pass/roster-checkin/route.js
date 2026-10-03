@@ -20,10 +20,10 @@ export async function POST(request) {
     const admin = createAdminClient();
     const subject = { kind: body.kind, id: body.id };
     const roster = await loadRoster(admin, { subject });
-    if (roster.context.session) return response({
-      error: 'For event admission, scan the guest’s own My Pass QR and their event ticket. Name lookup cannot bypass those checks.',
-      code: 'pass_ticket_scan_required',
-    }, 409);
+    // Staff searching a name and tapping check-in is a manual, staff-verified
+    // admission. It records the arrival directly (tied to the active door
+    // session when one is running) instead of demanding a QR scan. Access
+    // restrictions below still apply.
     const person = roster.people.find(p => p.identityKeys.includes(`${body.kind}:${body.id}`));
     if (!person) return response({ error: 'Guest not found.' }, 404);
     // Check every explicitly linked credential, not just the displayed identity.

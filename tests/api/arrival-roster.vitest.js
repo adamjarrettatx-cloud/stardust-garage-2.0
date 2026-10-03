@@ -52,11 +52,12 @@ describe('guest search endpoint', () => {
   });
 });
 describe('named arrival check-in endpoint', () => {
-  it('cannot bypass pass and ticket checks during an active event', async () => {
+  it('checks a searched guest in manually during an active event without a QR scan', async () => {
     const data=roster();data.context.session={id:'session',event_id:'event'};
     mocks.load.mockResolvedValue(data);
-    expect((await POST(req(body))).status).toBe(409);
-    expect(mocks.rpc).not.toHaveBeenCalled();
+    const res=await POST(req(body));
+    expect(res.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith('front_desk_roster_check_in', expect.objectContaining({p_door_session_id:'session'}));
   });
   it('passes the native bearer request into the existing role verifier', async () => {
     const request = req(body);
