@@ -29,9 +29,11 @@ export default async function MemberLayout({ children }) {
     .eq('user_id', user.id)
     .maybeSingle();
 
-  // No profile = not an approved member. Send them to the public site.
+  // No profile = not an approved member. Send them to their account
+  // profile (tickets, Trial SDG Pass, membership options) rather than the
+  // public splash page, which looked like sign-in had failed.
   if (!profile) {
-    redirect('/');
+    redirect('/account/profile');
   }
 
   return <>

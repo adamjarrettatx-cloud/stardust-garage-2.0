@@ -76,7 +76,19 @@ export default function UnifiedLoginPage() {
     // middleware would just bounce them back here anyway if `next` pointed
     // anywhere else.
     else if (role === 'front_desk') destination = '/capacity/front-desk';
-    else destination = next || '/member';
+    else if (next) destination = next;
+    else {
+      // Only approved members (member_profiles row) can enter /member/*.
+      // Guest accounts — ticket buyers, Trial SDG Pass holders, partners —
+      // go to their account profile instead of bouncing off the member
+      // gate onto the public splash page.
+      const { data: memberProfile } = await supabase
+        .from('member_profiles')
+        .select('id')
+        .eq('user_id', data.user.id)
+        .maybeSingle();
+      destination = memberProfile ? '/member' : '/account/profile';
+    }
 
     router.push(destination);
     router.refresh();
