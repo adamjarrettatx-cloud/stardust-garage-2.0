@@ -13,6 +13,8 @@ import {
   statusPill,
 } from './ticketingTheme.js';
 import MoneyInput from './MoneyInput.jsx';
+import { createClient } from '@/lib/supabase/client';
+import { uploadEventImage } from '@/lib/event-image-upload';
 
 // Admin manager for "private space" rentals attached to an event.
 //
@@ -24,6 +26,7 @@ import MoneyInput from './MoneyInput.jsx';
 //   - Description          (free-form, shown to buyers)
 //   - Price ($)            (single, no time-based tiers)
 //   - Capacity             (usually 1 or 2)
+//   - Thumbnail            (optional photo of the space, shown to buyers)
 //   - Members only / Active toggles
 //
 // Multiple different spaces per event are supported (rentals for different
@@ -49,6 +52,7 @@ function blankSpace(eventId) {
     kind: 'private_space',
     name: '',
     description: '',
+    image_url: null,
     // Private-space rentals are members-only by policy — no admin UI
     // toggle. is_active also stays true from this row (retire via delete).
     member_only: true,
@@ -86,6 +90,7 @@ function toEditShape(p) {
   return {
     ...p,
     description: p.description || '',
+    image_url: p.image_url || null,
     capacity: p.capacity ?? 1,
     min_per_order: p.min_per_order ?? 1,
     max_per_order: p.max_per_order ?? 1,
@@ -95,11 +100,34 @@ function toEditShape(p) {
 
 function SpaceForm({ eventId, initial, onSave, onCancel, saving }) {
   const [s, setS] = useState(() => (initial ? toEditShape(initial) : blankSpace(eventId)));
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState(null);
+
+  async function onPickImage(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type || !file.type.startsWith('image/')) {
+      setUploadErr('Please choose an image file.');
+      return;
+    }
+    setUploadErr(null);
+    setUploading(true);
+    try {
+      const { publicUrl, error } = await uploadEventImage(createClient(), file);
+      if (error || !publicUrl) throw new Error(error?.message || 'Upload failed');
+      setS((prev) => ({ ...prev, image_url: publicUrl }));
+    } catch (err) {
+      setUploadErr(String(err.message || err));
+    } finally {
+      setUploading(false);
+    }
+  }
 
   const tier = s.tiers[0];
   const nameValid = s.name.trim().length > 0;
   const priceValid = Number.isFinite(tier.price_cents) && tier.price_cents >= 0;
-  const canSave = nameValid && priceValid && !saving;
+  const canSave = nameValid && priceValid && !saving && !uploading;
 
   function setPriceDollars(v) {
     const cents = dollarInputToCents(v);
@@ -114,6 +142,7 @@ function SpaceForm({ eventId, initial, onSave, onCancel, saving }) {
       ...s,
       name: s.name.trim(),
       description: s.description?.trim() || null,
+      image_url: s.image_url || null,
       kind: 'private_space',
       // Always exactly one tier for a private space.
       tiers: [
@@ -184,6 +213,54 @@ function SpaceForm({ eventId, initial, onSave, onCancel, saving }) {
           />
         </label>
 
+        <div style={{ gridColumn: '1 / -1' }}>
+          <div style={fieldLabelStyle()}>Thumbnail</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+            {s.image_url ? (
+              <img
+                src={s.image_url}
+                alt=""
+                style={{ width: 120, height: 90, objectFit: 'cover', borderRadius: 8, border: `1px solid ${T.border}`, display: 'block' }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: 120, height: 90, borderRadius: 8, border: `1px dashed ${T.border}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, color: T.muted, fontFamily: T.fontStack, background: T.innerBg,
+                }}
+              >
+                No image
+              </div>
+            )}
+            <label
+              className={pillClass()}
+              style={{ ...ghostPillStyle({ disabled: uploading || saving }), cursor: uploading || saving ? 'not-allowed' : 'pointer' }}
+            >
+              {uploading ? 'UPLOADING\u2026' : (s.image_url ? 'REPLACE IMAGE' : 'UPLOAD IMAGE')}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={onPickImage}
+                disabled={uploading || saving}
+                style={{ display: 'none' }}
+              />
+            </label>
+            {s.image_url && !uploading && (
+              <button
+                type="button"
+                onClick={() => setS({ ...s, image_url: null })}
+                disabled={saving}
+                className={pillClass()}
+                style={ghostPillStyle({ disabled: saving, danger: true })}
+              >
+                REMOVE
+              </button>
+            )}
+          </div>
+          {uploadErr && <div style={{ color: T.danger, fontSize: 12, marginTop: 6 }}>{uploadErr}</div>}
+        </div>
+
       </div>
 
       <div
@@ -253,6 +330,13 @@ function SpaceCard({ p, onEdit, onDelete, saving }) {
   return (
     <div style={{ ...cardStyle({ padding: 18 }), marginBottom: 14 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        {p.image_url && (
+          <img
+            src={p.image_url}
+            alt=""
+            style={{ width: 96, height: 72, objectFit: 'cover', borderRadius: 8, border: `1px solid ${T.border}`, flex: '0 0 auto', display: 'block' }}
+          />
+        )}
         <div style={{ flex: '1 1 260px', minWidth: 0 }}>
           <div style={{ fontWeight: 700, color: T.strongText, fontSize: 16, fontFamily: T.fontStack }}>
             {p.name}

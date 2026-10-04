@@ -87,6 +87,7 @@ export async function POST(request) {
   const {
     id, event_id, name, description = null,
     kind = 'tickets',
+    image_url = null,
     member_only = false,
     // Admin UI has removed the min/max inputs — platform now hard-defaults to
     // 1–20. Kept as accepted body fields so any external caller or older client
@@ -114,6 +115,7 @@ export async function POST(request) {
     name,
     description,
     kind,
+    image_url: typeof image_url === 'string' && /^https:\/\//.test(image_url.trim()) ? image_url.trim() : null,
     member_only,
     min_per_order,
     max_per_order,

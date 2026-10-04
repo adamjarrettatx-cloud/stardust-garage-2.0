@@ -81,7 +81,7 @@ export async function GET(request) {
 
   const { data: products } = await supabaseAdmin
     .from('ticket_products')
-    .select('id, name, description, kind, min_per_order, max_per_order, member_only, sales_start_at, sales_end_at, display_order, is_active')
+    .select('id, name, description, kind, image_url, min_per_order, max_per_order, member_only, sales_start_at, sales_end_at, display_order, is_active')
     .eq('event_id', eventId)
     .eq('is_active', true)
     .order('display_order', { ascending: true });
@@ -151,6 +151,7 @@ export async function GET(request) {
       kind: p.kind || 'tickets',
       name: p.name,
       description: p.description,
+      image_url: p.image_url || null,
       member_only: p.member_only,
       min_per_order: p.min_per_order,
       max_per_order: p.max_per_order,
