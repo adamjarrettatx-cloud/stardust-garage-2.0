@@ -74,6 +74,8 @@ export async function POST(request) {
     signupSource: TRIAL_PASS_SOURCE_SELF_SERVE,
     phoneVerified: true,
     createdBy: null,
+    createAccount: true,
+    sendInvite: false,
   });
   if (!issued.ok) {
     return NextResponse.json({ error: issued.error, field: issued.field }, { status: issued.status || 500 });
