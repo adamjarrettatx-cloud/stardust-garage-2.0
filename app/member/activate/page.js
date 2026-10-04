@@ -21,7 +21,7 @@ export default async function ActivatePage() {
   // "Continue to Payment" flow for a non-member. If the layout gate is ever
   // bypassed or this route is reached directly, refuse here too.
   if (!profile) {
-    redirect('/');
+    redirect('/account/profile');
   }
 
   if (profile?.subscription_status === 'active') {
