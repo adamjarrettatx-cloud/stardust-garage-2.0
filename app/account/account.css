@@ -54,3 +54,9 @@
 .ticket-detail-code{font:13px/1.6 ui-monospace,monospace;overflow-wrap:anywhere}
 .ticket-order-receipt{border-top:1px solid var(--hub-line);margin-top:20px;padding-top:12px;color:var(--hub-muted);font-size:12px;overflow-wrap:anywhere;line-height:1.7}
 @media(max-width:760px){.account-hub-shell{padding:20px 16px 48px}.account-hub-topline{margin-bottom:20px}.account-hub-hero{grid-template-columns:88px minmax(0,1fr);gap:16px;align-items:start}.account-hub-hero>.account-hub-button{grid-column:1/-1;width:100%}.account-hub-panel-heading{padding:16px}.account-hub-row{grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;padding:16px}.account-hub-row dt{grid-column:1/-1;font-size:12px}.account-hub-form,.account-hub-padded{padding:16px}.account-settings-body{padding:12px}.ticket-event-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.account-workspaces nav{grid-template-columns:1fr}.portal-section-navigation nav{display:none}.portal-section-navigation select{display:block;width:100%;min-height:48px;background:#191919;color:#fff;border:1px solid #333;border-radius:8px;padding:10px}.ticket-artwork-fallback{padding:12px;font-size:15px}}
+.profile-door-pass-body{display:flex;align-items:center;gap:28px;padding:24px}
+.profile-door-pass-qr{flex:0 0 auto;width:min(100%,280px);background:#fff;border-radius:10px;padding:12px}
+.profile-door-pass-qr svg{display:block;width:100%;height:auto}
+.profile-door-pass-copy{min-width:0}.profile-door-pass-copy .account-hub-note:first-of-type{margin-top:6px}
+.profile-door-pass-lead{font:700 18px/1.4 'Plus Jakarta Sans',sans-serif;margin:0}
+@media(max-width:760px){.profile-door-pass-body{flex-direction:column;align-items:stretch;text-align:center;padding:16px;gap:16px}.profile-door-pass-qr{margin:0 auto}}
