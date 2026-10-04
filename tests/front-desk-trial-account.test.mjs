@@ -37,16 +37,23 @@ test('the manual route reports account + invite state back to the form', () => {
   }
 });
 
-test('the self-serve paths do NOT opt into createAccount', () => {
-  // Anonymous public traffic creating auth users is a different decision with
-  // its own abuse surface. If someone flips this on, it should be a
-  // deliberate change that trips this test first.
-  assert.equal(/createAccount/.test(verifyCheckSrc), false, 'verify/check must not opt in');
+test('the self-serve /pass paths create the account but send no invite', () => {
+  // Every Trial Pass gets an account (Adam, 2026-10-03). Self-serve guests
+  // already get the pass email; a second magic-link email per signup would
+  // double Resend volume on nights the daily quota is already the limit.
+  assert.match(verifyCheckSrc, /createAccount:\s*true/);
+  assert.match(verifyCheckSrc, /sendInvite:\s*false/);
+  const verifyStartSrc = read('../app/api/trial-pass/verify/start/route.js');
+  assert.match(verifyStartSrc, /createAccount:\s*true/);
+  assert.match(verifyStartSrc, /sendInvite:\s*false/);
+  // redeem-trial runs for a signed-in user; it links through user_id already.
   assert.equal(/createAccount/.test(redeemTrialSrc), false, 'redeem-trial must not opt in');
 });
 
-test('issueTrialPass defaults createAccount to false', () => {
+test('issueTrialPass defaults createAccount to false and sendInvite to createAccount', () => {
   assert.match(createSrc, /createAccount\s*=\s*false/);
+  assert.match(createSrc, /sendInvite\s*=\s*createAccount/);
+  assert.match(createSrc, /enabled:\s*createAccount\s*&&\s*sendInvite/);
 });
 
 // ---------------------------------------------------------------------------

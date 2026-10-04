@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildTrialPassProfileUrl,
+  claimTrialProvisionedAccount,
   createTrialPassProfileLink,
   ensureTrialPassAccount,
   findAuthUserByEmail,
@@ -25,20 +26,40 @@ import {
 // Fake admin client
 // ---------------------------------------------------------------------------
 
-function makeAdmin({ users = [], createBehaviour = 'ok', listError = null, generateLink } = {}) {
-  const calls = { listUsers: [], createUser: [], generateLink: [] };
-  const state = { users: [...users], nextId: 1 };
+function makeAdmin({ passes = [], users = [], createBehaviour = 'ok', listError = null, generateLink } = {}) {
+  const calls = { rpc: [], createUser: [], updateUserById: [], generateLink: [] };
+  const state = { users: [...users], passes: [...passes], nextId: 1 };
 
   const admin = {
     calls,
     state,
+    async rpc(name, args) {
+      calls.rpc.push({ name, args });
+      if (listError) return { data: null, error: listError };
+      const u = state.users.find((x) => x.email?.toLowerCase() === String(args.p_email).toLowerCase());
+      return {
+        data: u ? [{ id: u.id, has_password: Boolean(u.password), trial_provisioned: u.metadata?.provisioned_by === 'trial_pass' }] : [],
+        error: null,
+      };
+    },
+    from() {
+      const q = {
+        select() { return q; },
+        eq(col, val) { q._f = [...(q._f || []), [col, val]]; return q; },
+        async limit() {
+          const rows = state.passes.filter((p) => (q._f || []).every(([c, v]) => p[c] === v));
+          return { data: rows, error: null };
+        },
+      };
+      return q;
+    },
     auth: {
       admin: {
-        async listUsers({ page = 1, perPage = 50 } = {}) {
-          calls.listUsers.push({ page, perPage });
-          if (listError) return { data: null, error: listError };
-          const start = (page - 1) * perPage;
-          return { data: { users: state.users.slice(start, start + perPage) }, error: null };
+        async updateUserById(id, attrs) {
+          calls.updateUserById.push({ id, attrs });
+          const u = state.users.find((x) => x.id === id);
+          if (attrs.password) u.password = attrs.password;
+          return { data: { user: u }, error: null };
         },
         async createUser(payload) {
           calls.createUser.push(payload);
@@ -86,26 +107,23 @@ test('findAuthUserByEmail matches case-insensitively', async () => {
   assert.equal(found.id, 'usr_1');
 });
 
-test('findAuthUserByEmail pages past the first page', async () => {
-  // 200 is the page size; the target sits on page two, which a single
-  // perPage-capped listUsers call would miss entirely.
-  const users = Array.from({ length: 250 }, (_, i) => ({ id: `usr_${i}`, email: `guest${i}@email.com` }));
-  const admin = makeAdmin({ users });
-  const found = await findAuthUserByEmail(admin, 'guest240@email.com');
-  assert.equal(found.id, 'usr_240');
-  assert.equal(admin.calls.listUsers.length, 2);
+test('findAuthUserByEmail uses the auth_user_by_email RPC, not listUsers', async () => {
+  // listUsers() failed in production with "Database error finding users".
+  const admin = makeAdmin({ users: [{ id: 'usr_9', email: 'guest@email.com' }] });
+  const found = await findAuthUserByEmail(admin, 'Guest@Email.com');
+  assert.equal(found.id, 'usr_9');
+  assert.deepEqual(admin.calls.rpc, [{ name: 'auth_user_by_email', args: { p_email: 'guest@email.com' } }]);
 });
 
-test('findAuthUserByEmail stops on a short page instead of looping', async () => {
+test('findAuthUserByEmail returns null when nobody matches', async () => {
   const admin = makeAdmin({ users: [{ id: 'usr_1', email: 'someone@email.com' }] });
   assert.equal(await findAuthUserByEmail(admin, 'nobody@email.com'), null);
-  assert.equal(admin.calls.listUsers.length, 1);
 });
 
 test('findAuthUserByEmail returns null for a blank email without calling Auth', async () => {
   const admin = makeAdmin();
   assert.equal(await findAuthUserByEmail(admin, ''), null);
-  assert.equal(admin.calls.listUsers.length, 0);
+  assert.equal(admin.calls.rpc.length, 0);
 });
 
 // ---------------------------------------------------------------------------
@@ -122,7 +140,7 @@ test('creates an account when the email is new', async () => {
   assert.deepEqual(admin.calls.createUser, [{
     email: 'jane@email.com',
     email_confirm: true,
-    user_metadata: { full_name: 'Jane Doe' },
+    user_metadata: { full_name: 'Jane Doe', provisioned_by: 'trial_pass' },
   }]);
 });
 
@@ -160,13 +178,16 @@ test('is idempotent — a second issue for the same email reuses the first accou
 });
 
 test('recovers from a lost create race by looking the winner up again', async () => {
-  // listUsers says "no such user", createUser says "already registered" —
+  // The lookup says "no such user", createUser says "already registered" —
   // this is the double-tap where the other request got there first.
   const admin = makeAdmin({ createBehaviour: 'duplicate' });
-  admin.auth.admin.listUsers = async ({ page = 1 } = {}) => {
-    admin.calls.listUsers.push({ page });
-    if (admin.calls.listUsers.length === 1) return { data: { users: [] }, error: null };
-    return { data: { users: [{ id: 'usr_race', email: 'jane@email.com' }] }, error: null };
+  const realRpc = admin.rpc.bind(admin);
+  let n = 0;
+  admin.rpc = async (name, args) => {
+    n += 1;
+    if (n === 1) return { data: [], error: null };
+    admin.state.users = [{ id: 'usr_race', email: 'jane@email.com' }];
+    return realRpc(name, args);
   };
   const res = await ensureTrialPassAccount(admin, { email: 'jane@email.com', fullName: 'Jane' });
   assert.deepEqual(res, { userId: 'usr_race', created: false, reused: true, error: null });
@@ -186,7 +207,7 @@ test('swallows a thrown Auth error and reports it', async () => {
   assert.deepEqual(res, { userId: null, created: false, reused: false, error: 'auth is down' });
 });
 
-test('reports a listUsers failure without throwing', async () => {
+test('reports a lookup failure without throwing', async () => {
   const admin = makeAdmin({ listError: { message: 'service role rejected' } });
   const res = await ensureTrialPassAccount(admin, { email: 'jane@email.com', fullName: 'Jane' });
   assert.equal(res.userId, null);
@@ -271,4 +292,41 @@ test('createTrialPassProfileLink no-ops without an email or a site url', async (
   assert.equal((await createTrialPassProfileLink(admin, { email: '', siteUrl: 'https://x.com' })).url, null);
   assert.equal((await createTrialPassProfileLink(admin, { email: 'a@b.com', siteUrl: '' })).url, null);
   assert.equal(admin.calls.generateLink.length, 0);
+});
+
+// ---------------------------------------------------------------------------
+// claimTrialProvisionedAccount
+// ---------------------------------------------------------------------------
+
+const trialUser = () => ({ id: 'usr_t', email: 'guest@email.com', metadata: { provisioned_by: 'trial_pass' } });
+const trialPass = { user_id: 'usr_t', phone: '+15125550100' };
+
+test('claim sets a password on a passwordless trial account when the phone matches its pass', async () => {
+  const admin = makeAdmin({ users: [trialUser()], passes: [trialPass] });
+  const res = await claimTrialProvisionedAccount(admin, {
+    email: 'Guest@Email.com', phone: '+15125550100', password: 'hunter2hunter2', fullName: 'Guest One',
+  });
+  assert.deepEqual(res, { claimed: true, userId: 'usr_t', reason: null });
+  assert.equal(admin.calls.updateUserById[0].attrs.password, 'hunter2hunter2');
+});
+
+test('claim refuses when the phone does not match the pass', async () => {
+  const admin = makeAdmin({ users: [trialUser()], passes: [trialPass] });
+  const res = await claimTrialProvisionedAccount(admin, { email: 'guest@email.com', phone: '+15125559999', password: 'x'.repeat(8) });
+  assert.equal(res.claimed, false);
+  assert.equal(res.reason, 'phone_mismatch');
+  assert.equal(admin.calls.updateUserById.length, 0);
+});
+
+test('claim refuses an account that already has a password', async () => {
+  const admin = makeAdmin({ users: [{ ...trialUser(), password: 'set' }], passes: [trialPass] });
+  const res = await claimTrialProvisionedAccount(admin, { email: 'guest@email.com', phone: '+15125550100', password: 'x'.repeat(8) });
+  assert.equal(res.reason, 'password_already_set');
+  assert.equal(admin.calls.updateUserById.length, 0);
+});
+
+test('claim refuses an account this platform did not provision for a trial', async () => {
+  const admin = makeAdmin({ users: [{ id: 'usr_t', email: 'guest@email.com' }], passes: [trialPass] });
+  const res = await claimTrialProvisionedAccount(admin, { email: 'guest@email.com', phone: '+15125550100', password: 'x'.repeat(8) });
+  assert.equal(res.reason, 'not_trial_provisioned');
 });

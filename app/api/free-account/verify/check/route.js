@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/stub';
 import { validateTrialPassIntake } from '@/lib/trial-pass';
 import { checkVerification, isTwilioVerifyConfigured } from '@/lib/twilio-verify';
+import { claimTrialProvisionedAccount } from '@/lib/trial-pass-account';
 import { hashRateLimitKey, keyFromRequest, rateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
@@ -137,12 +138,26 @@ export async function POST(request) {
     const existingUser = createError.code === 'user_already_exists'
       || createError.message?.toLowerCase().includes('already registered');
     if (existingUser) {
-      // A race with another signup (or an existing auth-only identity) gets
-      // the same response as a newly created free account.
-      return NextResponse.json({ ok: true });
+      // The account a Trial SDG Pass made for this guest: no password yet,
+      // and the phone Twilio just approved is the phone on that pass. Let
+      // them set their password on it instead of stranding them.
+      const claim = await claimTrialProvisionedAccount(admin, {
+        email: data.email,
+        phone: data.phone,
+        password,
+        fullName: data.full_name,
+      });
+      if (claim.claimed) {
+        userId = claim.userId;
+      } else {
+        // A race with another signup (or an existing auth-only identity) gets
+        // the same response as a newly created free account.
+        return NextResponse.json({ ok: true });
+      }
+    } else {
+      console.error('[free-account.verify.check.create-user]', createError);
+      return NextResponse.json({ error: 'Could not create account.' }, { status: 500 });
     }
-    console.error('[free-account.verify.check.create-user]', createError);
-    return NextResponse.json({ error: 'Could not create account.' }, { status: 500 });
   }
 
   if (!userId) {

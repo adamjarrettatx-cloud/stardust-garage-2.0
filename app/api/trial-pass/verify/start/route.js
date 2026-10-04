@@ -61,6 +61,8 @@ export async function POST(request) {
       phoneVerified: false,
       createdBy: null,
       refuseExisting: true,
+      createAccount: true,
+      sendInvite: false,
     });
     if (!issued.ok) {
       return NextResponse.json({ error: issued.error, field: issued.field }, { status: issued.status || 500 });

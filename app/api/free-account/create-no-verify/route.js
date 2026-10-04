@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/stub';
 import { validateTrialPassIntake } from '@/lib/trial-pass';
+import { claimTrialProvisionedAccount } from '@/lib/trial-pass-account';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -73,6 +74,20 @@ export async function POST(request) {
       console.error('[free-account.create-no-verify.create-user]', createError);
       return NextResponse.json({ error: 'Could not create account.' }, { status: 500 });
     }
+    // A Trial SDG Pass account (passwordless, provisioned by us, same phone
+    // as the pass): set the password on it and carry on as a new signup.
+    const claim = await claimTrialProvisionedAccount(admin, {
+      email: data.email,
+      phone: data.phone,
+      password,
+      fullName: data.full_name,
+    });
+    if (claim.claimed) {
+      userId = claim.userId;
+    }
+  }
+
+  if (createError && !userId) {
     // Match verify/check's "reconnect" branch: signal 409 so the client can
     // flip to the Sign In tab with the email prefilled. Trial-pass returns
     // 200 with the existing userId (its client silently continues), but here
