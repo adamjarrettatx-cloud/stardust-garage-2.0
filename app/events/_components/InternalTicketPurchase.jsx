@@ -433,6 +433,22 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
           opacity: disabled ? 0.55 : 1,
         }}
       >
+        {p.image_url && (
+          <img
+            src={p.image_url}
+            alt={p.name}
+            loading="lazy"
+            style={{
+              width: 72,
+              height: 72,
+              objectFit: 'cover',
+              borderRadius: 10,
+              border: `1px solid ${ROW_HAIRLINE}`,
+              flex: '0 0 auto',
+              display: 'block',
+            }}
+          />
+        )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 700, fontSize: 15, color: ROW_TEXT }}>{p.name}</span>
