@@ -7,6 +7,7 @@ import AuthenticatedRouteShell from './components/AuthenticatedRouteShell';
 import MailchimpAttribution from './components/MailchimpAttribution';
 import SoundProvider from './components/SoundProvider';
 import GlobalSoundToggle from './components/GlobalSoundToggle';
+import MemberLoginFooter from './components/MemberLoginFooter';
 
 export const metadata = {
   title: 'Stardust Garage',
@@ -57,6 +58,7 @@ export default function RootLayout({ children }) {
           >
             {children}
           </AuthenticatedRouteShell>
+          <MemberLoginFooter />
           <GlobalSoundToggle />
         </SoundProvider>
       </body>
