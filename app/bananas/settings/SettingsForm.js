@@ -7,10 +7,8 @@ import { createClient } from '@/lib/supabase/client';
 export default function SettingsForm({ initialSettings }) {
   const router = useRouter();
   const [logoUrl, setLogoUrl] = useState(initialSettings.logo_url || '');
-  const [splashLogoImage, setSplashLogoImage] = useState(initialSettings.splash_logo_image || '');
 
   const [uploadingLogo, setUploadingLogo] = useState(false);
-  const [uploadingSplashLogo, setUploadingSplashLogo] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -48,7 +46,6 @@ export default function SettingsForm({ initialSettings }) {
 
     const updates = [
       { key: 'logo_url', value: logoUrl.trim() },
-      { key: 'splash_logo_image', value: splashLogoImage.trim() },
     ];
 
     for (const upd of updates) {
@@ -172,20 +169,6 @@ export default function SettingsForm({ initialSettings }) {
         </p>
       </section>
 
-      {/* SPLASH PAGE */}
-      <section className="rounded-[14px] p-8 border" style={cardStyle}>
-        <h2 className="text-[18px] font-bold mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-          Splash Page
-        </h2>
-        <p className="text-[13px] mb-6" style={{ color: 'var(--auth-muted)' }}>
-          The floating logo image shown on the splash entry page (the first thing visitors see).
-        </p>
-
-        <div className="max-w-[280px]">
-          {renderImageUploader('SPLASH LOGO', splashLogoImage, setSplashLogoImage, uploadingSplashLogo, setUploadingSplashLogo, '1 / 1', 'Recommended: transparent PNG. Centered on the splash page above "enter the portal".')}
-        </div>
-      </section>
-
       {error && (
         <div
           className="text-[13px] p-3 rounded-[10px] border"
@@ -205,7 +188,7 @@ export default function SettingsForm({ initialSettings }) {
 
       <button
         type="submit"
-        disabled={saving || uploadingLogo || uploadingSplashLogo}
+        disabled={saving || uploadingLogo}
         className="w-full py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
         style={{ background: 'var(--auth-text-strong)', color: 'var(--auth-strong-surface-text)' }}
       >

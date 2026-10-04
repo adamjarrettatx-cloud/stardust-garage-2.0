@@ -11,7 +11,7 @@ import ScannerClient from './ScannerClient';
 export const dynamic = 'force-dynamic';
 
 export default async function ScanPage({ searchParams }) {
-  if (!isInternalTicketingEnabled()) redirect('/');
+  if (!isInternalTicketingEnabled()) redirect('/home');
   const params = await searchParams;
   const prefill = normalizeTicketCode(params?.t) || '';
 

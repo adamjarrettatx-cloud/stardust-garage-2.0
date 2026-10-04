@@ -5,11 +5,9 @@ import { useSound } from './SoundProvider';
 
 /**
  * Tiny always-on sound toggle rendered on every page EXCEPT:
- *   - `/`            → the splash page has its own larger SOUND ON/OFF control.
  *   - `/capacity/*`  → full-screen door stations; kept chrome-free like Navbar.
  *
- * Fixed to the bottom-left corner, matching the splash-page toggle's
- * position, so users always know where the mute is.
+ * Fixed to the bottom-left corner so users always know where the mute is.
  */
 export default function GlobalSoundToggle() {
   const pathname = usePathname();
@@ -19,7 +17,7 @@ export default function GlobalSoundToggle() {
   if (pathname === '/employee' || pathname?.startsWith('/employee/')) return null;
 
   if (!ready) return null;
-  if (pathname === '/' || pathname === '/clock' || pathname?.startsWith('/clock/') || (pathname && pathname.startsWith('/capacity'))) {
+  if (pathname === '/clock' || pathname?.startsWith('/clock/') || (pathname && pathname.startsWith('/capacity'))) {
     return null;
   }
 

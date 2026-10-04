@@ -7,6 +7,6 @@ export const dynamic = 'force-dynamic';
 
 export default async function NotificationSettingsPage() {
   const { user } = await getCurrentUser();
-  if (!user) redirect('/');
+  if (!user) redirect('/home');
   return <SettingsClient />;
 }

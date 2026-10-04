@@ -11,7 +11,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
  *   we persist that choice in localStorage and honor it on every subsequent
  *   page + visit until they toggle again.
  * - One <audio> element lives at the root of the app and keeps playing across
- *   client-side route changes, so navigating from the splash into the site
+ *   client-side route changes, so navigating between pages
  *   doesn't restart or interrupt the track once a returning visitor with
  *   sound turned on lands on the page.
  *

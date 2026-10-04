@@ -179,7 +179,7 @@ export default function InternshipPage() {
           personally and will be in touch soon.
         </p>
         <Link
-          href="/"
+          href="/home"
           className="inline-block px-8 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5"
           style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
         >
@@ -209,7 +209,7 @@ export default function InternshipPage() {
   return (
     <main className="max-w-[780px] mx-auto px-4 md:px-6 py-12 md:py-16">
       <Link
-        href="/"
+        href="/home"
         className="inline-block text-[12px] font-semibold tracking-[0.14em] mb-8 transition-opacity hover:opacity-70"
         style={{ color: '#8a8a8a' }}
       >

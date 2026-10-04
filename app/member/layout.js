@@ -31,7 +31,7 @@ export default async function MemberLayout({ children }) {
 
   // No profile = not an approved member. Send them to their account
   // profile (tickets, Trial SDG Pass, membership options) rather than the
-  // public splash page, which looked like sign-in had failed.
+  // public homepage, which looked like sign-in had failed.
   if (!profile) {
     redirect('/account/profile');
   }

@@ -34,7 +34,7 @@ export default function EventDetail({ event, preview = false }) {
         className="flex flex-wrap gap-2.5 text-[11px] font-semibold tracking-[0.14em] uppercase mb-6 md:mb-7"
         style={{ color: '#8a8a8a' }}
       >
-        <Link href="/" className="hover:text-white">HOME</Link>
+        <Link href="/home" className="hover:text-white">HOME</Link>
         <span style={{ color: 'rgba(255,255,255,0.3)' }}>/</span>
         <Link href="/events" className="hover:text-white">EVENTS</Link>
         <span style={{ color: 'rgba(255,255,255,0.3)' }}>/</span>

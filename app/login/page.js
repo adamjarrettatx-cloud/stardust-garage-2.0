@@ -81,7 +81,7 @@ export default function UnifiedLoginPage() {
       // Only approved members (member_profiles row) can enter /member/*.
       // Guest accounts — ticket buyers, Trial SDG Pass holders, partners —
       // go to their account profile instead of bouncing off the member
-      // gate onto the public splash page.
+      // gate onto the public site.
       const { data: memberProfile } = await supabase
         .from('member_profiles')
         .select('id')

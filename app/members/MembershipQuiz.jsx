@@ -160,7 +160,7 @@ export default function MembershipQuiz({
   return (
     <div className="membership-quiz">
       <header className="header">
-        <Link href="/" className="brand" aria-label="Stardust Garage home">
+        <Link href="/home" className="brand" aria-label="Stardust Garage home">
           <Wordmark />
         </Link>
         <div className="header-actions">
