@@ -53,13 +53,16 @@ import {
 // Only allow relative same-origin paths as `next` to prevent open-redirect
 // abuse (a crafted ?next=https://evil.example.com would otherwise send an
 // authenticated user off-site right after signing in).
+// Default (no or invalid next) is the signed-in account profile, never the
+// site root — the root used to be a splash page and made a successful
+// sign-in look like it had failed.
 function safeNextPath(rawNext) {
-  if (!rawNext) return '/';
+  if (!rawNext) return '/account/profile';
   try {
     const decoded = decodeURIComponent(rawNext);
     if (decoded.startsWith('/') && !decoded.startsWith('//')) return decoded;
   } catch { /* fall through */ }
-  return '/';
+  return '/account/profile';
 }
 
 function isSupabaseConfigured() {
@@ -133,12 +136,12 @@ function fragmentHandoffHtml(allowedReturnTo) {
   var fragment = window.location.hash ? window.location.hash.slice(1) : '';
 
   function safeNext(raw) {
-    if (!raw) return '/';
+    if (!raw) return '/account/profile';
     try {
       var d = decodeURIComponent(raw);
       if (d.charAt(0) === '/' && d.charAt(1) !== '/') return d;
     } catch (e) {}
-    return '/';
+    return '/account/profile';
   }
 
   // Mobile deep-link handoff: forward the fragment (which carries the
@@ -222,7 +225,7 @@ function errorHtml(message) {
     <div class="brand">STARDUST GARAGE</div>
     <h1>Sign-in didn't complete</h1>
     <p>${safe}</p>
-    <a class="btn" href="/">Back to Stardust Garage</a>
+    <a class="btn" href="/home">Back to Stardust Garage</a>
   </div>
 </main>
 </body>

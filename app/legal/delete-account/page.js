@@ -30,7 +30,7 @@ export default function DeleteAccountPage() {
     >
       <p style={{ marginBottom: '0.5rem' }}>
         <Link
-          href="/"
+          href="/home"
           style={{
             color: '#d9c48c',
             textDecoration: 'none',
@@ -69,7 +69,7 @@ export default function DeleteAccountPage() {
         You can permanently delete your Stardust Garage account and the
         personal data associated with it at any time. Deletion applies to
         both the SDG Mobile app and{' '}
-        <Link href="/" style={{ color: '#d9c48c' }}>
+        <Link href="/home" style={{ color: '#d9c48c' }}>
           sdgatx.com
         </Link>
         , since they share the same account.

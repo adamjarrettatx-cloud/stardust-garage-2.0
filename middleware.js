@@ -8,6 +8,18 @@ import { STATION_COOKIE, hashStationToken, sameOrigin, stationCanRequest, statio
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
 
+  // Supabase falls back to the project's Site URL (the site root) when an
+  // OAuth redirectTo isn't on its allowlist, so a Google sign-in can arrive
+  // at /?code=… (forwarded to /home?code=…) instead of /auth/callback. No
+  // page there exchanges the code, which left people signed out on the
+  // homepage. Hand any such code to the real callback.
+  if ((pathname === '/' || pathname === '/home') && request.nextUrl.searchParams.has('code')) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/auth/callback';
+    if (!url.searchParams.has('next')) url.searchParams.set('next', '/account/profile');
+    return NextResponse.redirect(url);
+  }
+
   // Stations use a separate opaque HTTP-only cookie, not a Supabase JWT.
   // Handle them BEFORE personal auth, device-token exemptions, and API exits.
   const stationToken = request.cookies.get(STATION_COOKIE)?.value;

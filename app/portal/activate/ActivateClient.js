@@ -198,7 +198,7 @@ export default function ActivateClient() {
 
         <div className="text-center mt-10">
           <Link
-            href="/"
+            href="/home"
             className="text-[12px] underline hover:text-white transition-colors"
             style={{ color: '#a0a0a0' }}
           >

@@ -25,6 +25,11 @@ const nextConfig = {
   },
   async redirects() {
     return [
+      // The splash entry page was removed. The root URL goes straight to the
+      // real homepage so sign-in, sign-out, and every "home" link land on
+      // /home instead of an intermediate "enter the portal" screen.
+      { source: '/', destination: '/home', permanent: false },
+
       // Cowork merged into Memberships — preserve any old links.
       { source: '/cowork', destination: '/members', permanent: true },
 

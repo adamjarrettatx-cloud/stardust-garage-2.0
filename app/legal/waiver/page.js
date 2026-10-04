@@ -98,7 +98,7 @@ export default function WaiverPage() {
     <main className="waiver-page">
       <header className="waiver-header">
         <div className="crumb">
-          <Link href="/">Stardust Garage</Link> <span>/</span>{' '}
+          <Link href="/home">Stardust Garage</Link> <span>/</span>{' '}
           <span>Legal</span> <span>/</span> <span>Waiver</span>
         </div>
         <h1>Liability Waiver</h1>

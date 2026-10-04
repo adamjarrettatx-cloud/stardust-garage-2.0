@@ -15,7 +15,7 @@ const WORDMARK_IMAGE_SRC = '/logos/wordmark-white.svg';
 //   sm  — navbar
 //   md  — admin login, footers, secondary headers
 //   lg  — page heroes
-//   xl  — homepage hero / splash
+//   xl  — homepage hero
 const SIZES = {
   sm: { mobile: 92, desktop: 92 },
   md: { mobile: 124, desktop: 150 },

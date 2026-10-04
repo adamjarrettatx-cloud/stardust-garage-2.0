@@ -9,7 +9,7 @@ export default function PortalSignOutButton() {
   const handleSignOut = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push('/');
+    router.push('/home');
     router.refresh();
   };
 

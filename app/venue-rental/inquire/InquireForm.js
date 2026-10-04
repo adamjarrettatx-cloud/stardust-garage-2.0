@@ -152,7 +152,7 @@ export default function InquireForm({ inquiryType, typeLabel }) {
           Thanks for reaching out about hosting your event at Stardust Garage. We&apos;ll review your inquiry and get back to you within 2-3 business days.
         </p>
         <Link
-          href="/"
+          href="/home"
           className="inline-block px-8 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5"
           style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
         >
