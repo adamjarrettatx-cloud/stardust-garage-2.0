@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { middleware } from '@/middleware';
-import { getCurrentUser, requireTeam, requireAdmin, requireFrontDeskOrTeam, requireSecurityOrTeam } from '@/lib/auth-helpers';
+import { getCurrentUser, requireTeam, requireAdmin, requireFrontDeskOrTeam, requireSecurityOrTeam, requireOrdersDesk } from '@/lib/auth-helpers';
 import { STATION_COOKIE } from '@/lib/station-policy';
 const state = vi.hoisted(() => ({ station: null, present: false, error: null, personalCalls: 0 }));
 vi.mock('@/lib/station-session', () => ({
@@ -51,6 +51,21 @@ describe('station middleware and server gates', () => {
     expect((await middleware(request('/bananas'))).headers.get('location')).toBe('https://www.sdgatx.com/capacity/security');
     expect((await middleware(request('/api/capacity/security', 'POST'))).status).toBe(200);
     expect((await middleware(request('/api/capacity/security', 'POST', 'https://attacker.example'))).status).toBe(403);
+    expect(state.personalCalls).toBe(0);
+  });
+  it('Orders & Refunds admits only the Front Desk station on its allowlisted routes', async () => {
+    expect((await requireOrdersDesk(request('/api/admin/tickets/refunds', 'POST'))).unauthorized).toBe(true);
+    state.station.role = 'front_desk';
+    const desk = await requireOrdersDesk(request('/api/admin/tickets/refunds', 'POST'));
+    expect(desk.unauthorized).toBe(false);
+    expect(desk.deskStation).toBe(true);
+    expect(desk.isAdmin).toBe(false);
+    expect((await requireOrdersDesk(request('/api/admin/tickets/orders', 'GET'))).unauthorized).toBe(true);
+    expect((await requireAdmin(request('/api/admin/tickets/refunds', 'POST'))).unauthorized).toBe(true);
+    expect((await middleware(request('/capacity/front-desk/orders'))).status).toBe(200);
+    expect((await middleware(request('/bananas/orders'))).headers.get('location')).toBe('https://www.sdgatx.com/capacity/front-desk');
+    expect((await middleware(request('/api/admin/tickets/refunds', 'POST'))).status).toBe(200);
+    expect((await middleware(request('/api/admin/tickets/refunds', 'POST', 'https://attacker.example'))).status).toBe(403);
     expect(state.personalCalls).toBe(0);
   });
   it('server gate independently rejects a disallowed request path', async () => {

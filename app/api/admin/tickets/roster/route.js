@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireAdmin } from '@/lib/auth-helpers';
+import { requireOrdersDesk } from '@/lib/auth-helpers';
 import { isInternalTicketingEnabled } from '@/lib/feature-flags';
 import { assembleRoster, readRosterRows } from '@/lib/tickets/event-roster';
 
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 const headers = { 'Cache-Control': 'private, no-store' };
 
 export async function GET(request) {
-  const gate = await requireAdmin(request);
+  const gate = await requireOrdersDesk(request);
   if (gate.unauthorized) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers });
   if (!isInternalTicketingEnabled()) return NextResponse.json({ error: 'Ticketing disabled' }, { status: 404, headers });
   const page = Number(new URL(request.url).searchParams.get('page') || 0);
