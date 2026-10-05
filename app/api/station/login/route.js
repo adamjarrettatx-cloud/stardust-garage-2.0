@@ -2,7 +2,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { STATION_COOKIE, STATION_SESSION_SECONDS, hashStationToken, normalizeStationUsername, sameOrigin, stationHome } from '@/lib/station-policy';
+import { STATION_COOKIE, stationCookieOptions, hashStationToken, normalizeStationUsername, sameOrigin, stationHome } from '@/lib/station-policy';
 
 export const runtime = 'nodejs';
 const reply = (body, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'private, no-store' } });
@@ -67,9 +67,7 @@ export async function POST(request) {
     for (const cookie of request.cookies?.getAll?.() || []) {
       if (cookie.name.startsWith('sb-')) response.cookies.set(cookie.name, '', { path: '/', maxAge: 0 });
     }
-    response.cookies.set(STATION_COOKIE, token, {
-      httpOnly: true, secure: true, sameSite: 'strict', path: '/', maxAge: STATION_SESSION_SECONDS,
-    });
+    response.cookies.set(STATION_COOKIE, token, stationCookieOptions(station.role));
     return response;
   } catch { return reply({ error: 'Sign-in is temporarily unavailable.' }, 503); }
 }

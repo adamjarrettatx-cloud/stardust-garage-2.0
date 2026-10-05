@@ -29,6 +29,14 @@ beforeEach(() => {
   state.gate = { unauthorized: false, user: { id: 'owner' } }; state.mfa = true; state.token = null;
 });
 describe('station authentication boundary', () => {
+  it('Front Desk gets a persistent cookie; other stations keep 12 hours', async () => {
+    station.role = 'front_desk';
+    try {
+      const res = await login(req('/api/station/login', { username: 'front-desk', password: 'secret' }));
+      expect(res.status).toBe(200);
+      expect(res.cookies.get(STATION_COOKIE).maxAge).toBe(400 * 24 * 60 * 60);
+    } finally { station.role = 'security'; }
+  });
   it('sets only an opaque secure HTTP-only host cookie, clears underlying personal sessions, never returns provider tokens', async () => {
     const res = await login(req('/api/station/login', { username: ' Security ', password: 'secret' }, { cookie: 'sb-test-auth-token=old-personal-session' }));
     expect(res.status).toBe(200);
@@ -38,7 +46,7 @@ describe('station authentication boundary', () => {
     const cookie = res.cookies.get(STATION_COOKIE);
     expect(cookie.value).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(cookie.httpOnly).toBe(true); expect(cookie.secure).toBe(true); expect(cookie.sameSite).toBe('strict');
-    expect(cookie.maxAge).toBe(43200);
+    expect(cookie.maxAge).toBe(43200); // Security keeps 12 hours; Front Desk is covered in station-gates.
     expect(res.cookies.get('sb-test-auth-token').maxAge).toBe(0);
     const open = state.db.rpc.mock.calls.find(([name]) => name === 'open_station_session');
     expect(open[1].p_hash).toMatch(/^[a-f0-9]{64}$/);

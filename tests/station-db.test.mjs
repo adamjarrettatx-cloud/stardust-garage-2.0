@@ -35,7 +35,7 @@ test('station SQL enforces owner control, scoped operations, revocation, expiry,
     for (const file of ['20260922000000_access_restrictions.sql', '20260922010000_restriction_lift_allowlist.sql',
       '20260929190000_security_incidents.sql', '20260929202000_security_incident_privileges.sql',
       '20260924170000_front_desk_arrivals.sql', '20260930190000_shared_station_accounts.sql',
-      '20260930220000_station_calendar_availability.sql']) {
+      '20260930220000_station_calendar_availability.sql', '20261005210000_front_desk_station_persistent_session.sql']) {
       await db.exec(await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
     }
     const create = async (n, role, username) => {
@@ -53,6 +53,13 @@ test('station SQL enforces owner control, scoped operations, revocation, expiry,
     assert.equal(await open(security, 'a'.repeat(64)), true);
     assert.equal(await open(desk, 'b'.repeat(64)), true);
     assert.equal((await resolve('a'.repeat(64)))[0].role, 'security');
+    // Front Desk stays signed in; Security keeps its 12-hour session.
+    const lifetimes = (await db.query(`select a.role, extract(epoch from s.expires_at - s.created_at) secs
+      from station_sessions s join station_accounts a on a.id=s.station_id`)).rows;
+    assert.ok(Number(lifetimes.find(r => r.role === 'security').secs) <= 12 * 3600 + 1);
+    assert.ok(Number(lifetimes.find(r => r.role === 'front_desk').secs) > 50 * 365 * 86400);
+    await assert.rejects(db.query(`insert into station_sessions(token_hash,station_id,epoch,expires_at)
+      values($1,$2,1,now()+interval '101 years')`, ['e'.repeat(64), desk.id]), /check constraint/);
     assert.equal((await resolve('c'.repeat(64))).length, 0);
     const calendar = await create(14, 'calendar_availability', 'bookers');
     const hash = 'f'.repeat(64);
