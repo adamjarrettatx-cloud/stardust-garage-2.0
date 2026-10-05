@@ -22,7 +22,7 @@ function Status({ value }) {
   return <span className={styles.status} data-status={value}>{statusLabel(value)}</span>;
 }
 
-export default function EventAttendeesClient({ event }) {
+export default function EventAttendeesClient({ event, deskMode = false }) {
   const [orders, setOrders] = useState([]);
   const [tab, setTab] = useState('purchasers');
   const [search, setSearch] = useState('');
@@ -169,7 +169,8 @@ export default function EventAttendeesClient({ event }) {
             <a className={styles.button} href="/bananas/orders">Search all orders</a>
             <a className={styles.button} href={`/bananas/events/${event.id}`}>Edit event</a>
             <a className={styles.button} href={`/admin/tickets/${event.id}`}>Ticket tools</a>
-          </> : <a className={styles.button} href="/bananas?tab=events">Events</a>}
+          </> : deskMode ? <a className={styles.button} href="/capacity/front-desk">Back to front desk</a>
+            : <a className={styles.button} href="/bananas?tab=events">Events</a>}
           <button className={styles.button} disabled={busy} onClick={() => setReload((n) => n + 1)}>
             {busy ? 'Loading…' : 'Refresh'}
           </button>
@@ -271,7 +272,7 @@ export default function EventAttendeesClient({ event }) {
                         onChange={() => toggleOrder(row.id)} /></td>
                       <td className={styles.personCell}><strong>{row.buyer_name || 'Name not provided'}</strong><span className={styles.secondary}>{row.buyer_email || 'No email'}</span>
                         <span className={styles.secondary}>Order {row.id.slice(0, 8)} · {when(row.purchased_at)}</span></td>
-                      {!event && <td><a href={`/bananas/events/${row.event_id}/attendees`}>{row.event_title || 'Event'}</a><span className={styles.secondary}>{row.event_date}</span></td>}
+                      {!event && <td>{deskMode ? row.event_title || 'Event' : <a href={`/bananas/events/${row.event_id}/attendees`}>{row.event_title || 'Event'}</a>}<span className={styles.secondary}>{row.event_date}</span></td>}
                       <td><Status value={row.status} /></td>
                       <td>{row.tickets.length}</td>
                       <td>{row.tickets.filter((t) => t.status === 'used').length} / {row.tickets.length}</td>

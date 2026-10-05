@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('@/lib/stripe/client', () => ({ stripe: { get: vi.fn(), post: vi.fn() } }));
-vi.mock('@/lib/auth-helpers', () => ({ requireAdmin: vi.fn() }));
+vi.mock('@/lib/auth-helpers', () => {
+  const requireAdmin = vi.fn();
+  // The refund route now admits admins and the Front Desk station through
+  // requireOrdersDesk; these tests drive both through the same mock.
+  return { requireAdmin, requireOrdersDesk: (...args) => requireAdmin(...args) };
+});
 vi.mock('@/lib/feature-flags', () => ({ isInternalTicketingEnabled: vi.fn() }));
 vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn() }));
 import { stripe } from '@/lib/stripe/client';

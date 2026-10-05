@@ -29,6 +29,25 @@ test('station allowlists enforce both exact path and method', () => {
   assert.equal(stationCanRequest('front_desk', '/capacity/security'), false);
   assert.equal(stationCanRequest('admin', '/capacity/security'), false);
 });
+test('front desk station reaches Orders & Refunds and nothing else in admin ticketing', () => {
+  const id = '3f2b6c1e-8a4d-4f7b-9c2e-1d5a6b7c8d9e';
+  assert.equal(stationCanRequest('front_desk', '/capacity/front-desk/orders'), true);
+  assert.equal(stationCanRequest('front_desk', '/capacity/front-desk/orders', 'POST'), false);
+  assert.equal(stationCanRequest('front_desk', '/api/admin/tickets/roster'), true);
+  assert.equal(stationCanRequest('front_desk', '/api/admin/tickets/refunds'), true);
+  assert.equal(stationCanRequest('front_desk', '/api/admin/tickets/refunds', 'POST'), true);
+  assert.equal(stationCanRequest('front_desk', `/api/admin/tickets/orders/${id}`, 'POST'), true);
+  for (const [path, method] of [[`/api/admin/tickets/orders/${id}`, 'GET'], [`/api/admin/tickets/orders/${id}/x`, 'POST'],
+    ['/api/admin/tickets/orders/not-a-uuid', 'POST'], ['/api/admin/tickets/orders', 'GET'], ['/bananas/orders', 'GET'],
+    ['/api/admin/tickets/roster', 'POST'], ['/api/admin/events/x/attendees', 'GET']]) {
+    assert.equal(stationCanRequest('front_desk', path, method), false, `${method} ${path}`);
+  }
+  for (const role of ['security', 'calendar_availability']) {
+    assert.equal(stationCanRequest(role, '/capacity/front-desk/orders'), false);
+    assert.equal(stationCanRequest(role, '/api/admin/tickets/refunds', 'POST'), false);
+    assert.equal(stationCanRequest(role, `/api/admin/tickets/orders/${id}`, 'POST'), false);
+  }
+});
 test('availability has only its workspace, sanitized read endpoint, session and logout', () => {
   for (const path of ['/staff/availability','/api/station/availability','/api/station/session']) {
     assert.equal(stationCanRequest('calendar_availability', path), true);

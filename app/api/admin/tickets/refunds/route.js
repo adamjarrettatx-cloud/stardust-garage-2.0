@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireAdmin } from '@/lib/auth-helpers';
+import { requireOrdersDesk } from '@/lib/auth-helpers';
 import { isInternalTicketingEnabled } from '@/lib/feature-flags';
 import { executeTicketRefund, checkTicketRefund, publicRefundResult } from '@/lib/tickets/refunds';
 
@@ -14,7 +14,7 @@ const database = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, proces
   { auth: { autoRefreshToken: false, persistSession: false } });
 
 export async function GET(request) {
-  const gate = await requireAdmin(request);
+  const gate = await requireOrdersDesk(request);
   if (gate.unauthorized) return json({ error: 'Unauthorized' }, 401);
   if (!isInternalTicketingEnabled()) return json({ error: 'Ticketing disabled' }, 404);
   const eventId = new URL(request.url).searchParams.get('event_id');
@@ -34,7 +34,7 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const gate = await requireAdmin(request);
+  const gate = await requireOrdersDesk(request);
   if (gate.unauthorized) return json({ error: 'Unauthorized' }, 401);
   if (!isInternalTicketingEnabled()) return json({ error: 'Ticketing disabled' }, 404);
   const origin = request.headers.get('origin');

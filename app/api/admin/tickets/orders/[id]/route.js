@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireAdmin } from '@/lib/auth-helpers';
+import { requireAdmin, requireOrdersDesk } from '@/lib/auth-helpers';
 import { isInternalTicketingEnabled } from '@/lib/feature-flags';
 import { sendTicketConfirmation } from '@/lib/email';
 import { fetchEventForEmail } from '@/lib/tickets/fetch-event-for-email';
@@ -56,13 +56,19 @@ export async function GET(_request, { params }) {
 
 export async function POST(request, { params }) {
   if (!isInternalTicketingEnabled()) return NextResponse.json({ error: 'Ticketing disabled' }, { status: 404 });
-  const gate = await requireAdmin();
+  const gate = await requireOrdersDesk(request);
   if (gate.unauthorized) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await params;
 
   let body;
   try { body = await request.json(); } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
   const { action } = body || {};
+  // The Front Desk station may only resend tickets to the email on the order.
+  // Voids, comp notes and alternate recipients remain admin-only.
+  if (gate.deskStation && (action !== 'resend' || body.to_email != null)) {
+    return NextResponse.json({ error: 'This station cannot perform that action.' }, { status: 403 });
+  }
+  const actorRole = gate.deskStation ? 'front_desk_station' : 'admin';
 
   const supabaseAdmin = admin();
   const { data: order } = await supabaseAdmin.from('orders').select('*').eq('id', id).maybeSingle();
@@ -84,7 +90,7 @@ export async function POST(request, { params }) {
     await supabaseAdmin.from('tickets').update({ status: 'void' }).in('id', ticketIds).eq('order_id', order.id);
     await supabaseAdmin.from('ticket_audit_log').insert({
       event_id: order.event_id, order_id: order.id,
-      actor_user_id: gate.user.id, actor_role: 'admin',
+      actor_user_id: gate.user.id, actor_role: actorRole,
       action: 'ticket.void',
       detail: { ticket_ids: ticketIds, note: body.note || null },
     });
@@ -153,7 +159,7 @@ export async function POST(request, { params }) {
 
     await supabaseAdmin.from('ticket_audit_log').insert({
       event_id: order.event_id, order_id: order.id,
-      actor_user_id: gate.user.id, actor_role: 'admin',
+      actor_user_id: gate.user.id, actor_role: actorRole,
       action: 'order.resend',
       detail: { to: toEmail, provider_id: providerId, tickets: tickets.data.length },
     });
@@ -163,7 +169,7 @@ export async function POST(request, { params }) {
   if (action === 'comp_note') {
     await supabaseAdmin.from('ticket_audit_log').insert({
       event_id: order.event_id, order_id: order.id,
-      actor_user_id: gate.user.id, actor_role: 'admin',
+      actor_user_id: gate.user.id, actor_role: actorRole,
       action: 'order.note',
       detail: { note: body.note || '' },
     });
