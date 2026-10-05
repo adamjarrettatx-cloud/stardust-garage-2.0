@@ -21,6 +21,9 @@ test('station allowlists enforce both exact path and method', () => {
     assert.equal(stationCanRequest(role, '/api/door-session/active', 'DELETE'), false);
   }
   assert.equal(stationCanRequest('security', '/api/tickets/scan', 'POST'), false);
+  assert.equal(stationCanRequest('front_desk', '/api/door-session/online-sales'), true);
+  assert.equal(stationCanRequest('front_desk', '/api/door-session/online-sales', 'POST'), false);
+  assert.equal(stationCanRequest('security', '/api/door-session/online-sales'), false);
   assert.equal(stationCanRequest('security', '/capacity/front-desk'), false);
   assert.equal(stationCanRequest('front_desk', '/api/capacity/security', 'POST'), false);
   assert.equal(stationCanRequest('front_desk', '/capacity/security'), false);
