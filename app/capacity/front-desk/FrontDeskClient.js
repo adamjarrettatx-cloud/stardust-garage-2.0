@@ -150,6 +150,37 @@ export default function FrontDeskClient({ staffLabel, staffEmail, stationMode = 
   const activeEvent = activeSession?.event || null;
   const doorSessionId = activeSession?.id || null;
 
+  // ---- Online ticket sales for the running event ---------------------------
+  //
+  // Shown beside "Event running" so the door knows how many pre-sold guests
+  // to expect. Polls every 30s while a session is open (sales keep coming in
+  // during the night) and pauses while the tab is hidden. The server resolves
+  // the event from the open session, never from the client.
+  const [onlineSales, setOnlineSales] = useState(null);
+  useEffect(() => {
+    if (!doorSessionId) { setOnlineSales(null); return undefined; }
+    let cancelled = false;
+    const load = async () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      try {
+        const res = await fetch('/api/door-session/online-sales', { cache: 'no-store' });
+        const json = await res.json().catch(() => ({}));
+        if (!cancelled && res.ok) setOnlineSales(json.sales || null);
+      } catch {
+        // Keep the last good number on a blip.
+      }
+    };
+    load();
+    const timer = setInterval(load, 30000);
+    const onVisible = () => { if (!document.hidden) load(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [doorSessionId]);
+
   // ---- Who came to the door ------------------------------------------------
   //
   // Admits AND denials. The page used to carry a second last-five-admits strip
@@ -462,6 +493,7 @@ export default function FrontDeskClient({ staffLabel, staffEmail, stationMode = 
           <TopbarEventChip
             activeSession={activeSession}
             activeEvent={activeEvent}
+            onlineSales={onlineSales && onlineSales.event_id === activeSession?.event_id ? onlineSales : null}
             busy={sessionBusy}
             error={sessionError}
             onStart={() => {
@@ -1035,7 +1067,7 @@ function formatTime(ts) {
 // laptop. Copy is deliberately blunt: nobody at the door in the middle of
 // a rush should have to interpret a subtle icon to know if ticket scanning
 // is armed. Same Start / End actions as the retired inline DoorSessionBar.
-function TopbarEventChip({ activeSession, activeEvent, busy, error, onStart, onEnd }) {
+function TopbarEventChip({ activeSession, activeEvent, onlineSales, busy, error, onStart, onEnd }) {
   if (activeSession) {
     const eventTitle = activeEvent?.title || 'Event live';
     const opened = activeSession.opened_at
@@ -1066,6 +1098,7 @@ function TopbarEventChip({ activeSession, activeEvent, busy, error, onStart, onE
             <div className="text-[11px] leading-tight" style={{ color: '#ff8a8a' }}>{error}</div>
           )}
         </div>
+        <OnlineSalesReadout sales={onlineSales} />
         <button
           type="button"
           onClick={onEnd}
@@ -1104,6 +1137,46 @@ function TopbarEventChip({ activeSession, activeEvent, busy, error, onStart, onE
       >
         Start Event
       </button>
+    </div>
+  );
+}
+
+// Online tickets sold for the running event, inside the Event running chip.
+// Big number = paid online tickets still good (refunds/voids excluded).
+// Second line = how many of those have scanned in vs still to arrive, plus
+// any comps, so the door can anticipate the walk-up of pre-sold guests.
+function OnlineSalesReadout({ sales }) {
+  const sold = sales ? sales.sold : null;
+  const scanned = sales?.sold_scanned;
+  const detail = [];
+  if (sales && scanned != null) {
+    detail.push(`${scanned} scanned`);
+    detail.push(`${Math.max(0, sold - scanned)} not scanned`);
+  }
+  if (sales?.comps > 0) detail.push(`+${sales.comps} comp`);
+  return (
+    <div
+      className="shrink-0 pl-3 border-l"
+      style={{ borderColor: 'rgba(124,252,155,0.25)' }}
+      title={sales?.source === 'tickettailor' ? 'From TicketTailor (last synced snapshot)' : 'Paid online tickets, refunds excluded'}
+    >
+      <div className="text-[9px] font-bold tracking-[0.16em] uppercase leading-none" style={{ color: '#8a8a8a' }}>
+        Online tickets
+      </div>
+      <div className="flex items-baseline gap-2 leading-tight">
+        <span
+          className="text-[18px] font-extrabold tabular-nums"
+          style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#f5f5f5' }}
+          aria-live="polite"
+        >
+          {sold == null ? '\u2014' : sold}
+        </span>
+        {detail.length > 0 && (
+          <span className="text-[11px] font-semibold tabular-nums whitespace-nowrap" style={{ color: '#cfcfcf' }}>
+            {detail.join(' \u00b7 ')}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
