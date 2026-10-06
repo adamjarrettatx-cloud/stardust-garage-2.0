@@ -26,7 +26,7 @@ export default async function HomePage() {
         <section className="flex flex-col items-center px-6 pt-8 md:pt-16 pb-12 md:pb-16">
           <Wordmark size="xl" align="center" />
           <p className="mt-6 text-[13px] md:text-[14px] text-center max-w-[460px] leading-[1.6]" style={{ color: 'rgba(255,255,255,0.55)' }}>
-            Underground music venue, cowork space, and creative hub in the St. Elmo Arts District.
+            A multi-purpose music, arts, and coworking space in the St. Elmo Arts District.
           </p>
         </section>
 
