@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { safeMobileReturnPath } from '@/lib/mobile-return-path';
 import { openHandoff } from '@/lib/mobile-handoff-token.mjs';
+import { META_APP_OPTOUT_COOKIE, META_APP_OPTOUT_MAX_AGE } from '@/lib/meta/policy';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -78,6 +79,16 @@ export async function GET(request) {
     // Discard the cookie-bearing response if identity validation failed.
     return fallback();
   }
+
+  // Visitors who arrive from the mobile app are never measured by Meta on the
+  // web (browser pixel or server events). See lib/meta/policy.js.
+  response.cookies.set(META_APP_OPTOUT_COOKIE, '1', {
+    path: '/',
+    maxAge: META_APP_OPTOUT_MAX_AGE,
+    sameSite: 'lax',
+    secure: true,
+    httpOnly: false, // the browser pixel reads it
+  });
 
   // Session cookies are on `response`; the 302 to returnAbsolute carries
   // them and Safari stores them. Subsequent requests on sdgatx.com will

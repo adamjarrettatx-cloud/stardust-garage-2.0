@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import EventDetail from '../_components/EventDetail';
+import MetaViewContent from '../_components/MetaViewContent';
 import { isUnlistedEvent } from '@/lib/event-visibility';
 import { isEventStillListable } from '@/lib/events/is-event-listable';
 
@@ -84,6 +85,7 @@ export default async function EventPage({ params, searchParams }) {
         </div>
       )}
 
+      {!unlisted && <MetaViewContent eventId={event.id} title={event.title} />}
       <EventDetail event={event} />
     </>
   );

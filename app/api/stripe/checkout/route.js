@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getRequestUser } from '@/lib/auth-helpers';
 import { resolveSiteUrl } from '@/lib/site-url';
 import { STRIPE_PRICES } from '@/lib/stripe-prices';
+import { metaCheckoutMetadata } from '@/lib/meta/attribution';
 
 // POST /api/stripe/checkout
 // Body: { plan: 'cowork' | 'iykyk', period: 'monthly' | 'quarterly' | 'annual' }
@@ -102,27 +103,34 @@ export async function POST(request) {
     // Create Stripe Checkout session for the subscription
     const origin = resolveSiteUrl(request);
 
+    const sessionParams = new URLSearchParams({
+      mode: 'subscription',
+      customer: customerId,
+      'line_items[0][price]': priceConfig.id,
+      'line_items[0][quantity]': '1',
+      success_url: `${origin}/member?activated=true`,
+      cancel_url: `${origin}/member/activate?cancelled=true`,
+      'subscription_data[metadata][plan]': plan,
+      'subscription_data[metadata][period]': period,
+      'subscription_data[metadata][supabase_user_id]': user.id,
+      'subscription_data[metadata][member_profile_id]': profile.id,
+      'metadata[plan]': plan,
+      'metadata[period]': period,
+      'metadata[supabase_user_id]': user.id,
+    });
+    // Meta ad-measurement signals (empty unless Meta is configured and the
+    // buyer is not opted out). Session metadata only.
+    for (const [k, v] of Object.entries(metaCheckoutMetadata(request))) {
+      sessionParams.set(`metadata[${k}]`, v);
+    }
+
     const sessionRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${stripeKey}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: new URLSearchParams({
-        mode: 'subscription',
-        customer: customerId,
-        'line_items[0][price]': priceConfig.id,
-        'line_items[0][quantity]': '1',
-        success_url: `${origin}/member?activated=true`,
-        cancel_url: `${origin}/member/activate?cancelled=true`,
-        'subscription_data[metadata][plan]': plan,
-        'subscription_data[metadata][period]': period,
-        'subscription_data[metadata][supabase_user_id]': user.id,
-        'subscription_data[metadata][member_profile_id]': profile.id,
-        'metadata[plan]': plan,
-        'metadata[period]': period,
-        'metadata[supabase_user_id]': user.id,
-      }),
+      body: sessionParams,
     });
 
     if (!sessionRes.ok) {
