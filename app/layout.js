@@ -5,6 +5,7 @@ import NavbarVisibility from './components/NavbarVisibility';
 import CosmosBackground from './components/CosmosBackground';
 import AuthenticatedRouteShell from './components/AuthenticatedRouteShell';
 import MailchimpAttribution from './components/MailchimpAttribution';
+import MetaPixel from './components/MetaPixel';
 import SoundProvider from './components/SoundProvider';
 import GlobalSoundToggle from './components/GlobalSoundToggle';
 import MemberLoginFooter from './components/MemberLoginFooter';
@@ -46,6 +47,9 @@ export default function RootLayout({ children }) {
       <body>
         <Suspense fallback={null}>
           <MailchimpAttribution />
+        </Suspense>
+        <Suspense fallback={null}>
+          <MetaPixel />
         </Suspense>
         <CosmosBackground />
         <SoundProvider>

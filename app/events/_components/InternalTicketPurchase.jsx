@@ -21,6 +21,7 @@ import { useSearchParams } from 'next/navigation';
 import { WaiverGate } from '@/components/waiver/WaiverGate';
 import { entitlementDiscountCents, pickDiscountCents } from '@/lib/tickets/entitlement';
 import { isEntitlementDiscountable } from '@/lib/tickets/pricing';
+import { trackMetaEvent } from '@/lib/meta/pixel-client';
 
 function formatMoney(cents, currency = 'usd') {
   if (typeof cents !== 'number' || Number.isNaN(cents)) return '';
@@ -290,6 +291,12 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
       if (!res.ok || !data.checkout_url) {
         throw new Error(data.error || 'Checkout failed');
       }
+      const ticketCount = selections.reduce((n, sel) => n + sel.quantity, 0);
+      trackMetaEvent('InitiateCheckout', {
+        content_ids: [String(eventId)],
+        content_type: 'product',
+        num_items: ticketCount,
+      });
       window.location.href = data.checkout_url;
     } catch (err) {
       setSubmitError(String(err?.message || err));

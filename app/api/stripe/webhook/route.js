@@ -11,6 +11,7 @@ import { membershipPaymentFailedPush, membershipPushForTransition, sendPush } fr
 import { sendPushToUser } from '@/lib/notifications/send';
 import { isTicketFlowEvent, handleTicketFlowEvent } from '@/lib/tickets/webhook-handlers';
 import { handleTicketRefundEvent } from '@/lib/tickets/refunds';
+import { sendMembershipSubscribeToMeta } from '@/lib/meta/purchase-events';
 
 // POST /api/stripe/webhook
 //
@@ -316,6 +317,8 @@ export async function POST(request) {
     let activatedMemberId = null;
     // Membership pushes are queued here and sent after we respond to Stripe.
     const pushes = [];
+    // Initial membership checkout to report to Meta after we ACK Stripe.
+    let metaSubscribeSession = null;
 
     // Handle the events we care about
     switch (event.type) {
@@ -337,6 +340,7 @@ export async function POST(request) {
             const result = await syncSubscription(subscription);
             if (result?.isActive) activatedMemberId = result.profileId;
             if (result?.push) pushes.push({ ...result.push, userId: result.userId });
+            if (result?.isActive) metaSubscribeSession = session;
           }
         }
         break;
@@ -399,6 +403,12 @@ export async function POST(request) {
       generateCodesForNewMember(activatedMemberId, supabaseAdmin).catch((err) =>
         console.error('Auto discount code error:', err)
       );
+    }
+    if (metaSubscribeSession) {
+      // Must run inside after(): Vercel freezes unawaited work once we respond.
+      const s = metaSubscribeSession;
+      after(() => sendMembershipSubscribeToMeta({ session: s }).catch((err) =>
+        console.error('[webhook] meta subscribe failed:', err)));
     }
     await supabaseAdmin
       .from('stripe_event_ingest')
