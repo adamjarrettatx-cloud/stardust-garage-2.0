@@ -37,6 +37,12 @@ When you sign a contract, agreement, or liability waiver, we collect the signatu
 
 We collect information about the device and connection you use with the Services, including IP address, user-agent, device platform, app version, push-notification token, timestamps, and feature or service usage. SDG Mobile uses Expo to deliver notifications through Apple Push Notification service (APNs) and/or Firebase Cloud Messaging (FCM), depending on your device. You can control push notifications through your device settings.
 
+### Advertising measurement on our website
+
+On public pages of sdgatx.com, we use the Meta Pixel and Meta Conversions API, provided by Meta Platforms, Inc., to measure and improve our advertising on Facebook and Instagram. When you view a public page, view an event, or start checkout, Meta may receive the page address, the type of action, cookie identifiers (such as \_fbp and \_fbc), your IP address, and browser information. When an online ticket or membership purchase is completed, we send Meta the purchase value, currency, and event or plan reference, together with a hashed (scrambled) version of your email address and account identifier, so Meta can tell us whether an ad led to the purchase. We do not send Meta payment-card details, birthdate, photos, waiver records, or admission and check-in history.
+
+We do not use Meta advertising tools on account, member, staff, ticket-wallet, or login pages, on pages reached through a private or unlisted link, or for activity that begins in SDG Mobile. Meta uses this information under its own terms and privacy policy, available at facebook.com/privacy/policy.
+
 ### Information from communications and forms
 
 We collect information you send in applications, inquiries, support requests, venue-rental forms, emails, or other communications with us. This may include contact information and the contents of your message.
@@ -54,7 +60,7 @@ For App Store privacy disclosures, the data categories below may be collected an
 - **Device and technical data:** IP address, user-agent, device platform, app version, and push-notification token.
 - **Other information relevant to eligibility and safety:** birthdate and waiver-related records.
 
-We use these categories for app functionality, account management, payments, security and fraud prevention, venue access, legal compliance, and, where configured, de-identified product analytics. We do not use this information to track you across apps or websites owned by other companies for targeted advertising.
+We use these categories for app functionality, account management, payments, security and fraud prevention, venue access, legal compliance, and, where configured, de-identified product analytics. SDG Mobile does not track you across apps or websites owned by other companies for targeted advertising, and activity that begins in SDG Mobile is excluded from the website advertising measurement described in Section 2.
 
 ## 4. How we use personal information
 
@@ -69,14 +75,16 @@ We use personal information to:
 - send transactional messages, security notices, event updates, membership information, and, if you opt in, marketing communications;
 - deliver requested push notifications;
 - understand feature use and improve the Services through aggregated or de-identified analytics where practicable;
+- measure and improve our advertising on Meta platforms, as described in Section 2;
 - comply with legal obligations, enforce our agreements, protect the safety of guests and staff, and establish, exercise, or defend legal claims; and
 - carry out another purpose disclosed to you when we collect the information or with your consent where required.
 
 ## 5. How we disclose personal information
 
-We do not sell personal information, and we do not share it for cross-context behavioral advertising. We disclose personal information only as reasonably necessary for the purposes described in this Policy, including:
+We do not sell personal information for money. On our website, we use Meta advertising tools as described in Section 2. Some privacy laws may treat this as sharing personal information for targeted advertising, also called cross-context behavioral advertising. You can opt out as described in Section 7. We disclose personal information only as reasonably necessary for the purposes described in this Policy, including:
 
 - **Service providers and infrastructure.** Supabase provides authentication, database, and storage services; Vercel provides hosting and related infrastructure; Stripe processes payments; Expo helps deliver push notifications through APNs/FCM; Mailchimp may deliver marketing email when you opt in; and PostHog may provide de-identified or pseudonymous product analytics if configured.
+- **Advertising measurement.** Meta Platforms, Inc. receives website activity and hashed purchase information as described in Section 2.
 - **Legacy ticketing.** TicketTailor may process ticket information for the limited legacy events that remain on that system while we complete the transition to our ticketing platform.
 - **Professional advisors and business operations.** We may disclose relevant information to lawyers, auditors, insurers, or professional advisors when reasonably necessary. QuickBooks is used for internal business accounting; we do not send customer personal information to QuickBooks as part of normal product operation.
 - **Safety, legal, and rights protection.** We may disclose information to law enforcement, regulators, insurers, emergency responders, courts, or other parties where we reasonably believe disclosure is required by law or needed to protect the rights, safety, property, or operations of Stardust Garage, our guests, or others.
@@ -103,6 +111,8 @@ Depending on where you live and applicable law, you may have the right to reques
 **In-app account deletion.** You can request deletion of your SDG Mobile account through the in-app account-deletion control. The same request can be made through the web account settings when available or by emailing hello@sdgatx.com. Account deletion removes account access and deletes or anonymizes personal information as described above, subject to records we must retain for legal, accounting, safety, and fraud-prevention purposes. Deleting your account does not cancel an active membership automatically; contact us to cancel any recurring membership before requesting deletion.
 
 **Marketing email.** You can opt out of marketing email using the unsubscribe link in the message or by contacting us. We may still send non-marketing messages about your account, tickets, transactions, membership, security, or legal notices.
+
+**Advertising measurement.** We honor Global Privacy Control (GPC) signals sent by your browser; when your browser sends one, we do not use Meta advertising tools for your visit. You can manage how Meta uses information for ads in your Facebook or Instagram ad settings. Blocking or clearing cookies may also limit this measurement.
 
 **Push notifications.** You can disable push notifications in your device settings. Turning off push notifications does not stop email or other transactional communications that are necessary to provide the Services.
 
@@ -168,7 +178,7 @@ export default function PrivacyPage() {
         <h1>Privacy Policy</h1>
         <p className="legal-lede">A clear explanation of the information Stardust Garage handles and the choices available to you.</p>
         <div className="legal-meta" aria-label="Document information">
-          <span><strong>Effective:</strong> 2026-09-30</span>
+          <span><strong>Effective:</strong> 2026-10-07</span>
           <span><strong>Operator:</strong> Simple Boring Office LLC d/b/a Stardust Garage</span>
           <span><strong>Contact:</strong> <a href="mailto:hello@sdgatx.com">hello@sdgatx.com</a></span>
         </div>
