@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { adminFetch } from '@/lib/admin-fetch';
 import EventContactFields from './EventContactFields';
+import RichTextEditor from './RichTextEditor';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import { CONTACT_REQUIRED_MESSAGE } from '@/lib/contact-helpers';
 import { uploadEventImage } from '@/lib/event-image-upload';
@@ -59,6 +60,7 @@ export default function TtEventCreator() {
   const [eventTime, setEventTime] = useState('');
   const [eventEndTime, setEventEndTime] = useState('');
   const [description, setDescription] = useState('');
+  const [descriptionHtml, setDescriptionHtml] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [category, setCategory] = useState('day_party');
   // Defaults to "has an outside partner" so the team opts into SDG-only rather
@@ -119,6 +121,7 @@ export default function TtEventCreator() {
       event_time: eventTime.trim() || null,
       event_end_time: eventEndTime.trim() || null,
       description: description.trim() || null,
+      description_html: description.trim() && descriptionHtml ? descriptionHtml : null,
       image_url: imageUrl.trim() || null,
       category,
       is_sdg_only: isSdgOnly,
@@ -215,7 +218,14 @@ export default function TtEventCreator() {
 
         <div>
           <label className={labelClass} style={labelStyle}>DESCRIPTION</label>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={6} className={inputClass + ' resize-y'} style={inputStyle} />
+          <RichTextEditor
+            onChange={({ html, text }) => {
+              setDescriptionHtml(html);
+              setDescription(text);
+            }}
+            minHeight={150}
+            style={inputStyle}
+          />
         </div>
 
         <div>

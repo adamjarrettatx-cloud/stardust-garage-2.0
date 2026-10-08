@@ -9,6 +9,7 @@ import {
   setEventSeriesStatus,
   getEventSeries,
 } from '@/lib/tickettailor';
+import { sanitizeEventDescriptionHtml } from '@/lib/rich-text';
 import {
   validateCreatePayload,
   buildEventSeriesBody,
@@ -130,6 +131,9 @@ export async function POST(request) {
       event_time: v.eventTime,
       event_end_time: v.eventEndTime,
       description: v.description,
+      // Formatted copy for the website only; stored pre-sanitized and
+      // re-sanitized on render. Dropped when there is no plain description.
+      description_html: v.description ? (sanitizeEventDescriptionHtml(body.description_html) || null) : null,
       image_url: v.imageUrl,
       category: v.category,
       member_discount_percent: v.memberDiscountPercent,

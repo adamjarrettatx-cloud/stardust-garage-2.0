@@ -5,6 +5,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import TtLinkPanel from './TtLinkPanel';
+import RichTextEditor from './RichTextEditor';
+import { plainTextToEditorHtml } from '@/lib/rich-text-plain';
 import EventContactFields from './EventContactFields';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import { CONTACT_REQUIRED_MESSAGE, ensureContactTaggedEventOrganizer } from '@/lib/contact-helpers';
@@ -67,6 +69,12 @@ export default function EventForm({
   const [eventDate, setEventDate] = useState(event?.event_date || '');
   const [eventTime, setEventTime] = useState(event?.event_time || '');
   const [description, setDescription] = useState(event?.description || '');
+  // Formatted copy for the website; `description` stays plain text for the
+  // app, team schedule and TicketTailor. Legacy plain descriptions seed the
+  // editor line-for-line.
+  const [descriptionHtml, setDescriptionHtml] = useState(
+    event?.description_html || plainTextToEditorHtml(event?.description || '')
+  );
   const [imageUrl, setImageUrl] = useState(event?.image_url || '');
   const [slug, setSlug] = useState(event?.slug || '');
   // Event type: 'public' (Ticketed — sells tickets through internal checkout)
@@ -202,6 +210,7 @@ export default function EventForm({
       event_date: eventDate,
       event_time: eventTime.trim() || null,
       description: description.trim() || null,
+      description_html: description.trim() && descriptionHtml ? descriptionHtml : null,
       image_url: imageUrl.trim() || null,
       slug: slug.trim() || slugify(title),
       ticket_url: eventType === 'public' ? (ticketUrl.trim() || null) : null,
@@ -646,12 +655,13 @@ export default function EventForm({
         {/* DESCRIPTION */}
         <section className="rounded-[14px] border p-5" style={cardStyle}>
           <h3 className={sectionTitle} style={labelStyle}>Description</h3>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={4}
+          <RichTextEditor
+            initialHtml={descriptionHtml}
+            onChange={({ html, text }) => {
+              setDescriptionHtml(html);
+              setDescription(text);
+            }}
             placeholder="What is this event? Who's it for?"
-            className={inputClass + ' resize-y'}
             style={inputStyle}
           />
         </section>
