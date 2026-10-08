@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { isExistingUserError } from '@/lib/auth-errors';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/stub';
 import { validateTrialPassIntake } from '@/lib/trial-pass';
@@ -135,8 +136,7 @@ export async function POST(request) {
 
   let userId = created?.user?.id || null;
   if (createError) {
-    const existingUser = createError.code === 'user_already_exists'
-      || createError.message?.toLowerCase().includes('already registered');
+    const existingUser = isExistingUserError(createError);
     if (existingUser) {
       // The account a Trial SDG Pass made for this guest: no password yet,
       // and the phone Twilio just approved is the phone on that pass. Let
