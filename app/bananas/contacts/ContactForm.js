@@ -208,6 +208,9 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
       updated_by: user?.id || null,
     };
     if (!isEditing) payload.created_by = user?.id || null;
+    // Saved organizations manage people as linked Person profiles (see
+    // OrganizationPeople); never resend stale free-text entries for them.
+    if (isEditing && profileKind === 'organization' && contactProfileKind(contact) === 'organization') delete payload.additional_contacts;
 
     const { data: saved, error: saveError } = isEditing
       ? await supabase.from('contacts').update(payload).eq('id', contact.id).select().single()

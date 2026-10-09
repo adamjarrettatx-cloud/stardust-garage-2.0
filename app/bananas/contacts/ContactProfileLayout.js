@@ -6,6 +6,8 @@ import { CONTACT_TYPE_OPTIONS, CONTACT_STATUS_OPTIONS, isContactTypeSelected, to
 import { ENTITY_TYPE_OPTIONS } from '@/lib/event-organizer';
 import styles from './profile.module.css';
 import OrganizationMainContact from './OrganizationMainContact';
+import OrganizationPeople from './OrganizationPeople';
+import PersonOrganizations from './PersonOrganizations';
 import { contactProfileKind } from '@/lib/contact-organizations';
 
 function ProfilePhoto({ url, name }) {
@@ -216,6 +218,10 @@ export default function ContactProfileLayout({
       {activeSection === 'overview' && !profile.createMode && contactProfileKind(contact) === 'organization' &&
         <OrganizationMainContact contactId={contact.id} legacyName={contact.primary_contact_name}
           isAdmin={profile.isAdmin} disabled={dirty || saving || contact.status === 'archived'} />}
+      {activeSection === 'overview' && !profile.createMode && contactProfileKind(contact) === 'organization' &&
+        <OrganizationPeople contactId={contact.id} disabled={dirty || saving || contact.status === 'archived'} />}
+      {activeSection === 'overview' && !profile.createMode && contactProfileKind(contact) === 'person' &&
+        <PersonOrganizations contactId={contact.id} />}
       {activeSection === 'overview' && organization && profile.createMode &&
         <p className={styles.hint}>Create the organization first, then select an existing person or create its main point of contact here.</p>}
       <form id={formId} ref={formRef} onSubmit={submit} noValidate>
@@ -235,7 +241,8 @@ export default function ContactProfileLayout({
                       {input('instagram_handle', 'Instagram', { placeholder: '@username' })}
                       {input('website', 'Website', { placeholder: 'https://', full: true })}
                     </div>
-                    <div className={styles.additionalHeading}><div><h3>Additional contacts</h3><p>Other people associated with this contact.</p></div>
+                    {!(organization && !profile.createMode && contactProfileKind(contact) === 'organization') && <>
+                    <div className={styles.additionalHeading}><div><h3>Additional contacts</h3><p>{organization ? 'Each person is saved under Persons and linked to this organization when you create it.' : 'Other people associated with this contact.'}</p></div>
                       <button type="button" className={styles.textButton} onClick={() => setField('additional_contacts', [...values.additional_contacts, { name: '', role: '', email: '', phone: '' }])}>+ Add person</button>
                     </div>
                     {values.additional_contacts.map((person, index) => <div key={index} className={styles.person}>
@@ -246,6 +253,7 @@ export default function ContactProfileLayout({
                           value={person[key] || ''} onChange={(e) => setField('additional_contacts', values.additional_contacts.map((p, i) => i === index ? { ...p, [key]: e.target.value } : p))} />
                       </div>)}</div>
                     </div>)}
+                    </>}
                   </div>
                 </section>
                 <section className={styles.card}>
