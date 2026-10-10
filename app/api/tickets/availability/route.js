@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { isInternalTicketingEnabled } from '@/lib/feature-flags';
+import { INSIDER_PRIVATE_SPACE_DISCOUNT_PERCENT, insiderPrivateSpacePriceCents } from '@/lib/membership-tiers';
 import { requireAdmin } from '@/lib/auth-helpers';
 import { UNLISTED_VISIBILITY } from '@/lib/event-visibility';
 import {
@@ -152,7 +153,15 @@ export async function GET(request) {
       name: p.name,
       description: p.description,
       image_url: p.image_url || null,
-      member_only: p.member_only,
+      // Private spaces are always public; Insider members get a fixed 20% off,
+      // advertised to every buyer alongside the sticker price.
+      member_only: p.kind === 'private_space' ? false : p.member_only,
+      insider_price_cents:
+        p.kind === 'private_space' && activeTier
+          ? insiderPrivateSpacePriceCents(activeTier.price_cents)
+          : null,
+      insider_discount_percent:
+        p.kind === 'private_space' ? INSIDER_PRIVATE_SPACE_DISCOUNT_PERCENT : null,
       min_per_order: p.min_per_order,
       max_per_order: p.max_per_order,
       on_sale: onSale,
