@@ -502,10 +502,40 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
               : ''}
           </div>
           {p.kind === 'private_space' && Number.isInteger(p.insider_price_cents) && p.price && (
-            <div style={{ fontSize: 13, color: ROW_TEXT, marginTop: 4, fontWeight: 600 }}>
-              Insider members: {formatMoney(p.insider_price_cents, p.price.currency)}
-              <span style={{ color: ROW_MUTED, fontWeight: 400 }}>
-                {` · ${p.insider_discount_percent || 20}% off`}
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 8,
+                marginTop: 8,
+                padding: '7px 12px',
+                borderRadius: 10,
+                background: '#fff3dc',
+                border: '1px solid #e2a63e',
+                boxShadow: 'inset 0 0 0 1px rgba(255, 184, 77, 0.25)',
+                color: ROW_TEXT,
+                fontSize: 13,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 800,
+                  letterSpacing: '0.1em',
+                  padding: '3px 8px',
+                  borderRadius: 999,
+                  background: GOLD,
+                  color: '#0a0a0a',
+                }}
+              >
+                INSIDER MEMBERS
+              </span>
+              <strong style={{ fontWeight: 700 }}>
+                {formatMoney(p.insider_price_cents, p.price.currency)}
+              </strong>
+              <span style={{ color: '#6b4a12' }}>
+                {`${p.insider_discount_percent || 20}% off`}
               </span>
             </div>
           )}
