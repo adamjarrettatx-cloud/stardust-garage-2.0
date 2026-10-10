@@ -116,7 +116,8 @@ export async function POST(request) {
     description,
     kind,
     image_url: typeof image_url === 'string' && /^https:\/\//.test(image_url.trim()) ? image_url.trim() : null,
-    member_only,
+    // Private spaces are always public (Insider 20% off is applied at checkout).
+    member_only: kind === 'private_space' ? false : Boolean(member_only),
     min_per_order,
     max_per_order,
     display_order,

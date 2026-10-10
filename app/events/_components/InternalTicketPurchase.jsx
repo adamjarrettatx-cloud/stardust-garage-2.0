@@ -19,8 +19,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { WaiverGate } from '@/components/waiver/WaiverGate';
-import { entitlementDiscountCents, pickDiscountCents } from '@/lib/tickets/entitlement';
-import { isEntitlementDiscountable } from '@/lib/tickets/pricing';
+import { entitlementDiscountCents, entitlementLabel, pickDiscountCents } from '@/lib/tickets/entitlement';
+import { isEntitlementDiscountable, isRentalDiscountable } from '@/lib/tickets/pricing';
 import { trackMetaEvent } from '@/lib/meta/pixel-client';
 
 function formatMoney(cents, currency = 'usd') {
@@ -196,7 +196,21 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
   const entitlementBaseCents = state.products.reduce((sum, product) =>
     sum + (isEntitlementDiscountable(product)
       ? (product.price?.cents || 0) * Number(quantities[product.product_id] || 0) : 0), 0);
-  const entDiscountCents = entitlementDiscountCents(entitlementBaseCents, entitlement?.percent || 0);
+  const ticketEntDiscountCents = entitlementDiscountCents(entitlementBaseCents, entitlement?.percent || 0);
+  // Private-space rentals earn only the separate rental benefit (Insider 20%).
+  const rentalEntitlementBaseCents = state.products.reduce((sum, product) =>
+    sum + (isRentalDiscountable(product)
+      ? (product.price?.cents || 0) * Number(quantities[product.product_id] || 0) : 0), 0);
+  const rentalEntDiscountCents = entitlementDiscountCents(rentalEntitlementBaseCents, entitlement?.rental_percent || 0);
+  const entDiscountCents = ticketEntDiscountCents + rentalEntDiscountCents;
+  // Names exactly the parts of the member benefit this cart is using.
+  const appliedEntitlementLabel = entitlement
+    ? entitlementLabel(
+        { kind: entitlement.kind, planKey: entitlement.plan_key },
+        ticketEntDiscountCents ? entitlement.percent : 0,
+        rentalEntDiscountCents ? entitlement.rental_percent : 0,
+      ) || entitlement.label
+    : null;
   const { discountCents, source: discountSource } = pickDiscountCents({
     codeCents: codeDiscountCents,
     entitlementCents: entDiscountCents,
@@ -424,7 +438,9 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
   // borderTop rule so the first row in a group has no top divider.
   function renderProductRow(p, indexInGroup) {
     const soldOut = p.availability === 'sold_out' || p.price?.tier_status === 'sold_out';
-    const disabled = !p.on_sale || soldOut || (p.member_only && !isMember);
+    // Private spaces are always public, even if an old row is still flagged.
+    const memberGated = p.member_only && p.kind !== 'private_space';
+    const disabled = !p.on_sale || soldOut || (memberGated && !isMember);
     const max = Math.min(p.max_per_order || 10, p.availability === 'limited' ? 10 : 20);
     const qty = Number(quantities[p.product_id] || 0);
     return (
@@ -459,7 +475,7 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 700, fontSize: 15, color: ROW_TEXT }}>{p.name}</span>
-            {p.member_only && (
+            {memberGated && (
               <span
                 style={{
                   fontSize: 10,
@@ -485,6 +501,14 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
               ? ` · +${formatMoney(p.price.booking_fee_cents)} fee`
               : ''}
           </div>
+          {p.kind === 'private_space' && Number.isInteger(p.insider_price_cents) && p.price && (
+            <div style={{ fontSize: 13, color: ROW_TEXT, marginTop: 4, fontWeight: 600 }}>
+              Insider members: {formatMoney(p.insider_price_cents, p.price.currency)}
+              <span style={{ color: ROW_MUTED, fontWeight: 400 }}>
+                {` · ${p.insider_discount_percent || 20}% off`}
+              </span>
+            </div>
+          )}
           {p.description && (
             <div style={{ fontSize: 12, color: ROW_MUTED, marginTop: 6, opacity: 0.85 }}>
               {p.description}
@@ -683,7 +707,7 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
             /* The buyer typed a code but their own standing was worth more.
                Say so plainly rather than silently ignoring what they entered. */
             <div style={{ color: MUTED, fontSize: 11, marginTop: 4, fontWeight: 400 }}>
-              Your {entitlement?.label ? entitlement.label.split(' — ')[0] : 'member'} discount is
+              Your {appliedEntitlementLabel ? appliedEntitlementLabel.split(' — ')[0] : 'member'} discount is
               better, so we kept that one.
             </div>
           )}
@@ -753,7 +777,7 @@ export default function InternalTicketPurchase({ eventId, isMember = false, prev
                 not reach for discount.code unconditionally. */}
             <span>
               {discountSource === 'entitlement'
-                ? entitlement?.label || 'Member discount'
+                ? appliedEntitlementLabel || 'Member discount'
                 : `Discount (${discount?.code || 'applied'})`}
             </span>
             <span>−{formatMoney(discountCents, currency)}</span>

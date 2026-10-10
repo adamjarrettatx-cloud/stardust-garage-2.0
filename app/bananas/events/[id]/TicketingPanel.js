@@ -30,6 +30,7 @@ import {
   defaultTicketDiscountPercent,
   WEEKEND_MUSIC_FIXED_PERCENT,
   WEEKNIGHT_MEMBER_DISCOUNT_PERCENT,
+  privateSpaceDiscountPercent,
 } from '@/lib/membership-tiers';
 import { isEntitlementDiscountable } from '@/lib/tickets/pricing';
 
@@ -531,8 +532,8 @@ export default function TicketingPanel({
             <div style={{ fontSize: 10.5, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.55, fontWeight: 600, marginBottom: 10 }}>
               What a member actually pays
             </div>
-            {[...MEMBER_PRICING_ROWS.map((row) => ({ label: row.label, percent: percentFor(row) })),
-              { label: 'Non-member', percent: 0 }].map((rowSummary) => (
+            {[...MEMBER_PRICING_ROWS.map((row) => ({ label: row.label, percent: percentFor(row), rentalPercent: privateSpaceDiscountPercent(row) })),
+              { label: 'Non-member', percent: 0, rentalPercent: 0 }].map((rowSummary) => (
               <div key={rowSummary.label} style={{ display: 'flex', gap: 14, fontSize: 12.5, marginBottom: 9, lineHeight: 1.7 }}>
                 <span style={{ minWidth: 150, flex: '0 0 auto', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.5 }}>
                   {rowSummary.label}
@@ -541,7 +542,7 @@ export default function TicketingPanel({
                     so a rental's price can't wrap away from its name. */}
                 <span style={{ minWidth: 0 }}>
                   {previewLines.map((l, i) => {
-                    const off = l.discountable ? rowSummary.percent : 0;
+                    const off = l.discountable ? rowSummary.percent : rowSummary.rentalPercent;
                     return (
                       <span key={`${l.product}-${l.tier}-${i}`} style={multiProduct ? { display: 'block' } : undefined}>
                         {i > 0 && !multiProduct && <span style={{ opacity: 0.3 }}>{' \u00b7 '}</span>}
@@ -560,7 +561,7 @@ export default function TicketingPanel({
                           <>
                             <span style={{ opacity: 0.55 }}>{money(l.cents)}</span>
                             {!l.discountable && rowSummary.percent > 0 && (
-                              <span style={{ opacity: 0.45, fontSize: 11 }}>{' \u2014 not a ticket, full price'}</span>
+                              <span style={{ opacity: 0.45, fontSize: 11 }}>{' \u2014 private space, full price'}</span>
                             )}
                           </>
                         )}
@@ -571,7 +572,7 @@ export default function TicketingPanel({
               </div>
             ))}
             <p style={{ margin: '10px 0 0 0', fontSize: 11, opacity: 0.5, lineHeight: 1.5 }}>
-              Member discounts apply to ticket products only{hasRental ? ' \u2014 the private space above is always charged in full' : ''}.
+              Member discounts apply to ticket products only{hasRental ? ' \u2014 private spaces are open to everyone at full price, and only Insider members get 20% off them' : ''}.
               They never come off the booking fee, and they never stack with a discount code: a buyer holding
               both gets whichever is worth more.
             </p>

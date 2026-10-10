@@ -15,6 +15,7 @@ import {
 import MoneyInput from './MoneyInput.jsx';
 import { createClient } from '@/lib/supabase/client';
 import { uploadEventImage } from '@/lib/event-image-upload';
+import { INSIDER_PRIVATE_SPACE_DISCOUNT_PERCENT, insiderPrivateSpacePriceCents } from '@/lib/membership-tiers';
 
 // Admin manager for "private space" rentals attached to an event.
 //
@@ -53,9 +54,10 @@ function blankSpace(eventId) {
     name: '',
     description: '',
     image_url: null,
-    // Private-space rentals are members-only by policy — no admin UI
-    // toggle. is_active also stays true from this row (retire via delete).
-    member_only: true,
+    // Private-space rentals are open to everyone by policy (Insider members
+    // get 20% off at checkout) — no admin UI toggle. is_active also stays
+    // true from this row (retire via delete).
+    member_only: false,
     is_active: true,
     // Rentals are almost always 1 or 2 units. Default to 1.
     capacity: 1,
@@ -282,13 +284,18 @@ function SpaceForm({ eventId, initial, onSave, onCancel, saving }) {
           {nameValid
             ? <strong style={{ color: T.strongText }}>{s.name}</strong>
             : <em style={{ color: T.faint }}>(name required)</em>}
-          <span style={{ color: T.muted }}> · members only</span>
+          <span style={{ color: T.muted }}> · open to everyone</span>
         </div>
         <div style={{ marginTop: 4 }}>
           Price:{' '}
           <strong style={{ color: T.strongText }}>{money(tier.price_cents)}</strong>
           {' · '}
           <span style={{ color: T.muted }}>{s.capacity || 1} available</span>
+        </div>
+        <div style={{ marginTop: 4 }}>
+          Insider members:{' '}
+          <strong style={{ color: T.strongText }}>{money(insiderPrivateSpacePriceCents(tier.price_cents))}</strong>
+          <span style={{ color: T.muted }}> · {INSIDER_PRIVATE_SPACE_DISCOUNT_PERCENT}% off</span>
         </div>
       </div>
 
@@ -348,7 +355,6 @@ function SpaceCard({ p, onEdit, onDelete, saving }) {
           )}
           <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
             {p.is_active === false && <span style={statusPill({ tone: 'danger' })}>Inactive</span>}
-            {p.member_only && <span style={statusPill({ tone: 'accent' })}>Members</span>}
             {remaining !== null && remaining <= 0 && <span style={statusPill({ tone: 'warning' })}>Sold out</span>}
           </div>
         </div>
