@@ -90,7 +90,7 @@ export async function POST(request) {
   const decision = evaluateDoorScan({pass,event,alreadyCheckedIn:(count || 0)>0});
   const preview = await buildTrialPassPreview(admin,pass);
   const linkedTicket = decision.allowed ? await findTrialPassLinkedTicket(admin,{
-    passMemberProfileId:pass.member_profile_id, passEmail:pass.email, eventId,
+    passMemberProfileId:pass.member_profile_id, passUserId:pass.user_id, passEmail:pass.email, eventId,
   }) : {ticket:null};
   let priorDenials=[];
   let sessionStartedAt=null;

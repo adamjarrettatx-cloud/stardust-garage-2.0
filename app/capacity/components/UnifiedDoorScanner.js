@@ -398,7 +398,7 @@ export default function UnifiedDoorScanner({
             : (preview.source === 'ticket' ? 'Ticket redeemed' : 'Allowed'))
         : humanDeniedHeadline(json.result);
       const subhead = admitted
-        ? 'Wave them in.'
+        ? (preview.source === 'ticket' ? 'Wave them in.' : admitTicketLine(json))
         : (json.reason || 'Denied at the door.');
 
       // Log the activity for the recent panel + check-in history. photoUrl
@@ -702,7 +702,7 @@ function buildPreviewVM(source, requestBody, json) {
       expiresLabel: null,
       hasPhoto: Boolean(m.hasPhoto),
       photoUrl: m.photoSignedUrl || null,
-      linkedTicketNote: json.linked_ticket ? `Ticket: ${json.linked_ticket.product_label || 'General Admission'} — will be checked in` : null,
+      linkedTicketNote: linkedTicketNote(json.linked_ticket, true),
       isAllowed: Boolean(m.isActive), // an inactive member can still be verified for audit; button stays enabled with warning
       warningBanner: m.isActive ? null : 'Membership is not active. Verify ID or reject with “membership inactive.”',
       buttonLabel: 'Verify Member',
@@ -725,7 +725,7 @@ function buildPreviewVM(source, requestBody, json) {
     expiresLabel: g.expiresLabel || null,
     hasPhoto: Boolean(g.hasPhoto),
     photoUrl: g.photoSignedUrl || null,
-    linkedTicketNote: null,
+    linkedTicketNote: linkedTicketNote(json.linked_ticket, isAllowed),
     isAllowed,
     warningBanner: g.hasPhoto ? null : 'No photo on file. Verify ID or reject with “no photo on file.”',
     buttonLabel: isAllowed ? 'Check In' : 'Check In (denied)',
@@ -776,6 +776,23 @@ function PriorDenials({ denials, sessionStartedAt = null }) {
   );
 }
 
+// What the preview tells staff about the guest's online ticket before commit.
+function linkedTicketNote(linked, isAllowed) {
+  if (!isAllowed) return null;
+  if (!linked) return 'No online ticket on this account — verify payment before checking in.';
+  const label = linked.product_label || 'General Admission';
+  const extra = (linked.candidate_count || 1) - 1;
+  return extra > 0
+    ? `Ticket: ${label} — 1 will be checked in. ${extra} more on this order for their guest(s).`
+    : `Ticket: ${label} — will be checked in`;
+}
+
+// Result-card line for a pass/member admit: did a ticket get used?
+function admitTicketLine(json) {
+  if (json?.ticket) return 'Ticket redeemed. Wave them in.';
+  return 'No online ticket used — staff verified.';
+}
+
 function buildActivityDetail(preview, json) {
   if (preview.source === 'member_id') {
     const ticket = json.ticket;
@@ -786,6 +803,7 @@ function buildActivityDetail(preview, json) {
     if (json.result === 'valid' || json.result === 'override') return 'Ticket redeemed';
     return preview.subhead || 'Ticket scan';
   }
+  if (json?.ticket) return 'Trial pass · ticket redeemed';
   return preview.statusLabel || preview.expiresLabel || 'Trial pass';
 }
 
