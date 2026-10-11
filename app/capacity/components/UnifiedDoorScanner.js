@@ -388,6 +388,8 @@ export default function UnifiedDoorScanner({
         onAdmitted?.({ source: preview.source });
       }
       if (admitted && json.capacity_managed) onAdmitted?.({ source: preview.source });
+      // Lets the front-desk header refresh its scanned-ticket count immediately.
+      if (admitted && typeof window !== 'undefined') window.dispatchEvent(new Event('sdg:door-admitted'));
 
       const theme = admitted ? 'green' : (json.result?.startsWith('denied') ? 'amber' : 'red');
       const headline = admitted
