@@ -44,7 +44,10 @@ export async function POST(request) {
     }
     const checkedAt = data.arrival.checked_in_at;
     // DB timestamp, never the browser's clock; duplicate retry keeps its place.
+    // `ticket` is the account ticket redeemed in the same transaction, or null
+    // when none was found (staff-verified admission, e.g. POS or shared ticket).
     return response({ ok: true, alreadyCheckedIn: data.alreadyCheckedIn, shiftDay: roster.shiftDay,
+      ticket: data.ticket || null,
       row: { ...person.wire, checked_in_at: checkedAt, activity_at: checkedAt, activity_kind: 'check_in' } });
   } catch (error) {
     console.error('[front-desk.roster.checkin]', error.message);

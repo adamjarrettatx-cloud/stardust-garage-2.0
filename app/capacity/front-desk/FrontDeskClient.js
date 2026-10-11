@@ -174,10 +174,15 @@ export default function FrontDeskClient({ staffLabel, staffEmail, stationMode = 
     const timer = setInterval(load, 30000);
     const onVisible = () => { if (!document.hidden) load(); };
     document.addEventListener('visibilitychange', onVisible);
+    // Scans and roster check-ins can redeem tickets; refresh the scanned count now.
+    window.addEventListener('sdg:roster-changed', load);
+    window.addEventListener('sdg:door-admitted', load);
     return () => {
       cancelled = true;
       clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('sdg:roster-changed', load);
+      window.removeEventListener('sdg:door-admitted', load);
     };
   }, [doorSessionId]);
 

@@ -26,6 +26,12 @@ function GuestPhoto({ guest, large = false, onUnavailable }) {
     </span>;
 }
 
+// Tells staff whether the check-in also redeemed the guest's online ticket.
+function ticketNote(result) {
+  if (result?.ticket) return `Ticket redeemed: ${result.ticket.product_label || 'General Admission'}.`;
+  return 'No online ticket on this account — verify payment.';
+}
+
 export default function TonightSignInsPanel({ onCheckIn }) {
   const [signins, setSignins] = useState([]);
   const [query, setQuery] = useState('');
@@ -151,7 +157,7 @@ export default function TonightSignInsPanel({ onCheckIn }) {
       setQuery('');
       setSelectedGuest(null);
       setNote(result.alreadyCheckedIn ? `${row.full_name} is already checked in tonight.`
-        : `${row.full_name} checked in. Added to the top of tonight’s roster.`);
+        : `${row.full_name} checked in. ${ticketNote(result)}`);
       window.dispatchEvent(new Event('sdg:roster-changed'));
     } catch (err) {
       setCheckInError(err.message || 'Check-in failed. Hold entry.');
@@ -181,7 +187,7 @@ export default function TonightSignInsPanel({ onCheckIn }) {
       setSignins(previous => mergeArrivals(changedShift ? [] : previous, [result.row]));
       setQuery('');
       setNote(result.alreadyCheckedIn ? `${row.full_name} is already checked in tonight.`
-        : `${row.full_name} checked in.`);
+        : `${row.full_name} checked in. ${ticketNote(result)}`);
       window.dispatchEvent(new Event('sdg:roster-changed'));
     } catch (err) {
       setRowError(`${row.full_name}: ${err.message || 'Check-in failed. Hold entry.'}`);
