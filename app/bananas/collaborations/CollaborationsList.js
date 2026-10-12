@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import SubmissionTabs from '@/app/bananas/components/SubmissionTabs';
 import { filterSubmissionRowsByStatus } from '@/lib/submission-workflow';
+import { formatPhone } from '@/lib/phone';
 
 function formatDate(iso) {
   const d = new Date(iso);
@@ -68,7 +69,7 @@ export default function CollaborationsList({ collabs }) {
                     style={{ color: 'var(--auth-muted)' }}
                   >
                     <span>{c.email}</span>
-                    <span>{c.phone}</span>
+                    <span>{formatPhone(c.phone)}</span>
                     {c.instagram_handle && <span>{c.instagram_handle}</span>}
                   </div>
                 </div>

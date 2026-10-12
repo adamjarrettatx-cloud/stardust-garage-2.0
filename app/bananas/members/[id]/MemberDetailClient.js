@@ -6,6 +6,7 @@ import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import AdminMemberActions from '../AdminMemberActions';
 import MemberAvatar from '../MemberAvatar';
 import { formatMemberDate, memberStatusLabel, memberStatusTone } from '../member-display';
+import { formatPhone } from '@/lib/phone';
 
 function formatDateTime(iso) {
   if (!iso) return '—';
@@ -182,7 +183,7 @@ export default function MemberDetailClient({ member, application, tickets, event
               <Field label="SUBMITTED" value={formatMemberDate(application.created_at)} />
               <Field label="STATUS" value={(application.status || '').toUpperCase()} />
               <Field label="PREFERRED NAME" value={application.preferred_name} />
-              <Field label="PHONE" value={application.phone} />
+              <Field label="PHONE" value={formatPhone(application.phone)} />
               <Field label="BIRTHDAY" value={application.birthday} />
               <Field label="SOCIAL" value={application.social_handle} />
               <Field label="WEBSITE" value={application.website} />

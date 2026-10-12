@@ -4,6 +4,7 @@ import { useState } from 'react';
 import LegalNameInput from '@/app/components/LegalNameInput';
 import { validateLegalName } from '@/lib/legal-name';
 import EditLegalName from '@/app/capacity/components/EditLegalName';
+import { formatPhone } from '@/lib/phone';
 
 // Two states: form (staff types the guest's info) and result (pass created,
 // staff shows the link/QR to the guest). Not persisted — a refresh clears
@@ -86,7 +87,7 @@ export default function ManualTrialPassForm({ createdByEmail, compact = false })
             {result.fullName}
           </div>
           <div className="text-[13px]" style={{ color: 'var(--auth-muted)' }}>
-            {result.email} · {result.phone}
+            {result.email} · {formatPhone(result.phone)}
           </div>
           <div className="text-[13px] mt-2" style={{ color: 'var(--auth-muted)' }}>
             Good through{' '}

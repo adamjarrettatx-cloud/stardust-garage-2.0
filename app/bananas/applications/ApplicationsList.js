@@ -7,6 +7,7 @@ import { filterSubmissionRowsByStatus } from '@/lib/submission-workflow';
 import cardStyles from './applications.module.css';
 import styles from '../components/profile-list.module.css';
 import ApplicationAgeReview from './ApplicationAgeReview';
+import { formatPhone } from '@/lib/phone';
 
 function initials(name) {
   return (name || '').trim().split(/\s+/).slice(0, 2)
@@ -46,14 +47,6 @@ function dateParts(value) {
       hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago',
     }),
   };
-}
-
-function formatPhone(value) {
-  const digits = (value || '').replace(/\D/g, '');
-  const domestic = digits.length === 11 && digits[0] === '1' ? digits.slice(1) : digits;
-  return domestic.length === 10
-    ? `(${domestic.slice(0, 3)}) ${domestic.slice(3, 6)}-${domestic.slice(6)}`
-    : value;
 }
 
 export default function ApplicationsList({ applications }) {
