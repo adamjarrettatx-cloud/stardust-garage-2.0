@@ -67,7 +67,7 @@ export default function SettingsClient() {
       </p>
 
       {loading ? (
-        <div style={styles.empty}>Loading\u2026</div>
+        <div style={styles.empty}>Loading…</div>
       ) : error ? (
         <div style={styles.error}>{error}</div>
       ) : (
