@@ -19,7 +19,7 @@ export async function GET(request) {
     { auth: { autoRefreshToken: false, persistSession: false } });
   try {
     const { data: orders, error } = await db.from('orders')
-      .select('id, event_id, buyer_name, buyer_email, member_profile_id, user_id, status, total_cents, refunded_cents, currency, paid_at, created_at, stripe_payment_intent_id, events(title, event_date)')
+      .select('id, event_id, buyer_name, buyer_email, member_profile_id, user_id, status, total_cents, refunded_cents, currency, paid_at, created_at, stripe_payment_intent_id, checkout_kind, events(title, event_date)')
       .order('created_at', { ascending: false }).order('id').range(page * 100, page * 100 + 99);
     if (error) throw error;
     const rows = orders || [];
