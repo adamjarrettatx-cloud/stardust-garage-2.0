@@ -118,7 +118,11 @@ test('a tab with no count renders no chip', () => {
   );
 });
 
-test('counts are aligned for scanning and capped', () => {
+test('counts are aligned for scanning and capped unless a page opts into exact counts', () => {
   assert.match(TABS, /tabular-nums/);
-  assert.match(TABS, /count > 99 \? '99\+' : count/);
+  // Queue badges cap at 99+ by default; exactCounts is an explicit opt-in.
+  assert.match(TABS, /exactCounts = false/);
+  assert.match(TABS, /exactCounts \|\| count <= 99 \? count\.toLocaleString\('en-US'\) : '99\+'/);
+  // Membership Journey is the page where the number itself is the information.
+  assert.match(read('app/bananas/membership/MembershipHubClient.js'), /exactCounts/);
 });
