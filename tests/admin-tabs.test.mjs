@@ -1033,3 +1033,28 @@ test('Team Chat renders its own title only outside the admin shell', () => {
     assert.ok(!src.slice(conversation).includes(needle), `"${needle}" escaped the header`);
   }
 });
+
+test('Finances is an owner-only MONEY section holding the four money reports', () => {
+  const finances = adminTabById('finances');
+  assert.ok(finances, 'Finances tab missing');
+  assert.equal(finances.group, 'MONEY');
+  assert.equal(finances.ownerOnly, true);
+  assert.ok(!finances.href, 'Finances renders the list view, not a direct link');
+  const moneyIds = ADMIN_TABS.filter((t) => t.group === 'MONEY').map((t) => t.id);
+  assert.deepEqual(moneyIds, ['analytics', 'finances', 'artist-pay']);
+
+  const reports = ['/bananas/sales', '/bananas/financials', '/bananas/cash-flow', '/bananas/tax-report'];
+  assert.deepEqual(adminTilesFor('finances').map((t) => t.href), reports);
+  for (const tile of adminTilesFor('finances')) assert.equal(tile.restricted, 'owner');
+  const analyticsHrefs = adminTilesFor('analytics').map((t) => t.href);
+  for (const href of reports) assert.ok(!analyticsHrefs.includes(href), `${href} still under Analytics`);
+  assert.deepEqual(analyticsHrefs, ['/bananas/membership', '/capacity']);
+
+  assert.ok(!visibleAdminTabs(false).some((t) => t.id === 'finances'));
+  assert.ok(!visibleAdminTabs(false, true).some((t) => t.id === 'finances'));
+  assert.equal(resolveAdminTab('finances', { isOwner: false }), DEFAULT_ADMIN_TAB);
+  assert.equal(resolveRootAdminTab('finances', { isOwner: true }), 'finances');
+  for (const href of reports) assert.equal(tabForPath(href), 'finances');
+  assert.equal(tabForPath('/bananas/financials/some-sub'), 'finances');
+  assert.equal(crumbForPath('/bananas/tax-report').tabId, 'finances');
+});
