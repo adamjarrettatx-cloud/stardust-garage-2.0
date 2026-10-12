@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import Kiosk from "../../app/clock/Kiosk";
 import Timekeeping from "../../app/bananas/timekeeping/Timekeeping";
 import EmployeePortal from "../../app/employee/EmployeePortal";
+import EmployeeViewPreview from "../../app/bananas/timekeeping/employee-view/EmployeeViewPreview";
 import AuthenticatedThemeProvider, {
   useAuthenticatedTheme,
 } from "../../app/components/AuthenticatedThemeProvider";
@@ -25,6 +26,8 @@ function OwnerPreview() {
 createRoot(document.getElementById("app")).render(
   location.pathname === "/employee" ? (
     <div style={{ minHeight: "100vh", background: "#0d0f0e", padding: 24 }}><EmployeePortal enabled /></div>
+  ) : location.pathname === "/owner/employee-view" ? (
+    <EmployeeViewPreview enabled />
   ) : location.pathname === "/owner" ? (
     <AuthenticatedThemeProvider scope="admin">
       <OwnerPreview />

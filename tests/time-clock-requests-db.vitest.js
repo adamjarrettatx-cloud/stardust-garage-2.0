@@ -57,6 +57,7 @@ beforeAll(async () => {
   await db.exec(mig("20260930031000_staff_time_clock.sql"));
   await db.exec(mig("20261002160000_staff_schedule_employee_portal.sql"));
   await db.exec(mig("20261011200000_employee_hub_requests.sql"));
+  await db.exec(mig("20261012150000_employee_view_preview.sql"));
 }, 30000);
 
 beforeEach(async () => {
@@ -185,4 +186,41 @@ it("linking lookup reports team and partner identities", async () => {
   expect((await call("tc_auth_user_by_email", ["BLAKE@example.test"])).team).toBe(true);
   expect((await call("tc_auth_user_by_email", ["avery@example.test"])).team).toBe(false);
   expect(await call("tc_auth_user_by_email", ["nobody@example.test"])).toBeNull();
+});
+
+const preview = (id) =>
+  call("tc_employee_preview", [
+    id,
+    new Date(Date.now() - 30 * 86400000).toISOString(),
+    new Date(Date.now() + 86400000).toISOString(),
+  ]);
+
+it("manager preview returns exactly the employee's own view, with or without a login", async () => {
+  await closedShift(worker, -30, -24);
+  await ask({ kind: "time_off", starts_at: at(48), ends_at: at(72), reason: "Trip" });
+  const own = await view();
+  const shown = await preview(worker);
+  const strip = ({ server_now, preview: _p, ...rest }) => rest;
+  expect(strip(shown)).toEqual(strip(own));
+  expect(shown.preview.has_login).toBe(true);
+  expect(shown.shifts).toHaveLength(1);
+  expect(shown.requests).toHaveLength(1);
+  await login("set_login_enabled", { worker_id: worker, enabled: false });
+  expect(await view()).toBeNull();
+  const noLogin = await preview(worker);
+  expect(noLogin.worker.name).toBe("Avery");
+  expect(noLogin.preview.has_login).toBe(false);
+});
+
+it("manager preview hides inactive profiles and is server-only", async () => {
+  await db.query("update tc_workers set active=false where id=$1", [other]);
+  expect(await preview(other)).toBeNull();
+  expect(await preview("66666666-6666-4666-8666-666666666666")).toBeNull();
+  for (const role of ["anon", "authenticated", "service_role"]) {
+    const g = await row(
+      `select has_function_privilege('${role}','public.tc_employee_preview(uuid,timestamptz,timestamptz)','execute') p,
+        has_function_privilege('${role}','public.tc_employee_payload(uuid,timestamptz,timestamptz)','execute') b`,
+    );
+    expect(g).toEqual({ p: role === "service_role", b: false });
+  }
 });

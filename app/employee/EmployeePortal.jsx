@@ -33,7 +33,11 @@ function austinIso(local) {
 }
 const localValue = (iso) => chicagoInput(iso).slice(0, 16);
 
-export default function EmployeePortal({ enabled }) {
+// `viewAs` = { workerId, exitHref } renders the manager's read-only "View as
+// employee" preview: identical screens and data, every write disabled.
+export default function EmployeePortal({ enabled, viewAs = null }) {
+  const readOnly = Boolean(viewAs);
+  const viewWorker = viewAs?.workerId;
   const today = chicagoYmd();
   const [tab, setTab] = useState("schedule");
   const [week, setWeek] = useState(weekStart(today));
@@ -46,12 +50,15 @@ export default function EmployeePortal({ enabled }) {
   const load = useCallback(async () => {
     try {
       setError("");
-      setData(await request(`/api/employee/me?from=${week}&to=${addDays(week, 6)}`));
+      const range = `from=${week}&to=${addDays(week, 6)}`;
+      setData(await request(readOnly
+        ? `/api/admin/time-clock/employee-preview?worker=${encodeURIComponent(viewWorker)}&${range}`
+        : `/api/employee/me?${range}`));
     } catch (e) {
-      if (e.status === 401) window.location.replace("/employee/login");
+      if (e.status === 401 && !readOnly) window.location.replace("/employee/login");
       else setError(e.message);
     }
-  }, [week]);
+  }, [week, readOnly, viewWorker]);
   useEffect(() => {
     if (enabled) load();
   }, [enabled, load]);
@@ -86,8 +93,21 @@ export default function EmployeePortal({ enabled }) {
             <span className="eyebrow">Stardust Garage · Staff</span>
             <h1>{data ? data.worker.name : "My schedule"}</h1>
           </div>
-          <button className="textbtn" onClick={signOut}>Sign out</button>
+          {readOnly ? (
+            <a className="textbtn emp-exit" href={viewAs.exitHref || "/bananas/timekeeping"}>Exit preview</a>
+          ) : (
+            <button className="textbtn" onClick={signOut}>Sign out</button>
+          )}
         </div>
+        {readOnly && data && (
+          <div className="emp-viewas" role="status">
+            <b>Viewing as {data.worker.name}</b>
+            <span>
+              This is exactly what they see. Read-only: buttons open the same forms, but nothing is sent or saved.
+              {data.preview && !data.preview.has_login && " They don't have a login yet, so they can't open this page until you create one in Staff profiles."}
+            </span>
+          </div>
+        )}
         <nav className="tabs emp-tabs" aria-label="Employee sections">
           {tabs.map(([id, label]) => (
             <button key={id} className={tab === id ? "active" : ""} aria-current={tab === id ? "page" : undefined}
@@ -119,6 +139,7 @@ export default function EmployeePortal({ enabled }) {
               setToast("Choose the shift to fix, then tap Request fix.");
             }}
             onCancel={async (r) => {
+              if (readOnly) return setToast("Preview only. Their Cancel request button works for them.");
               if (!window.confirm("Cancel this request?")) return;
               try {
                 await request("/api/employee/requests", { action: "cancel", id: r.id });
@@ -129,11 +150,11 @@ export default function EmployeePortal({ enabled }) {
               }
             }} />
         ) : (
-          <AccountTab data={data} />
+          <AccountTab data={data} readOnly={readOnly} />
         )}
 
         {modal && data && (
-          <RequestForm modal={modal} data={data} today={today} onClose={() => setModal(null)}
+          <RequestForm modal={modal} data={data} today={today} readOnly={readOnly} onClose={() => setModal(null)}
             onSent={(message) => { setModal(null); setToast(message); setTab("requests"); load(); }} />
         )}
         {toast && <div className="emp-toast" role="status">{toast}</div>}
@@ -402,7 +423,7 @@ function RequestSummary({ r }) {
   );
 }
 
-function AccountTab({ data }) {
+function AccountTab({ data, readOnly }) {
   const [pw, setPw] = useState(null);
   const [msg, setMsg] = useState("");
   const w = data.worker;
@@ -458,14 +479,15 @@ function AccountTab({ data }) {
             </div>
           </form>
         ) : (
-          <button onClick={() => setPw({ next: "", confirm: "" })}>Change password</button>
+          <button disabled={readOnly} title={readOnly ? "Preview only" : undefined}
+            onClick={() => setPw({ next: "", confirm: "" })}>Change password</button>
         )}
       </section>
     </div>
   );
 }
 
-function RequestForm({ modal, data, today, onClose, onSent }) {
+function RequestForm({ modal, data, today, readOnly, onClose, onSent }) {
   const { kind, shift } = modal;
   const [form, setForm] = useState(() =>
     kind === "edit_shift"
@@ -500,6 +522,7 @@ function RequestForm({ modal, data, today, onClose, onSent }) {
   async function submit(e) {
     e.preventDefault();
     setErr("");
+    if (readOnly) return setErr("Preview only. Nothing was sent.");
     let payload;
     try {
       if (kind === "edit_shift") {
@@ -572,7 +595,9 @@ function RequestForm({ modal, data, today, onClose, onSent }) {
         </label>
         {err && <div className="notice tc-error" role="alert">{err}</div>}
         <div className="row wrap">
-          <button className="primary" disabled={busy}>{busy ? "Sending…" : "Send request"}</button>
+          <button className="primary" disabled={busy || readOnly} title={readOnly ? "Preview only" : undefined}>
+            {busy ? "Sending…" : "Send request"}
+          </button>
           <button type="button" onClick={onClose}>Cancel</button>
         </div>
       </form>
