@@ -236,6 +236,10 @@ export default function EventForm({
     // link the panel just set, so only include it when creating a new event.
     if (!isEditing) {
       payload.tt_event_series_id = ttEventSeriesId.trim() || null;
+      // Every new event starts as a DRAFT. It stays off the public site until
+      // an admin presses GO LIVE on the event editor. Edits never send status,
+      // so saving an existing event can't publish or unpublish it.
+      payload.status = 'draft';
     }
 
     const { data: saved, error: saveError } = isEditing
@@ -299,8 +303,8 @@ export default function EventForm({
     // Editing: stay on this screen so the admin can keep working (e.g. Ticketing
     // panel, contract panel). Just refresh the server data and flash a brief
     // 'Saved' hint on the save button via the setSaving cycle + saveOk flag.
-    // Creating: no id in the URL yet, so we DO route to the events list —
-    // that's the only way to hand off to the newly-created event's edit page.
+    // Creating: hand off to the new draft's editor so tickets and details can
+    // be added before it goes live.
     if (isEditing) {
       setSaving(false);
       setSaveOk(true);
@@ -308,7 +312,7 @@ export default function EventForm({
       router.refresh();
       return;
     }
-    router.push('/bananas?tab=events');
+    router.push(saved?.id ? `/bananas/events/${saved.id}` : '/bananas?tab=events');
     router.refresh();
   };
 
@@ -431,16 +435,16 @@ export default function EventForm({
               onChange={setVisibility}
               options={[
                 { value: 'public', label: 'Public' },
-                { value: 'unlisted', label: 'Unlisted' },
-                { value: 'internal', label: 'Internal' },
+                { value: 'unlisted', label: 'Secret' },
+                { value: 'internal', label: 'Draft' },
               ]}
             />
             <p className="text-[11px] mt-2" style={helperStyle}>
               {isInternal
-                ? 'Hidden from every public surface — team calendar only.'
+                ? 'Team only. Never shown on the public site, even by link.'
                 : isUnlisted
-                  ? 'Reachable only by the direct link. Not on /events, /home, or the public calendar.'
-                  : 'Shown on the public events page and member surfaces.'}
+                  ? 'Once published, only people with the secret link can open it. Not on /events, /home, or the public calendar.'
+                  : 'Once published, shown on the public events page and member surfaces.'}
             </p>
           </div>
           <div>
@@ -462,15 +466,21 @@ export default function EventForm({
         </div>
         {isInternal && (
           <p className="text-[11px] mt-4" style={{ color: '#f59e0b' }}>
-            Internal event: never appears on the public events page or member surfaces. It still
-            supports contracts, SignNow, financials, and POS imports, and shows on the team calendar.
+            Draft event: never appears on the public site or member surfaces and cannot go live
+            until Visibility is changed to Public or Secret. It still supports contracts, SignNow,
+            financials, and POS imports, and shows on the team calendar.
           </p>
         )}
         {isUnlisted && (
           <p className="text-[11px] mt-4" style={{ color: '#f59e0b' }}>
-            Unlisted event: not on /events, /home, or the public calendar, and search engines are
-            told not to index it. Anyone with the /events/{slug || '[slug]'} link can open the page
-            and buy tickets, so only share the link with people you want at the event.
+            Secret event: not on /events, /home, or the public calendar, and search engines are
+            told not to index it. Once published, anyone with the secret link can open the page and
+            buy tickets, so only share it with people you want at the event.
+            {isEditing && event?.share_token && event?.slug === slug && (
+              <span className="block mt-2 break-all select-all" style={{ color: 'var(--auth-muted)' }}>
+                Secret link: https://sdgatx.com/events/{slug}?t={event.share_token}
+              </span>
+            )}
           </p>
         )}
       </section>

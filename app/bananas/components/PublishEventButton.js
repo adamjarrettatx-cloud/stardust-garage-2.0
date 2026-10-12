@@ -12,7 +12,7 @@ import { adminFetch } from '@/lib/admin-fetch';
 //
 // The publish itself runs in /api/admin/events/:id/tt-publish (admin + MFA
 // gated). The TICKETTAILOR_API_KEY is never exposed to the browser.
-export default function PublishEventButton({ eventId, slug, status, ttEventSeriesId }) {
+export default function PublishEventButton({ eventId, slug, status, ttEventSeriesId, visibility = 'public' }) {
   const router = useRouter();
   const [publishing, setPublishing] = useState(false);
   const [msg, setMsg] = useState('');
@@ -20,6 +20,10 @@ export default function PublishEventButton({ eventId, slug, status, ttEventSerie
   const [current, setCurrent] = useState(status || 'draft');
 
   const isDraft = current === 'draft';
+  // Visibility 'internal' is labelled "Draft" in the editor: team-only, never
+  // public. It cannot go live until Visibility is changed to Public or Secret.
+  const isTeamOnly = visibility === 'internal';
+  const isSecret = visibility === 'unlisted';
 
   async function publish() {
     setPublishing(true);
@@ -90,7 +94,7 @@ export default function PublishEventButton({ eventId, slug, status, ttEventSerie
               PREVIEW
             </a>
           )}
-          {isDraft && (
+          {isDraft && !isTeamOnly && (
             <button
               type="button"
               onClick={publish}
@@ -105,12 +109,18 @@ export default function PublishEventButton({ eventId, slug, status, ttEventSerie
       </div>
 
       <p className="text-[11px] mt-3" style={{ color: 'var(--auth-muted)' }}>
-        {isDraft
-          ? ttEventSeriesId
-            // Legacy TicketTailor-linked event.
-            ? 'This event is a draft. Going live puts it on the public events page and sets its linked ticket series on sale.'
-            : 'This event is a draft. Going live puts it on the public events page.'
-          : 'This event is live on the public events page.'}
+        {isTeamOnly
+          ? 'Visibility is set to Draft, so this event is team only and hidden from the public site. Change Visibility to Public or Secret and save to go live.'
+          : isDraft
+            ? isSecret
+              ? 'This event is a draft and hidden from the public site. Going live makes it reachable by its secret link only.'
+              : ttEventSeriesId
+                // Legacy TicketTailor-linked event.
+                ? 'This event is a draft and hidden from the public site. Going live puts it on the public events page and sets its linked ticket series on sale.'
+                : 'This event is a draft and hidden from the public site. Going live puts it on the public events page.'
+            : isSecret
+              ? 'This event is live, but secret: only people with its secret link can open it.'
+              : 'This event is live on the public events page.'}
       </p>
 
       {msg && (

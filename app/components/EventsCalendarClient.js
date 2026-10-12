@@ -646,9 +646,9 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
                           className="text-[11px] font-semibold pl-2 pr-1.5 py-1 rounded cursor-pointer relative overflow-hidden"
                           style={{ background: st.bg, color: st.color, border: `1px solid ${st.border}` }}
                           title={internal
-                            ? `${evt.title} (internal micro party)`
+                            ? `${evt.title} (draft \u2014 team only)`
                             : unlisted
-                              ? `${evt.title} (unlisted \u2014 link only)`
+                              ? `${evt.title} (secret \u2014 link only)`
                               : hasSignedContract
                                 ? `${evt.title} \u2014 ${CONTRACT_STRIPE_LABEL}`
                                 : evt.title}

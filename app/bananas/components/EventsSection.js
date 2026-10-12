@@ -111,7 +111,7 @@ export default function EventsSection({ upcoming, past, metricsByEvent = {} }) {
                       {(event.series?.recurrence_freq === 'biweekly' ? 'BI-WEEKLY' : 'WEEKLY')} · #{event.recurrence_position || '—'}
                     </Link>
                   )}
-                  {event.status === 'draft' && (
+                  {(event.status === 'draft' || event.visibility === 'internal') && (
                     <span
                       className="flex-shrink-0 text-[10px] font-semibold tracking-[0.12em] px-2 py-0.5 rounded-full"
                       style={{ color: 'var(--auth-accent-text)', background: 'var(--auth-accent)' }}
@@ -119,22 +119,13 @@ export default function EventsSection({ upcoming, past, metricsByEvent = {} }) {
                       DRAFT
                     </span>
                   )}
-                  {event.visibility === 'internal' && (
-                    <span
-                      className="flex-shrink-0 text-[10px] font-semibold tracking-[0.12em] px-2 py-0.5 rounded-full"
-                      style={{ color: 'var(--auth-accent-text)', background: 'var(--auth-warn)' }}
-                      title="Internal micro party — hidden from the public events page"
-                    >
-                      INTERNAL
-                    </span>
-                  )}
                   {event.visibility === 'unlisted' && (
                     <span
                       className="flex-shrink-0 text-[10px] font-semibold tracking-[0.12em] px-2 py-0.5 rounded-full"
                       style={{ color: 'var(--auth-accent-text)', background: 'var(--auth-warn)' }}
-                      title="Unlisted — reachable by link only, not on the public events page"
+                      title="Secret — reachable by its secret link only, not on the public events page"
                     >
-                      UNLISTED
+                      SECRET
                     </span>
                   )}
                 </div>

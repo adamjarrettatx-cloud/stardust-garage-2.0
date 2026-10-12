@@ -66,7 +66,7 @@ export default async function EventPage({ params, searchParams }) {
               className="text-[10px] font-extrabold tracking-[0.14em] px-2 py-1 rounded-full"
               style={{ background: '#ffb84d', color: '#0a0a0a' }}
             >
-              UNLISTED
+              SECRET
             </span>
             <span
               className="text-[11px] font-semibold tracking-[0.06em]"

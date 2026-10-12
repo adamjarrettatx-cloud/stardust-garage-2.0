@@ -496,7 +496,7 @@ export default function TeamEventModal({
               <option value="">— No linked event —</option>
               {linkableEvents.map(evt => (
                 <option key={evt.id} value={evt.id}>
-                  {`${evt.title} — ${formatEventDate(evt.event_date)}${evt.visibility === 'internal' ? ' (internal)' : ''}`}
+                  {`${evt.title} — ${formatEventDate(evt.event_date)}${evt.visibility === 'internal' ? ' (draft)' : ''}`}
                 </option>
               ))}
             </select>
