@@ -8,11 +8,12 @@ import styles from './capacity.module.css';
 const API = '/api/admin/capacity-analytics';
 const number = (v) => v == null ? '—' : v.toLocaleString('en-US');
 
-export default function CapacityAnalyticsClient({ initialEvent = null }) {
+export default function CapacityAnalyticsClient({ initialEvent = null, embedded = false, fixedMode = null }) {
   const [catalogue, setCatalogue] = useState(null);
   const [catalogueError, setCatalogueError] = useState('');
   const [selection, setSelection] = useState(initialEvent ? `e:${initialEvent}` : '');
-  const [mode, setMode] = useState('history');
+  const [mode, setMode] = useState(fixedMode || 'history');
+  useEffect(() => { if (fixedMode) setMode(fixedMode); }, [fixedMode]);
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(true);
@@ -81,6 +82,13 @@ export default function CapacityAnalyticsClient({ initialEvent = null }) {
   }, [report, allHours]);
   const selected = buckets.find((b) => b.start === picked) || buckets.find((b) => b.peak === summary?.peak) || buckets[0];
 
+  const breakdown = report ? <>
+            <div className={styles.panelHead}><div><h2>{intervalName} breakdown</h2><p>Counter operations, not unique attendees. Resets and adjustments are separate from exits.</p></div>{mode === 'live' && <button onClick={download}>Export CSV</button>}</div>
+            <div className={styles.scroll}><table><thead><tr><th>Interval start · Austin</th><th>Entries</th><th>Exits</th><th>Net flow</th><th>Peak inside</th><th>Interval-end</th><th>Corrections</th><th>Coverage</th></tr></thead>
+              <tbody>{buckets.map((b) => <tr key={b.start}><td>{capacityWhen(b.start)}</td><td>{number(b.entries)}</td><td>{number(b.exits)}</td><td>{b.entries == null || b.exits == null ? '—' : b.entries - b.exits}</td><td>{number(b.peak)}</td><td>{number(b.closing)}</td><td>{b.corrections ? `${b.corrections} (${b.correctionDelta > 0 ? '+' : ''}${b.correctionDelta})` : '—'}</td><td>{b.coverage === 'session' ? b.carried ? 'Carried count' : 'Session recorded' : b.coverage === 'none' ? 'Unavailable' : 'Partial'}</td></tr>)}</tbody>
+            </table></div>
+          </> : null;
+
   function download() {
     if (!report) return;
     const url = URL.createObjectURL(new Blob([capacityCsv(report, title)], { type: 'text/csv;charset=utf-8;' }));
@@ -91,13 +99,15 @@ export default function CapacityAnalyticsClient({ initialEvent = null }) {
 
   return (
     <div className={styles.root}>
-      <p className={styles.eyebrow}>VENUE OPERATIONS</p>
-      <h1>Event Capacity</h1>
-      <p>See when the room filled, how busy it got, and when people left.</p>
-      <div className={styles.tabs} aria-label="Capacity views">
-        <button className={mode === 'history' ? styles.activeTab : ''} aria-pressed={mode === 'history'} onClick={() => setMode('history')}>Event history</button>
-        <button className={mode === 'live' ? styles.activeTab : ''} aria-pressed={mode === 'live'} onClick={() => setMode('live')}>Live counter</button>
-      </div>
+      {!embedded && <>
+        <p className={styles.eyebrow}>VENUE OPERATIONS</p>
+        <h1>Event Capacity</h1>
+        <p>See when the room filled, how busy it got, and when people left.</p>
+        <div className={styles.tabs} aria-label="Capacity views">
+          <button className={mode === 'history' ? styles.activeTab : ''} aria-pressed={mode === 'history'} onClick={() => setMode('history')}>Event history</button>
+          <button className={mode === 'live' ? styles.activeTab : ''} aria-pressed={mode === 'live'} onClick={() => setMode('live')}>Live counter</button>
+        </div>
+      </>}
       {catalogueError && <div role="alert" className={styles.notice}>{catalogueError} <button onClick={loadCatalogue}>Retry event list</button></div>}
       {mode === 'history' && <div className={styles.picker}>
         <label>EVENT / OPERATING NIGHT
@@ -133,7 +143,7 @@ export default function CapacityAnalyticsClient({ initialEvent = null }) {
         <div className={styles.eventTitle}><h2>{title}</h2><span className={styles.chip}>{data.event ? 'DATE-MATCHED' : 'VENUE-WIDE'}</span></div>
         <p className={styles.small}>{capacityWhen(report.window.start)} to {capacityWhen(report.window.end)} · Austin operating window, not event-exclusive attendance.</p>
         {mode === 'live' && <div className={styles.notice}>
-          {!data.live?.hasSession ? 'No active capacity session. Start or check the counter in Capacity Setup.' : data.live?.eventTitle ? `Door session selected: ${data.live.eventTitle}. The counter still measures the whole venue, not only that event.` : 'No current-day event session selected. The counter is venue-wide and is not assigned to an event.'}
+          {!data.live?.hasSession ? 'No active capacity session. Start one from the live count card above.' : data.live?.eventTitle ? `Door session selected: ${data.live.eventTitle}. The counter still measures the whole venue, not only that event.` : 'No current-day event session selected. The counter is venue-wide and is not assigned to an event.'}
           {data.live?.staleDoor && ' An old door session is still open; it is not being used to attribute this night.'}
         </div>}
         <div className={styles.stats}>
@@ -169,12 +179,10 @@ export default function CapacityAnalyticsClient({ initialEvent = null }) {
             </div>}
             <p className={styles.small}>The entire timeline fits this panel; every interval is retained. Hover or tap a bar, or use the interval selector, for exact times and counts. Times use Austin CDT/CST; after-midnight activity stays with the preceding night.</p>
           </section>
-          <section className={styles.panel}>
-            <div className={styles.panelHead}><div><h2>{intervalName} breakdown</h2><p>Counter operations, not unique attendees. Resets and adjustments are separate from exits.</p></div>{mode === 'live' && <button onClick={download}>Export CSV</button>}</div>
-            <div className={styles.scroll}><table><thead><tr><th>Interval start · Austin</th><th>Entries</th><th>Exits</th><th>Net flow</th><th>Peak inside</th><th>Interval-end</th><th>Corrections</th><th>Coverage</th></tr></thead>
-              <tbody>{buckets.map((b) => <tr key={b.start}><td>{capacityWhen(b.start)}</td><td>{number(b.entries)}</td><td>{number(b.exits)}</td><td>{b.entries == null || b.exits == null ? '—' : b.entries - b.exits}</td><td>{number(b.peak)}</td><td>{number(b.closing)}</td><td>{b.corrections ? `${b.corrections} (${b.correctionDelta > 0 ? '+' : ''}${b.correctionDelta})` : '—'}</td><td>{b.coverage === 'session' ? b.carried ? 'Carried count' : 'Session recorded' : b.coverage === 'none' ? 'Unavailable' : 'Partial'}</td></tr>)}</tbody>
-            </table></div>
-          </section>
+          {embedded ? <details className={styles.panel}>
+            <summary className={styles.breakdownToggle}>{intervalName} breakdown table · {buckets.length} intervals</summary>
+            {breakdown}
+          </details> : <section className={styles.panel}>{breakdown}</section>}
         </>}
         <details className={styles.method}><summary>How this history is reconstructed</summary>
           <ul><li>Counts come from timestamped capacity audit records, not ticket sales. Entries can include re-entry and manual check-in workflows.</li>
