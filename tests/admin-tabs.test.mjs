@@ -309,8 +309,8 @@ test('the type scale keeps a readable hierarchy', () => {
     return Number(m[1]);
   };
   const heading = size(/text-\[([\d.]+)px\] font-bold -tracking-\[0\.02em\] mb-\[4px\]/);
-  const tileTitle = size(/text-\[([\d.]+)px\] font-bold -tracking-\[0\.015em\]"/);
-  const tileSub = size(/text-\[([\d.]+)px\] mt-\[6px\]/);
+  const tileTitle = size(/text-\[([\d.]+)px\] font-bold -tracking-\[0\.015em\] whitespace-nowrap"/);
+  const tileSub = size(/text-\[([\d.]+)px\] leading-\[1\.45\] truncate"/);
   assert.ok(heading > tileTitle, `heading ${heading}px must exceed tile title ${tileTitle}px`);
   assert.ok(tileTitle > tileSub, `tile title ${tileTitle}px must exceed subtitle ${tileSub}px`);
   // Body copy should stay in comfortable reading range.
