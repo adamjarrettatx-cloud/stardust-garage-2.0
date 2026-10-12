@@ -12,7 +12,7 @@ import { adminFetch } from '@/lib/admin-fetch';
 //
 // The publish itself runs in /api/admin/events/:id/tt-publish (admin + MFA
 // gated). The TICKETTAILOR_API_KEY is never exposed to the browser.
-export default function PublishEventButton({ eventId, slug, status, ttEventSeriesId, visibility = 'public', embedded = false }) {
+export default function PublishEventButton({ eventId, slug, status, ttEventSeriesId, visibility = 'public', embedded = false, controls = null }) {
   const router = useRouter();
   const [publishing, setPublishing] = useState(false);
   const [msg, setMsg] = useState('');
@@ -23,7 +23,6 @@ export default function PublishEventButton({ eventId, slug, status, ttEventSerie
   // Visibility 'internal' is labelled "Draft" in the editor: team-only, never
   // public. It cannot go live until Visibility is changed to Public or Secret.
   const isTeamOnly = visibility === 'internal';
-  const isSecret = visibility === 'unlisted';
 
   async function publish() {
     setPublishing(true);
@@ -52,43 +51,33 @@ export default function PublishEventButton({ eventId, slug, status, ttEventSerie
     }
   }
 
-  const statusLine = isTeamOnly
-    ? 'Hidden. Visibility is Draft (team only).'
-    : isDraft
-      ? isSecret
-        ? 'Hidden until you go live. Then reachable by secret link only.'
-        : ttEventSeriesId
-          // Legacy TicketTailor-linked event.
-          ? 'Hidden until you go live. Going live also puts its ticket series on sale.'
-          : 'Hidden until you go live.'
-      : isSecret
-        ? 'Live. Reachable by secret link only.'
-        : 'Live on the public events page.';
+  const buttonBase = 'px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 whitespace-nowrap';
+  const labelCls = 'block text-[11px] font-semibold tracking-[0.14em] mb-1.5';
 
-  const buttonBase = 'px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5';
-
+  // One row: Status | (Visibility, Event Type passed in as `controls`) | actions.
+  // Every group is a small label over a 38px-tall control so the row lines up
+  // on a shared baseline and wraps cleanly on narrow screens.
   const content = (
     <>
-      <div className="flex items-center justify-between gap-x-4 gap-y-3 flex-wrap">
-        <div className="flex items-center gap-3 min-w-0 flex-wrap">
-          <span className="text-[11px] font-semibold tracking-[0.14em]" style={{ color: 'var(--auth-muted)' }}>
-            STATUS
-          </span>
-          <span
-            className="text-[10px] font-semibold tracking-[0.12em] px-2.5 py-1 rounded-full"
-            style={{
-              color: isDraft ? 'var(--auth-accent-text)' : 'var(--auth-strong-surface-text)',
-              background: isDraft ? 'var(--auth-accent)' : 'var(--auth-success)',
-            }}
-          >
-            {isDraft ? 'DRAFT' : 'PUBLISHED'}
-          </span>
-          <span className="text-[12px]" style={{ color: 'var(--auth-muted)' }}>
-            {statusLine}
-          </span>
+      <div className="flex items-end gap-x-7 gap-y-4 flex-wrap">
+        <div>
+          <label className={labelCls} style={{ color: 'var(--auth-muted)' }}>Status</label>
+          <div className="h-[38px] flex items-center">
+            <span
+              className="text-[10px] font-semibold tracking-[0.12em] px-2.5 py-1 rounded-full"
+              style={{
+                color: isDraft ? 'var(--auth-accent-text)' : 'var(--auth-strong-surface-text)',
+                background: isDraft ? 'var(--auth-accent)' : 'var(--auth-success)',
+              }}
+            >
+              {isDraft ? 'DRAFT' : 'PUBLISHED'}
+            </span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        {controls}
+
+        <div className="ml-auto h-[38px] flex items-center gap-2">
           {/* Preview opens the exact public event page in a new tab, gated to
               admins by /events/[slug]/preview. */}
           {slug && (
@@ -107,6 +96,7 @@ export default function PublishEventButton({ eventId, slug, status, ttEventSerie
               type="button"
               onClick={publish}
               disabled={publishing}
+              title={ttEventSeriesId ? 'Also puts the linked ticket series on sale.' : undefined}
               className={`${buttonBase} disabled:opacity-40`}
               style={{ background: 'var(--auth-success)', color: 'var(--auth-strong-surface-text)' }}
             >
