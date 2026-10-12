@@ -109,6 +109,7 @@ export default async function EditEventPage({ params }) {
           status={event.status}
           ttEventSeriesId={event.tt_event_series_id}
           visibility={event.visibility}
+          embedded
         />
       )}
       footerPanels={(

@@ -52,6 +52,38 @@ function slugify(text) {
     .replace(/^-+|-+$/g, '');
 }
 
+// Read-only secret link with a one-click copy, shown in the Secret callout.
+function SecretLinkRow({ url }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setCopied(false);
+    }
+  };
+  return (
+    <div
+      className="mt-2.5 flex items-center gap-2 rounded-[8px] border pl-3 pr-1 py-1"
+      style={{ background: 'var(--auth-input-bg)', borderColor: 'var(--auth-input-border)' }}
+    >
+      <span className="flex-1 min-w-0 truncate select-all text-[12px]" style={{ color: 'var(--auth-text-strong)' }} title={url}>
+        {url}
+      </span>
+      <button
+        type="button"
+        onClick={copy}
+        className="shrink-0 px-3 py-1.5 rounded-full text-[10px] font-semibold tracking-[0.14em]"
+        style={{ background: 'var(--auth-text-strong)', color: 'var(--auth-strong-surface-text)' }}
+      >
+        {copied ? 'COPIED' : 'COPY LINK'}
+      </button>
+    </div>
+  );
+}
+
 export default function EventForm({
   event,
   metrics = null,
@@ -390,7 +422,7 @@ export default function EventForm({
               key={opt.value}
               type="button"
               onClick={() => onChange(opt.value)}
-              className="px-4 py-1.5 rounded-full text-[12px] font-semibold tracking-[0.08em] transition-all"
+              className="px-4 py-1.5 rounded-full text-[12px] font-semibold tracking-[0.08em] transition-all whitespace-nowrap"
               style={{
                 background: active ? 'var(--auth-text-strong)' : 'transparent',
                 color: active ? 'var(--auth-strong-surface-text)' : 'var(--auth-muted)',
@@ -420,69 +452,78 @@ export default function EventForm({
         {headerActions}
       </AuthenticatedPageHeader>
 
-      {statusPanel}
+      {/* TOP CONTROL CARD — status, visibility and event type in one place.
+          The status strip (edit only) sits on top with Preview / Go Live on
+          the right; the two decision controls share the body below. Wired
+          into the same form state; saved with the form. */}
+      <section className="rounded-[14px] border mb-4 overflow-hidden" style={cardStyle}>
+        {statusPanel && (
+          <div className="px-5 py-3.5 border-b" style={{ borderColor: 'var(--auth-card-border)' }}>
+            {statusPanel}
+          </div>
+        )}
 
-      {/* VISIBILITY + EVENT TYPE strip — lives above the details cards so
-          the top-of-page controls (STATUS → how it's shown / what it is)
-          read as one contiguous decision bar before you get into details.
-          Wired into the same form state; saved with the form. */}
-      <section className="rounded-[14px] border p-5 mb-4" style={cardStyle}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <div>
-            <label className={labelClass} style={labelStyle}>Visibility</label>
-            <Segmented
-              value={visibility}
-              onChange={setVisibility}
-              options={[
-                { value: 'public', label: 'Public' },
-                { value: 'unlisted', label: 'Secret' },
-                { value: 'internal', label: 'Draft' },
-              ]}
-            />
-            <p className="text-[11px] mt-2" style={helperStyle}>
-              {isInternal
-                ? 'Team only. Never shown on the public site, even by link.'
-                : isUnlisted
-                  ? 'Once published, only people with the secret link can open it. Not on /events, /home, or the public calendar.'
-                  : 'Once published, shown on the public events page and member surfaces.'}
-            </p>
+        <div className="px-5 py-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+            <div>
+              <label className={labelClass} style={labelStyle}>Visibility</label>
+              <Segmented
+                value={visibility}
+                onChange={setVisibility}
+                options={[
+                  { value: 'public', label: 'Public' },
+                  { value: 'unlisted', label: 'Secret' },
+                  { value: 'internal', label: 'Draft' },
+                ]}
+              />
+              <p className="text-[11px] mt-2" style={helperStyle}>
+                {isInternal
+                  ? 'Team only. Never shown on the public site, even by link.'
+                  : isUnlisted
+                    ? 'Only people with the secret link can open it once live.'
+                    : 'Shown on the public events page once live.'}
+              </p>
+            </div>
+            <div>
+              <label className={labelClass} style={labelStyle}>Event Type</label>
+              <Segmented
+                value={eventType}
+                onChange={setEventType}
+                options={[
+                  { value: 'public', label: 'Ticketed' },
+                  { value: 'private', label: 'Private Rental' },
+                ]}
+              />
+              <p className="text-[11px] mt-2" style={helperStyle}>
+                {eventType === 'private'
+                  ? 'Venue rental. No ticket sales for this event.'
+                  : 'Sells tickets through the internal checkout below.'}
+              </p>
+            </div>
           </div>
-          <div>
-            <label className={labelClass} style={labelStyle}>Event Type</label>
-            <Segmented
-              value={eventType}
-              onChange={setEventType}
-              options={[
-                { value: 'public', label: 'Ticketed' },
-                { value: 'private', label: 'Private Rental' },
-              ]}
-            />
-            <p className="text-[11px] mt-2" style={helperStyle}>
-              {eventType === 'private'
-                ? 'Venue rental — no ticket sales for this event.'
-                : 'Sells tickets through the internal checkout below.'}
-            </p>
-          </div>
+
+          {(isInternal || isUnlisted) && (
+            <div
+              className="mt-4 rounded-[10px] border px-3.5 py-2.5 text-[12px] leading-[1.5]"
+              style={{ background: 'var(--auth-warn-bg)', borderColor: 'var(--auth-warn-border)', color: 'var(--auth-warn)' }}
+            >
+              {isInternal ? (
+                <>
+                  Draft events can&apos;t go live until Visibility is Public or Secret. Contracts,
+                  SignNow, financials and POS imports still work, and it shows on the team calendar.
+                </>
+              ) : (
+                <>
+                  Not listed on /events, /home or the public calendar, and hidden from search engines.
+                  Anyone with the secret link can open the page and buy tickets once it&apos;s live.
+                  {isEditing && event?.share_token && event?.slug === slug && (
+                    <SecretLinkRow url={`https://sdgatx.com/events/${slug}?t=${event.share_token}`} />
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </div>
-        {isInternal && (
-          <p className="text-[11px] mt-4" style={{ color: '#f59e0b' }}>
-            Draft event: never appears on the public site or member surfaces and cannot go live
-            until Visibility is changed to Public or Secret. It still supports contracts, SignNow,
-            financials, and POS imports, and shows on the team calendar.
-          </p>
-        )}
-        {isUnlisted && (
-          <p className="text-[11px] mt-4" style={{ color: '#f59e0b' }}>
-            Secret event: not on /events, /home, or the public calendar, and search engines are
-            told not to index it. Once published, anyone with the secret link can open the page and
-            buy tickets, so only share it with people you want at the event.
-            {isEditing && event?.share_token && event?.slug === slug && (
-              <span className="block mt-2 break-all select-all" style={{ color: 'var(--auth-muted)' }}>
-                Secret link: https://sdgatx.com/events/{slug}?t={event.share_token}
-              </span>
-            )}
-          </p>
-        )}
       </section>
 
       <form onSubmit={handleSubmit} className="space-y-4">

@@ -12,7 +12,7 @@ import { adminFetch } from '@/lib/admin-fetch';
 //
 // The publish itself runs in /api/admin/events/:id/tt-publish (admin + MFA
 // gated). The TICKETTAILOR_API_KEY is never exposed to the browser.
-export default function PublishEventButton({ eventId, slug, status, ttEventSeriesId, visibility = 'public' }) {
+export default function PublishEventButton({ eventId, slug, status, ttEventSeriesId, visibility = 'public', embedded = false }) {
   const router = useRouter();
   const [publishing, setPublishing] = useState(false);
   const [msg, setMsg] = useState('');
@@ -52,18 +52,30 @@ export default function PublishEventButton({ eventId, slug, status, ttEventSerie
     }
   }
 
-  return (
-    <div
-      className="rounded-[12px] border p-5 mb-6"
-      style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}
-    >
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
-          <span className="text-[12px] font-semibold tracking-[0.14em]" style={{ color: 'var(--auth-muted)' }}>
+  const statusLine = isTeamOnly
+    ? 'Hidden. Visibility is Draft (team only).'
+    : isDraft
+      ? isSecret
+        ? 'Hidden until you go live. Then reachable by secret link only.'
+        : ttEventSeriesId
+          // Legacy TicketTailor-linked event.
+          ? 'Hidden until you go live. Going live also puts its ticket series on sale.'
+          : 'Hidden until you go live.'
+      : isSecret
+        ? 'Live. Reachable by secret link only.'
+        : 'Live on the public events page.';
+
+  const buttonBase = 'px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5';
+
+  const content = (
+    <>
+      <div className="flex items-center justify-between gap-x-4 gap-y-3 flex-wrap">
+        <div className="flex items-center gap-3 min-w-0 flex-wrap">
+          <span className="text-[11px] font-semibold tracking-[0.14em]" style={{ color: 'var(--auth-muted)' }}>
             STATUS
           </span>
           <span
-            className="text-[11px] font-semibold tracking-[0.12em] px-2.5 py-1 rounded-full"
+            className="text-[10px] font-semibold tracking-[0.12em] px-2.5 py-1 rounded-full"
             style={{
               color: isDraft ? 'var(--auth-accent-text)' : 'var(--auth-strong-surface-text)',
               background: isDraft ? 'var(--auth-accent)' : 'var(--auth-success)',
@@ -71,25 +83,21 @@ export default function PublishEventButton({ eventId, slug, status, ttEventSerie
           >
             {isDraft ? 'DRAFT' : 'PUBLISHED'}
           </span>
+          <span className="text-[12px]" style={{ color: 'var(--auth-muted)' }}>
+            {statusLine}
+          </span>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Preview opens the exact public event page in a new tab, gated to
-              admins by /events/[slug]/preview. Useful before GO LIVE to sanity
-              check the layout, and after publish as a quick "how does it look
-              live" shortcut. Slug is required — a brand-new event without one
-              yet can't be previewed. */}
+              admins by /events/[slug]/preview. */}
           {slug && (
             <a
               href={`/events/${slug}/preview`}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 border"
-              style={{
-                color: 'var(--auth-accent)',
-                borderColor: 'var(--auth-card-border)',
-                background: 'transparent',
-              }}
+              className={`${buttonBase} border`}
+              style={{ color: 'var(--auth-text-strong)', borderColor: 'var(--auth-card-border)', background: 'transparent' }}
             >
               PREVIEW
             </a>
@@ -99,7 +107,7 @@ export default function PublishEventButton({ eventId, slug, status, ttEventSerie
               type="button"
               onClick={publish}
               disabled={publishing}
-              className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-40"
+              className={`${buttonBase} disabled:opacity-40`}
               style={{ background: 'var(--auth-success)', color: 'var(--auth-strong-surface-text)' }}
             >
               {publishing ? 'GOING LIVE…' : 'GO LIVE'}
@@ -108,31 +116,29 @@ export default function PublishEventButton({ eventId, slug, status, ttEventSerie
         </div>
       </div>
 
-      <p className="text-[11px] mt-3" style={{ color: 'var(--auth-muted)' }}>
-        {isTeamOnly
-          ? 'Visibility is set to Draft, so this event is team only and hidden from the public site. Change Visibility to Public or Secret and save to go live.'
-          : isDraft
-            ? isSecret
-              ? 'This event is a draft and hidden from the public site. Going live makes it reachable by its secret link only.'
-              : ttEventSeriesId
-                // Legacy TicketTailor-linked event.
-                ? 'This event is a draft and hidden from the public site. Going live puts it on the public events page and sets its linked ticket series on sale.'
-                : 'This event is a draft and hidden from the public site. Going live puts it on the public events page.'
-            : isSecret
-              ? 'This event is live, but secret: only people with its secret link can open it.'
-              : 'This event is live on the public events page.'}
-      </p>
-
       {msg && (
-        <p className="text-[13px] mt-3" style={{ color: 'var(--auth-success-strong)' }}>
+        <p className="text-[12px] mt-2.5" style={{ color: 'var(--auth-success-strong)' }}>
           {msg}
         </p>
       )}
       {error && (
-        <p className="text-[13px] mt-3" style={{ color: 'var(--auth-danger)' }}>
+        <p className="text-[12px] mt-2.5" style={{ color: 'var(--auth-danger)' }}>
           {error}
         </p>
       )}
+    </>
+  );
+
+  // Embedded: rendered as the header strip of the editor's top control card,
+  // which owns the surrounding border and padding.
+  if (embedded) return content;
+
+  return (
+    <div
+      className="rounded-[12px] border p-5 mb-6"
+      style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}
+    >
+      {content}
     </div>
   );
 }
