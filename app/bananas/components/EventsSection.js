@@ -157,45 +157,61 @@ export default function EventsSection({ upcoming, past, metricsByEvent = {} }) {
                 }
                 initialMetrics={metricsByEvent[event.id] || null}
               />
-              <div className="flex flex-wrap gap-2 justify-end flex-shrink-0 max-w-[340px]">
-                {event.ticketing_mode === 'internal' && (
+              {/* Row actions. Navigation destinations (Attendees & Orders,
+                  Contracts, Guest List) are labelled 8px-radius buttons that
+                  match the Orders & Refunds page; record actions on the event
+                  itself (edit, delete) are a compact icon segmented control
+                  pinned to the far right so they never wrap onto their own
+                  line and the destructive action is visually separated from
+                  navigation. */}
+              <div className="flex items-center gap-3 flex-shrink-0 ml-auto">
+                <div className="flex flex-wrap gap-2 justify-end max-w-[420px]">
+                  {event.ticketing_mode === 'internal' && (
+                    <Link
+                      href={`/bananas/events/${event.id}/attendees`}
+                      className="auth-theme-border-button sdg-row-btn"
+                      title={`Attendees and orders for ${event.title}`}
+                    >
+                      ATTENDEES &amp; ORDERS
+                    </Link>
+                  )}
+                  {/* SDG-only events have no counterparty to sign anything, so
+                      the Contracts section is hidden on the edit page for those
+                      (see app/bananas/events/[id]/page.js). Hiding the button
+                      here too keeps the row honest — no dead deep-link into a
+                      section that doesn't render. */}
+                  {!event.is_sdg_only && (
+                    <Link
+                      href={`/bananas/events/${event.id}#contracts`}
+                      className="auth-theme-border-button sdg-row-btn"
+                      title={`Contracts for ${event.title}`}
+                    >
+                      CONTRACTS
+                    </Link>
+                  )}
                   <Link
-                    href={`/bananas/events/${event.id}/attendees`}
-                    className="auth-theme-border-button px-3 sm:px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
-                    title={`Attendees and orders for ${event.title}`}
+                    href={`/bananas/guest-list/${event.id}`}
+                    className="auth-theme-border-button sdg-row-btn"
+                    title={`Guest list for ${event.title}`}
                   >
-                    ATTENDEES &amp; ORDERS
+                    <span className="sm:hidden">GUESTS</span>
+                    <span className="hidden sm:inline">GUEST LIST</span>
                   </Link>
-                )}
-                {/* SDG-only events have no counterparty to sign anything, so
-                    the Contracts section is hidden on the edit page for those
-                    (see app/bananas/events/[id]/page.js). Hiding the button
-                    here too keeps the row honest — no dead deep-link into a
-                    section that doesn't render. */}
-                {!event.is_sdg_only && (
+                </div>
+                <div className="sdg-row-icon-group" role="group" aria-label={`Manage ${event.title}`}>
                   <Link
-                    href={`/bananas/events/${event.id}#contracts`}
-                    className="auth-theme-border-button px-3 sm:px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
-                    title={`Contracts for ${event.title}`}
+                    href={`/bananas/events/${event.id}`}
+                    className="sdg-row-icon-btn"
+                    aria-label={`Edit ${event.title}`}
+                    title="Edit event"
                   >
-                    CONTRACTS
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M16.9 3.6a2.1 2.1 0 0 1 3 3L8.5 18 4 19.5 5.5 15z" />
+                      <path d="M14.5 6l3.5 3.5" />
+                    </svg>
                   </Link>
-                )}
-                <Link
-                  href={`/bananas/guest-list/${event.id}`}
-                  className="auth-theme-border-button px-3 sm:px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
-                  title={`Guest list for ${event.title}`}
-                >
-                  <span className="sm:hidden">GUESTS</span>
-                  <span className="hidden sm:inline">GUEST LIST</span>
-                </Link>
-                <Link
-                  href={`/bananas/events/${event.id}`}
-                  className="auth-theme-border-button px-3 sm:px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
-                >
-                  EDIT
-                </Link>
-                <DeleteEventButton eventId={event.id} eventTitle={event.title} />
+                  <DeleteEventButton eventId={event.id} eventTitle={event.title} />
+                </div>
               </div>
             </div>
           ))}
