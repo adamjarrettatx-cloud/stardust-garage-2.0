@@ -7,7 +7,7 @@ const component = read('app/bananas/membership/MembershipHubClient.js');
 const api = read('app/api/admin/membership/journey/route.js');
 
 test('all Journey tabs render the same large-thumbnail list rows', () => {
-  assert.match(component, /import styles from '\.\/membership\.module\.css'/);
+  assert.match(component, /import styles from '\.\.\/components\/profile-list\.module\.css'/);
   assert.match(component, /<ul className=\{styles\.list\} data-testid="membership-journey-list">/);
   assert.match(component, /filtered\.map\(\(row\) => \(\s*<ProfileRow/s);
   assert.doesNotMatch(component, /cardStyles\.grid|<ProfileCard/);
@@ -18,7 +18,7 @@ test('all Journey tabs render the same large-thumbnail list rows', () => {
 });
 
 test('list photos stay large squares, never circular avatars', () => {
-  const css = read('app/bananas/membership/membership.module.css');
+  const css = read('app/bananas/components/profile-list.module.css');
   assert.match(component, /className=\{styles\.photo\}/);
   assert.match(component, /aspectRatio: '1 \/ 1'/);
   assert.match(css, /grid-template-columns: 144px/);
