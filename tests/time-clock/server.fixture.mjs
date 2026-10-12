@@ -19,6 +19,7 @@ import {
   GET as requestsGet,
   POST as requestsPost,
 } from "../../app/api/admin/time-clock/requests/route.js";
+import { GET as previewGet } from "../../app/api/admin/time-clock/employee-preview/route.js";
 import { initialize, seedSchedule, seedRequests, seedTimesheetMonth } from "./db.fixture.mjs";
 import { requestContext } from "./owner.fixture.mjs";
 
@@ -56,6 +57,7 @@ http
               return req.method === "GET" ? scheduleGet(request) : schedulePost(request);
             if (url.pathname === "/api/admin/time-clock/login") return loginPost(request);
             if (url.pathname === "/api/employee/me") return employeeGet(request);
+            if (url.pathname === "/api/admin/time-clock/employee-preview") return previewGet(request);
             if (url.pathname === "/api/employee/requests") return employeeRequestPost(request);
             if (url.pathname === "/api/admin/time-clock/requests")
               return req.method === "GET" ? requestsGet(request) : requestsPost(request);

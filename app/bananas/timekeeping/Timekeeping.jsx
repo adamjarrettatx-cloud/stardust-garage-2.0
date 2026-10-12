@@ -296,6 +296,9 @@ export default function Timekeeping({ enabled }) {
           >
             Open kiosk
           </a>
+          <a className="tc-linkbutton" href="/bananas/timekeeping/employee-view">
+            View as employee
+          </a>
           <button
             className="primary"
             disabled={!data || busy}
@@ -911,6 +914,11 @@ export default function Timekeeping({ enabled }) {
                         >
                           Reset PIN
                         </button>
+                        {w.active && (
+                          <a className="tc-linkbutton" href={`/bananas/timekeeping/employee-view?worker=${w.id}`}>
+                            View as employee
+                          </a>
+                        )}
                         <EmployeeLogin
                           worker={w}
                           busy={busy}
