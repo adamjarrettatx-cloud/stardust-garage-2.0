@@ -24,7 +24,7 @@ import { ANALYTICS_THEMES, FINANCIAL_THEMES } from '@/lib/admin-theme';
 import { centsToUsd } from '@/lib/event-analytics';
 import UnderlineTabs from '../components/UnderlineTabs';
 import cardStyles from '../applications/applications.module.css';
-import styles from './membership.module.css';
+import styles from '../components/profile-list.module.css';
 import { formatPhone } from '@/lib/phone';
 
 const THEMES = {

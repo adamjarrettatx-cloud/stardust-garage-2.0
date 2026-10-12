@@ -81,11 +81,11 @@ export default function NotificationsClient() {
       </div>
 
       {loading ? (
-        <div style={styles.empty}>Loading\u2026</div>
+        <div style={styles.empty}>Loading…</div>
       ) : error ? (
         <div style={styles.error}>{error}</div>
       ) : items.length === 0 ? (
-        <div style={styles.empty}>You\u2019re all caught up.</div>
+        <div style={styles.empty}>You’re all caught up.</div>
       ) : (
         <ul style={styles.list}>
           {items.map((n) => {

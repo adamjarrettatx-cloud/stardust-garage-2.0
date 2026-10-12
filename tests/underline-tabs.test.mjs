@@ -118,7 +118,8 @@ test('a tab with no count renders no chip', () => {
   );
 });
 
-test('counts are aligned for scanning and capped', () => {
+test('counts are aligned for scanning; capped unless a page opts into exact counts', () => {
   assert.match(TABS, /tabular-nums/);
-  assert.match(TABS, /count > 99 \? '99\+' : count/);
+  assert.match(TABS, /exactCounts = false/);
+  assert.match(TABS, /exactCounts \|\| count <= 99 \? count\.toLocaleString\('en-US'\) : '99\+'/);
 });

@@ -3,15 +3,18 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const component = readFileSync(new URL('../app/bananas/applications/ApplicationsList.js', import.meta.url), 'utf8');
-const css = readFileSync(new URL('../app/bananas/applications/applications.module.css', import.meta.url), 'utf8');
+const css = readFileSync(new URL('../app/bananas/components/profile-list.module.css', import.meta.url), 'utf8');
+const frame = readFileSync(new URL('../app/bananas/applications/applications.module.css', import.meta.url), 'utf8');
 
-test('application photos and initials share a large top image area', () => {
-  assert.match(component, /<div className=\{styles\.photo\}>/);
-  assert.doesNotMatch(component, /borderRadius: '50%'|w-11 h-11/);
-  assert.match(css, /\.card\s*\{[^}]*overflow: hidden/s);
-  assert.match(css, /\.photo\s*\{[^}]*aspect-ratio: 4 \/ 3/s);
+test('applications render as large-photo list rows, never circular avatars', () => {
+  assert.match(component, /import styles from '\.\.\/components\/profile-list\.module\.css'/);
+  assert.match(component, /<ul className=\{styles\.list\} data-testid="applications-list">/);
+  assert.match(component, /<div className=\{styles\.photo\} style=\{\{ aspectRatio: '1 \/ 1' \}\}>/);
+  assert.match(component, /<ApplicationPhoto application=\{a\} \/>\s*<div className=\{styles\.identity\}>/);
+  assert.doesNotMatch(component, /borderRadius: '50%'|w-11 h-11|styles\.grid|styles\.card/);
+  assert.match(css, /grid-template-columns: 144px/);
   assert.match(css, /\.photo img\s*\{[^}]*object-fit: cover/s);
-  assert.match(component, /<ApplicationPhoto application=\{a\} \/>\s*<div className=\{styles\.body\}>/);
+  assert.match(component, /<SubmissionTabs type="applications"[^>]*exactCounts/);
 });
 
 test('signed photos remain preferred and failed photos fall back to initials', () => {
@@ -28,12 +31,11 @@ test('application routes and status filtering remain intact', () => {
   assert.match(component, /dateParts\(a\.created_at\)/);
 });
 
-test('cards adapt to the actual content area alongside the admin sidebar', () => {
-  assert.match(css, /container-type: inline-size/);
-  assert.match(css, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
-  assert.match(css, /@container \(max-width: 920px\).*repeat\(2, minmax\(0,1fr\)\)/);
-  assert.match(css, /@container \(max-width: 600px\).*grid-template-columns: minmax\(0,1fr\)/);
-  assert.doesNotMatch(css, /height: (104|170)px/);
+test('rows adapt to the actual content area alongside the admin sidebar', () => {
+  assert.match(frame, /container-type: inline-size/);
+  assert.match(css, /@container \(max-width: 760px\)/);
+  assert.match(css, /@container \(max-width: 420px\)/);
+  assert.match(css, /\.photo \{ grid-area: photo; width: 120px; \}/);
 });
 
 test('contact fields are labeled and dates use Austin time', () => {
@@ -44,5 +46,5 @@ test('contact fields are labeled and dates use Austin time', () => {
   assert.equal((component.match(/timeZone: 'America\/Chicago'/g) || []).length, 2);
   assert.match(component, /View application for/);
   assert.match(css, /overflow-wrap: anywhere/);
-  assert.match(css, /\.card:focus-visible/);
+  assert.match(css, /\.row:focus-visible/);
 });

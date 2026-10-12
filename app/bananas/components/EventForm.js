@@ -618,7 +618,7 @@ export default function EventForm({
             </div>
           </div>
           <p className="text-[11px] mt-4" style={helperStyle}>
-            Membership pricing \u2014 including whether this is a Weekend Music Experience \u2014 is set in
+            Membership pricing — including whether this is a Weekend Music Experience — is set in
             the Member pricing panel below.
           </p>
         </section>

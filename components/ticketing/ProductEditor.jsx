@@ -779,19 +779,57 @@ export default function ProductEditor({ eventId, products, onReload, eventFeeDef
             return (
               <tr key={p.id}>
                 <td style={tdStyle()}>
-                  <div>{totalTiers} tier{totalTiers === 1 ? '' : 's'}</div>
-                  {active && (
-                    <div style={{ fontSize: 12, color: T.accent, marginTop: 2 }}>
-                      Now: {money(active.price_cents)} — {active.name}
-                    </div>
-                  )}
-                  {(hiddenCount || codeGated || soldOutTiers) ? (
-                    <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-                      {hiddenCount ? <span style={statusPill({ tone: 'muted' })}>{hiddenCount} hidden</span> : null}
-                      {codeGated ? <span style={statusPill({ tone: 'accent' })}>{codeGated} code-gated</span> : null}
-                      {soldOutTiers ? <span style={statusPill({ tone: 'warning' })}>{soldOutTiers} sold out</span> : null}
-                    </div>
-                  ) : null}
+                  <div style={{ fontSize: 12, color: T.muted, marginBottom: 8 }}>
+                    {totalTiers} tier{totalTiers === 1 ? '' : 's'}
+                    {hiddenCount ? ` · ${hiddenCount} hidden` : ''}
+                    {codeGated ? ` · ${codeGated} code-gated` : ''}
+                    {soldOutTiers ? ` · ${soldOutTiers} sold out` : ''}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {[...(p.tiers || [])]
+                      .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+                      .map((t, i) => {
+                        const st = t.status || 'active';
+                        const isNow = active && (active.id ? active.id === t.id : active === t);
+                        const capped = typeof t.quantity === 'number';
+                        const statusLabel = {
+                          active: 'Active',
+                          hidden: 'Hidden',
+                          sold_out: 'Sold out',
+                          access_code: 'Code',
+                        }[st] || st;
+                        const tone = { hidden: 'muted', sold_out: 'warning', access_code: 'accent' }[st] || 'muted';
+                        return (
+                          <div
+                            key={t.id || i}
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: 'minmax(120px, 1fr) 80px 110px 96px',
+                              alignItems: 'center',
+                              gap: 12,
+                              padding: '6px 10px',
+                              borderRadius: 8,
+                              border: `1px solid ${isNow ? T.accent : T.borderSoft}`,
+                            }}
+                          >
+                            <div style={{ fontWeight: isNow ? 600 : 400 }}>{t.name || 'Untitled tier'}</div>
+                            <div style={{ textAlign: 'right' }}>{money(t.price_cents)}</div>
+                            <div style={{ textAlign: 'right', fontSize: 12, color: T.muted }}>
+                              {t.sold_count || 0} / {capped ? t.quantity : '∞'} sold
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              {isNow ? (
+                                <span style={statusPill({ tone: 'success' })}>Now</span>
+                              ) : t.is_active === false ? (
+                                <span style={statusPill({ tone: 'danger' })}>Off</span>
+                              ) : (
+                                <span style={statusPill({ tone })}>{statusLabel}</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
                 </td>
                 <td style={tdStyle({ align: 'right' })}>
                   {(() => {
