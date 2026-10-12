@@ -14,7 +14,12 @@ import {
 } from "../../app/api/admin/time-clock/schedule/route.js";
 import { POST as loginPost } from "../../app/api/admin/time-clock/login/route.js";
 import { GET as employeeGet } from "../../app/api/employee/me/route.js";
-import { initialize, seedSchedule } from "./db.fixture.mjs";
+import { POST as employeeRequestPost } from "../../app/api/employee/requests/route.js";
+import {
+  GET as requestsGet,
+  POST as requestsPost,
+} from "../../app/api/admin/time-clock/requests/route.js";
+import { initialize, seedSchedule, seedRequests, seedTimesheetMonth } from "./db.fixture.mjs";
 import { requestContext } from "./owner.fixture.mjs";
 
 if (process.env.NODE_ENV === "production")
@@ -25,6 +30,8 @@ process.env.TIME_CLOCK_SECRET = "LOCAL-TEST-ONLY-NO-PRODUCTION-SECRET-".repeat(
 );
 await initialize();
 await seedSchedule();
+await seedRequests();
+await seedTimesheetMonth();
 const dir = process.cwd() + "/.time-clock-qa";
 http
   .createServer(async (req, res) => {
@@ -49,6 +56,9 @@ http
               return req.method === "GET" ? scheduleGet(request) : schedulePost(request);
             if (url.pathname === "/api/admin/time-clock/login") return loginPost(request);
             if (url.pathname === "/api/employee/me") return employeeGet(request);
+            if (url.pathname === "/api/employee/requests") return employeeRequestPost(request);
+            if (url.pathname === "/api/admin/time-clock/requests")
+              return req.method === "GET" ? requestsGet(request) : requestsPost(request);
             if (url.pathname === "/api/admin/time-clock")
               return req.method === "GET"
                 ? ownerGet(request)

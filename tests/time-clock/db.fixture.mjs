@@ -12,6 +12,7 @@ const ident = (name) => {
 export async function initialize() {
   await testDb.exec(`create role anon; create role authenticated; create role service_role bypassrls;
     create schema auth; create table auth.users(id uuid primary key, email text, raw_app_meta_data jsonb default '{}', banned boolean default false);
+    create table public.team_members(user_id uuid, role text); create table public.partner_profiles(user_id uuid, is_active boolean);
     insert into auth.users(id,email) values('${ownerId}','adam@sdgatx.com'),('${employeeId}','jordan@example.test');`);
   await testDb.exec(
     readFileSync(
@@ -26,6 +27,15 @@ export async function initialize() {
     readFileSync(
       new URL(
         "../../supabase/migrations/20261002160000_staff_schedule_employee_portal.sql",
+        "file://" + process.cwd() + "/tests/time-clock/",
+      ),
+      "utf8",
+    ),
+  );
+  await testDb.exec(
+    readFileSync(
+      new URL(
+        "../../supabase/migrations/20261011200000_employee_hub_requests.sql",
         "file://" + process.cwd() + "/tests/time-clock/",
       ),
       "utf8",
@@ -99,6 +109,23 @@ export async function seedSchedule() {
       [jordan, kiosk, s, e])).rows[0].id;
     await testDb.query("insert into tc_segments(shift_id,role_id,role_name,rate_cents,started_at,ended_at) values($1,'bartender','Bartender',2200,$2,$3)", [shift, s, e]);
   }
+}
+// Synthetic employee requests for the hub and manager-queue preview.
+export async function seedRequests() {
+  const rpcs = createAdminClient();
+  const ask = (payload) => rpcs.rpc("tc_employee_request", { p_user: employeeId, p_action: "create", p_payload: payload });
+  const shifts = (await testDb.query("select id,started_at,ended_at from tc_shifts order by started_at")).rows;
+  const s = shifts[0];
+  const r1 = await ask({ kind: "edit_shift", shift_id: s.id,
+    starts_at: new Date(Date.parse(s.started_at) - 30 * 60000).toISOString(),
+    ends_at: new Date(s.ended_at).toISOString(), reason: "Got here at 7:30 to set up the bar but the iPad was frozen." });
+  if (r1.error) throw new Error(r1.error.message);
+  const d = new Date(Date.now() + 10 * 86400000);
+  const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(d);
+  const start = new Date(`${ymd}T00:00:00-05:00`).toISOString();
+  const end = new Date(Date.parse(start) + 2 * 86400000).toISOString();
+  const r2 = await ask({ kind: "time_off", starts_at: start, ends_at: end, reason: "Family wedding in Houston." });
+  if (r2.error) throw new Error(r2.error.message);
 }
 const authAdmin = {
   async createUser({ email, app_metadata }) {
@@ -231,4 +258,42 @@ export function createAdminClient() {
       return builder;
     },
   };
+}
+// Synthetic month of punches for the owner timesheet calendar preview
+// (fixture-only SQL). Mix of approved and waiting shifts, plus two scheduled
+// shifts with no clock-in.
+export async function seedTimesheetMonth() {
+  const workers = (await testDb.query("select id,name from tc_workers order by name")).rows;
+  const by = (prefix) => workers.find((w) => w.name.startsWith(prefix))?.id;
+  const kiosk = (await testDb.query("select id from tc_kiosks limit 1")).rows[0].id;
+  const at = (back, hh, mm = 0) => {
+    const d = new Date(Date.now() - back * 86400000);
+    const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(d);
+    return new Date(Date.parse(`${ymd}T00:00:00-05:00`) + (hh * 60 + mm) * 60000).toISOString();
+  };
+  const roles = { "Sam": ["front_door", "Front door", 2000], "Kai": ["floor_support", "Floor support", 1800] };
+  const plan = [
+    ["Sam", 1, 19, 0, 25, 10, "pending"], ["Kai", 1, 20, 30, 26, 0, "pending"],
+    ["Sam", 2, 19, 5, 24, 45, "pending"], ["Kai", 4, 18, 0, 23, 30, "approved"],
+    ["Sam", 5, 19, 0, 25, 0, "approved"], ["Kai", 5, 20, 0, 26, 15, "approved"],
+    ["Sam", 8, 19, 0, 25, 30, "approved"], ["Kai", 9, 21, 0, 27, 0, "approved"],
+    ["Sam", 9, 18, 50, 24, 0, "approved"], ["Kai", 11, 19, 0, 25, 0, "approved"],
+    ["Sam", 12, 20, 0, 26, 0, "approved"], ["Kai", 12, 20, 0, 25, 40, "approved"],
+  ];
+  for (const [who, back, h1, m1, h2, m2, status] of plan) {
+    const id = by(who);
+    if (!id) continue;
+    const [role, roleName, rate] = roles[who];
+    const s = at(back, h1, m1), e = at(back, h2, m2);
+    const shift = (await testDb.query(
+      "insert into tc_shifts(worker_id,kiosk_id,started_at,ended_at,pay_basis,status) values($1,$2,$3,$4,'hourly',$5) returning id",
+      [id, kiosk, s, e, status])).rows[0].id;
+    await testDb.query("insert into tc_segments(shift_id,role_id,role_name,rate_cents,started_at,ended_at) values($1,$2,$3,$4,$5,$6)",
+      [shift, role, roleName, rate, s, e]);
+  }
+  for (const [who, back, role] of [["Kai", 2, "floor_support"], ["Sam", 4, "front_door"]]) {
+    const id = by(who);
+    if (id) await testDb.query("insert into tc_schedule(worker_id,role_id,starts_at,ends_at,created_by) values($1,$2,$3,$4,$5)",
+      [id, role, at(back, 20), at(back, 26), ownerId]);
+  }
 }
