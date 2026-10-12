@@ -13,7 +13,7 @@ await build({
   platform: "browser",
   jsx: "automatic",
   loader: { ".js": "jsx" },
-  alias: { "next/navigation": root + "/tests/time-clock/navigation.fixture.mjs", "@": root },
+  alias: { "@": root },
   define: { "process.env.NODE_ENV": '"development"' },
 });
 await build({
