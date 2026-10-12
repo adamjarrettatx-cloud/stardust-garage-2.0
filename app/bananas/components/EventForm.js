@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { cloneElement, isValidElement, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import TtLinkPanel from './TtLinkPanel';
@@ -452,20 +452,23 @@ export default function EventForm({
         {headerActions}
       </AuthenticatedPageHeader>
 
-      {/* TOP CONTROL CARD — status, visibility and event type in one place.
-          The status strip (edit only) sits on top with Preview / Go Live on
-          the right; the two decision controls share the body below. Wired
-          into the same form state; saved with the form. */}
-      <section className="rounded-[14px] border mb-4 overflow-hidden" style={cardStyle}>
-        {statusPanel && (
-          <div className="px-5 py-3.5 border-b" style={{ borderColor: 'var(--auth-card-border)' }}>
-            {statusPanel}
-          </div>
-        )}
-
-        <div className="px-5 py-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-            <div>
+      {/* TOP CONTROL CARD — Status, Visibility, Event Type and the Preview /
+          Go Live actions share one row. On edit, PublishEventButton owns the
+          row and slots these controls in; on create there is no status yet, so
+          the controls render on their own. Wired into the same form state;
+          saved with the form. */}
+      {(() => {
+        const visibilityHint = isInternal
+          ? 'Team only. Never shown on the public site, even by link.'
+          : isUnlisted
+            ? 'Only people with the secret link can open it once live.'
+            : 'Shown on the public events page once live.';
+        const typeHint = eventType === 'private'
+          ? 'Venue rental. No ticket sales for this event.'
+          : 'Sells tickets through the internal checkout below.';
+        const controls = (
+          <>
+            <div title={visibilityHint}>
               <label className={labelClass} style={labelStyle}>Visibility</label>
               <Segmented
                 value={visibility}
@@ -476,15 +479,8 @@ export default function EventForm({
                   { value: 'internal', label: 'Draft' },
                 ]}
               />
-              <p className="text-[11px] mt-2" style={helperStyle}>
-                {isInternal
-                  ? 'Team only. Never shown on the public site, even by link.'
-                  : isUnlisted
-                    ? 'Only people with the secret link can open it once live.'
-                    : 'Shown on the public events page once live.'}
-              </p>
             </div>
-            <div>
+            <div title={typeHint}>
               <label className={labelClass} style={labelStyle}>Event Type</label>
               <Segmented
                 value={eventType}
@@ -494,13 +490,14 @@ export default function EventForm({
                   { value: 'private', label: 'Private Rental' },
                 ]}
               />
-              <p className="text-[11px] mt-2" style={helperStyle}>
-                {eventType === 'private'
-                  ? 'Venue rental. No ticket sales for this event.'
-                  : 'Sells tickets through the internal checkout below.'}
-              </p>
             </div>
-          </div>
+          </>
+        );
+        return (
+      <section className="rounded-[14px] border mb-4 px-5 py-4" style={cardStyle}>
+          {statusPanel && isValidElement(statusPanel)
+            ? cloneElement(statusPanel, { controls })
+            : <div className="flex items-end gap-x-7 gap-y-4 flex-wrap">{controls}</div>}
 
           {(isInternal || isUnlisted) && (
             <div
@@ -523,8 +520,9 @@ export default function EventForm({
               )}
             </div>
           )}
-        </div>
       </section>
+        );
+      })()}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* IDENTITY HERO — profile-style header with square thumbnail + title/slug. */}
