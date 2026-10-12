@@ -6,7 +6,8 @@
 //
 //   Guest · Trial Ready · Trial Activated · The Weekender · The Builder · The Insider
 //
-// Each tab is a clean, scannable card grid of profiles currently in that state.
+// Each tab is a clean, scannable list of profiles currently in that state,
+// with large square photos so faces are easy to recognise.
 // No funnel chart, no timeseries, no KPI clutter. The counts on the tabs
 // are the funnel. Selecting a tab reveals a search box, the tab's hint line,
 // and the profile list; nothing else.
@@ -50,7 +51,8 @@ function fmtCents(cents) {
 }
 
 // -----------------------------------------------------------------------
-// Avatar (photo or initials fallback)
+// Photo (photo or initials fallback) — a large square thumbnail at the start
+// of each list row, sized so faces stay recognisable.
 // -----------------------------------------------------------------------
 
 function ProfilePhoto({ name, photoUrl, onPhotoError }) {
@@ -58,7 +60,7 @@ function ProfilePhoto({ name, photoUrl, onPhotoError }) {
   const initials = (name || '').trim().split(/\s+/).map((p) => p[0] || '').slice(0, 2).join('').toUpperCase() || '?';
   return (
     <div
-      className={cardStyles.photo}
+      className={styles.photo}
       style={{ aspectRatio: '1 / 1' }}
     >
       {photoUrl && photoUrl !== failedUrl ? (
@@ -91,34 +93,32 @@ function contextLine(row) {
 }
 
 // -----------------------------------------------------------------------
-// Profile card — shared application-card styling for all six lifecycle tabs.
+// Profile row — one large-thumbnail list row, shared by all six tabs.
 // Only members have detail destinations; guests/trials remain read-only.
 // -----------------------------------------------------------------------
 
-function ProfileCard({ row, stageLabel, photoUrl, photoRef, onPhotoError }) {
+function ProfileRow({ row, stageLabel, photoUrl, photoRef, onPhotoError }) {
   const name = row.full_name || row.email || 'Unnamed';
   const contextLabel = row.kind === 'account' ? 'Account'
     : row.kind === 'trial' ? 'Trial activity' : 'Membership';
   const inner = (
     <>
       <ProfilePhoto name={name} photoUrl={photoUrl} onPhotoError={onPhotoError} />
-      <div className={cardStyles.body}>
-        <div className={cardStyles.identity}>
-          <div className={cardStyles.plan}>{stageLabel}</div>
-          <h2>{name}</h2>
-        </div>
-        <dl className={cardStyles.details}>
-          <div><dt>Email</dt><dd>{row.email || 'Not provided'}</dd></div>
-          <div><dt>Phone</dt><dd>{row.phone || 'Not provided'}</dd></div>
-        </dl>
-      </div>
-      <div className={`${cardStyles.footer} ${styles.footer}`}>
+      <div className={styles.identity}>
+        <div className={styles.stage}>{stageLabel}</div>
+        <h2>{name}</h2>
         <div className={styles.context}>
           <span>{contextLabel}</span>
           <p>{contextLine(row)}</p>
         </div>
+      </div>
+      <dl className={styles.details}>
+        <div><dt>Email</dt><dd>{row.email || 'Not provided'}</dd></div>
+        <div><dt>Phone</dt><dd>{row.phone || 'Not provided'}</dd></div>
+      </dl>
+      <div className={styles.action}>
         {row.href ? (
-          <span className={`${cardStyles.open} ${styles.open}`}>
+          <span className={styles.open}>
             View member <span aria-hidden="true">↗</span>
           </span>
         ) : null}
@@ -126,11 +126,13 @@ function ProfileCard({ row, stageLabel, photoUrl, photoRef, onPhotoError }) {
     </>
   );
 
-  if (!row.href) return <article ref={photoRef} className={`${cardStyles.card} ${styles.readOnly}`}>{inner}</article>;
+  if (!row.href) return <li><article ref={photoRef} className={`${styles.row} ${styles.readOnly}`}>{inner}</article></li>;
   return (
-    <Link href={row.href} ref={photoRef} className={cardStyles.card} aria-label={`View member ${name}`}>
-      {inner}
-    </Link>
+    <li>
+      <Link href={row.href} ref={photoRef} className={styles.row} aria-label={`View member ${name}`}>
+        {inner}
+      </Link>
+    </li>
   );
 }
 
@@ -382,6 +384,7 @@ export default function MembershipHubClient() {
             onChange={setActive}
             ariaLabel="Filter accounts by lifecycle state"
             testId="membership-journey"
+            exactCounts
           />
         ) : null}
 
@@ -401,7 +404,7 @@ export default function MembershipHubClient() {
           ) : null}
         </div>
 
-        {/* Every tab uses the same responsive profile cards. */}
+        {/* Every tab uses the same large-thumbnail list rows. */}
         <div>
           {loading && !payload ? (
             <div className={cardStyles.empty} role="status">Loading…</div>
@@ -412,9 +415,9 @@ export default function MembershipHubClient() {
                 : 'No matches for your search.'}
             </div>
           ) : (
-            <div className={cardStyles.grid} data-testid="membership-journey-cards">
+            <ul className={styles.list} data-testid="membership-journey-list">
               {filtered.map((row) => (
-                <ProfileCard
+                <ProfileRow
                   key={`${row.kind}-${row.id}`}
                   row={row}
                   stageLabel={activeMeta?.label}
@@ -423,7 +426,7 @@ export default function MembershipHubClient() {
                   onPhotoError={row.has_photo ? callbacksFor(photoKey(row)).onError : undefined}
                 />
               ))}
-            </div>
+            </ul>
           )}
         </div>
       </div>
