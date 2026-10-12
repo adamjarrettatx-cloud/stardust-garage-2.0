@@ -93,9 +93,25 @@ export default function EventAttendeesClient({ event, deskMode = false }) {
   const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
   const currentPage = Math.min(page, pageCount - 1);
   const visible = rows.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
-  const validTickets = tickets.filter((t) => ['valid', 'used'].includes(t.status));
-  const uniquePurchasers = new Set(orders.filter((o) => ['paid', 'partial_refund'].includes(o.status))
-    .map((o) => o.buyer_email?.trim().toLowerCase() || o.id)).size;
+  // Event counts are shown only for one event: the event page, or the
+  // Orders & Refunds page after a specific event is picked. They follow the
+  // Event filter only, never search or status, and are hidden for All events.
+  const scopedEvent = event
+    ? { id: event.id, title: event.title }
+    : eventFilter !== 'all' ? events.find((item) => item.id === eventFilter) : null;
+  const eventCounts = useMemo(() => {
+    if (!scopedEvent) return null;
+    const inEvent = (row) => !!event || row.event_id === scopedEvent.id;
+    const scopedOrders = orders.filter(inEvent);
+    const scopedTickets = tickets.filter(inEvent);
+    return [
+      ['purchasers', new Set(scopedOrders.filter((o) => ['paid', 'partial_refund'].includes(o.status))
+        .map((o) => o.buyer_email?.trim().toLowerCase() || o.id)).size],
+      ['active tickets', scopedTickets.filter((t) => ['valid', 'used'].includes(t.status)).length],
+      ['checked in', scopedTickets.filter((t) => t.status === 'used').length],
+      ['not checked in', scopedTickets.filter((t) => t.status === 'valid').length],
+    ];
+  }, [scopedEvent?.id, event, orders, tickets]);
   const eligible = tab === 'purchasers' ? rows.filter((row) => row.can_refund) : [];
   const pageEligible = visible.filter((row) => row.can_refund);
   function toggleOrder(id) {
@@ -181,15 +197,6 @@ export default function EventAttendeesClient({ event, deskMode = false }) {
         <p className={styles.notice}>This list contains SDG checkout purchases only. Ticket Tailor and other external ticket purchases are not included. Complimentary guest lists and trial-pass visits are separate.</p>
       )}
 
-      <div className={styles.metrics}>
-        {[
-          ['Purchasers', uniquePurchasers],
-          ['Active tickets', validTickets.length],
-          ['Checked in', tickets.filter((t) => t.status === 'used').length],
-          ['Not checked in', tickets.filter((t) => t.status === 'valid').length],
-        ].map(([label, value]) => <div key={label}><span>{label}</span><strong>{busy || error ? '—' : value}</strong></div>)}
-      </div>
-
       <div className={styles.panel}>
         <div className={styles.toolbar}>
           <div className={styles.tabs} role="group" aria-label="Roster view">
@@ -229,6 +236,16 @@ export default function EventAttendeesClient({ event, deskMode = false }) {
             </select>
           </label>
         </div>
+        {eventCounts && (
+          <p className={styles.summary} aria-live="polite">
+            <span className={styles.summaryScope}>{scopedEvent.title || 'Selected event'}</span>
+            {eventCounts.map(([label, value]) => (
+              <span key={label} className={styles.summaryItem}>
+                <strong>{busy || error ? '—' : value}</strong> {label}
+              </span>
+            ))}
+          </p>
+        )}
         <p className={styles.explanation}>
           {tab === 'purchasers'
             ? 'One row per order. Select orders for full remaining-balance refunds, or use Refund on a row for a partial amount. Maximum 100 orders per batch.'
