@@ -20,8 +20,8 @@ test('Organizations is one selectable type with two existing test scenarios', ()
 test('grouping preserves every fixed identity exactly once and creates no new login type', () => {
   const before = JSON.stringify(VIEW_PERSONAS);
   const flattened = viewOptions().flatMap((option) => option.scenarios);
-  assert.equal(flattened.length, 20);
-  assert.equal(new Set(flattened.map((p) => p.id)).size, 20);
+  assert.equal(flattened.length, 21);
+  assert.equal(new Set(flattened.map((p) => p.id)).size, 21);
   for (const p of flattened) {
     assert.equal(p, viewPersona(p.id));
     assert.equal(personaEmail(p.id), `view-${p.id}@preview.sdgatx.invalid`);
@@ -39,6 +39,15 @@ test('organization scenarios retain partner tags and restricted lifecycle cases 
   assert.equal(viewPersona('invited-partner').partnerState, 'invited');
   assert.equal(viewPersona('disabled-partner').partnerState, 'disabled');
   assert.match(VIEW_GROUP_DESCRIPTIONS.Organizations, /grants no login access or signing authority/);
+});
+
+test('Employee is a Staff view that lands on the employee-only hub', () => {
+  const employee = viewPersona('employee');
+  assert.equal(employee.group, 'Staff');
+  assert.equal(employee.path, '/employee');
+  assert.equal(employee.employee, true);
+  assert.equal(employee.teamRole, undefined);
+  assert.equal(personaEmail('employee'), 'view-employee@preview.sdgatx.invalid');
 });
 
 test('grouping respects an explicitly supplied reduced catalog', () => {

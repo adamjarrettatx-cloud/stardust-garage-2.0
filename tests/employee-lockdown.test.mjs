@@ -71,3 +71,10 @@ test("customers, signed-out visitors and malformed tokens are unaffected", () =>
   assert.equal(isEmployeeOnlyRequest(req("/member", { auth: "Bearer not.a.jwt" })), false);
   assert.equal(employeeLockdown(req("/member", { cookies: sessionCookie(customerToken) }), NextResponse), null);
 });
+
+test("View Portal handoff and exit stay reachable; nothing else under /view-preview", () => {
+  assert.equal(employeeAllowedPath("/view-preview/redeem"), true);
+  assert.equal(employeeAllowedPath("/view-preview/exit"), true);
+  assert.equal(employeeAllowedPath("/view-preview/other"), false);
+  assert.equal(employeeAllowedPath("/view-preview/exit/x"), false);
+});
