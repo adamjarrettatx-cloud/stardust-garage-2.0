@@ -5,8 +5,16 @@ import { partnerRouteRedirect } from '@/lib/partner-access';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { employeeLockdown } from '@/lib/employee-lockdown';
 import { STATION_COOKIE, hashStationToken, sameOrigin, stationCanRequest, stationHome } from '@/lib/station-policy';
+import { previewRequestGate, previewResponse } from '@/lib/view-portal/middleware';
 
+// Isolated View Portal host only: the preview lease gate wraps the website.
 export async function middleware(request) {
+  const preview = await previewRequestGate(request);
+  if (preview.denied) return preview.denied;
+  return previewResponse(await websiteMiddleware(request), preview, request);
+}
+
+async function websiteMiddleware(request) {
   const { pathname } = request.nextUrl;
 
   // Supabase falls back to the project's Site URL (the site root) when an
