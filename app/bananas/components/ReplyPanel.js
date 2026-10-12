@@ -120,7 +120,7 @@ export default function ReplyPanel({ submissionType, submissionId, toEmail, defa
           {sending ? 'SENDING\u2026' : 'SEND REPLY'}
         </button>
         {result?.ok && (
-          <span className="text-[12px]" style={{ color: '#4ade80' }}>Sent \u2014 replies will go to your inbox.</span>
+          <span className="text-[12px]" style={{ color: '#4ade80' }}>Sent — replies will go to your inbox.</span>
         )}
         {result?.error && (
           <span className="text-[12px]" style={{ color: '#f87171' }}>{result.error}</span>
