@@ -44,6 +44,55 @@ function contactSubline(contact) {
   return [contact.primary_contact_name, contact.company].filter(adds).join(' · ');
 }
 
+// Sortable columns. Missing values always sort last in either direction so a
+// descending sort never opens on a wall of dashes.
+const SORT_COLUMNS = [
+  { key: 'name', label: 'Name', value: c => c.display_name },
+  { key: 'type', label: 'Type', value: c => contactDirectoryTypes(c.contact_type).map(t => TYPE_LABELS[t]).join(' ') },
+  { key: 'email', label: 'Email', value: c => c.email },
+  { key: 'phone', label: 'Phone', value: c => String(c.phone || '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '') },
+  { key: 'instagram', label: 'Instagram', value: c => instagramHandle(c.instagram_handle).replace(/^@/, '') },
+];
+const collator = new Intl.Collator('en', { sensitivity: 'base', numeric: true });
+
+export function sortContacts(contacts, sort) {
+  const column = SORT_COLUMNS.find(col => col.key === sort?.key) || SORT_COLUMNS[0];
+  const dir = sort?.dir === 'desc' ? -1 : 1;
+  return [...contacts].sort((a, b) => {
+    const av = String(column.value(a) || '').trim();
+    const bv = String(column.value(b) || '').trim();
+    if (!av !== !bv) return av ? -1 : 1;
+    return (collator.compare(av, bv) * dir) || collator.compare(a.display_name || '', b.display_name || '');
+  });
+}
+
+function SortHeader({ column, sort, onSort, className }) {
+  const active = sort.key === column.key;
+  const nextDir = active && sort.dir === 'asc' ? 'desc' : 'asc';
+  return <span className={className}>
+    <button type="button" className={`${styles.sortButton} ${active ? styles.sortActive : ''}`}
+      onClick={() => onSort({ key: column.key, dir: nextDir })}
+      aria-label={`${column.label}${active ? `, sorted ${sort.dir === 'asc' ? 'ascending' : 'descending'}` : ''}. Sort ${nextDir === 'asc' ? 'ascending' : 'descending'}`}
+      title={`Sort by ${column.label.toLowerCase()} ${nextDir === 'asc' ? 'ascending' : 'descending'}`}>
+      {column.label}
+      <svg aria-hidden="true" viewBox="0 0 10 14" width="8" height="11" className={styles.sortIcon}>
+        <path d="M5 1 9 5.5H1z" className={active && sort.dir === 'asc' ? styles.sortOn : ''} />
+        <path d="M5 13 1 8.5h8z" className={active && sort.dir === 'desc' ? styles.sortOn : ''} />
+      </svg>
+    </button>
+  </span>;
+}
+
+function SortSelect({ sort, onSort }) {
+  return <select className={styles.sortSelect} aria-label="Sort contacts" value={`${sort.key}:${sort.dir}`}
+    onChange={event => { const [key, dir] = event.target.value.split(':'); onSort({ key, dir }); }}>
+    {SORT_COLUMNS.flatMap(col => [
+      <option key={`${col.key}:asc`} value={`${col.key}:asc`}>{col.label} {col.key === 'phone' ? '0–9' : 'A–Z'}</option>,
+      <option key={`${col.key}:desc`} value={`${col.key}:desc`}>{col.label} {col.key === 'phone' ? '9–0' : 'Z–A'}</option>,
+    ])}
+  </select>;
+}
+
 function NewContactLink({ category }) {
   return <Link className={styles.add} href={category ? `/bananas/contacts/new?category=${category}` : '/bananas/contacts/new'}>{category === 'organization' ? '+ NEW ORGANIZATION' : '+ NEW CONTACT'}</Link>;
 }
@@ -74,10 +123,12 @@ function SearchInput({ label, value, onChange }) {
   </label>;
 }
 
-function ContactRows({ contacts, category, archived = false }) {
+function ContactRows({ contacts, category, archived = false, sort, onSort }) {
   return <div className={styles.table} role="list">
-    <div className={styles.tableHead} aria-hidden="true">
-      <span>Name</span><span>Type</span><span>Email</span><span>Phone</span><span>Instagram</span><span />
+    <div className={styles.tableHead}>
+      {SORT_COLUMNS.map(column => <SortHeader key={column.key} column={column} sort={sort} onSort={onSort}
+        className={column.key === 'instagram' ? styles.instagram : undefined} />)}
+      <span aria-hidden="true" />
     </div>
     {contacts.map(contact => {
       const sub = contactSubline(contact);
@@ -108,11 +159,11 @@ function ContactRows({ contacts, category, archived = false }) {
   </div>;
 }
 
-function Directory({ contacts, section }) {
+function Directory({ contacts, section, sort, onSort }) {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('');
-  const visible = useMemo(() => filterDirectoryContacts(contacts, section.value, query, status), [contacts, section.value, query, status]);
+  const visible = useMemo(() => sortContacts(filterDirectoryContacts(contacts, section.value, query, status), sort), [contacts, section.value, query, status, sort]);
   const total = filterDirectoryContacts(contacts, section.value).length;
   const tabs = CONTACT_DIRECTORY_SECTIONS.map(({ value, label }) => ({ id: value, label, count: filterDirectoryContacts(contacts, value).length }));
   return <>
@@ -130,35 +181,39 @@ function Directory({ contacts, section }) {
         <option value="">All statuses</option>
         {CONTACT_STATUS_OPTIONS.filter(option => option.value !== 'archived').map(option => <option value={option.value} key={option.value}>{option.label}</option>)}
       </select>
+      <SortSelect sort={sort} onSort={onSort} />
       <p className={styles.count} role="status">{visible.length === total ? total : `${visible.length} of ${total}`} {total === 1 ? 'contact' : 'contacts'}</p>
     </div>
     {visible.length === 0 ? <div className={styles.empty}>
       {total === 0 ? <>No {section.label.toLowerCase()} contacts yet. <Link href={`/bananas/contacts/new?category=${section.value}`}>Add the first one</Link></> : 'No contacts match this search and status.'}
-    </div> : <ContactRows contacts={visible} category={section.value} />}
+    </div> : <ContactRows contacts={visible} category={section.value} sort={sort} onSort={onSort} />}
     <div className={styles.footer}><p className={styles.note}>A contact can appear in more than one section.</p><ArchivedContactsLink category={section.value} /></div>
   </>;
 }
 
-function ArchivedList({ contacts, section }) {
+function ArchivedList({ contacts, section, sort, onSort }) {
   const [query, setQuery] = useState('');
-  const visible = useMemo(() => filterArchivedContacts(contacts, section?.value, query), [contacts, section?.value, query]);
+  const visible = useMemo(() => sortContacts(filterArchivedContacts(contacts, section?.value, query), sort), [contacts, section?.value, query, sort]);
   return <>
     <Link href={contactDirectoryHref(section?.value)} className={styles.back}><span aria-hidden="true">←</span> {section?.label || 'Contacts'}</Link>
     <div className={styles.heading}><h1>Archived Contacts</h1></div>
     <p className={styles.description}>Archived {section ? `${section.label.toLowerCase()} ` : ''}contacts remain on file with their linked records and history. Open a profile to restore it.</p>
     <div className={styles.tools}>
       <SearchInput label="Search archived contacts" value={query} onChange={setQuery} />
+      <SortSelect sort={sort} onSort={onSort} />
       <p className={styles.count} role="status">{visible.length} {visible.length === 1 ? 'archived contact' : 'archived contacts'}</p>
     </div>
-    {visible.length ? <ContactRows contacts={visible} category={section?.value} archived />
+    {visible.length ? <ContactRows contacts={visible} category={section?.value} archived sort={sort} onSort={onSort} />
       : <div className={styles.empty}>{query ? 'No archived contacts match this search.' : 'No archived contacts.'}</div>}
   </>;
 }
 
 export default function ContactsList({ contacts }) {
   const searchParams = useSearchParams();
+  // Sort lives above the keyed section views so it carries across tab changes.
+  const [sort, setSort] = useState({ key: 'name', dir: 'asc' });
   const section = contactDirectorySection(searchParams?.get('category'));
-  if (searchParams?.get('view') === 'archived') return <ArchivedList key={section?.value || 'all-archived'} contacts={contacts} section={section} />;
+  if (searchParams?.get('view') === 'archived') return <ArchivedList key={section?.value || 'all-archived'} contacts={contacts} section={section} sort={sort} onSort={setSort} />;
   const active = section || DEFAULT_SECTION;
-  return <Directory key={active.value} contacts={contacts} section={active} />;
+  return <Directory key={active.value} contacts={contacts} section={active} sort={sort} onSort={setSort} />;
 }
