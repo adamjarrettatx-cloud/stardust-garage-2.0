@@ -20,7 +20,7 @@ import {
 } from "@/lib/time-clock/core.mjs";
 
 import ScheduleCalendar from "./ScheduleCalendar";
-import EmployeeLogin from "./EmployeeLogin";
+import StaffList from "./StaffList";
 import RequestsQueue from "./RequestsQueue";
 import TimesheetCalendar from "./TimesheetCalendar";
 
@@ -736,18 +736,14 @@ export default function Timekeeping({ enabled }) {
                       Add staff profile
                     </button>
                   </div>
-                  <p className="sub">
-                    Adam and Jeyu can create and edit profiles, assigned roles,
-                    pay settings, and PINs here at any time. A time-clock
-                    profile does not grant access to other SDG tools.
-                  </p>
-                  <p className="sub">
-                    Staff PINs must be four digits. If a profile still uses a
-                    six-digit PIN, use Reset PIN to replace it before the next
-                    clock-in. Saved hours and iPad pairing are unchanged.
+                  <p className="sub sl-note">
+                    Adam and Jeyu manage profiles, roles, pay and PINs here. A
+                    time-clock profile does not grant access to other SDG tools.
+                    PINs are four digits — reset any six-digit PIN before the
+                    next clock-in.
                   </p>
                   {editWorker && (
-                    <form className="panel tc-form" onSubmit={saveWorker}>
+                    <form id="staff-edit-form" className="panel tc-form" onSubmit={saveWorker}>
                       <h2>
                         {editWorker.id
                           ? "Edit staff profile"
@@ -877,61 +873,33 @@ export default function Timekeeping({ enabled }) {
                       </button>
                     </form>
                   )}
-                  <div className="staffgrid">
-                    {data.workers.map((w) => (
-                      <section className="panel" key={w.id}>
-                        <h2>{w.name}</h2>
-                        <p className="sub">
-                          {w.category} · {w.active ? "Active" : "Inactive"}
-                        </p>
-                        <p>
-                          {w.pay_basis === "flat"
-                            ? `${money(w.flat_cents)} / shift`
-                            : w.pay_basis === "hourly"
-                              ? "Hourly by role"
-                              : "Pay not configured"}
-                        </p>
-                        {data.assignments
-                          .filter((a) => a.worker_id === w.id)
-                          .map((a) => (
-                            <p className="sub" key={a.role_id}>
-                              {data.roles.find((r) => r.id === a.role_id)?.name}
-                              {w.pay_basis === "hourly" &&
-                                ` · ${a.rate_cents === null ? "Rate not set" : money(a.rate_cents) + "/hr"}`}
-                            </p>
-                          ))}
-                        <button onClick={() => chooseWorker(w)}>Edit</button>
-                        <button
-                          onClick={() => {
-                            setReplacementPin("");
-                            setError("");
-                            setConfirm({
-                              action: "reset_pin",
-                              id: w.id,
-                              label: `Reset ${w.name}'s PIN? The old PIN and current PIN session will stop working.`,
-                            });
-                          }}
-                        >
-                          Reset PIN
-                        </button>
-                        {w.active && (
-                          <a className="tc-linkbutton" href={`/bananas/timekeeping/employee-view?worker=${w.id}`}>
-                            View as employee
-                          </a>
-                        )}
-                        <EmployeeLogin
-                          worker={w}
-                          busy={busy}
-                          run={run}
-                          onDone={async ({ notice: text, disclosure: shown }) => {
-                            if (text) setNotice(text);
-                            if (shown) setDisclosure(shown);
-                            await load();
-                          }}
-                        />
-                      </section>
-                    ))}
-                  </div>
+                  <StaffList
+                    data={data}
+                    busy={busy}
+                    run={run}
+                    onEdit={(w) => {
+                      chooseWorker(w);
+                      requestAnimationFrame(() =>
+                        document
+                          .getElementById("staff-edit-form")
+                          ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+                      );
+                    }}
+                    onResetPin={(w) => {
+                      setReplacementPin("");
+                      setError("");
+                      setConfirm({
+                        action: "reset_pin",
+                        id: w.id,
+                        label: `Reset ${w.name}'s PIN? The old PIN and current PIN session will stop working.`,
+                      });
+                    }}
+                    onDone={async ({ notice: text, disclosure: shown }) => {
+                      if (text) setNotice(text);
+                      if (shown) setDisclosure(shown);
+                      await load();
+                    }}
+                  />
                   {!data.workers.length && (
                     <div className="empty">
                       Add your first worker, assign roles, and privately provide
