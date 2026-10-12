@@ -176,7 +176,7 @@ export default function StaffList({ data, busy, run, onEdit, onResetPin, onDone 
       <div className="sl-list" ref={listRef}>
         <div className="sl-cols" aria-hidden="true">
           <span>Name</span>
-          <span>Roles &amp; rates</span>
+          <span>Roles</span>
           <span>Pay basis</span>
           <span>Employee login</span>
           <span className="right">Actions</span>
@@ -193,12 +193,22 @@ export default function StaffList({ data, busy, run, onEdit, onResetPin, onDone 
                 ? "Rate not set"
                 : `${money(a.rate_cents)}/hr`
               : "";
+          // Pay basis shows only the amount: per-role hourly rates on each
+          // role's line, or the flat shift fee once. No "Hourly by role" label.
           const payText =
             w.pay_basis === "flat"
               ? `${money(w.flat_cents)} / shift`
               : w.pay_basis === "hourly"
-                ? "Hourly by role"
+                ? ""
                 : "Pay not configured";
+          const lines = roles.length
+            ? roles.map((a, i) => ({
+                key: a.role_id,
+                role: roleName(a.role_id),
+                pay: w.pay_basis === "hourly" ? rateText(a) : i === 0 ? payText : "",
+                unset: w.pay_basis === "hourly" ? a.rate_cents === null : w.pay_basis === "unset",
+              }))
+            : [{ key: "none", role: null, pay: payText || "—", unset: w.pay_basis !== "flat" }];
           return (
             <div key={w.id} className={`sl-item${w.active ? "" : " inactive"}${open ? " menu-open" : ""}`} onClick={(e) => rowClick(e, w)}>
               <div className="sl-who">
@@ -213,21 +223,13 @@ export default function StaffList({ data, busy, run, onEdit, onResetPin, onDone 
                   </small>
                 </div>
               </div>
-              <div className="sl-roles">
-                {roles.length ? (
-                  roles.map((a) => (
-                    <div key={a.role_id}>
-                      <span>{roleName(a.role_id)}</span>
-                      {rateText(a) && <span className="mono">{rateText(a)}</span>}
-                    </div>
-                  ))
-                ) : (
-                  <span className="muted">No roles assigned</span>
-                )}
-              </div>
-              <div className={`sl-pay${w.pay_basis === "unset" ? " muted" : ""}`}>
-                <strong>{payText}</strong>
-                {w.pay_basis === "flat" && <span>Flat shift fee</span>}
+              <div className="sl-rolepay">
+                {lines.map((l) => (
+                  <div className="sl-line" key={l.key}>
+                    <span className={l.role ? "sl-role" : "sl-role muted"}>{l.role || "No roles assigned"}</span>
+                    <span className={`sl-rate mono${l.unset ? " muted" : ""}`}>{l.pay}</span>
+                  </div>
+                ))}
               </div>
               <div className="sl-login">
                 {w.has_login && <span className="sl-id">{loginId(w) || "Linked account"}</span>}
@@ -301,10 +303,8 @@ export default function StaffList({ data, busy, run, onEdit, onResetPin, onDone 
                     {rateText(a) && ` · ${rateText(a)}`}
                   </span>
                 ))}
-                <span>
-                  {w.pay_basis === "flat" ? `${titleCase(w.category)} · ${payText}` : payText}
-                  {!w.has_login && " · Login not set up"}
-                </span>
+                {payText && <span>{payText}</span>}
+                {!w.has_login && <span>Login not set up</span>}
                 {w.has_login && <span className={`sl-dot ${loginState}`}>Login {loginLabel.toLowerCase()}</span>}
               </div>
               {formOpen && (
