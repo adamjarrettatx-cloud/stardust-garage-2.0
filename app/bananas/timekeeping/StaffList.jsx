@@ -14,7 +14,7 @@ const titleCase = (s = "") => s.charAt(0).toUpperCase() + s.slice(1);
 
 // Staff profiles as a single scannable list. Each row: identity, roles and
 // rates, pay basis, employee-login state, then Edit plus a ••• menu holding
-// Reset PIN, View as employee and the login actions. The row itself also
+// Reset PIN and the login actions. The row itself also
 // opens Edit. Login create/reset/enable/remove calls are unchanged from the
 // previous card layout.
 export default function StaffList({ data, busy, run, onEdit, onResetPin, onDone }) {
@@ -266,11 +266,6 @@ export default function StaffList({ data, busy, run, onEdit, onResetPin, onDone 
                     <button type="button" role="menuitem" disabled={busy} onClick={() => pick(() => onResetPin(w))}>
                       Reset PIN
                     </button>
-                    {w.active && (
-                      <a role="menuitem" href={`/bananas/timekeeping/employee-view?worker=${w.id}`}>
-                        View as employee
-                      </a>
-                    )}
                     <hr />
                     <div className="sl-menulabel">Employee login</div>
                     {!w.has_login && (

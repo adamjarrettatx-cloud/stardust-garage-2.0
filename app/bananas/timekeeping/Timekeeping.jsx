@@ -296,9 +296,6 @@ export default function Timekeeping({ enabled }) {
           >
             Open kiosk
           </a>
-          <a className="tc-linkbutton" href="/bananas/timekeeping/employee-view">
-            View as employee
-          </a>
           <button
             className="primary"
             disabled={!data || busy}
