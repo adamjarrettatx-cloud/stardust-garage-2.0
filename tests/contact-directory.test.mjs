@@ -136,3 +136,12 @@ test('contact rows are a compact list with a square image and aligned columns', 
   assert.match(source, /role="list"/);
   assert.ok(!/rounded-full/.test(source));
 });
+
+test('directory columns sort ascending and descending with blanks last', () => {
+  for (const key of ['name', 'type', 'email', 'phone', 'instagram']) assert.match(source, new RegExp(`key: '${key}'`));
+  assert.match(source, /const nextDir = active && sort\.dir === 'asc' \? 'desc' : 'asc'/);
+  assert.match(source, /if \(!av !== !bv\) return av \? -1 : 1;/);
+  assert.match(source, /aria-label="Sort contacts"/);
+  // Sort state sits above the keyed section views so tab changes keep it.
+  assert.match(source, /const \[sort, setSort\] = useState\(\{ key: 'name', dir: 'asc' \}\)/);
+});
