@@ -12,6 +12,7 @@ const ident = (name) => {
 export async function initialize() {
   await testDb.exec(`create role anon; create role authenticated; create role service_role bypassrls;
     create schema auth; create table auth.users(id uuid primary key, email text, raw_app_meta_data jsonb default '{}', banned boolean default false);
+    create table public.team_members(user_id uuid, role text); create table public.partner_profiles(user_id uuid, is_active boolean);
     insert into auth.users(id,email) values('${ownerId}','adam@sdgatx.com'),('${employeeId}','jordan@example.test');`);
   await testDb.exec(
     readFileSync(
@@ -26,6 +27,15 @@ export async function initialize() {
     readFileSync(
       new URL(
         "../../supabase/migrations/20261002160000_staff_schedule_employee_portal.sql",
+        "file://" + process.cwd() + "/tests/time-clock/",
+      ),
+      "utf8",
+    ),
+  );
+  await testDb.exec(
+    readFileSync(
+      new URL(
+        "../../supabase/migrations/20261011200000_employee_hub_requests.sql",
         "file://" + process.cwd() + "/tests/time-clock/",
       ),
       "utf8",
@@ -99,6 +109,23 @@ export async function seedSchedule() {
       [jordan, kiosk, s, e])).rows[0].id;
     await testDb.query("insert into tc_segments(shift_id,role_id,role_name,rate_cents,started_at,ended_at) values($1,'bartender','Bartender',2200,$2,$3)", [shift, s, e]);
   }
+}
+// Synthetic employee requests for the hub and manager-queue preview.
+export async function seedRequests() {
+  const rpcs = createAdminClient();
+  const ask = (payload) => rpcs.rpc("tc_employee_request", { p_user: employeeId, p_action: "create", p_payload: payload });
+  const shifts = (await testDb.query("select id,started_at,ended_at from tc_shifts order by started_at")).rows;
+  const s = shifts[0];
+  const r1 = await ask({ kind: "edit_shift", shift_id: s.id,
+    starts_at: new Date(Date.parse(s.started_at) - 30 * 60000).toISOString(),
+    ends_at: new Date(s.ended_at).toISOString(), reason: "Got here at 7:30 to set up the bar but the iPad was frozen." });
+  if (r1.error) throw new Error(r1.error.message);
+  const d = new Date(Date.now() + 10 * 86400000);
+  const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(d);
+  const start = new Date(`${ymd}T00:00:00-05:00`).toISOString();
+  const end = new Date(Date.parse(start) + 2 * 86400000).toISOString();
+  const r2 = await ask({ kind: "time_off", starts_at: start, ends_at: end, reason: "Family wedding in Houston." });
+  if (r2.error) throw new Error(r2.error.message);
 }
 const authAdmin = {
   async createUser({ email, app_metadata }) {

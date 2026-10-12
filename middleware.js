@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { teamDocumentPath } from '@/lib/document-access';
 import { partnerRouteRedirect } from '@/lib/partner-access';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { employeeLockdown } from '@/lib/employee-lockdown';
 import { STATION_COOKIE, hashStationToken, sameOrigin, stationCanRequest, stationHome } from '@/lib/station-policy';
 
 export async function middleware(request) {
@@ -56,6 +57,11 @@ export async function middleware(request) {
     }
     return NextResponse.next(); // Static assets and public informational pages.
   }
+
+  // Employee-only staff logins see the employee portal and nothing else:
+  // every other page redirects to /employee and every other API returns 403.
+  const employeeOnly = employeeLockdown(request, NextResponse);
+  if (employeeOnly) return employeeOnly;
 
   const isAdminRoute  = pathname.startsWith('/bananas');
   const isTeamRoute   = pathname === '/team' || pathname.startsWith('/team/');

@@ -113,3 +113,45 @@
 @media(max-width:700px){.tc-root .emp-next{grid-template-columns:1fr}.tc-root .emp-list li{flex-direction:column;gap:var(--s1)}}
 .tc-root .tabs button{white-space:nowrap;flex-shrink:0}
 .tc-root .donebtn{min-height:52px;padding:var(--s3) var(--s6);font-weight:600;font-size:var(--text-base)}.tc-root .donebig{min-height:64px;font-size:var(--text-lg);margin-bottom:var(--s3)}.tc-root .donebar{margin:var(--s6) 0 var(--s3)}.tc-root .successbox .wide+.wide{margin-top:var(--s1)}.tc-root .successbox>.sub.small{margin-top:var(--s4)}
+/* Employee hub (web). Mobile-first; same tokens as Timekeeping. */
+.tc-root .emp-head{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s4);margin-bottom:var(--s4)}.tc-root .emp-head h1{margin:var(--s2) 0 0}
+.tc-root .emp-tabs{position:sticky;top:0;z-index:3;background:var(--bg);overflow-x:auto;scrollbar-width:none}
+.tc-root .emp-hero .emp-time{font-size:var(--text-lg);margin:0 0 var(--s2)}
+.tc-root .emp-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:var(--s2)}
+.tc-root .emp-day{display:flex;flex-direction:column;gap:var(--s1);min-height:112px;padding:var(--s3);border:1px solid var(--border);border-radius:10px;background:var(--panel);min-width:0}
+.tc-root .emp-day.today{border-color:var(--text)}.tc-root .emp-dow{font-size:var(--text-xs);color:var(--muted);text-transform:uppercase;letter-spacing:.1em}.tc-root .emp-dom{font-size:var(--text-lg);font-weight:600;line-height:1.1}
+.tc-root .emp-chip{display:flex;flex-direction:column;padding:var(--s1) var(--s2);border-radius:6px;background:var(--raised);font-size:var(--text-xs);line-height:1.35;overflow:hidden}.tc-root .emp-chip span{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tc-root .emp-chip.off{color:var(--warning);background:var(--warnbg)}
+.tc-root .emp-none{font-size:var(--text-xs);color:var(--muted);margin-top:auto}
+.tc-root .emp-row{display:flex;justify-content:space-between;align-items:center;gap:var(--s4);padding:var(--s4) var(--s5);margin-bottom:var(--s3)}
+.tc-root .emp-group{margin-bottom:var(--s5)}.tc-root .emp-group>.eyebrow{display:block;margin-bottom:var(--s2)}.tc-root .emp-group .panel{padding:var(--s2) var(--s5)}
+.tc-root .emp-right{text-align:right;white-space:nowrap}
+.tc-root .emp-period{display:grid;grid-template-columns:48px 1fr 48px;align-items:center;gap:var(--s3);margin-bottom:var(--s5);text-align:center}.tc-root .emp-period>div{display:flex;flex-direction:column}.tc-root .emp-period b{font-size:var(--text-lg)}.tc-root .emp-period button{padding:0;font-size:var(--text-xl);line-height:1}
+.tc-root .emp-sheet{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--panel)}
+.tc-root .emp-sheet-head,.tc-root .emp-sheet-row{display:grid;grid-template-columns:1.1fr 1.3fr 1.4fr .7fr .9fr 1.2fr 1.1fr;align-items:center;gap:var(--s3);padding:var(--s3) var(--s5);font-size:var(--text-sm)}
+.tc-root .emp-sheet-head{background:var(--raised);font-size:var(--text-xs);color:var(--muted)}
+.tc-root .emp-sheet-row{border-top:1px solid var(--border);min-height:60px}.tc-root .emp-sheet-row.today{box-shadow:inset 3px 0 0 var(--text)}.tc-root .emp-sheet-row.empty-day{min-height:44px;color:var(--muted)}
+.tc-root .emp-act{text-align:right}.tc-root .emp-act button{min-height:40px;padding:var(--s2) var(--s3)}
+.tc-root .emp-sheet-foot{margin-top:var(--s3)}.tc-root .emp-sheet-foot .tablefoot{margin:0;max-width:520px}
+.tc-root .emp-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s3)}.tc-root .emp-actions button{display:flex;flex-direction:column;align-items:flex-start;text-align:left;padding:var(--s5);background:var(--panel);min-height:84px}
+.tc-root .emp-req{margin-bottom:var(--s3);padding:var(--s5)}.tc-root .emp-req p{margin:var(--s2) 0}.tc-root .emp-req s{color:var(--muted)}
+.tc-root .emp-note{padding:var(--s3);border-radius:8px;background:var(--raised);font-size:var(--text-sm)}.tc-root .emp-note .eyebrow{margin-right:var(--s2)}
+.tc-root .emp-account{display:grid;grid-template-columns:1.3fr 1fr;gap:var(--s5)}.tc-root .emp-dl{display:grid;grid-template-columns:auto 1fr;gap:var(--s3) var(--s5);margin:var(--s4) 0;font-size:var(--text-sm)}.tc-root .emp-dl dt{color:var(--muted)}.tc-root .emp-dl dd{margin:0}
+.tc-root .emp-form{width:100%;max-width:480px}.tc-root .emp-form h2{margin:0}.tc-root .emp-form textarea{min-height:80px}.tc-root .emp-two{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3)}.tc-root .emp-preview{margin:0;font-size:var(--text-lg);font-weight:600}
+.tc-root .emp-toast{position:fixed;left:50%;bottom:var(--s6);transform:translateX(-50%);z-index:101;background:var(--primary);color:var(--inverse);padding:var(--s3) var(--s5);border-radius:8px;font-size:var(--text-sm);max-width:90vw}
+@media(max-width:700px){
+  .tc-root .emp-week{gap:var(--s1)}.tc-root .emp-day{min-height:88px;padding:var(--s2) var(--s1);align-items:center;text-align:center}.tc-root .emp-dow{letter-spacing:.04em;font-size:10px}.tc-root .emp-chip{width:100%;padding:3px 2px;align-items:center}.tc-root .emp-chip b{font-size:10px;font-weight:600;white-space:nowrap}.tc-root .emp-chip span{display:none}.tc-root .emp-chip.off{font-size:10px}.tc-root .emp-none{font-size:10px}
+  .tc-root .emp-sheet-head{display:none}
+  .tc-root .emp-sheet-row{grid-template-columns:1fr auto;grid-template-areas:"day status" "role role" "time hours" "pay act";row-gap:var(--s1);padding:var(--s4)}
+  .tc-root .emp-sheet-row>span:nth-child(1){grid-area:day}.tc-root .emp-sheet-row>span:nth-child(2){grid-area:role}.tc-root .emp-sheet-row>span:nth-child(3){grid-area:time}.tc-root .emp-sheet-row>span:nth-child(4){grid-area:hours;text-align:right}.tc-root .emp-sheet-row>span:nth-child(4):after{content:' h'}.tc-root .emp-sheet-row>span:nth-child(5){grid-area:pay}.tc-root .emp-sheet-row>span:nth-child(6){grid-area:status;text-align:right}.tc-root .emp-sheet-row>span:nth-child(7){grid-area:act}
+  .tc-root .emp-sheet-row.empty-day{grid-template-areas:"day role";padding:var(--s3) var(--s4)}.tc-root .emp-sheet-row.empty-day>span:nth-child(2){text-align:right}
+  .tc-root .emp-actions,.tc-root .emp-account{grid-template-columns:1fr}
+}
+.tc-root .rq-list{display:grid;gap:var(--s3)}.tc-root .rq-card{padding:var(--s5)}.tc-root .rq-card .row{margin-top:var(--s3)}.tc-root .rq-times{display:flex;flex-direction:column;gap:var(--s1);margin:var(--s3) 0;font-size:var(--text-sm)}.tc-root .rq-times s{color:var(--muted)}.tc-root .rq-form{margin:var(--s3) 0 0}.tc-root .rq-two{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3)}
+@media(max-width:600px){.tc-root .rq-two{grid-template-columns:1fr}}
+.tc-root .emp-head .textbtn{white-space:nowrap;flex-shrink:0}
+@media(max-width:600px){
+  .tc-root .emp-head .eyebrow{letter-spacing:.1em;white-space:nowrap}
+  .tc-root .emp-head .textbtn{min-height:40px;padding:var(--s2) var(--s3)}
+  .tc-root .emp-tabs{display:grid;grid-template-columns:repeat(4,auto);justify-content:space-between;gap:0}
+  .tc-root .emp-tabs button{padding:var(--s3) var(--s1);font-size:13px}
+}

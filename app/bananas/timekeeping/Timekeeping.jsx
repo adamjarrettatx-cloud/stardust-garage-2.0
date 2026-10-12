@@ -21,6 +21,7 @@ import {
 
 import ScheduleCalendar from "./ScheduleCalendar";
 import EmployeeLogin from "./EmployeeLogin";
+import RequestsQueue from "./RequestsQueue";
 
 const endpoint = "/api/admin/time-clock";
 const blankWorker = {
@@ -36,7 +37,8 @@ const blankRole = { id: "", name: "", active: true, tasks: "", isNew: true };
 export default function Timekeeping({ enabled }) {
   const [data, setData] = useState(null),
     [tab, setTab] = useState("schedule"),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [pendingRequests, setPendingRequests] = useState(0);
   const [busy, setBusy] = useState(false),
     [days, setDays] = useState("14"),
     [status, setStatus] = useState("all"),
@@ -52,6 +54,17 @@ export default function Timekeeping({ enabled }) {
   const [correction, setCorrection] = useState(null),
     [notice, setNotice] = useState(""),
     [now, setNow] = useState(Date.now());
+  // Waiting-request badge on the Requests tab; refreshed when tabs change.
+  useEffect(() => {
+    if (!enabled) return;
+    let live = true;
+    request("/api/admin/time-clock/requests?status=pending")
+      .then((r) => live && setPendingRequests(r.pending_count))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [enabled, tab]);
   const mutex = useRef(false),
     fetchGeneration = useRef(0);
   const dialog = useRef(null);
@@ -323,7 +336,7 @@ export default function Timekeeping({ enabled }) {
             </section>
           )}
           <nav className="tabs" aria-label="Timekeeping sections">
-            {["schedule", "timesheets", "people", "roles", "devices"].map((t) => (
+            {["schedule", "timesheets", "requests", "people", "roles", "devices"].map((t) => (
               <button
                 key={t}
                 type="button"
@@ -341,6 +354,8 @@ export default function Timekeeping({ enabled }) {
                   ? "Schedule"
                   : t === "timesheets"
                   ? "Timesheets"
+                  : t === "requests"
+                  ? pendingRequests ? `Requests (${pendingRequests})` : "Requests"
                   : t === "people"
                     ? "Staff profiles"
                     : t === "roles"
@@ -362,6 +377,7 @@ export default function Timekeeping({ enabled }) {
                   assignments={data.assignments}
                 />
               )}
+              {tab === "requests" && <RequestsQueue onCount={setPendingRequests} />}
               {tab === "timesheets" && (
                 <>
                   <div className="metrics metrics-two">
