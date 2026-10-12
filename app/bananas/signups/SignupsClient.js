@@ -5,6 +5,7 @@ import SubmissionTabs from '@/app/bananas/components/SubmissionTabs';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
 import { filterSubmissionRowsByStatus, normalizeSubmissionStatus } from '@/lib/submission-workflow';
 import { signupSourceLabel } from '@/lib/signups';
+import { formatPhone } from '@/lib/phone';
 
 function formatDate(iso) {
   const d = new Date(iso);
@@ -98,7 +99,7 @@ export default function SignupsClient({ signups, csvHref }) {
                     <td className="px-6 py-4 text-[14px] font-medium">{signup.contact}</td>
                     <td className="px-6 py-4 text-[13px]" style={{ color: 'var(--auth-muted)' }}>{signup.contact_type || '—'}</td>
                     <td className="px-6 py-4 text-[13px]" style={{ color: 'var(--auth-muted)' }}>{signup.full_name || '—'}</td>
-                    <td className="px-6 py-4 text-[13px] tabular-nums" style={{ color: 'var(--auth-muted)' }}>{signup.phone || '—'}</td>
+                    <td className="px-6 py-4 text-[13px] tabular-nums" style={{ color: 'var(--auth-muted)' }}>{formatPhone(signup.phone) || '—'}</td>
                     <td className="px-6 py-4 text-[13px]" style={{ color: 'var(--auth-muted)' }}>{signupSourceLabel(signup.source)}</td>
                     <td className="px-6 py-4 text-[13px]">
                       <SubmissionStatusBadge status={signup.status || 'new'} />

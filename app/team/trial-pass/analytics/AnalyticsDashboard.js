@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import UnderlineTabs from '@/app/bananas/components/UnderlineTabs';
+import { formatPhone } from '@/lib/phone';
 
 // Analytics dashboard for the trial pass program.
 //
@@ -66,7 +67,7 @@ function SignupIdentity({ row }) {
         <div style={{ color: 'var(--auth-text)', fontWeight: 500 }}>{row.fullName}</div>
         <div className="text-[11px] mt-0.5" style={{ color: 'var(--auth-muted)' }}>
           {row.email}
-          {row.phone && <><span className="mx-1.5">·</span>{row.phone}</>}
+          {row.phone && <><span className="mx-1.5">·</span>{formatPhone(row.phone)}</>}
         </div>
       </div>
     </div>

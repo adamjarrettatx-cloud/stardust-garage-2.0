@@ -19,6 +19,7 @@ import {
   DetailGrid,
   DetailItem,
 } from '@/app/bananas/components/SubmissionDetail';
+import { formatPhone, phoneHref } from '@/lib/phone';
 
 export const revalidate = 0;
 
@@ -100,8 +101,8 @@ export default async function ApplicationDetail({ params }) {
             </ContactChip>
             {app.phone && (
               <ContactChip label="PHONE">
-                <a href={`tel:${app.phone}`} className="text-[13px] hover:underline" style={{ color: 'var(--auth-text)' }}>
-                  {app.phone}
+                <a href={phoneHref(app.phone)} className="text-[13px] hover:underline" style={{ color: 'var(--auth-text)' }}>
+                  {formatPhone(app.phone)}
                 </a>
                 <WhatsAppButton phone={app.phone} />
               </ContactChip>

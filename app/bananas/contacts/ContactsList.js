@@ -9,6 +9,7 @@ import {
 } from '@/lib/contact-helpers';
 import UnderlineTabs from '../components/UnderlineTabs';
 import styles from './contacts.module.css';
+import { formatPhone } from '@/lib/phone';
 
 // The directory opens straight onto a list. There is no separate category
 // dashboard and no All tab: the four sections are tabs with live counts, and a
@@ -144,14 +145,14 @@ function ContactRows({ contacts, category, archived = false, sort, onSort }) {
               {blocked && <span className={styles.warning}>Do Not Book</span>}
             </div>
             {sub && <div className={styles.sub} title={sub}>{sub}</div>}
-            <div className={styles.mobileMeta}>{contact.email || contact.phone || handle}</div>
+            <div className={styles.mobileMeta}>{contact.email || formatPhone(contact.phone) || handle}</div>
           </div>
         </div>
         <div className={styles.types}>
           {contactDirectoryTypes(contact.contact_type).map(type => <span key={type} className={styles.tag}>{TYPE_LABELS[type]}</span>)}
         </div>
         <span className={styles.cell} title={contact.email || undefined}>{contact.email || <span className={styles.none}>—</span>}</span>
-        <span className={`${styles.cell} ${styles.num}`}>{contact.phone || <span className={styles.none}>—</span>}</span>
+        <span className={`${styles.cell} ${styles.num}`}>{formatPhone(contact.phone) || <span className={styles.none}>—</span>}</span>
         <span className={`${styles.cell} ${styles.instagram}`} title={handle || undefined}>{handle || <span className={styles.none}>—</span>}</span>
         <span className={styles.arrow} aria-hidden="true">›</span>
       </Link>;

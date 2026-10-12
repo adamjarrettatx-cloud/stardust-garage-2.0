@@ -25,6 +25,7 @@ import { centsToUsd } from '@/lib/event-analytics';
 import UnderlineTabs from '../components/UnderlineTabs';
 import cardStyles from '../applications/applications.module.css';
 import styles from './membership.module.css';
+import { formatPhone } from '@/lib/phone';
 
 const THEMES = {
   dark:  { ...ANALYTICS_THEMES.dark,  ...FINANCIAL_THEMES.dark },
@@ -114,7 +115,7 @@ function ProfileRow({ row, stageLabel, photoUrl, photoRef, onPhotoError }) {
       </div>
       <dl className={styles.details}>
         <div><dt>Email</dt><dd>{row.email || 'Not provided'}</dd></div>
-        <div><dt>Phone</dt><dd>{row.phone || 'Not provided'}</dd></div>
+        <div><dt>Phone</dt><dd>{formatPhone(row.phone) || 'Not provided'}</dd></div>
       </dl>
       <div className={styles.action}>
         {row.href ? (
@@ -311,7 +312,7 @@ export default function MembershipHubClient() {
     const query = q.trim().toLowerCase();
     if (!query) return rows;
     return rows.filter((r) => {
-      const hay = `${r.full_name || ''} ${r.email || ''} ${r.phone || ''}`.toLowerCase();
+      const hay = `${r.full_name || ''} ${r.email || ''} ${r.phone || ''} ${formatPhone(r.phone)}`.toLowerCase();
       return hay.includes(query);
     });
   }, [rows, q]);

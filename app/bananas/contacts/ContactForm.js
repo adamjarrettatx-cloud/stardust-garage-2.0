@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { formatPhone, normalizeStoredPhone } from '@/lib/phone';
 import ContactProfileLayout from './ContactProfileLayout';
 import { contactProfileKind } from '@/lib/contact-organizations';
 import {
@@ -67,7 +68,7 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
   const [contactTypes, setContactTypes] = useState(contact?.contact_type || (contactDirectorySection(initialCategory) ? [initialCategory] : []));
   const [primaryContactName, setPrimaryContactName] = useState(contact?.primary_contact_name || '');
   const [email, setEmail] = useState(contact?.email || '');
-  const [phone, setPhone] = useState(contact?.phone || '');
+  const [phone, setPhone] = useState(formatPhone(contact?.phone || ''));
   const [company, setCompany] = useState(contact?.company || '');
   const [instagramHandle, setInstagramHandle] = useState(contact?.instagram_handle || '');
   const [website, setWebsite] = useState(contact?.website || '');
@@ -75,7 +76,8 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
   const [internalNotes, setInternalNotes] = useState(contact?.internal_notes || '');
   const [photoUrl, setPhotoUrl] = useState(contact?.photo_url || '');
   const [additionalContacts, setAdditionalContacts] = useState(
-    Array.isArray(contact?.additional_contacts) ? contact.additional_contacts : []
+    (Array.isArray(contact?.additional_contacts) ? contact.additional_contacts : [])
+      .map((c) => (c?.phone ? { ...c, phone: formatPhone(c.phone) } : c))
   );
 
   // Legal-counterparty block — what has to be true about a profile before it can
@@ -193,7 +195,7 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
       contact_type: contactTypes,
       primary_contact_name: primaryContactName.trim() || null,
       email: email.trim() || null,
-      phone: phone.trim() || null,
+      phone: normalizeStoredPhone(phone) || null,
       company: company.trim() || null,
       instagram_handle: instagramHandle.trim() || null,
       website: website.trim() || null,
@@ -203,7 +205,7 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
       // Drop rows the user added but left completely blank.
       additional_contacts: additionalContacts.filter((c) =>
         [c.name, c.role, c.email, c.phone].some((v) => (v || '').trim())
-      ),
+      ).map((c) => (c.phone ? { ...c, phone: normalizeStoredPhone(c.phone) } : c)),
       ...organizer.patch,
       updated_by: user?.id || null,
     };
@@ -470,6 +472,7 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
+            onBlur={() => setPhone(formatPhone(phone))}
             className={inputClass}
             style={inputStyle}
           />
@@ -660,6 +663,7 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
                         type={f.type}
                         value={c[f.field] || ''}
                         onChange={(e) => updateAdditional(i, f.field, e.target.value)}
+                        onBlur={f.type === 'tel' ? (e) => updateAdditional(i, f.field, formatPhone(e.target.value)) : undefined}
                         className={inputClass + ' py-2.5'}
                         style={inputStyle}
                       />
