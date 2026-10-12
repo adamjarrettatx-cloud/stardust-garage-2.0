@@ -354,7 +354,7 @@ export default function FrontDeskClient({ staffLabel, staffEmail, stationMode = 
       if (!res.ok) {
         if (json.code === 'full') return 'At capacity — count not bumped.';
         if (json.code === 'no_session') return 'No active capacity session — count not bumped.';
-        return 'Count not bumped: ' + (json.error || 'try again from /capacity/admin');
+        return 'Count not bumped: ' + (json.error || 'try again from Admin → Capacity');
       }
       capacity.refresh?.();
       return null;

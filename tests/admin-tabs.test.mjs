@@ -1048,7 +1048,7 @@ test('Finances is an owner-only MONEY section holding the four money reports', (
   for (const tile of adminTilesFor('finances')) assert.equal(tile.restricted, 'owner');
   const analyticsHrefs = adminTilesFor('analytics').map((t) => t.href);
   for (const href of reports) assert.ok(!analyticsHrefs.includes(href), `${href} still under Analytics`);
-  assert.deepEqual(analyticsHrefs, ['/bananas/membership', '/capacity']);
+  assert.deepEqual(analyticsHrefs, ['/bananas/membership']);
 
   assert.ok(!visibleAdminTabs(false).some((t) => t.id === 'finances'));
   assert.ok(!visibleAdminTabs(false, true).some((t) => t.id === 'finances'));
