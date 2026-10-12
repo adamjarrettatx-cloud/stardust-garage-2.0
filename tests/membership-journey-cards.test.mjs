@@ -6,30 +6,44 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 const component = read('app/bananas/membership/MembershipHubClient.js');
 const api = read('app/api/admin/membership/journey/route.js');
 
-test('all Journey tabs render the same application-style card grid', () => {
-  assert.match(component, /import cardStyles from '\.\.\/applications\/applications\.module\.css'/);
-  assert.match(component, /className=\{cardStyles\.grid\}/);
-  assert.match(component, /filtered\.map\(\(row\) => \(\s*<ProfileCard/s);
+test('all Journey tabs render the same large-thumbnail list rows', () => {
+  assert.match(component, /import styles from '\.\/membership\.module\.css'/);
+  assert.match(component, /<ul className=\{styles\.list\} data-testid="membership-journey-list">/);
+  assert.match(component, /filtered\.map\(\(row\) => \(\s*<ProfileRow/s);
+  assert.doesNotMatch(component, /cardStyles\.grid|<ProfileCard/);
   assert.match(component, /stageLabel=\{activeMeta\?\.label\}/);
   for (const tab of ['guest', 'trial_ready', 'trial_activated', 'weekender', 'builder', 'insider']) {
     assert.ok(api.includes(`'${tab}'`), `${tab} remains in the API`);
   }
 });
 
-test('photos and initials occupy square top panels, never circular avatars', () => {
-  assert.match(component, /className=\{cardStyles\.photo\}/);
+test('list photos stay large squares, never circular avatars', () => {
+  const css = read('app/bananas/membership/membership.module.css');
+  assert.match(component, /className=\{styles\.photo\}/);
   assert.match(component, /aspectRatio: '1 \/ 1'/);
+  assert.match(css, /grid-template-columns: 144px/);
+  assert.match(css, /\.photo \{ grid-area: photo; width: 120px; \}/);
   assert.doesNotMatch(component, /rounded-full|function Avatar/);
   assert.match(component, /photoUrl !== failedUrl/);
   assert.match(component, /onError=\{\(\) => \{ setFailedUrl\(photoUrl\); onPhotoError\?\.\(\); \}\}/);
   assert.match(component, /loading="lazy"/);
 });
 
+test('tab counts are exact and every source is read past the 1000-row cap', () => {
+  const tabs = read('app/bananas/components/UnderlineTabs.js');
+  assert.match(component, /testId="membership-journey"\s*exactCounts/);
+  assert.match(tabs, /exactCounts \|\| count <= 99 \? count\.toLocaleString\('en-US'\) : '99\+'/);
+  assert.doesNotMatch(api, /\.limit\(\d/);
+  assert.equal((api.match(/fetchAllRows\(\(from, to\) =>/g) || []).length, 4);
+  assert.equal((api.match(/\.order\('id', \{ ascending: true \}\)/g) || []).length, 4);
+  assert.match(api, /if \(error\) throw new Error/);
+});
+
 test('contact data remains visible on mobile and non-linked records stay read-only', () => {
   assert.match(component, /<dt>Email<\/dt>/);
   assert.match(component, /<dt>Phone<\/dt>/);
   assert.doesNotMatch(component, /hidden md:flex|truncate/);
-  assert.match(component, /if \(!row\.href\) return <article/);
+  assert.match(component, /if \(!row\.href\) return <li><article/);
   assert.match(component, /<Link href=\{row\.href\}/);
   assert.match(component, /contextLine\(row\)/);
 });
