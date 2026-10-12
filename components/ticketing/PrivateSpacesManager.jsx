@@ -371,25 +371,38 @@ function SpaceCard({ p, onEdit, onDelete, saving }) {
         </div>
       </div>
 
-      <div style={{ marginTop: 14, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+      <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end' }}>
+      <div className="sdg-row-icon-group" role="group" aria-label={`Manage ${p.name || 'private space'}`} style={{ opacity: saving ? 0.5 : 1 }}>
         <button
           type="button"
           onClick={onEdit}
           disabled={saving}
-          className={pillClass()}
-          style={ghostPillStyle({ disabled: saving })}
+          className="sdg-row-icon-btn"
+          aria-label={`Edit ${p.name || 'private space'}`}
+          title="Edit private space"
         >
-          EDIT
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M16.9 3.6a2.1 2.1 0 0 1 3 3L8.5 18 4 19.5 5.5 15z" />
+            <path d="M14.5 6l3.5 3.5" />
+          </svg>
         </button>
         <button
           type="button"
           onClick={onDelete}
           disabled={saving}
-          className={pillClass()}
-          style={ghostPillStyle({ disabled: saving, danger: true })}
+          className="sdg-row-icon-btn sdg-row-icon-btn--danger"
+          aria-label={`Delete ${p.name || 'private space'}`}
+          title="Delete private space"
         >
-          DELETE
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M3 6h18" />
+            <path d="M8 6V4.5A1.5 1.5 0 0 1 9.5 3h5A1.5 1.5 0 0 1 16 4.5V6" />
+            <path d="M18.5 6l-.8 13.1A2 2 0 0 1 15.7 21H8.3a2 2 0 0 1-2-1.9L5.5 6" />
+            <path d="M10 10.5v6" />
+            <path d="M14 10.5v6" />
+          </svg>
         </button>
+      </div>
       </div>
     </div>
   );
