@@ -6,6 +6,7 @@ import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadg
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import { WhatsAppButton } from '@/app/bananas/components/ContactButtons';
 import ReplyPanel from '@/app/bananas/components/ReplyPanel';
+import TeamNotes from '@/app/bananas/components/TeamNotes';
 import {
   ProfileHeader,
   ContactChip,
@@ -95,6 +96,8 @@ export default async function InquiryDetail({ params }) {
       />
 
       <InquiryActions inquiryId={i.id} currentStatus={i.status || 'new'} />
+
+      <TeamNotes submissionType="venue-inquiries" submissionId={i.id} />
 
       <div className="mt-4">
         <DetailSection title="CONTACT & EVENT DETAILS">
