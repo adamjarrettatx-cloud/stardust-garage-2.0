@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { matchesRosterSearch, rosterCsv, rosterTickets } from '@/lib/tickets/event-roster';
 import RefundDialog from '@/components/ticketing/RefundDialog';
 import RefundActivity from '@/components/ticketing/RefundActivity';
+import CompDialog from '@/components/ticketing/CompDialog';
 import styles from './roster.module.css';
 
 function money(cents, currency = 'usd') {
@@ -36,6 +37,7 @@ export default function EventAttendeesClient({ event, deskMode = false }) {
   const [selected, setSelected] = useState(new Set());
   const [refundOrders, setRefundOrders] = useState(null);
   const [emailState, setEmailState] = useState({});
+  const [compOpen, setCompOpen] = useState(false);
   const eventId = event?.id;
 
   useEffect(() => {
@@ -184,7 +186,7 @@ export default function EventAttendeesClient({ event, deskMode = false }) {
           {event ? <>
             <a className={styles.button} href="/bananas/orders">Search all orders</a>
             <a className={styles.button} href={`/bananas/events/${event.id}`}>Edit event</a>
-            <a className={styles.button} href={`/admin/tickets/${event.id}`}>Ticket tools</a>
+            {!deskMode && <button className={styles.button} onClick={() => setCompOpen(true)}>Issue comp</button>}
           </> : deskMode ? <a className={styles.button} href="/capacity/front-desk">Back to front desk</a>
             : <a className={styles.button} href="/bananas?tab=events">Events</a>}
           <button className={styles.button} disabled={busy} onClick={() => setReload((n) => n + 1)}>
@@ -293,7 +295,7 @@ export default function EventAttendeesClient({ event, deskMode = false }) {
                       <td><Status value={row.status} /></td>
                       <td>{row.tickets.length}</td>
                       <td>{row.tickets.filter((t) => t.status === 'used').length} / {row.tickets.length}</td>
-                      <td>{money(row.total_cents, row.currency)}{row.refunded_cents > 0 && <span className={styles.secondary}>{money(row.refunded_cents, row.currency)} refunded</span>}</td>
+                      <td>{money(row.total_cents, row.currency)}{row.is_comp && <span className={styles.secondary}>Comp</span>}{row.refunded_cents > 0 && <span className={styles.secondary}>{money(row.refunded_cents, row.currency)} refunded</span>}</td>
                       <td>
                         {['paid', 'partial_refund'].includes(row.status) && row.buyer_email && (() => {
                           const st = emailState[row.id] || {};
@@ -306,7 +308,7 @@ export default function EventAttendeesClient({ event, deskMode = false }) {
                           </div>;
                         })()}
                         {row.can_refund ? <button className={styles.button} onClick={() => setRefundOrders([row])}>Refund</button>
-                        : <span className={styles.secondary}>{row.status === 'refunded' ? 'Fully refunded' : 'Not refundable'}</span>}</td>
+                        : <span className={styles.secondary}>{row.status === 'refunded' ? 'Fully refunded' : row.is_comp ? 'Comp · no payment' : 'Not refundable'}</span>}</td>
                     </tr>
                   ) : (
                     <tr key={row.id}>
@@ -341,6 +343,7 @@ export default function EventAttendeesClient({ event, deskMode = false }) {
       </div>
       <RefundActivity eventId={eventId} refresh={reload} onChange={refreshed} />
       {!event && <p className={styles.explanation}>SDG checkout orders only. Ticket Tailor purchases, memberships, guest-list allocations, and trial passes are not included.</p>}
+      {compOpen && event && <CompDialog event={event} onClose={() => setCompOpen(false)} onDone={refreshed} />}
       {refundOrders && <RefundDialog orders={refundOrders} onClose={() => setRefundOrders(null)} onDone={refreshed} />}
     </section>
   );
