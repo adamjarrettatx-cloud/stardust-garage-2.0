@@ -23,6 +23,7 @@ import ScheduleCalendar from "./ScheduleCalendar";
 import StaffList from "./StaffList";
 import RequestsQueue from "./RequestsQueue";
 import TimesheetCalendar from "./TimesheetCalendar";
+import RolesPanel from "./RolesPanel";
 
 const endpoint = "/api/admin/time-clock";
 const blankWorker = {
@@ -34,7 +35,6 @@ const blankWorker = {
   roles: {},
   pin: "",
 };
-const blankRole = { id: "", name: "", active: true, tasks: "", isNew: true };
 export default function Timekeeping({ enabled }) {
   const [data, setData] = useState(null),
     [tab, setTab] = useState("schedule"),
@@ -49,7 +49,6 @@ export default function Timekeeping({ enabled }) {
   const [detail, setDetail] = useState(null),
     [reviewNote, setReviewNote] = useState("");
   const [editWorker, setEditWorker] = useState(null),
-    [editRole, setEditRole] = useState(null),
     [disclosure, setDisclosure] = useState(null);
   const [deviceName, setDeviceName] = useState("Front room iPad"),
     [confirm, setConfirm] = useState(null);
@@ -909,132 +908,12 @@ export default function Timekeeping({ enabled }) {
                 </>
               )}
               {tab === "roles" && (
-                <>
-                  <div className="between">
-                    <h2>Roles & responsibilities</h2>
-                    <button
-                      className="primary"
-                      onClick={() => setEditRole({ ...blankRole })}
-                    >
-                      Add role
-                    </button>
-                  </div>
-                  <p className="sub">
-                    Changes apply to future role starts. Existing shift
-                    checklists retain their original responsibilities.
-                  </p>
-                  {editRole && (
-                    <form
-                      className="panel tc-form"
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        if (
-                          editRole.isNew &&
-                          data.roles.some((r) => r.id === editRole.id)
-                        ) {
-                          setError(
-                            "That role ID already exists. Edit the existing role or choose a new ID.",
-                          );
-                          return;
-                        }
-                        mutate(
-                          "save_role",
-                          {
-                            ...editRole,
-                            tasks: editRole.tasks
-                              .split("\n")
-                              .map((t) => t.trim())
-                              .filter(Boolean),
-                          },
-                          () => {
-                            setEditRole(null);
-                          },
-                        );
-                      }}
-                    >
-                      <label>
-                        Role ID (lowercase letters and underscores)
-                        <input
-                          required
-                          disabled={!editRole.isNew}
-                          pattern="[a-z_]{2,40}"
-                          value={editRole.id}
-                          onChange={(e) =>
-                            setEditRole((r) => ({ ...r, id: e.target.value }))
-                          }
-                        />
-                      </label>
-                      <label>
-                        Display name
-                        <input
-                          required
-                          maxLength={80}
-                          value={editRole.name}
-                          onChange={(e) =>
-                            setEditRole((r) => ({ ...r, name: e.target.value }))
-                          }
-                        />
-                      </label>
-                      <label>
-                        Responsibilities (one per line, up to 30)
-                        <textarea
-                          value={editRole.tasks}
-                          onChange={(e) =>
-                            setEditRole((r) => ({
-                              ...r,
-                              tasks: e.target.value,
-                            }))
-                          }
-                        />
-                      </label>
-                      <label className="task">
-                        <input
-                          type="checkbox"
-                          checked={editRole.active}
-                          onChange={(e) =>
-                            setEditRole((r) => ({
-                              ...r,
-                              active: e.target.checked,
-                            }))
-                          }
-                        />
-                        <span>Active for new clock-ins and role switches</span>
-                      </label>
-                      <button className="primary" disabled={busy}>
-                        Save role
-                      </button>
-                      <button type="button" onClick={() => setEditRole(null)}>
-                        Cancel
-                      </button>
-                    </form>
-                  )}
-                  <div className="staffgrid">
-                    {data.roles.map((r) => (
-                      <section key={r.id} className="panel">
-                        <h2>{r.name}</h2>
-                        <p className="sub">
-                          {r.active ? "Active" : "Inactive"}
-                        </p>
-                        {r.tasks.map((t) => (
-                          <div key={t} className="task">
-                            {t}
-                          </div>
-                        ))}
-                        <button
-                          onClick={() =>
-                            setEditRole({
-                              ...r,
-                              tasks: r.tasks.join("\n"),
-                              isNew: false,
-                            })
-                          }
-                        >
-                          Edit role
-                        </button>
-                      </section>
-                    ))}
-                  </div>
-                </>
+                <RolesPanel
+                  data={data}
+                  busy={busy}
+                  onError={setError}
+                  onSave={(role, done) => mutate("save_role", role, done)}
+                />
               )}
               {tab === "devices" && (
                 <>
