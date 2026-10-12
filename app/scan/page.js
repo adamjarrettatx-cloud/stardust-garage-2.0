@@ -28,7 +28,7 @@ export const metadata = {
 // we set on the front desk.
 //
 // Legacy scanners:
-//   * /capacity/scan  \u2014 trial-pass only (still works; some SOPs link here)
+//   * /capacity/scan  \u2014 removed; redirects to /capacity/front-desk
 //   * /t/scan         \u2014 tickets only    (still works; still linked from ticket admin)
 // Both stay as thin scanners for their single QR type; new SOP points staff
 // at /scan.

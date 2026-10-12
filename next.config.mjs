@@ -41,6 +41,8 @@ const nextConfig = {
       // as before (no auth relaxation here; these are pure path aliases).
       { source: '/c/f', destination: '/capacity/front-door', permanent: false },
       { source: '/c/e', destination: '/capacity/exit-door', permanent: false },
+      // Retired iPad fallback trial-pass scanner; old links land on Front Desk.
+      { source: '/capacity/scan', destination: '/capacity/front-desk', permanent: false },
 
       // Partner → Portal rename. The URL namespace moved from /partner/* to
       // /portal/* so it is role-agnostic (a contact can be a DJ AND a promoter,
