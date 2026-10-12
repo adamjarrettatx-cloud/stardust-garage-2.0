@@ -259,3 +259,41 @@ export function createAdminClient() {
     },
   };
 }
+// Synthetic month of punches for the owner timesheet calendar preview
+// (fixture-only SQL). Mix of approved and waiting shifts, plus two scheduled
+// shifts with no clock-in.
+export async function seedTimesheetMonth() {
+  const workers = (await testDb.query("select id,name from tc_workers order by name")).rows;
+  const by = (prefix) => workers.find((w) => w.name.startsWith(prefix))?.id;
+  const kiosk = (await testDb.query("select id from tc_kiosks limit 1")).rows[0].id;
+  const at = (back, hh, mm = 0) => {
+    const d = new Date(Date.now() - back * 86400000);
+    const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(d);
+    return new Date(Date.parse(`${ymd}T00:00:00-05:00`) + (hh * 60 + mm) * 60000).toISOString();
+  };
+  const roles = { "Sam": ["front_door", "Front door", 2000], "Kai": ["floor_support", "Floor support", 1800] };
+  const plan = [
+    ["Sam", 1, 19, 0, 25, 10, "pending"], ["Kai", 1, 20, 30, 26, 0, "pending"],
+    ["Sam", 2, 19, 5, 24, 45, "pending"], ["Kai", 4, 18, 0, 23, 30, "approved"],
+    ["Sam", 5, 19, 0, 25, 0, "approved"], ["Kai", 5, 20, 0, 26, 15, "approved"],
+    ["Sam", 8, 19, 0, 25, 30, "approved"], ["Kai", 9, 21, 0, 27, 0, "approved"],
+    ["Sam", 9, 18, 50, 24, 0, "approved"], ["Kai", 11, 19, 0, 25, 0, "approved"],
+    ["Sam", 12, 20, 0, 26, 0, "approved"], ["Kai", 12, 20, 0, 25, 40, "approved"],
+  ];
+  for (const [who, back, h1, m1, h2, m2, status] of plan) {
+    const id = by(who);
+    if (!id) continue;
+    const [role, roleName, rate] = roles[who];
+    const s = at(back, h1, m1), e = at(back, h2, m2);
+    const shift = (await testDb.query(
+      "insert into tc_shifts(worker_id,kiosk_id,started_at,ended_at,pay_basis,status) values($1,$2,$3,$4,'hourly',$5) returning id",
+      [id, kiosk, s, e, status])).rows[0].id;
+    await testDb.query("insert into tc_segments(shift_id,role_id,role_name,rate_cents,started_at,ended_at) values($1,$2,$3,$4,$5,$6)",
+      [shift, role, roleName, rate, s, e]);
+  }
+  for (const [who, back, role] of [["Kai", 2, "floor_support"], ["Sam", 4, "front_door"]]) {
+    const id = by(who);
+    if (id) await testDb.query("insert into tc_schedule(worker_id,role_id,starts_at,ends_at,created_by) values($1,$2,$3,$4,$5)",
+      [id, role, at(back, 20), at(back, 26), ownerId]);
+  }
+}

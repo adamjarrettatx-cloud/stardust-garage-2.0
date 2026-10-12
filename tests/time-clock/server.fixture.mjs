@@ -19,7 +19,7 @@ import {
   GET as requestsGet,
   POST as requestsPost,
 } from "../../app/api/admin/time-clock/requests/route.js";
-import { initialize, seedSchedule, seedRequests } from "./db.fixture.mjs";
+import { initialize, seedSchedule, seedRequests, seedTimesheetMonth } from "./db.fixture.mjs";
 import { requestContext } from "./owner.fixture.mjs";
 
 if (process.env.NODE_ENV === "production")
@@ -31,6 +31,7 @@ process.env.TIME_CLOCK_SECRET = "LOCAL-TEST-ONLY-NO-PRODUCTION-SECRET-".repeat(
 await initialize();
 await seedSchedule();
 await seedRequests();
+await seedTimesheetMonth();
 const dir = process.cwd() + "/.time-clock-qa";
 http
   .createServer(async (req, res) => {

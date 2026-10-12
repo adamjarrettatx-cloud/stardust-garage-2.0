@@ -94,7 +94,7 @@ export async function GET(request) {
           await client
             .from("tc_shifts")
             .select(
-              "id,worker_id,started_at,ended_at,status,version,pay_basis,flat_cents,note,tc_workers(name,category),tc_segments(*),tc_tasks(*),tc_breaks(*)",
+              "id,worker_id,started_at,ended_at,status,version,source,pay_basis,flat_cents,note,tc_workers(name,category),tc_segments(*),tc_tasks(*),tc_breaks(*)",
             )
             .in("id", ids)
             .order("started_at", { ascending: false }),
