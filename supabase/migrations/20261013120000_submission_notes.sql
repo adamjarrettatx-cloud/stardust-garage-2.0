@@ -39,4 +39,5 @@ drop policy if exists submission_notes_admin_select on public.submission_notes;
 create policy submission_notes_admin_select on public.submission_notes
   for select to authenticated using (public.is_admin());
 
-revoke insert, update, delete on public.submission_notes from anon, authenticated;
+revoke all on public.submission_notes from anon;
+revoke insert, update, delete on public.submission_notes from authenticated;
