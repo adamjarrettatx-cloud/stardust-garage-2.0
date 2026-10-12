@@ -21,7 +21,6 @@ import { NextResponse } from 'next/server';
 import { requireOwner } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { STRIPE_PRICES, PLAN_DISPLAY } from '@/lib/stripe-prices';
-import { resolveMemberPhotoUrls } from '@/lib/member-photo';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -198,17 +197,15 @@ export async function GET() {
     tabs[t].sort((a, b) => new Date(b.member_since) - new Date(a.member_since));
   }
 
-  // Resolve private photos only after authorization. Never send storage keys
-  // to the browser; each card receives a short-lived URL string or null.
-  const photos = await resolveMemberPhotoUrls(admin, Object.values(tabs).flat().map((row) => ({
-    id: `${row.kind}:${row.id}`,
-    profile_photo_path: row.photo_path,
-    photo_url: row.photo_url,
-  })));
+  // Photos are NOT signed here. Signing every photo across all six tabs
+  // (1,400+ in production) made this endpoint take tens of seconds. Each row
+  // carries only `has_photo`; the client asks
+  // /api/admin/membership/journey/photos for the cards actually on screen.
+  // Never send storage keys to the browser.
   for (const tab of TAB_ORDER) {
-    tabs[tab] = tabs[tab].map(({ photo_path, ...row }) => ({
+    tabs[tab] = tabs[tab].map(({ photo_path, photo_url, ...row }) => ({
       ...row,
-      photo_url: photos.get(`${row.kind}:${row.id}`) || null,
+      has_photo: Boolean(photo_path || photo_url),
     }));
   }
 
