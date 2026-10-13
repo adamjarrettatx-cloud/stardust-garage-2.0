@@ -149,3 +149,12 @@ test('the signups migration only narrows the signups status constraint', () => {
     assert.equal(statements.includes(table), false, `migration should not touch ${table}`);
   }
 });
+
+test('the signups page and its badge only show homepage "Stay in the loop" rows', () => {
+  const page = readSource('app/bananas/signups/page.js');
+  assert.match(page, /\.eq\('source', HOMEPAGE_SIGNUP_SOURCE\)/);
+  assert.equal(page.includes('consent form at the door'), false);
+
+  const counts = readSource('lib/admin-counts.js');
+  assert.match(counts, /from\('signups'\)[^\n]*\.eq\('source', 'homepage'\)/);
+});
