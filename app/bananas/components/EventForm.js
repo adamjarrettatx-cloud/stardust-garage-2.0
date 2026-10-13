@@ -7,7 +7,8 @@ import { createClient } from '@/lib/supabase/client';
 import TtLinkPanel from './TtLinkPanel';
 import RichTextEditor from './RichTextEditor';
 import { plainTextToEditorHtml } from '@/lib/rich-text-plain';
-import EventContactFields from './EventContactFields';
+import ContactSelect from './ContactSelect';
+import { ORGANIZER_CONTACT_TYPES } from './EventContactFields';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import { CONTACT_REQUIRED_MESSAGE, ensureContactTaggedEventOrganizer } from '@/lib/contact-helpers';
 import { uploadEventImage } from '@/lib/event-image-upload';
@@ -109,16 +110,6 @@ export default function EventForm({
   );
   const [imageUrl, setImageUrl] = useState(event?.image_url || '');
   const [slug, setSlug] = useState(event?.slug || '');
-  // Event type: 'public' (Ticketed — sells tickets through internal checkout)
-  // or 'private' (Private Rental — venue rental with no ticket sales).
-  //
-  // Default is always 'public' (Ticketed) unless the event was explicitly
-  // marked as a private rental. There is no dedicated DB flag for private
-  // rental yet, so we only fall to 'private' when a stored hint says so;
-  // otherwise every event — new or existing — opens on Ticketed.
-  const [eventType, setEventType] = useState(
-    event?.event_type === 'private_rental' ? 'private' : 'public'
-  );
   // Visibility has three tiers (see lib/event-visibility.js):
   //   * 'public'   — shown on the public /events page and member surfaces.
   //   * 'unlisted' — hidden from every listing, but /events/[slug] renders for
@@ -245,7 +236,7 @@ export default function EventForm({
       description_html: description.trim() && descriptionHtml ? descriptionHtml : null,
       image_url: imageUrl.trim() || null,
       slug: slug.trim() || slugify(title),
-      ticket_url: eventType === 'public' ? (ticketUrl.trim() || null) : null,
+      ticket_url: ticketUrl.trim() || null,
       category,
       // Internal micro-party events are hidden from the public /events page and
       // member surfaces but keep all internal capabilities (contracts, SignNow,
@@ -452,7 +443,7 @@ export default function EventForm({
         {headerActions}
       </AuthenticatedPageHeader>
 
-      {/* TOP CONTROL CARD — Status, Visibility, Event Type and the Preview /
+      {/* TOP CONTROL CARD — Status, Visibility, Organizer and the Preview /
           Go Live actions share one row. On edit, PublishEventButton owns the
           row and slots these controls in; on create there is no status yet, so
           the controls render on their own. Wired into the same form state;
@@ -463,9 +454,6 @@ export default function EventForm({
           : isUnlisted
             ? 'Only people with the secret link can open it once live.'
             : 'Shown on the public events page once live.';
-        const typeHint = eventType === 'private'
-          ? 'Venue rental. No ticket sales for this event.'
-          : 'Sells tickets through the internal checkout below.';
         const controls = (
           <>
             <div title={visibilityHint}>
@@ -480,14 +468,14 @@ export default function EventForm({
                 ]}
               />
             </div>
-            <div title={typeHint}>
-              <label className={labelClass} style={labelStyle}>Event Type</label>
+            <div>
+              <label className={labelClass} style={labelStyle}>Organizer</label>
               <Segmented
-                value={eventType}
-                onChange={setEventType}
+                value={isSdgOnly ? 'sdg' : 'organizer'}
+                onChange={(v) => setIsSdgOnly(v === 'sdg')}
                 options={[
-                  { value: 'public', label: 'Ticketed' },
-                  { value: 'private', label: 'Private Rental' },
+                  { value: 'organizer', label: 'Event Organizer' },
+                  { value: 'sdg', label: 'SDG Only' },
                 ]}
               />
             </div>
@@ -498,6 +486,23 @@ export default function EventForm({
           {statusPanel && isValidElement(statusPanel)
             ? cloneElement(statusPanel, { controls })
             : <div className="flex items-end gap-x-7 gap-y-4 flex-wrap">{controls}</div>}
+
+          {/* Event Organizer picker — only when the event has an outside
+              counterparty. SDG Only events need no contact. */}
+          {!isSdgOnly && (
+            <div className="mt-4">
+              <label className={labelClass} style={labelStyle}>
+                Event Organizer <span style={{ color: '#ff8080' }}>*</span>
+              </label>
+              <ContactSelect
+                requireApprovedW9
+                value={contactId}
+                onChange={setContactId}
+                required
+                contactTypeIn={ORGANIZER_CONTACT_TYPES}
+              />
+            </div>
+          )}
 
           {(isInternal || isUnlisted) && (
             <div
@@ -738,17 +743,6 @@ export default function EventForm({
             }}
             placeholder="What is this event? Who's it for?"
             style={inputStyle}
-          />
-        </section>
-
-        {/* CONTACT / SDG-ONLY — required unless the event is fully internal. */}
-        <section className="rounded-[14px] border p-5" style={cardStyle}>
-          <h3 className={sectionTitle} style={labelStyle}>Organizer</h3>
-          <EventContactFields
-            isSdgOnly={isSdgOnly}
-            onSdgOnlyChange={setIsSdgOnly}
-            contactId={contactId}
-            onContactIdChange={setContactId}
           />
         </section>
 

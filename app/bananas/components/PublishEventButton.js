@@ -55,7 +55,7 @@ export default function PublishEventButton({ eventId, slug, status, ttEventSerie
   const buttonBase = 'sdg-row-btn';
   const labelCls = 'block text-[11px] font-semibold tracking-[0.14em] mb-1.5';
 
-  // One row: Status | (Visibility, Event Type passed in as `controls`) | actions.
+  // One row: Status | (Visibility passed in as `controls`) | actions.
   // Every group is a small label over a 38px-tall control so the row lines up
   // on a shared baseline and wraps cleanly on narrow screens.
   const content = (
