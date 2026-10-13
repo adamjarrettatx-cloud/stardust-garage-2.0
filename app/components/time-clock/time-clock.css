@@ -113,7 +113,7 @@
 @media(max-width:700px){.tc-root .emp-next{grid-template-columns:1fr}.tc-root .emp-list li{flex-direction:column;gap:var(--s1)}}
 .tc-root .tabs button{white-space:nowrap;flex-shrink:0}
 .tc-root .donebtn{min-height:52px;padding:var(--s3) var(--s6);font-weight:600;font-size:var(--text-base)}.tc-root .donebig{min-height:64px;font-size:var(--text-lg);margin-bottom:var(--s3)}.tc-root .donebar{margin:var(--s6) 0 var(--s3)}.tc-root .successbox .wide+.wide{margin-top:var(--s1)}.tc-root .successbox>.sub.small{margin-top:var(--s4)}
-/* Employee hub (web). Mobile-first; same tokens as Timekeeping. */
+/* Employee hub (web). Mobile-first; same tokens as Staff. */
 .tc-root .emp-head{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s4);margin-bottom:var(--s4)}.tc-root .emp-head h1{margin:var(--s2) 0 0}
 .tc-root .emp-tabs{position:sticky;top:0;z-index:3;background:var(--bg);overflow-x:auto;scrollbar-width:none}
 .tc-root .emp-hero .emp-time{font-size:var(--text-lg);margin:0 0 var(--s2)}

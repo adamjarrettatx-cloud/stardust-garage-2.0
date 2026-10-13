@@ -98,7 +98,7 @@ export default function EmployeePortal({ enabled }) {
         </nav>
 
         {!enabled ? (
-          <div className="notice">Timekeeping is not enabled yet.</div>
+          <div className="notice">Staff tools are not enabled yet.</div>
         ) : error ? (
           <div className="notice tc-error" role="alert">
             {error}

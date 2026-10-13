@@ -43,7 +43,7 @@ function assignedPin(value) {
 }
 function checked(result) {
   if (result.error)
-    throw new ClockError("Timekeeping is temporarily unavailable.", 503);
+    throw new ClockError("Staff tools are temporarily unavailable.", 503);
   return result.data;
 }
 export async function GET(request) {
@@ -123,7 +123,7 @@ export async function GET(request) {
       return new NextResponse(shiftsCsv(filtered), {
         headers: {
           "Content-Type": "text/csv; charset=utf-8",
-          "Content-Disposition": 'attachment; filename="sdg-timekeeping.csv"',
+          "Content-Disposition": 'attachment; filename="sdg-staff.csv"',
           "Cache-Control": "private, no-store",
           "X-Content-Type-Options": "nosniff",
         },

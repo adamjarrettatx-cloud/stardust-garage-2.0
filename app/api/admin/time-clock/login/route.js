@@ -38,7 +38,7 @@ async function workerRow(client, id) {
     .select("id,name,active,user_id,username,login_enabled,login_managed")
     .eq("id", id)
     .maybeSingle();
-  if (error) throw new ClockError("Timekeeping is temporarily unavailable.", 503);
+  if (error) throw new ClockError("Staff tools are temporarily unavailable.", 503);
   if (!data) throw new ClockError("Worker not found.", 404);
   return data;
 }
@@ -76,7 +76,7 @@ export async function POST(request) {
       if (username) {
         const { data: taken, error } = await client
           .from("tc_workers").select("id").eq("username", username).maybeSingle();
-        if (error) throw new ClockError("Timekeeping is temporarily unavailable.", 503);
+        if (error) throw new ClockError("Staff tools are temporarily unavailable.", 503);
         if (taken) throw new ClockError("That username is already in use.", 409);
       }
       if (email) {

@@ -35,7 +35,7 @@ const blankWorker = {
   roles: {},
   pin: "",
 };
-export default function Timekeeping({ enabled }) {
+export default function Staff({ enabled }) {
   const [data, setData] = useState(null),
     [tab, setTab] = useState("schedule"),
     [error, setError] = useState(""),
@@ -271,7 +271,7 @@ export default function Timekeeping({ enabled }) {
       const url = URL.createObjectURL(await response.blob()),
         a = document.createElement("a");
       a.href = url;
-      a.download = "sdg-timekeeping.csv";
+      a.download = "sdg-staff.csv";
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     });
@@ -280,7 +280,7 @@ export default function Timekeeping({ enabled }) {
     <Frame owner>
       <div className="between ownerhead">
         <div>
-          <span className="eyebrow">OPERATIONS / TIMEKEEPING</span>
+          <span className="eyebrow">OPERATIONS / STAFF</span>
           <h1>Team time & shifts</h1>
           <p className="sub">
             Track work, review hours, and follow up on responsibilities.
@@ -306,10 +306,10 @@ export default function Timekeeping({ enabled }) {
       </div>
       {!enabled ? (
         <div className="notice">
-          <h2>Timekeeping setup pending</h2>
+          <h2>Staff setup pending</h2>
           <p>
             The migration and server configuration must be approved and
-            installed before this can record work. No timekeeping data has been
+            installed before this can record work. No staff data has been
             loaded.
           </p>
         </div>
@@ -338,7 +338,7 @@ export default function Timekeeping({ enabled }) {
               </button>
             </section>
           )}
-          <nav className="tabs" aria-label="Timekeeping sections">
+          <nav className="tabs" aria-label="Staff sections">
             {["schedule", "timesheets", "requests", "people", "roles", "devices"].map((t) => (
               <button
                 key={t}
@@ -369,7 +369,7 @@ export default function Timekeeping({ enabled }) {
           </nav>
           {!data ? (
             <div className="empty" role="status">
-              Loading timekeeping…
+              Loading staff…
             </div>
           ) : (
             <>
