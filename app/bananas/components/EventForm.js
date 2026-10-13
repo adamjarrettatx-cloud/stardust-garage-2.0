@@ -7,7 +7,8 @@ import { createClient } from '@/lib/supabase/client';
 import TtLinkPanel from './TtLinkPanel';
 import RichTextEditor from './RichTextEditor';
 import { plainTextToEditorHtml } from '@/lib/rich-text-plain';
-import EventContactFields from './EventContactFields';
+import ContactSelect from './ContactSelect';
+import { ORGANIZER_CONTACT_TYPES } from './EventContactFields';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import { CONTACT_REQUIRED_MESSAGE, ensureContactTaggedEventOrganizer } from '@/lib/contact-helpers';
 import { uploadEventImage } from '@/lib/event-image-upload';
@@ -442,7 +443,7 @@ export default function EventForm({
         {headerActions}
       </AuthenticatedPageHeader>
 
-      {/* TOP CONTROL CARD — Status, Visibility and the Preview /
+      {/* TOP CONTROL CARD — Status, Visibility, Organizer and the Preview /
           Go Live actions share one row. On edit, PublishEventButton owns the
           row and slots these controls in; on create there is no status yet, so
           the controls render on their own. Wired into the same form state;
@@ -467,6 +468,17 @@ export default function EventForm({
                 ]}
               />
             </div>
+            <div>
+              <label className={labelClass} style={labelStyle}>Organizer</label>
+              <Segmented
+                value={isSdgOnly ? 'sdg' : 'organizer'}
+                onChange={(v) => setIsSdgOnly(v === 'sdg')}
+                options={[
+                  { value: 'organizer', label: 'Event Organizer' },
+                  { value: 'sdg', label: 'SDG Only' },
+                ]}
+              />
+            </div>
           </>
         );
         return (
@@ -474,6 +486,23 @@ export default function EventForm({
           {statusPanel && isValidElement(statusPanel)
             ? cloneElement(statusPanel, { controls })
             : <div className="flex items-end gap-x-7 gap-y-4 flex-wrap">{controls}</div>}
+
+          {/* Event Organizer picker — only when the event has an outside
+              counterparty. SDG Only events need no contact. */}
+          {!isSdgOnly && (
+            <div className="mt-4">
+              <label className={labelClass} style={labelStyle}>
+                Event Organizer <span style={{ color: '#ff8080' }}>*</span>
+              </label>
+              <ContactSelect
+                requireApprovedW9
+                value={contactId}
+                onChange={setContactId}
+                required
+                contactTypeIn={ORGANIZER_CONTACT_TYPES}
+              />
+            </div>
+          )}
 
           {(isInternal || isUnlisted) && (
             <div
@@ -714,17 +743,6 @@ export default function EventForm({
             }}
             placeholder="What is this event? Who's it for?"
             style={inputStyle}
-          />
-        </section>
-
-        {/* CONTACT / SDG-ONLY — required unless the event is fully internal. */}
-        <section className="rounded-[14px] border p-5" style={cardStyle}>
-          <h3 className={sectionTitle} style={labelStyle}>Organizer</h3>
-          <EventContactFields
-            isSdgOnly={isSdgOnly}
-            onSdgOnlyChange={setIsSdgOnly}
-            contactId={contactId}
-            onContactIdChange={setContactId}
           />
         </section>
 
