@@ -51,7 +51,8 @@ export default function PublishEventButton({ eventId, slug, status, ttEventSerie
     }
   }
 
-  const buttonBase = 'px-4 py-2 rounded-md text-[11px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 whitespace-nowrap';
+  // Matches the 8px-radius, 36px-tall .sdg-row-btn used on the Events list.
+  const buttonBase = 'sdg-row-btn';
   const labelCls = 'block text-[11px] font-semibold tracking-[0.14em] mb-1.5';
 
   // One row: Status | (Visibility, Event Type passed in as `controls`) | actions.
@@ -62,9 +63,9 @@ export default function PublishEventButton({ eventId, slug, status, ttEventSerie
       <div className="flex items-end gap-x-7 gap-y-4 flex-wrap">
         <div>
           <label className={labelCls} style={{ color: 'var(--auth-muted)' }}>Status</label>
-          <div className="h-[38px] flex items-center">
+          <div className="h-[36px] flex items-center">
             <span
-              className="text-[10px] font-semibold tracking-[0.12em] px-2.5 py-1 rounded"
+              className="h-[28px] inline-flex items-center text-[10px] font-semibold tracking-[0.12em] px-2.5 rounded-[6px]"
               style={{
                 color: isDraft ? 'var(--auth-accent-text)' : 'var(--auth-strong-surface-text)',
                 background: isDraft ? 'var(--auth-accent)' : 'var(--auth-success)',
@@ -77,7 +78,7 @@ export default function PublishEventButton({ eventId, slug, status, ttEventSerie
 
         {controls}
 
-        <div className="ml-auto h-[38px] flex items-center gap-2">
+        <div className="ml-auto h-[36px] flex items-center gap-2">
           {/* Preview opens the exact public event page in a new tab, gated to
               admins by /events/[slug]/preview. */}
           {slug && (
@@ -85,8 +86,7 @@ export default function PublishEventButton({ eventId, slug, status, ttEventSerie
               href={`/events/${slug}/preview`}
               target="_blank"
               rel="noopener noreferrer"
-              className={`${buttonBase} border`}
-              style={{ color: 'var(--auth-text-strong)', borderColor: 'var(--auth-card-border)', background: 'transparent' }}
+              className={`auth-theme-border-button ${buttonBase}`}
             >
               PREVIEW
             </a>
@@ -98,7 +98,7 @@ export default function PublishEventButton({ eventId, slug, status, ttEventSerie
               disabled={publishing}
               title={ttEventSeriesId ? 'Also puts the linked ticket series on sale.' : undefined}
               className={`${buttonBase} disabled:opacity-40`}
-              style={{ background: 'var(--auth-success)', color: 'var(--auth-strong-surface-text)' }}
+              style={{ background: 'var(--auth-success)', borderColor: 'var(--auth-success)', color: 'var(--auth-strong-surface-text)' }}
             >
               {publishing ? 'GOING LIVE…' : 'GO LIVE'}
             </button>

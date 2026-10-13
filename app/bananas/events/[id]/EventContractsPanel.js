@@ -32,7 +32,7 @@ function StatusBadge({ status }) {
   const s = STATUS_STYLES[status] || STATUS_STYLES.draft;
   return (
     <span
-      className="inline-block text-[10px] font-semibold tracking-[0.14em] px-2.5 py-1 rounded whitespace-nowrap"
+      className="inline-block text-[10px] font-semibold tracking-[0.14em] px-2.5 py-1 rounded-[6px] whitespace-nowrap"
       style={{ color: s.color, background: s.bg, border: `1px solid ${s.border}` }}
     >
       {String(status || 'draft').replace(/_/g, ' ').toUpperCase()}
@@ -82,7 +82,7 @@ export default function EventContractsPanel({ eventId }) {
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
-            className="px-5 py-2.5 rounded-md text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5"
+            className="px-5 py-2.5 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5"
             style={{ borderColor: 'var(--auth-card-border-strong)', color: 'var(--auth-text)' }}
           >
             CREATE CONTRACT

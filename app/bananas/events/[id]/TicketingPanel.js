@@ -93,7 +93,7 @@ function MemberPricingStatus({ percent }) {
     <span
       style={{
         display: 'inline-block', fontSize: 10.5, letterSpacing: '0.07em',
-        textTransform: 'uppercase', padding: '3px 9px', borderRadius: 4,
+        textTransform: 'uppercase', padding: '3px 9px', borderRadius: 6,
         whiteSpace: 'nowrap',
         border: `1px solid ${on ? 'rgba(143,211,154,0.35)' : 'var(--auth-border, #333)'}`,
         color: on ? '#8fd39a' : 'rgba(255,255,255,0.42)',
@@ -393,7 +393,7 @@ export default function TicketingPanel({
           type="button"
           onClick={save}
           disabled={!dirty || savingMode}
-          className="auth-theme-border-button px-4 py-2 rounded-md text-[11px] font-semibold tracking-[0.12em] border"
+          className="auth-theme-border-button px-4 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border"
           style={{ opacity: dirty ? 1 : 0.5 }}
         >
           {savingMode ? 'SAVING…' : dirty ? 'SAVE TICKETING' : 'SAVED'}
@@ -586,7 +586,7 @@ export default function TicketingPanel({
           type="button"
           onClick={saveMemberDiscounts}
           disabled={!memberDiscountsDirty || savingMemberDiscounts}
-          className="auth-theme-border-button px-3 py-2 rounded-md text-[11px] font-semibold tracking-[0.12em] border"
+          className="auth-theme-border-button px-3 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border"
           style={{ marginTop: 22, opacity: memberDiscountsDirty ? 1 : 0.5 }}
         >
           {savingMemberDiscounts ? 'SAVING\u2026' : memberDiscountsDirty ? 'SAVE MEMBER PRICING' : 'SAVED'}

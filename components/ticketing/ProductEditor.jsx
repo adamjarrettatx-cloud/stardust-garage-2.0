@@ -501,7 +501,7 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
           <div
             role="radiogroup"
             aria-label="Audience"
-            style={{ display: 'inline-flex', border: `1px solid ${T.border}`, borderRadius: 6, overflow: 'hidden' }}
+            style={{ display: 'inline-flex', border: `1px solid ${T.border}`, borderRadius: 8, overflow: 'hidden' }}
           >
             {[
               { value: 'public', label: 'Public' },
