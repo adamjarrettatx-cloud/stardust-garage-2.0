@@ -11,6 +11,7 @@ import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadg
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import { WhatsAppButton } from '@/app/bananas/components/ContactButtons';
 import ReplyPanel from '@/app/bananas/components/ReplyPanel';
+import TeamNotes from '@/app/bananas/components/TeamNotes';
 import {
   ProfileHeader,
   ContactChip,
@@ -19,6 +20,7 @@ import {
   DetailGrid,
   DetailItem,
 } from '@/app/bananas/components/SubmissionDetail';
+import { formatPhone, phoneHref } from '@/lib/phone';
 
 export const revalidate = 0;
 
@@ -100,8 +102,8 @@ export default async function ApplicationDetail({ params }) {
             </ContactChip>
             {app.phone && (
               <ContactChip label="PHONE">
-                <a href={`tel:${app.phone}`} className="text-[13px] hover:underline" style={{ color: 'var(--auth-text)' }}>
-                  {app.phone}
+                <a href={phoneHref(app.phone)} className="text-[13px] hover:underline" style={{ color: 'var(--auth-text)' }}>
+                  {formatPhone(app.phone)}
                 </a>
                 <WhatsAppButton phone={app.phone} />
               </ContactChip>
@@ -126,6 +128,8 @@ export default async function ApplicationDetail({ params }) {
         accountCreated={app.account_created || false}
         hasPhoto={hasPhoto}
       />
+
+      <TeamNotes submissionType="applications" submissionId={app.id} />
 
       <div className="mt-4">
         <DetailSection title="PROFILE">

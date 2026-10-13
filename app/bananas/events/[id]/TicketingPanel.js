@@ -30,28 +30,23 @@ import {
   defaultTicketDiscountPercent,
   WEEKEND_MUSIC_FIXED_PERCENT,
   WEEKNIGHT_MEMBER_DISCOUNT_PERCENT,
-  privateSpaceDiscountPercent,
 } from '@/lib/membership-tiers';
-import { isEntitlementDiscountable } from '@/lib/tickets/pricing';
 
 const UI_MODES = [
   {
     ui: 'default',
     db: 'internal',
     label: 'Default (us)',
-    help: 'Sell tickets through our own checkout. Configure products below.',
   },
   {
     ui: 'external',
     db: 'external',
     label: 'External (other link)',
-    help: 'Point buyers at another ticket site (Ticket Tailor, Eventbrite, Dice, DoorList, etc).',
   },
   {
     ui: 'free',
     db: 'none',
     label: 'Free event',
-    help: 'No ticket widget on the event page. Free entry, RSVP, or walk-up.',
   },
 ];
 
@@ -96,7 +91,7 @@ function MemberPricingStatus({ percent }) {
     <span
       style={{
         display: 'inline-block', fontSize: 10.5, letterSpacing: '0.07em',
-        textTransform: 'uppercase', padding: '3px 9px', borderRadius: 20,
+        textTransform: 'uppercase', padding: '3px 9px', borderRadius: 6,
         whiteSpace: 'nowrap',
         border: `1px solid ${on ? 'rgba(143,211,154,0.35)' : 'var(--auth-border, #333)'}`,
         color: on ? '#8fd39a' : 'rgba(255,255,255,0.42)',
@@ -234,31 +229,6 @@ export default function TicketingPanel({
     return resolveTicketDiscountPercent(draftEvent, row);
   }
 
-  // Every active price on the event. `discountable` mirrors the server rule:
-  // membership discounts touch ticket products only, never a private-space
-  // rental sold on the same event.
-  const previewLines = (products || [])
-    .flatMap((p) =>
-      (p.tiers || [])
-        .filter((t) => t.is_active !== false)
-        .map((t) => ({
-          product: p.name || 'Tickets',
-          tier: t.name || '\u2014',
-          cents: Number(t.price_cents) || 0,
-          discountable: isEntitlementDiscountable(p),
-          order: (p.display_order ?? 0) * 100 + (t.display_order ?? 0),
-        }))
-    )
-    .filter((l) => l.cents > 0)
-    .sort((a2, b2) => a2.order - b2.order);
-
-  const multiProduct = new Set(previewLines.map((l) => l.product)).size > 1;
-  const hasRental = previewLines.some((l) => !l.discountable);
-
-  function money(cents) {
-    return `$${(cents / 100).toFixed(2)}`;
-  }
-
   async function loadProducts() {
     setProductsLoading(true);
     setProductsError(null);
@@ -328,18 +298,27 @@ export default function TicketingPanel({
         </p>
       </header>
 
-      <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
+      <div
+        role="radiogroup"
+        aria-label="Ticketing mode"
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, marginTop: 8 }}
+      >
         {UI_MODES.map((m) => (
           <label
             key={m.ui}
             style={{
               display: 'flex',
-              gap: 10,
-              alignItems: 'flex-start',
+              gap: 8,
+              alignItems: 'center',
+              justifyContent: 'center',
               padding: '10px 12px',
               border: `1px solid ${uiMode === m.ui ? 'var(--auth-accent, #7cf)' : 'var(--auth-border, #333)'}`,
               borderRadius: 6,
               cursor: 'pointer',
+              textAlign: 'center',
+              fontWeight: 600,
+              fontSize: 14,
+              lineHeight: 1.2,
             }}
           >
             <input
@@ -349,12 +328,9 @@ export default function TicketingPanel({
               checked={uiMode === m.ui}
               onChange={() => setUiMode(m.ui)}
               disabled={savingMode}
-              style={{ marginTop: 3 }}
+              style={{ margin: 0, flexShrink: 0 }}
             />
-            <span>
-              <div style={{ fontWeight: 600 }}>{m.label}</div>
-              <div style={{ fontSize: 12, opacity: 0.75 }}>{m.help}</div>
-            </span>
+            <span>{m.label}</span>
           </label>
         ))}
       </div>
@@ -390,7 +366,7 @@ export default function TicketingPanel({
           type="button"
           onClick={save}
           disabled={!dirty || savingMode}
-          className="auth-theme-border-button px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border"
+          className="auth-theme-border-button px-4 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border"
           style={{ opacity: dirty ? 1 : 0.5 }}
         >
           {savingMode ? 'SAVING…' : dirty ? 'SAVE TICKETING' : 'SAVED'}
@@ -524,66 +500,11 @@ export default function TicketingPanel({
           </tbody>
         </table>
 
-        {/* WHAT A MEMBER ACTUALLY PAYS \u2014 resolved against this event's real
-            prices so nobody has to do percentage arithmetic in their head, and
-            so it's visible that a rental is not discounted. */}
-        {previewLines.length > 0 && (
-          <div style={{ marginTop: 22, paddingTop: 18, borderTop: '1px solid var(--auth-border, #333)' }}>
-            <div style={{ fontSize: 10.5, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.55, fontWeight: 600, marginBottom: 10 }}>
-              What a member actually pays
-            </div>
-            {[...MEMBER_PRICING_ROWS.map((row) => ({ label: row.label, percent: percentFor(row), rentalPercent: privateSpaceDiscountPercent(row) })),
-              { label: 'Non-member', percent: 0, rentalPercent: 0 }].map((rowSummary) => (
-              <div key={rowSummary.label} style={{ display: 'flex', gap: 14, fontSize: 12.5, marginBottom: 9, lineHeight: 1.7 }}>
-                <span style={{ minWidth: 150, flex: '0 0 auto', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.5 }}>
-                  {rowSummary.label}
-                </span>
-                {/* One line per price when more than one product is on sale,
-                    so a rental's price can't wrap away from its name. */}
-                <span style={{ minWidth: 0 }}>
-                  {previewLines.map((l, i) => {
-                    const off = l.discountable ? rowSummary.percent : rowSummary.rentalPercent;
-                    return (
-                      <span key={`${l.product}-${l.tier}-${i}`} style={multiProduct ? { display: 'block' } : undefined}>
-                        {i > 0 && !multiProduct && <span style={{ opacity: 0.3 }}>{' \u00b7 '}</span>}
-                        <span style={{ opacity: 0.9 }}>
-                          {multiProduct ? `${l.product} \u2013 ${l.tier}` : l.tier}
-                        </span>{' '}
-                        {off > 0 ? (
-                          <>
-                            <span style={{ opacity: 0.55 }}>{money(l.cents)}</span>
-                            <span style={{ opacity: 0.35 }}>{' \u2192 '}</span>
-                            <b style={{ color: '#8fd39a', fontWeight: 600 }}>
-                              {money(l.cents - Math.floor((l.cents * off) / 100))}
-                            </b>
-                          </>
-                        ) : (
-                          <>
-                            <span style={{ opacity: 0.55 }}>{money(l.cents)}</span>
-                            {!l.discountable && rowSummary.percent > 0 && (
-                              <span style={{ opacity: 0.45, fontSize: 11 }}>{' \u2014 private space, full price'}</span>
-                            )}
-                          </>
-                        )}
-                      </span>
-                    );
-                  })}
-                </span>
-              </div>
-            ))}
-            <p style={{ margin: '10px 0 0 0', fontSize: 11, opacity: 0.5, lineHeight: 1.5 }}>
-              Member discounts apply to ticket products only{hasRental ? ' \u2014 private spaces are open to everyone at full price, and only Insider members get 20% off them' : ''}.
-              They never come off the booking fee, and they never stack with a discount code: a buyer holding
-              both gets whichever is worth more.
-            </p>
-          </div>
-        )}
-
         <button
           type="button"
           onClick={saveMemberDiscounts}
           disabled={!memberDiscountsDirty || savingMemberDiscounts}
-          className="auth-theme-border-button px-3 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border"
+          className="auth-theme-border-button px-3 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border"
           style={{ marginTop: 22, opacity: memberDiscountsDirty ? 1 : 0.5 }}
         >
           {savingMemberDiscounts ? 'SAVING\u2026' : memberDiscountsDirty ? 'SAVE MEMBER PRICING' : 'SAVED'}
@@ -643,11 +564,8 @@ export default function TicketingPanel({
 
           <div style={{ marginTop: 20, fontSize: 12, opacity: 0.7 }}>
             <a href={`/bananas/events/${eventId}/attendees`} style={{ textDecoration: 'underline', fontWeight: 600 }}>
-              Attendees &amp; Orders: names, tickets, and check-ins
+              Attendees &amp; Orders: names, tickets, check-ins, refunds, and comps
             </a>
-            <br />
-            Day-of operations (orders, refunds, scanner activity) live on the{' '}
-            <a href={`/admin/tickets/${eventId}`} style={{ textDecoration: 'underline' }}>ticket operations console</a>.
           </div>
         </div>
       )}

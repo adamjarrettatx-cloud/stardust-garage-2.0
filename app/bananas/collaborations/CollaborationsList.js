@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import SubmissionTabs from '@/app/bananas/components/SubmissionTabs';
 import { filterSubmissionRowsByStatus } from '@/lib/submission-workflow';
+import { formatPhone } from '@/lib/phone';
 
 function formatDate(iso) {
   const d = new Date(iso);
@@ -68,13 +69,13 @@ export default function CollaborationsList({ collabs }) {
                     style={{ color: 'var(--auth-muted)' }}
                   >
                     <span>{c.email}</span>
-                    <span>{c.phone}</span>
+                    <span>{formatPhone(c.phone)}</span>
                     {c.instagram_handle && <span>{c.instagram_handle}</span>}
                   </div>
                 </div>
                 <div className="flex-shrink-0 text-right">
                   <div
-                    className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full mb-2"
+                    className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-[6px] mb-2"
                     style={{
                       background: 'var(--auth-card-bg-alt)',
                       color: 'var(--auth-text)',

@@ -345,12 +345,12 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
 
           {/* Month nav */}
           <div className="flex items-center gap-4 mb-4">
-            <button onClick={prevMonth} aria-label="Previous month" className="w-9 h-9 rounded-full border flex items-center justify-center transition-colors text-[16px]" style={{ borderColor: t.border, color: t.text, background: 'transparent' }} onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>‹</button>
+            <button onClick={prevMonth} aria-label="Previous month" className="w-9 h-9 rounded-[8px] border flex items-center justify-center transition-colors text-[16px]" style={{ borderColor: t.border, color: t.text, background: 'transparent' }} onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>‹</button>
             <h2 data-testid="fin-month-label" className="text-[22px] font-extrabold -tracking-[0.01em] min-w-[220px] text-center" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.textStrong }}>
               {MONTHS[month]} {year}
             </h2>
-            <button onClick={nextMonth} aria-label="Next month" className="w-9 h-9 rounded-full border flex items-center justify-center transition-colors text-[16px]" style={{ borderColor: t.border, color: t.text, background: 'transparent' }} onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>›</button>
-            <button onClick={goToday} className="ml-2 px-4 py-1.5 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors" style={{ borderColor: t.border, color: t.mutedStrong, background: 'transparent' }} onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>TODAY</button>
+            <button onClick={nextMonth} aria-label="Next month" className="w-9 h-9 rounded-[8px] border flex items-center justify-center transition-colors text-[16px]" style={{ borderColor: t.border, color: t.text, background: 'transparent' }} onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>›</button>
+            <button onClick={goToday} className="ml-2 px-4 py-1.5 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border transition-colors" style={{ borderColor: t.border, color: t.mutedStrong, background: 'transparent' }} onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>TODAY</button>
           </div>
 
           <div className="flex flex-col lg:flex-row gap-5">
@@ -490,11 +490,11 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
 
                         <div className="flex items-center gap-2 mb-2 text-[10px] tracking-[0.08em] uppercase" style={{ color: t.muted }}>
                           {entry.isManual && (
-                            <span className="px-1.5 py-0.5 rounded-full" style={{ background: t.revChipBg, color: t.rev }}>Manual</span>
+                            <span className="px-1.5 py-0.5 rounded-[6px]" style={{ background: t.revChipBg, color: t.rev }}>Manual</span>
                           )}
                           {entry.eventStatus && <span>{entry.eventStatus}</span>}
                           {entry.isFuture && (
-                            <span className="px-1.5 py-0.5 rounded-full" style={{ background: t.warnBadgeBg, color: t.warn }}>Upcoming</span>
+                            <span className="px-1.5 py-0.5 rounded-[6px]" style={{ background: t.warnBadgeBg, color: t.warn }}>Upcoming</span>
                           )}
                         </div>
 
@@ -702,7 +702,7 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
                       <Link href={`/bananas/events/${r.id}`} className="truncate min-w-0 hover:underline" style={{ color: t.text }}>{r.title}</Link>
                       {r.hasManualIncome && (
                         <span
-                          className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                          className="text-[9px] font-semibold px-1.5 py-0.5 rounded-[6px] flex-shrink-0"
                           style={{ background: t.revChipBg, color: t.rev }}
                           title={`Includes ${centsToUsd(r.manualGrossCents)} manual income`}
                         >
@@ -754,14 +754,14 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
             <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase" style={{ color: t.muted }}>
               Revenue over time — every source, every day
             </h2>
-            <div className="flex items-center gap-1 rounded-full border p-1" style={{ borderColor: t.border }} data-testid="fin-trend-granularity">
+            <div className="flex items-center gap-1 rounded-[8px] border p-1" style={{ borderColor: t.border }} data-testid="fin-trend-granularity">
               {GRANULARITIES.map((g) => (
                 <button
                   key={g.id}
                   type="button"
                   onClick={() => setTrendGranularity(g.id)}
                   data-testid={`fin-trend-granularity-${g.id}`}
-                  className="px-3.5 py-1.5 rounded-full text-[11px] font-semibold tracking-[0.08em] uppercase transition-colors"
+                  className="px-3.5 py-1.5 rounded-[6px] text-[11px] font-semibold tracking-[0.08em] uppercase transition-colors"
                   style={{
                     background: trendGranularity === g.id ? t.rev : 'transparent',
                     color: trendGranularity === g.id ? t.addBtnText : t.mutedStrong,

@@ -17,6 +17,8 @@ export default function GlobalSoundToggle() {
   if (pathname === '/employee' || pathname?.startsWith('/employee/')) return null;
 
   if (!ready) return null;
+  // Back-office pages use the rectangular admin button style.
+  const isBackOffice = /^\/(bananas|team|scan|admin)(\/|$)/.test(pathname || '');
   if (pathname === '/clock' || pathname?.startsWith('/clock/') || (pathname && pathname.startsWith('/capacity'))) {
     return null;
   }
@@ -27,7 +29,7 @@ export default function GlobalSoundToggle() {
       onClick={toggleSound}
       aria-label={soundOn ? 'Mute sound' : 'Play sound'}
       title={soundOn ? 'Mute sound' : 'Play sound'}
-      className="fixed bottom-3 left-3 md:bottom-4 md:left-4 z-50 flex items-center gap-2 rounded-full px-2.5 py-1.5 text-[10px] tracking-[0.16em] text-white/55 hover:text-white transition-colors"
+      className={`fixed bottom-3 left-3 md:bottom-4 md:left-4 z-50 flex items-center gap-2 ${isBackOffice ? 'rounded-[8px]' : 'rounded-full'} px-2.5 py-1.5 text-[10px] tracking-[0.16em] text-white/55 hover:text-white transition-colors`}
       style={{
         fontFamily: "'Inter', sans-serif",
         background: 'rgba(0,0,0,0.35)',

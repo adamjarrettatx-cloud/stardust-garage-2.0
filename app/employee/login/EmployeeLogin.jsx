@@ -56,7 +56,7 @@ export default function EmployeeLogin() {
           </div>
           {error && <p className="text-sm text-red-300" role="alert">{error}</p>}
           <button type="submit" disabled={busy}
-            className="w-full rounded-full bg-white text-black py-3.5 font-semibold disabled:opacity-50">
+            className="w-full rounded-[8px] bg-white text-black py-3.5 font-semibold disabled:opacity-50">
             {busy ? "Signing in…" : "Sign in"}
           </button>
         </form>

@@ -48,7 +48,7 @@ export default function ReplyPanel({ submissionType, submissionId, toEmail, defa
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 shrink-0 px-3 py-1.5 rounded-full text-[11px] font-semibold tracking-[0.08em] hover:opacity-80 transition-opacity"
+        className="inline-flex items-center gap-1.5 shrink-0 px-3 py-1.5 rounded-[8px] text-[11px] font-semibold tracking-[0.08em] hover:opacity-80 transition-opacity"
         style={{
           background: 'var(--auth-card-bg-alt)',
           border: '1px solid var(--auth-card-border-strong)',
@@ -114,13 +114,13 @@ export default function ReplyPanel({ submissionType, submissionId, toEmail, defa
           type="button"
           onClick={handleSend}
           disabled={sending}
-          className="px-4 py-2 rounded-full text-[12px] font-semibold tracking-[0.08em] hover:opacity-85 transition-opacity disabled:opacity-50"
+          className="px-4 py-2 rounded-[8px] text-[12px] font-semibold tracking-[0.08em] hover:opacity-85 transition-opacity disabled:opacity-50"
           style={{ background: 'var(--auth-text)', color: 'var(--auth-card-bg)' }}
         >
           {sending ? 'SENDING\u2026' : 'SEND REPLY'}
         </button>
         {result?.ok && (
-          <span className="text-[12px]" style={{ color: '#4ade80' }}>Sent \u2014 replies will go to your inbox.</span>
+          <span className="text-[12px]" style={{ color: '#4ade80' }}>Sent — replies will go to your inbox.</span>
         )}
         {result?.error && (
           <span className="text-[12px]" style={{ color: '#f87171' }}>{result.error}</span>

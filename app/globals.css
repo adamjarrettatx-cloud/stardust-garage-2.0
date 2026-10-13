@@ -51,6 +51,18 @@ body {
   color-scheme: dark;
 }
 
+.auth-theme-root[data-auth-theme='light'] .vp-bar {
+  background: color-mix(in srgb, var(--auth-panel-bg) 94%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.auth-theme-root[data-auth-theme='dark'] .vp-bar {
+  background: rgba(10, 10, 10, 0.94);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
 .auth-theme-page {
   color: var(--auth-text);
 }
@@ -469,4 +481,68 @@ label:has(input[name="persona"]:focus-visible) { outline: 2px solid var(--auth-a
   .view-portal-viewport { flex: 1; }
   .view-portal-viewport button { flex: 1; }
   .view-portal-banner select { flex: 1; min-width: 150px; }
+}
+
+/* ── Events list row actions ──────────────────────────────────────────
+   Square-cornered (8px) buttons matching the Orders & Refunds page, plus a
+   joined Edit/Delete icon control. Heights are shared (36px) so labelled
+   and icon buttons sit on one baseline. */
+.sdg-row-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 14px;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+.sdg-row-btn:focus-visible,
+.sdg-row-icon-btn:focus-visible {
+  outline: 2px solid var(--auth-text-strong, #191919);
+  outline-offset: 2px;
+}
+.sdg-row-icon-group {
+  display: inline-flex;
+  align-items: stretch;
+  height: 36px;
+  border: 1px solid var(--auth-ghost-border, #d7d7d7);
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.sdg-row-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  color: var(--auth-ghost-text, #191919);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.sdg-row-icon-btn + .sdg-row-icon-btn {
+  border-left: 1px solid var(--auth-ghost-border, #d7d7d7);
+}
+.sdg-row-icon-btn:hover {
+  background: var(--auth-hover-bg, rgba(0, 0, 0, 0.04));
+}
+.sdg-row-icon-btn:focus-visible {
+  outline-offset: -2px;
+  border-radius: 7px;
+}
+.sdg-row-icon-btn--danger:hover,
+.sdg-row-icon-btn--danger:focus-visible {
+  background: var(--auth-danger-bg, rgba(220, 38, 38, 0.08));
+  color: var(--auth-danger, #b91c1c);
+}
+.sdg-row-icon-btn:disabled {
+  opacity: 0.5;
+  cursor: progress;
 }

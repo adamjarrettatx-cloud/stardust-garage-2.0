@@ -76,7 +76,7 @@ export default function VenueInquiriesList({ inquiries }) {
                 <div className="flex-shrink-0 text-right">
                   {i.inquiry_type && TYPE_LABELS[i.inquiry_type] && (
                     <div
-                      className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full mb-2"
+                      className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-[6px] mb-2"
                       style={{
                         background: 'var(--auth-card-bg-alt)',
                         color: 'var(--auth-text)',

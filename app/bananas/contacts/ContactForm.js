@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { formatPhone, normalizeStoredPhone } from '@/lib/phone';
 import ContactProfileLayout from './ContactProfileLayout';
 import { contactProfileKind } from '@/lib/contact-organizations';
 import {
@@ -67,7 +68,7 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
   const [contactTypes, setContactTypes] = useState(contact?.contact_type || (contactDirectorySection(initialCategory) ? [initialCategory] : []));
   const [primaryContactName, setPrimaryContactName] = useState(contact?.primary_contact_name || '');
   const [email, setEmail] = useState(contact?.email || '');
-  const [phone, setPhone] = useState(contact?.phone || '');
+  const [phone, setPhone] = useState(formatPhone(contact?.phone || ''));
   const [company, setCompany] = useState(contact?.company || '');
   const [instagramHandle, setInstagramHandle] = useState(contact?.instagram_handle || '');
   const [website, setWebsite] = useState(contact?.website || '');
@@ -75,7 +76,8 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
   const [internalNotes, setInternalNotes] = useState(contact?.internal_notes || '');
   const [photoUrl, setPhotoUrl] = useState(contact?.photo_url || '');
   const [additionalContacts, setAdditionalContacts] = useState(
-    Array.isArray(contact?.additional_contacts) ? contact.additional_contacts : []
+    (Array.isArray(contact?.additional_contacts) ? contact.additional_contacts : [])
+      .map((c) => (c?.phone ? { ...c, phone: formatPhone(c.phone) } : c))
   );
 
   // Legal-counterparty block — what has to be true about a profile before it can
@@ -193,7 +195,7 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
       contact_type: contactTypes,
       primary_contact_name: primaryContactName.trim() || null,
       email: email.trim() || null,
-      phone: phone.trim() || null,
+      phone: normalizeStoredPhone(phone) || null,
       company: company.trim() || null,
       instagram_handle: instagramHandle.trim() || null,
       website: website.trim() || null,
@@ -203,7 +205,7 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
       // Drop rows the user added but left completely blank.
       additional_contacts: additionalContacts.filter((c) =>
         [c.name, c.role, c.email, c.phone].some((v) => (v || '').trim())
-      ),
+      ).map((c) => (c.phone ? { ...c, phone: normalizeStoredPhone(c.phone) } : c)),
       ...organizer.patch,
       updated_by: user?.id || null,
     };
@@ -383,7 +385,7 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
                 type="button"
                 onClick={() => toggleType(opt.value)}
                 aria-pressed={on}
-                className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-all"
+                className="px-4 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border transition-all"
                 style={{
                   background: on ? 'var(--auth-text-strong)' : 'var(--auth-card-bg)',
                   borderColor: on ? 'var(--auth-text-strong)' : 'var(--auth-card-border)',
@@ -470,6 +472,7 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
+            onBlur={() => setPhone(formatPhone(phone))}
             className={inputClass}
             style={inputStyle}
           />
@@ -613,7 +616,7 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
           <button
             type="button"
             onClick={addAdditional}
-            className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5"
+            className="px-4 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5"
             style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
           >
             + ADD PERSON
@@ -660,6 +663,7 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
                         type={f.type}
                         value={c[f.field] || ''}
                         onChange={(e) => updateAdditional(i, f.field, e.target.value)}
+                        onBlur={f.type === 'tel' ? (e) => updateAdditional(i, f.field, formatPhone(e.target.value)) : undefined}
                         className={inputClass + ' py-2.5'}
                         style={inputStyle}
                       />
@@ -700,14 +704,14 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
         <button
           type="submit"
           disabled={saving}
-          className="flex-1 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
+          className="flex-1 py-4 rounded-[8px] text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
           style={{ background: '#ffffff', color: '#0a0a0a' }}
         >
           {saving ? 'SAVING...' : isEditing ? 'SAVE CHANGES' : 'CREATE CONTACT'}
         </button>
         <Link
           href={contactDirectoryHref(initialCategory)}
-          className="px-8 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5 flex items-center"
+          className="px-8 py-4 rounded-[8px] text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5 flex items-center"
           style={{ borderColor: 'var(--auth-card-border-strong)', color: 'var(--auth-text)' }}
         >
           CANCEL

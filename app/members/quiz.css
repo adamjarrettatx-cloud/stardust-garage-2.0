@@ -395,13 +395,10 @@
   margin: 0 auto;
   padding: var(--s6) var(--s10);
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: var(--s5);
   font-size: var(--text-xs);
   color: var(--muted);
-}
-.membership-quiz .footer > span:first-child {
-  letter-spacing: 0.12em;
 }
 .membership-quiz .tag {
   display: inline-block;
@@ -568,6 +565,7 @@
   .membership-quiz .footer {
     padding: var(--s5) var(--s6);
     flex-direction: column;
+    align-items: flex-end;
     gap: var(--s2);
   }
   .membership-quiz .result-card {

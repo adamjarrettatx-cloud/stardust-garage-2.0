@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import Link from 'next/link';
+import { formatPhone } from '@/lib/phone';
 import { CONTACT_TYPE_OPTIONS, CONTACT_STATUS_OPTIONS, isContactTypeSelected, toggleContactType, contactDirectoryHref } from '@/lib/contact-helpers';
 import { ENTITY_TYPE_OPTIONS } from '@/lib/event-organizer';
 import styles from './profile.module.css';
@@ -75,7 +76,8 @@ export default function ContactProfileLayout({
     <div className={`${styles.field} ${full ? styles.full : ''}`} key={key}>
       <label htmlFor={`${formId}-${key}`}>{label}</label>
       <input id={`${formId}-${key}`} name={key} value={values[key] || ''} type={type}
-        required={required} placeholder={placeholder} onChange={(e) => setField(key, e.target.value)} />
+        required={required} placeholder={placeholder} onChange={(e) => setField(key, e.target.value)}
+        onBlur={type === 'tel' ? (e) => setField(key, formatPhone(e.target.value)) : undefined} />
     </div>
   );
   const submit = (event) => {
@@ -243,7 +245,8 @@ export default function ContactProfileLayout({
                       <div className={styles.fields}>{['name', 'role', 'email', 'phone'].map((key) => <div className={styles.field} key={key}>
                         <label htmlFor={`${formId}-person-${index}-${key}`}>{key[0].toUpperCase() + key.slice(1)}</label>
                         <input id={`${formId}-person-${index}-${key}`} type={key === 'email' ? 'email' : key === 'phone' ? 'tel' : 'text'}
-                          value={person[key] || ''} onChange={(e) => setField('additional_contacts', values.additional_contacts.map((p, i) => i === index ? { ...p, [key]: e.target.value } : p))} />
+                          value={person[key] || ''} onChange={(e) => setField('additional_contacts', values.additional_contacts.map((p, i) => i === index ? { ...p, [key]: e.target.value } : p))}
+                          onBlur={key === 'phone' ? (e) => setField('additional_contacts', values.additional_contacts.map((p, i) => i === index ? { ...p, phone: formatPhone(e.target.value) } : p)) : undefined} />
                       </div>)}</div>
                     </div>)}
                   </div>

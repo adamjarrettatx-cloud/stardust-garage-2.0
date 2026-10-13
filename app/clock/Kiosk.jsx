@@ -286,7 +286,7 @@ export default function Kiosk({ enabled }) {
         <span className="eyebrow">DEVICE SETUP</span>
         <h1>Pair this iPad</h1>
         <p className="muted">
-          Adam or Jeyu creates a one-time pairing code in Timekeeping → Devices.
+          Adam or Jeyu creates a one-time pairing code in Staff → Devices.
           Do not sign the shared iPad into an owner account.
         </p>
         <form

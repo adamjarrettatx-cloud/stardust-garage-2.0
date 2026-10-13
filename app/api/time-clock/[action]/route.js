@@ -68,7 +68,7 @@ export async function POST(request, { params }) {
         .eq("active", true)
         .maybeSingle();
       if (error)
-        throw new ClockError("Timekeeping is temporarily unavailable.", 503);
+        throw new ClockError("Staff tools are temporarily unavailable.", 503);
       const valid = await verifyPin(
         input.pin,
         worker?.pin_verifier,

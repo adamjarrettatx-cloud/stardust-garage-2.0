@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { cloneElement, isValidElement, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import TtLinkPanel from './TtLinkPanel';
@@ -50,6 +50,38 @@ function slugify(text) {
     .replace(/[^\w\s-]/g, '')
     .replace(/[\s_-]+/g, '-')
     .replace(/^-+|-+$/g, '');
+}
+
+// Read-only secret link with a one-click copy, shown in the Secret callout.
+function SecretLinkRow({ url }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setCopied(false);
+    }
+  };
+  return (
+    <div
+      className="mt-2.5 flex items-center gap-2 rounded-[8px] border pl-3 pr-[3px] py-[3px]"
+      style={{ background: 'var(--auth-input-bg)', borderColor: 'var(--auth-input-border)' }}
+    >
+      <span className="flex-1 min-w-0 truncate select-all text-[12px]" style={{ color: 'var(--auth-text-strong)' }} title={url}>
+        {url}
+      </span>
+      <button
+        type="button"
+        onClick={copy}
+        className="shrink-0 h-[30px] px-3 rounded-[6px] text-[10px] font-semibold tracking-[0.14em]"
+        style={{ background: 'var(--auth-text-strong)', color: 'var(--auth-strong-surface-text)' }}
+      >
+        {copied ? 'COPIED' : 'COPY LINK'}
+      </button>
+    </div>
+  );
 }
 
 export default function EventForm({
@@ -236,6 +268,10 @@ export default function EventForm({
     // link the panel just set, so only include it when creating a new event.
     if (!isEditing) {
       payload.tt_event_series_id = ttEventSeriesId.trim() || null;
+      // Every new event starts as a DRAFT. It stays off the public site until
+      // an admin presses GO LIVE on the event editor. Edits never send status,
+      // so saving an existing event can't publish or unpublish it.
+      payload.status = 'draft';
     }
 
     const { data: saved, error: saveError } = isEditing
@@ -299,8 +335,8 @@ export default function EventForm({
     // Editing: stay on this screen so the admin can keep working (e.g. Ticketing
     // panel, contract panel). Just refresh the server data and flash a brief
     // 'Saved' hint on the save button via the setSaving cycle + saveOk flag.
-    // Creating: no id in the URL yet, so we DO route to the events list —
-    // that's the only way to hand off to the newly-created event's edit page.
+    // Creating: hand off to the new draft's editor so tickets and details can
+    // be added before it goes live.
     if (isEditing) {
       setSaving(false);
       setSaveOk(true);
@@ -308,7 +344,7 @@ export default function EventForm({
       router.refresh();
       return;
     }
-    router.push('/bananas?tab=events');
+    router.push(saved?.id ? `/bananas/events/${saved.id}` : '/bananas?tab=events');
     router.refresh();
   };
 
@@ -376,7 +412,7 @@ export default function EventForm({
   function Segmented({ value, options, onChange }) {
     return (
       <div
-        className="inline-flex rounded-full p-1 border"
+        className="inline-flex h-[36px] rounded-[8px] p-[3px] border"
         style={{ background: 'var(--auth-input-bg)', borderColor: 'var(--auth-input-border)' }}
       >
         {options.map((opt) => {
@@ -386,7 +422,7 @@ export default function EventForm({
               key={opt.value}
               type="button"
               onClick={() => onChange(opt.value)}
-              className="px-4 py-1.5 rounded-full text-[12px] font-semibold tracking-[0.08em] transition-all"
+              className="h-full px-3.5 rounded-[6px] text-[12px] font-semibold tracking-[0.06em] transition-colors whitespace-nowrap"
               style={{
                 background: active ? 'var(--auth-text-strong)' : 'transparent',
                 color: active ? 'var(--auth-strong-surface-text)' : 'var(--auth-muted)',
@@ -416,66 +452,85 @@ export default function EventForm({
         {headerActions}
       </AuthenticatedPageHeader>
 
-      {statusPanel}
+      {/* TOP CONTROL CARD — Status, Visibility, Event Type and the Preview /
+          Go Live actions share one row. On edit, PublishEventButton owns the
+          row and slots these controls in; on create there is no status yet, so
+          the controls render on their own. Wired into the same form state;
+          saved with the form. */}
+      {(() => {
+        const visibilityHint = isInternal
+          ? 'Team only. Never shown on the public site, even by link.'
+          : isUnlisted
+            ? 'Only people with the secret link can open it once live.'
+            : 'Shown on the public events page once live.';
+        const typeHint = eventType === 'private'
+          ? 'Venue rental. No ticket sales for this event.'
+          : 'Sells tickets through the internal checkout below.';
+        const controls = (
+          <>
+            <div title={visibilityHint}>
+              <label className={labelClass} style={labelStyle}>Visibility</label>
+              <Segmented
+                value={visibility}
+                onChange={setVisibility}
+                options={[
+                  { value: 'public', label: 'Public' },
+                  { value: 'unlisted', label: 'Secret' },
+                  { value: 'internal', label: 'Draft' },
+                ]}
+              />
+            </div>
+            <div title={typeHint}>
+              <label className={labelClass} style={labelStyle}>Event Type</label>
+              <Segmented
+                value={eventType}
+                onChange={setEventType}
+                options={[
+                  { value: 'public', label: 'Ticketed' },
+                  { value: 'private', label: 'Private Rental' },
+                ]}
+              />
+            </div>
+          </>
+        );
+        return (
+      <section className="rounded-[14px] border mb-4 px-5 py-4" style={cardStyle}>
+          {statusPanel && isValidElement(statusPanel)
+            ? cloneElement(statusPanel, { controls })
+            : <div className="flex items-end gap-x-7 gap-y-4 flex-wrap">{controls}</div>}
 
-      {/* VISIBILITY + EVENT TYPE strip — lives above the details cards so
-          the top-of-page controls (STATUS → how it's shown / what it is)
-          read as one contiguous decision bar before you get into details.
-          Wired into the same form state; saved with the form. */}
-      <section className="rounded-[14px] border p-5 mb-4" style={cardStyle}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <div>
-            <label className={labelClass} style={labelStyle}>Visibility</label>
-            <Segmented
-              value={visibility}
-              onChange={setVisibility}
-              options={[
-                { value: 'public', label: 'Public' },
-                { value: 'unlisted', label: 'Unlisted' },
-                { value: 'internal', label: 'Internal' },
-              ]}
-            />
-            <p className="text-[11px] mt-2" style={helperStyle}>
-              {isInternal
-                ? 'Hidden from every public surface — team calendar only.'
-                : isUnlisted
-                  ? 'Reachable only by the direct link. Not on /events, /home, or the public calendar.'
-                  : 'Shown on the public events page and member surfaces.'}
-            </p>
-          </div>
-          <div>
-            <label className={labelClass} style={labelStyle}>Event Type</label>
-            <Segmented
-              value={eventType}
-              onChange={setEventType}
-              options={[
-                { value: 'public', label: 'Ticketed' },
-                { value: 'private', label: 'Private Rental' },
-              ]}
-            />
-            <p className="text-[11px] mt-2" style={helperStyle}>
-              {eventType === 'private'
-                ? 'Venue rental — no ticket sales for this event.'
-                : 'Sells tickets through the internal checkout below.'}
-            </p>
-          </div>
-        </div>
-        {isInternal && (
-          <p className="text-[11px] mt-4" style={{ color: '#f59e0b' }}>
-            Internal event: never appears on the public events page or member surfaces. It still
-            supports contracts, SignNow, financials, and POS imports, and shows on the team calendar.
-          </p>
-        )}
-        {isUnlisted && (
-          <p className="text-[11px] mt-4" style={{ color: '#f59e0b' }}>
-            Unlisted event: not on /events, /home, or the public calendar, and search engines are
-            told not to index it. Anyone with the /events/{slug || '[slug]'} link can open the page
-            and buy tickets, so only share the link with people you want at the event.
-          </p>
-        )}
+          {(isInternal || isUnlisted) && (
+            <div
+              className="mt-4 rounded-[10px] border px-3.5 py-2.5 text-[12px] leading-[1.5]"
+              style={{ background: 'var(--auth-warn-bg)', borderColor: 'var(--auth-warn-border)', color: 'var(--auth-warn)' }}
+            >
+              {isInternal ? (
+                <>
+                  Draft events can&apos;t go live until Visibility is Public or Secret. Contracts,
+                  SignNow, financials and POS imports still work, and it shows on the team calendar.
+                </>
+              ) : (
+                <>
+                  Not listed on /events, /home or the public calendar, and hidden from search engines.
+                  Anyone with the secret link can open the page and buy tickets once it&apos;s live.
+                  {isEditing && event?.share_token && event?.slug === slug && (
+                    <SecretLinkRow url={`https://sdgatx.com/events/${slug}?t=${event.share_token}`} />
+                  )}
+                </>
+              )}
+            </div>
+          )}
       </section>
+        );
+      })()}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="text-[13px] text-red-400 p-3 rounded-[10px] border border-red-500/30 bg-red-500/10">
+            {error}
+          </div>
+        )}
+
         {/* IDENTITY HERO — profile-style header with square thumbnail + title/slug. */}
         <section className="rounded-[14px] border p-5" style={cardStyle}>
           <div className="flex gap-5 items-start">
@@ -520,19 +575,39 @@ export default function EventForm({
             </label>
 
             <div className="flex-1 min-w-0 space-y-3">
-              <div>
+              <div className="flex items-end gap-3">
                 <input
                   type="text"
                   value={title}
                   onChange={handleTitleChange}
                   required
                   placeholder="Event title"
-                  className="w-full bg-transparent border-0 border-b outline-none text-[22px] font-bold pb-2 focus:border-white/40 transition-colors"
+                  className="flex-1 min-w-0 bg-transparent border-0 border-b outline-none text-[22px] font-bold pb-2 focus:border-white/40 transition-colors"
                   style={{
                     borderColor: 'var(--auth-card-border)',
                     color: 'var(--auth-text)',
                   }}
                 />
+                <div className="shrink-0 flex items-center gap-2 pb-1">
+                  <Link
+                    href="/bananas?tab=events"
+                    className="px-4 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.14em] transition-colors hover:bg-black/5"
+                    style={{ color: 'var(--auth-muted)' }}
+                  >
+                    CANCEL
+                  </Link>
+                  <button
+                    type="submit"
+                    disabled={saving || uploading}
+                    className="px-5 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.14em] transition-all disabled:opacity-50 whitespace-nowrap"
+                    style={{
+                      background: 'var(--auth-text-strong)',
+                      color: 'var(--auth-strong-surface-text)',
+                    }}
+                  >
+                    {saving ? 'SAVING…' : saveOk ? 'SAVED' : isEditing ? 'SAVE EVENT DETAILS' : 'CREATE EVENT'}
+                  </button>
+                </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap text-[12px]" style={helperStyle}>
                 <span>sdgatx.com/events/</span>
@@ -560,7 +635,7 @@ export default function EventForm({
                   <button
                     type="button"
                     onClick={() => setImageUrl('')}
-                    className="text-[11px] font-semibold tracking-[0.1em] px-3 py-1.5 rounded-full border transition-colors hover:bg-white/5"
+                    className="text-[11px] font-semibold tracking-[0.1em] px-3 py-1.5 rounded-[8px] border transition-colors hover:bg-white/5"
                     style={{ borderColor: 'var(--auth-card-border)', color: 'var(--auth-muted)' }}
                   >
                     CLEAR
@@ -618,7 +693,7 @@ export default function EventForm({
             </div>
           </div>
           <p className="text-[11px] mt-4" style={helperStyle}>
-            Membership pricing \u2014 including whether this is a Weekend Music Experience \u2014 is set in
+            Membership pricing — including whether this is a Weekend Music Experience — is set in
             the Member pricing panel below.
           </p>
         </section>
@@ -712,55 +787,20 @@ export default function EventForm({
           </section>
         ) : null}
 
-        {error && (
-          <div className="text-[13px] text-red-400 p-3 rounded-[10px] border border-red-500/30 bg-red-500/10">
-            {error}
-          </div>
-        )}
-
-        {/* Sticky action bar: matches the section cards above (same card bg,
-            same border, same radius) so it reads as an extension of the form,
-            not a random plank slapped on top. Buttons use the site's canonical
-            primary style (auth-text-strong on auth-strong-surface-text) — the
-            same pattern used across the admin. */}
-        <div
-          className="sticky bottom-4 z-10 flex items-center justify-end gap-2 px-4 py-3 rounded-[14px] border shadow-lg"
-          style={{
-            background: 'var(--auth-card-bg)',
-            borderColor: 'var(--auth-card-border)',
-          }}
-        >
-          <Link
-            href="/bananas?tab=events"
-            className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.14em] transition-colors hover:bg-black/5"
-            style={{ color: 'var(--auth-muted)' }}
-          >
-            CANCEL
-          </Link>
-          {canGenerateCodes && (
+        {canGenerateCodes && (
+          <div className="flex justify-end">
             <button
               type="button"
               onClick={handleGenerateCodes}
               disabled={generating}
-              className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.14em] border transition-colors hover:bg-black/5 disabled:opacity-50 whitespace-nowrap"
+              className="px-4 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.14em] border transition-colors hover:bg-black/5 disabled:opacity-50 whitespace-nowrap"
               style={{ color: '#c17800', borderColor: 'rgba(193, 120, 0, 0.35)' }}
               title="Generate member ticket codes for this event"
             >
               {generating ? 'GENERATING…' : 'MEMBER CODES'}
             </button>
-          )}
-          <button
-            type="submit"
-            disabled={saving || uploading}
-            className="px-6 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
-            style={{
-              background: 'var(--auth-text-strong)',
-              color: 'var(--auth-strong-surface-text)',
-            }}
-          >
-            {saving ? 'SAVING…' : saveOk ? 'SAVED' : isEditing ? 'SAVE EVENT DETAILS' : 'CREATE EVENT'}
-          </button>
-        </div>
+          </div>
+        )}
 
         {generateMessage && (
           <p className="text-[12px] text-right" style={{ color: '#ffb84d' }}>

@@ -501,7 +501,7 @@ function ProductForm({ eventId, initial, onSave, onCancel, saving, eventFeeDefau
           <div
             role="radiogroup"
             aria-label="Audience"
-            style={{ display: 'inline-flex', border: `1px solid ${T.border}`, borderRadius: 999, overflow: 'hidden' }}
+            style={{ display: 'inline-flex', border: `1px solid ${T.border}`, borderRadius: 8, overflow: 'hidden' }}
           >
             {[
               { value: 'public', label: 'Public' },
@@ -779,19 +779,57 @@ export default function ProductEditor({ eventId, products, onReload, eventFeeDef
             return (
               <tr key={p.id}>
                 <td style={tdStyle()}>
-                  <div>{totalTiers} tier{totalTiers === 1 ? '' : 's'}</div>
-                  {active && (
-                    <div style={{ fontSize: 12, color: T.accent, marginTop: 2 }}>
-                      Now: {money(active.price_cents)} — {active.name}
-                    </div>
-                  )}
-                  {(hiddenCount || codeGated || soldOutTiers) ? (
-                    <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-                      {hiddenCount ? <span style={statusPill({ tone: 'muted' })}>{hiddenCount} hidden</span> : null}
-                      {codeGated ? <span style={statusPill({ tone: 'accent' })}>{codeGated} code-gated</span> : null}
-                      {soldOutTiers ? <span style={statusPill({ tone: 'warning' })}>{soldOutTiers} sold out</span> : null}
-                    </div>
-                  ) : null}
+                  <div style={{ fontSize: 12, color: T.muted, marginBottom: 8 }}>
+                    {totalTiers} tier{totalTiers === 1 ? '' : 's'}
+                    {hiddenCount ? ` · ${hiddenCount} hidden` : ''}
+                    {codeGated ? ` · ${codeGated} code-gated` : ''}
+                    {soldOutTiers ? ` · ${soldOutTiers} sold out` : ''}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {[...(p.tiers || [])]
+                      .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+                      .map((t, i) => {
+                        const st = t.status || 'active';
+                        const isNow = active && (active.id ? active.id === t.id : active === t);
+                        const capped = typeof t.quantity === 'number';
+                        const statusLabel = {
+                          active: 'Active',
+                          hidden: 'Hidden',
+                          sold_out: 'Sold out',
+                          access_code: 'Code',
+                        }[st] || st;
+                        const tone = { hidden: 'muted', sold_out: 'warning', access_code: 'accent' }[st] || 'muted';
+                        return (
+                          <div
+                            key={t.id || i}
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: 'minmax(120px, 1fr) 80px 110px 96px',
+                              alignItems: 'center',
+                              gap: 12,
+                              padding: '6px 10px',
+                              borderRadius: 8,
+                              border: `1px solid ${isNow ? T.accent : T.borderSoft}`,
+                            }}
+                          >
+                            <div style={{ fontWeight: isNow ? 600 : 400 }}>{t.name || 'Untitled tier'}</div>
+                            <div style={{ textAlign: 'right' }}>{money(t.price_cents)}</div>
+                            <div style={{ textAlign: 'right', fontSize: 12, color: T.muted }}>
+                              {t.sold_count || 0} / {capped ? t.quantity : '∞'} sold
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              {isNow ? (
+                                <span style={statusPill({ tone: 'success' })}>Now</span>
+                              ) : t.is_active === false ? (
+                                <span style={statusPill({ tone: 'danger' })}>Off</span>
+                              ) : (
+                                <span style={statusPill({ tone })}>{statusLabel}</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
                 </td>
                 <td style={tdStyle({ align: 'right' })}>
                   {(() => {
@@ -821,24 +859,38 @@ export default function ProductEditor({ eventId, products, onReload, eventFeeDef
                   </div>
                 </td>
                 <td style={tdStyle({ align: 'right' })}>
-                  <div style={{ display: 'inline-flex', gap: 6 }}>
+                  {/* Edit/Delete as the same joined pencil + trash icon control
+                      used on the admin Events list (sdg-row-icon-* in
+                      globals.css). Trash turns red only on hover/focus. */}
+                  <div className="sdg-row-icon-group" role="group" aria-label={`Manage ${p.name || 'product'}`} style={{ opacity: saving ? 0.5 : 1 }}>
                     <button
                       type="button"
                       onClick={() => setEditing(p.id)}
                       disabled={saving}
-                      className={pillClass()}
-                      style={ghostPillStyle({ disabled: saving })}
+                      className="sdg-row-icon-btn"
+                      aria-label={`Edit ${p.name || 'product'}`}
+                      title="Edit product"
                     >
-                      EDIT
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M16.9 3.6a2.1 2.1 0 0 1 3 3L8.5 18 4 19.5 5.5 15z" />
+                        <path d="M14.5 6l3.5 3.5" />
+                      </svg>
                     </button>
                     <button
                       type="button"
                       onClick={() => del(p.id)}
                       disabled={saving}
-                      className={pillClass()}
-                      style={ghostPillStyle({ disabled: saving, danger: true })}
+                      className="sdg-row-icon-btn sdg-row-icon-btn--danger"
+                      aria-label={`Delete ${p.name || 'product'}`}
+                      title="Delete product"
                     >
-                      DELETE
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M3 6h18" />
+                        <path d="M8 6V4.5A1.5 1.5 0 0 1 9.5 3h5A1.5 1.5 0 0 1 16 4.5V6" />
+                        <path d="M18.5 6l-.8 13.1A2 2 0 0 1 15.7 21H8.3a2 2 0 0 1-2-1.9L5.5 6" />
+                        <path d="M10 10.5v6" />
+                        <path d="M14 10.5v6" />
+                      </svg>
                     </button>
                   </div>
                 </td>

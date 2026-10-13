@@ -45,7 +45,7 @@ export async function request(path, payload, signal) {
 export function Frame({ children, owner = false }) {
   const authenticatedTheme = useOptionalAuthenticatedTheme();
   const [kioskTheme, setKioskTheme] = useState("dark");
-  // Embedded timekeeping follows the surrounding Admin setting. Only the
+  // Embedded Staff follows the surrounding Admin setting. Only the
   // standalone kiosk owns a separate appearance control.
   const theme = owner ? (authenticatedTheme?.theme ?? "dark") : kioskTheme;
   return (

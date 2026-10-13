@@ -6,7 +6,7 @@ vi.mock("@/lib/auth-helpers", () => ({
 }));
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdminMfa, adminPageGate } from "@/lib/auth-helpers";
-import { timekeepingPageGate } from "../../lib/time-clock/auth.js";
+import { staffPageGate } from "../../lib/time-clock/auth.js";
 import { GET, POST } from "../../app/api/time-clock/[action]/route.js";
 import {
   GET as ownerGet,
@@ -225,7 +225,7 @@ it.each(["adam@sdgatx.com", "jeyu@sdgatx.com"])(
       isAdmin: true,
       redirect: null,
     });
-    expect((await timekeepingPageGate()).redirect).toBeNull();
+    expect((await staffPageGate()).redirect).toBeNull();
   },
 );
 it.each([
@@ -255,7 +255,7 @@ it.each([
     isAdmin,
     redirect: null,
   });
-  expect((await timekeepingPageGate()).redirect).toBe("/bananas");
+  expect((await staffPageGate()).redirect).toBe("/bananas");
   expect(client.rpc).not.toHaveBeenCalled();
   expect(client.from).not.toHaveBeenCalled();
 });
@@ -266,7 +266,7 @@ it("preserves login and MFA redirects from the verified admin gate", async () =>
     "/bananas/security?mfa=required",
   ]) {
     adminPageGate.mockResolvedValue({ redirect });
-    expect((await timekeepingPageGate()).redirect).toBe(redirect);
+    expect((await staffPageGate()).redirect).toBe(redirect);
   }
 });
 it.each(["save_worker", "reset_pin"])(

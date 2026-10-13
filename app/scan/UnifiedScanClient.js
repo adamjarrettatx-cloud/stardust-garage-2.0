@@ -1014,7 +1014,7 @@ const styles = {
   headerRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   brand: { fontSize: 14, letterSpacing: 2, color: '#d9c48c', fontWeight: 600 },
   eventChip: {
-    padding: '6px 12px', borderRadius: 999, border: '1px solid #333',
+    padding: '6px 12px', borderRadius: 6, border: '1px solid #333',
     background: 'rgba(0,0,0,0.5)', color: '#f5f5f5', fontSize: 12, fontFamily: 'inherit',
     cursor: 'pointer', letterSpacing: 1, fontWeight: 600,
   },
@@ -1062,11 +1062,11 @@ const styles = {
   name: { fontSize: 28, fontWeight: 700, textAlign: 'center' },
   subline: { fontSize: 16, color: '#8a8a8a' },
   inactivePill: {
-    marginTop: 8, padding: '6px 12px', borderRadius: 999,
+    marginTop: 8, padding: '6px 12px', borderRadius: 6,
     background: '#3a1414', color: '#ff8686', fontSize: 12, letterSpacing: 2, fontWeight: 700,
   },
   linkedTicketPill: {
-    marginTop: 8, padding: '6px 12px', borderRadius: 999,
+    marginTop: 8, padding: '6px 12px', borderRadius: 6,
     background: '#1a1408', color: '#d9c48c', fontSize: 12, letterSpacing: 2, fontWeight: 700,
     border: '1px solid #d9c48c',
   },
@@ -1104,7 +1104,7 @@ const styles = {
     background: '#d9c48c', color: '#0a0a0a', fontSize: 16, fontWeight: 700, cursor: 'pointer', width: '100%',
   },
   sessionChipMuted: {
-    padding: '8px 14px', borderRadius: 999, background: '#1a1a1a', color: '#8a8a8a',
+    padding: '8px 14px', borderRadius: 6, background: '#1a1a1a', color: '#8a8a8a',
     fontSize: 13, fontWeight: 600, letterSpacing: 1,
   },
   sessionActive: {
@@ -1112,7 +1112,7 @@ const styles = {
   },
   sessionActiveLive: {
     display: 'flex', alignItems: 'center', gap: 8,
-    padding: '8px 14px', borderRadius: 999, background: '#0e2618', border: '1px solid #1f5f3a',
+    padding: '8px 14px', borderRadius: 6, background: '#0e2618', border: '1px solid #1f5f3a',
   },
   sessionActiveTitle: { color: '#7CFC9B', fontSize: 13, fontWeight: 700, letterSpacing: 0.5 },
   sessionActiveMeta:  { color: '#4a8a5e', fontSize: 12 },
@@ -1121,18 +1121,18 @@ const styles = {
     boxShadow: '0 0 8px #7CFC9B', animation: 'pulse 1.4s ease-in-out infinite',
   },
   sessionEndBtn: {
-    padding: '8px 12px', borderRadius: 999, border: '1px solid #333',
+    padding: '8px 12px', borderRadius: 8, border: '1px solid #333',
     background: 'transparent', color: '#8a8a8a', fontSize: 12, fontWeight: 600, cursor: 'pointer',
   },
   sessionInactive: {
     display: 'flex', alignItems: 'center', gap: 8,
   },
   sessionStartBtn: {
-    padding: '10px 18px', borderRadius: 999, border: 'none',
+    padding: '10px 18px', borderRadius: 8, border: 'none',
     background: '#d9c48c', color: '#0a0a0a', fontSize: 13, fontWeight: 800, letterSpacing: 1, cursor: 'pointer',
   },
   sessionPickBtn: {
-    padding: '8px 12px', borderRadius: 999, border: '1px solid #333',
+    padding: '8px 12px', borderRadius: 8, border: '1px solid #333',
     background: 'transparent', color: '#8a8a8a', fontSize: 11, cursor: 'pointer',
   },
   pickerError: {
@@ -1142,7 +1142,7 @@ const styles = {
   },
   sessionToast: {
     position: 'absolute', bottom: 24, left: '50%', transform: 'translateX(-50%)',
-    padding: '10px 16px', borderRadius: 999,
+    padding: '10px 16px', borderRadius: 8,
     background: '#3a1414', border: '1px solid #5a2020', color: '#ff8686',
     fontSize: 13, zIndex: 20,
   },

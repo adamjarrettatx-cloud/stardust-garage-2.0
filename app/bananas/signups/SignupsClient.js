@@ -5,6 +5,7 @@ import SubmissionTabs from '@/app/bananas/components/SubmissionTabs';
 import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadge';
 import { filterSubmissionRowsByStatus, normalizeSubmissionStatus } from '@/lib/submission-workflow';
 import { signupSourceLabel } from '@/lib/signups';
+import { formatPhone } from '@/lib/phone';
 
 function formatDate(iso) {
   const d = new Date(iso);
@@ -53,7 +54,7 @@ export default function SignupsClient({ signups, csvHref }) {
           <a
             href={csvHref}
             download={`signups-${new Date().toISOString().split('T')[0]}.csv`}
-            className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.14em] border transition-colors"
+            className="px-4 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.14em] border transition-colors"
             style={{ borderColor: 'var(--auth-ghost-border)', color: 'var(--auth-ghost-text)' }}
           >
             DOWNLOAD CSV
@@ -98,7 +99,7 @@ export default function SignupsClient({ signups, csvHref }) {
                     <td className="px-6 py-4 text-[14px] font-medium">{signup.contact}</td>
                     <td className="px-6 py-4 text-[13px]" style={{ color: 'var(--auth-muted)' }}>{signup.contact_type || '—'}</td>
                     <td className="px-6 py-4 text-[13px]" style={{ color: 'var(--auth-muted)' }}>{signup.full_name || '—'}</td>
-                    <td className="px-6 py-4 text-[13px] tabular-nums" style={{ color: 'var(--auth-muted)' }}>{signup.phone || '—'}</td>
+                    <td className="px-6 py-4 text-[13px] tabular-nums" style={{ color: 'var(--auth-muted)' }}>{formatPhone(signup.phone) || '—'}</td>
                     <td className="px-6 py-4 text-[13px]" style={{ color: 'var(--auth-muted)' }}>{signupSourceLabel(signup.source)}</td>
                     <td className="px-6 py-4 text-[13px]">
                       <SubmissionStatusBadge status={signup.status || 'new'} />

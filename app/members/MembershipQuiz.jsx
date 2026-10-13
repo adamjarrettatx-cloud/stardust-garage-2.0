@@ -163,11 +163,6 @@ export default function MembershipQuiz({
         <Link href="/home" className="brand" aria-label="Stardust Garage home">
           <Wordmark />
         </Link>
-        <div className="header-actions">
-          <Link className="text-button" href="/home">
-            Back to site
-          </Link>
-        </div>
       </header>
       <main className="quiz-main">
         <nav className="progress" aria-label="Quiz progress">
@@ -418,9 +413,7 @@ export default function MembershipQuiz({
         </section>
       </main>
       <footer className="footer">
-        <span>AUSTIN, TEXAS</span>
         <span>
-          <Link href="/account/profile">My account</Link> ·{" "}
           <Link href="/pass">Trial Pass</Link> ·{" "}
           <Link href="/privacy">Privacy</Link>
         </span>

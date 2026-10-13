@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import UnderlineTabs from '@/app/bananas/components/UnderlineTabs';
+import { formatPhone } from '@/lib/phone';
 
 // Analytics dashboard for the trial pass program.
 //
@@ -66,7 +67,7 @@ function SignupIdentity({ row }) {
         <div style={{ color: 'var(--auth-text)', fontWeight: 500 }}>{row.fullName}</div>
         <div className="text-[11px] mt-0.5" style={{ color: 'var(--auth-muted)' }}>
           {row.email}
-          {row.phone && <><span className="mx-1.5">·</span>{row.phone}</>}
+          {row.phone && <><span className="mx-1.5">·</span>{formatPhone(row.phone)}</>}
         </div>
       </div>
     </div>
@@ -95,7 +96,7 @@ function StatusPill({ status, appliedAt, convertedAt, activationPhase }) {
   }
   return (
     <span
-      className="inline-block text-[10px] font-semibold tracking-[0.14em] uppercase px-2.5 py-1 rounded-full"
+      className="inline-block text-[10px] font-semibold tracking-[0.14em] uppercase px-2.5 py-1 rounded-[6px]"
       style={{ color, ...TRACK_STYLE }}
     >
       {label}
@@ -500,7 +501,7 @@ function FollowUpPill({ appliedAt, convertedAt }) {
   if (convertedAt) {
     return (
       <span
-        className="inline-block text-[10px] font-semibold tracking-[0.14em] uppercase px-2 py-0.5 rounded-full"
+        className="inline-block text-[10px] font-semibold tracking-[0.14em] uppercase px-2 py-0.5 rounded-[6px]"
         style={{ color: 'var(--auth-success)', background: 'var(--auth-card-bg-alt)' }}
       >
         Member
@@ -510,7 +511,7 @@ function FollowUpPill({ appliedAt, convertedAt }) {
   if (appliedAt) {
     return (
       <span
-        className="inline-block text-[10px] font-semibold tracking-[0.14em] uppercase px-2 py-0.5 rounded-full"
+        className="inline-block text-[10px] font-semibold tracking-[0.14em] uppercase px-2 py-0.5 rounded-[6px]"
         style={{ color: GOLD, background: 'var(--auth-card-bg-alt)' }}
       >
         Applied

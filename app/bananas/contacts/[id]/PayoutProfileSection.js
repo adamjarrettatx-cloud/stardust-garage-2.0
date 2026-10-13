@@ -76,7 +76,7 @@ export default function PayoutProfileSection({ contactId, displayName }) {
             <span>I verified in Mercury that this recipient belongs to {displayName} and is set up for ACH payments.</span>
           </label>
           <button type="submit" disabled={busy || loadFailed || !confirmed || !PAYOUT_UUID.test(recipientId.trim())}
-            className="mt-4 px-5 py-2.5 rounded-full text-[12px] font-semibold disabled:opacity-40"
+            className="mt-4 px-5 py-2.5 rounded-[8px] text-[12px] font-semibold disabled:opacity-40"
             style={{ background: 'var(--auth-accent)', color: 'var(--auth-accent-text)' }}>
             {busy ? 'SAVING...' : 'SAVE MERCURY LINK'}
           </button>

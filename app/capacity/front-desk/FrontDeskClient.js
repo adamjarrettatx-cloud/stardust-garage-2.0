@@ -354,7 +354,7 @@ export default function FrontDeskClient({ staffLabel, staffEmail, stationMode = 
       if (!res.ok) {
         if (json.code === 'full') return 'At capacity — count not bumped.';
         if (json.code === 'no_session') return 'No active capacity session — count not bumped.';
-        return 'Count not bumped: ' + (json.error || 'try again from /capacity/admin');
+        return 'Count not bumped: ' + (json.error || 'try again from Admin → Capacity');
       }
       capacity.refresh?.();
       return null;
@@ -482,7 +482,7 @@ export default function FrontDeskClient({ staffLabel, staffEmail, stationMode = 
                   of {capacity.status?.max ?? '—'}
                 </span>
                 <span
-                  className="ml-2 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-[0.1em] uppercase"
+                  className="ml-2 rounded-[6px] px-2.5 py-1 text-[10px] font-bold tracking-[0.1em] uppercase"
                   style={{ background: 'rgba(255,255,255,0.06)', color: capPillColor }}
                 >
                   {capPillLabel}
@@ -835,7 +835,7 @@ function EntryRow({ entry, busy, confirmingNoShow, onCheckIn, onNoShow }) {
             </div>
           </div>
           <span
-            className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-[0.1em] uppercase"
+            className="shrink-0 rounded-[6px] px-2.5 py-1 text-[10px] font-bold tracking-[0.1em] uppercase"
             style={{ background: meta.bg, color: meta.color }}
           >
             {meta.label}
@@ -1083,7 +1083,7 @@ function TopbarEventChip({ activeSession, activeEvent, onlineSales, busy, error,
       : '';
     return (
       <div
-        className="flex items-center gap-3 rounded-full border pl-3 pr-1 py-1"
+        className="flex items-center gap-3 rounded-[8px] border pl-3 pr-1 py-1"
         style={{ background: 'rgba(124,252,155,0.06)', borderColor: 'rgba(124,252,155,0.35)' }}
       >
         <div className="min-w-0">
@@ -1111,7 +1111,7 @@ function TopbarEventChip({ activeSession, activeEvent, onlineSales, busy, error,
           type="button"
           onClick={onEnd}
           disabled={busy}
-          className="shrink-0 rounded-full px-3 py-1 text-[10px] font-bold tracking-[0.12em] uppercase border"
+          className="shrink-0 rounded-[6px] px-3 py-1 text-[10px] font-bold tracking-[0.12em] uppercase border"
           style={{ borderColor: 'rgba(255,138,138,0.5)', color: '#ff8a8a', background: 'transparent' }}
         >
           End
@@ -1122,7 +1122,7 @@ function TopbarEventChip({ activeSession, activeEvent, onlineSales, busy, error,
 
   return (
     <div
-      className="flex items-center gap-3 rounded-full border pl-3 pr-1 py-1"
+      className="flex items-center gap-3 rounded-[8px] border pl-3 pr-1 py-1"
       style={{ background: 'rgba(255,184,77,0.06)', borderColor: 'rgba(255,184,77,0.35)' }}
     >
       <div className="min-w-0">
@@ -1140,7 +1140,7 @@ function TopbarEventChip({ activeSession, activeEvent, onlineSales, busy, error,
         type="button"
         onClick={onStart}
         disabled={busy}
-        className="shrink-0 rounded-full px-3 py-1 text-[10px] font-bold tracking-[0.12em] uppercase"
+        className="shrink-0 rounded-[6px] px-3 py-1 text-[10px] font-bold tracking-[0.12em] uppercase"
         style={{ background: '#7CFC9B', color: '#0a0a0a' }}
       >
         Start Event
@@ -1244,7 +1244,7 @@ function StartEventOverlay({
           </div>
           <Link
             href="/bananas/events/new"
-            className="inline-block rounded-full px-4 py-2 text-[12px] font-bold tracking-[0.12em] uppercase"
+            className="inline-block rounded-[8px] px-4 py-2 text-[12px] font-bold tracking-[0.12em] uppercase"
             style={{ background: '#7CFC9B', color: '#0a0a0a' }}
           >
             Create an event →
@@ -1331,7 +1331,7 @@ function ConfirmEndOverlay({ event, busy, errorMessage, onConfirm, onCancel }) {
           type="button"
           onClick={onConfirm}
           disabled={busy}
-          className="rounded-full px-5 py-2 text-[12px] font-bold tracking-[0.12em] uppercase"
+          className="rounded-[8px] px-5 py-2 text-[12px] font-bold tracking-[0.12em] uppercase"
           style={{ background: '#ff8a8a', color: '#0a0a0a' }}
         >
           {busy ? 'Ending\u2026' : 'End event'}

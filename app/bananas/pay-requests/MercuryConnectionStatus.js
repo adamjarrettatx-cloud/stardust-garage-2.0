@@ -25,7 +25,7 @@ export default function MercuryConnectionStatus() {
           <p className="text-[13px] mt-1" style={{ color: 'var(--auth-muted)' }}>Read-only account check. Does not queue or send a payment.</p>
         </div>
         <button type="button" onClick={check} disabled={busy}
-          className="rounded-full border px-4 py-2.5 text-[12px] font-semibold disabled:opacity-40"
+          className="rounded-[8px] border px-4 py-2.5 text-[12px] font-semibold disabled:opacity-40"
           style={{ borderColor: 'var(--auth-card-border-strong)', color: 'var(--auth-text)' }}>
           {busy ? 'CHECKING...' : 'CHECK MERCURY CONNECTION'}
         </button>

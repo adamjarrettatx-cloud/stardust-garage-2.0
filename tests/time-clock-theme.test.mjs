@@ -39,10 +39,10 @@ async function renderFrame(owner) {
   }
 }
 
-test("embedded timekeeping has no competing theme toggle", async () => {
+test("embedded Staff has no competing theme toggle", async () => {
   const html = await renderFrame(true);
   assert.match(html, /tc-root tc-owner/);
-  assert.doesNotMatch(html, /Toggle timekeeping theme|Toggle light and dark theme/);
+  assert.doesNotMatch(html, /Toggle staff theme|Toggle light and dark theme/);
 });
 
 test("standalone kiosk retains its independent appearance control", async () => {
