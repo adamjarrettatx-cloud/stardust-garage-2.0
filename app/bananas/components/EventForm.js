@@ -609,7 +609,7 @@ export default function EventForm({
                   <button
                     type="button"
                     onClick={() => setImageUrl('')}
-                    className="text-[11px] font-semibold tracking-[0.1em] px-3 py-1.5 rounded-full border transition-colors hover:bg-white/5"
+                    className="text-[11px] font-semibold tracking-[0.1em] px-3 py-1.5 rounded-[8px] border transition-colors hover:bg-white/5"
                     style={{ borderColor: 'var(--auth-card-border)', color: 'var(--auth-muted)' }}
                   >
                     CLEAR
@@ -781,7 +781,7 @@ export default function EventForm({
         >
           <Link
             href="/bananas?tab=events"
-            className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.14em] transition-colors hover:bg-black/5"
+            className="px-4 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.14em] transition-colors hover:bg-black/5"
             style={{ color: 'var(--auth-muted)' }}
           >
             CANCEL
@@ -791,7 +791,7 @@ export default function EventForm({
               type="button"
               onClick={handleGenerateCodes}
               disabled={generating}
-              className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.14em] border transition-colors hover:bg-black/5 disabled:opacity-50 whitespace-nowrap"
+              className="px-4 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.14em] border transition-colors hover:bg-black/5 disabled:opacity-50 whitespace-nowrap"
               style={{ color: '#c17800', borderColor: 'rgba(193, 120, 0, 0.35)' }}
               title="Generate member ticket codes for this event"
             >
@@ -801,7 +801,7 @@ export default function EventForm({
           <button
             type="submit"
             disabled={saving || uploading}
-            className="px-6 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
+            className="px-6 py-2.5 rounded-[8px] text-[11px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
             style={{
               background: 'var(--auth-text-strong)',
               color: 'var(--auth-strong-surface-text)',

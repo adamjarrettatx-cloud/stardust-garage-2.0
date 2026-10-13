@@ -66,7 +66,7 @@ export default async function EditEventPage({ params }) {
           {event.ticketing_mode === 'internal' && (
             <Link
               href={`/bananas/events/${event.id}/attendees`}
-              className="auth-theme-border-button px-4 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
+              className="auth-theme-border-button px-4 py-2.5 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border transition-colors"
             >
               ATTENDEES &amp; ORDERS
             </Link>
@@ -74,7 +74,7 @@ export default async function EditEventPage({ params }) {
           {organizer && (
             <Link
               href={`/bananas/contacts/${organizer.id}`}
-              className="auth-theme-border-button px-4 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
+              className="auth-theme-border-button px-4 py-2.5 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border transition-colors"
               style={{ color: 'var(--auth-accent)' }}
               title={`Event Organizer: ${organizerDisplayLabel(organizer)}`}
             >
@@ -87,7 +87,7 @@ export default async function EditEventPage({ params }) {
           {event.series_id && (
             <Link
               href={`/bananas/series/${event.series_id}`}
-              className="auth-theme-border-button px-4 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
+              className="auth-theme-border-button px-4 py-2.5 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border transition-colors"
               style={{ color: 'var(--auth-accent)' }}
             >
               VIEW SERIES ROLLUP
@@ -95,7 +95,7 @@ export default async function EditEventPage({ params }) {
           )}
           <Link
             href={`/bananas/events/${event.id}/financials`}
-            className="auth-theme-border-button px-4 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
+            className="auth-theme-border-button px-4 py-2.5 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border transition-colors"
             style={{ color: 'var(--auth-accent)' }}
           >
             FINANCIALS

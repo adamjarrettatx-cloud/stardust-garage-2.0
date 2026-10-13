@@ -108,7 +108,7 @@ export default function TtLinkPanel({ eventId, initialSeriesId, metrics = null }
           TICKETTAILOR LINK
         </label>
         <span
-          className="text-[11px] font-semibold tracking-[0.12em] px-2.5 py-1 rounded-full"
+          className="text-[11px] font-semibold tracking-[0.12em] px-2.5 py-1 rounded-[6px]"
           style={{
             color: isLinked ? '#0f1a12' : '#8a8a8a',
             background: isLinked ? '#4ade80' : 'rgba(255,255,255,0.08)',
@@ -156,7 +156,7 @@ export default function TtLinkPanel({ eventId, initialSeriesId, metrics = null }
           type="button"
           onClick={() => submit({ verify: true })}
           disabled={saving || !isDirty || !seriesId.trim()}
-          className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-40"
+          className="px-6 py-3 rounded-[8px] text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-40"
           style={{ background: '#ffffff', color: '#0a0a0a' }}
         >
           {saving ? 'SAVING…' : 'SAVE & VERIFY LINK'}
@@ -166,7 +166,7 @@ export default function TtLinkPanel({ eventId, initialSeriesId, metrics = null }
             type="button"
             onClick={() => submit({ clear: true })}
             disabled={saving}
-            className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5 disabled:opacity-40"
+            className="px-6 py-3 rounded-[8px] text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5 disabled:opacity-40"
             style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
           >
             UNLINK
