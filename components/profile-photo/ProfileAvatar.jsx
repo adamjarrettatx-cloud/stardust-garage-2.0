@@ -37,13 +37,14 @@ export default function ProfileAvatar({
   nameOrEmail,
   size = 40,
   ring = false,
+  radius = '50%',
   alt = 'Profile photo',
   className = '',
   style = {},
 }) {
   const initials = useMemo(() => initialsFrom(nameOrEmail), [nameOrEmail]);
   const px = typeof size === 'number' ? `${size}px` : size;
-  const borderRadius = '50%';
+  const borderRadius = typeof radius === 'number' ? `${radius}px` : radius;
 
   const baseStyle = {
     width: px,

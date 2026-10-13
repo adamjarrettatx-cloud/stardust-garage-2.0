@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Frame, request, time, money } from "@/app/components/time-clock/Shared";
+import ProfileAvatar from "@/components/profile-photo/ProfileAvatar";
 import { createClient } from "@/lib/supabase/client";
 import { chicagoInput, chicagoToIso, duration, elapsedMs, estimateCents } from "@/lib/time-clock/core.mjs";
 import { addDays, chicagoYmd, dayStartIso, weekStart } from "@/lib/time-clock/periods.mjs";
@@ -129,7 +130,7 @@ export default function EmployeePortal({ enabled }) {
               }
             }} />
         ) : (
-          <AccountTab data={data} />
+          <AccountTab data={data} onSignOut={signOut} />
         )}
 
         {modal && data && (
@@ -402,10 +403,12 @@ function RequestSummary({ r }) {
   );
 }
 
-function AccountTab({ data }) {
+function AccountTab({ data, onSignOut }) {
+  const [settings, setSettings] = useState(false);
   const [pw, setPw] = useState(null);
   const [msg, setMsg] = useState("");
   const w = data.worker;
+  const classification = w.category === "contractor" ? "Contractor" : "Employee";
   async function changePassword(e) {
     e.preventDefault();
     setMsg("");
@@ -416,51 +419,77 @@ function AccountTab({ data }) {
     setPw(null);
     setMsg("Password changed.");
   }
+  function closeSettings() {
+    setSettings(false);
+    setPw(null);
+  }
   return (
-    <div className="emp-account">
+    <div className="emp-profile">
+      <div className="emp-profile-top">
+        <h2>Profile</h2>
+        <button type="button" className="emp-gear" aria-label="Profile settings" title="Profile settings" onClick={() => setSettings(true)}>
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 8.9 4.6 1.7 1.7 0 0 0 9.97 3.04V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 8.9a1.7 1.7 0 0 0 1.56 1.03H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1.07z" />
+          </svg>
+        </button>
+      </div>
+      <div className="emp-identity">
+        <ProfileAvatar nameOrEmail={w.name} size={88} radius={18} alt={`${w.name} initials`} />
+        <div className="emp-identity-text">
+          <p className="emp-identity-name">{w.name}</p>
+          {w.username && <p>{w.username}</p>}
+          <p>{classification}</p>
+        </div>
+      </div>
+      {msg && !settings && <div className="notice" role="status">{msg}</div>}
       <section className="panel">
-        <span className="eyebrow">Profile</span>
-        <dl className="emp-dl">
-          <dt>Name</dt><dd>{w.name}</dd>
-          {w.username && (<><dt>Username</dt><dd>{w.username}</dd></>)}
-          <dt>Classification</dt><dd>{w.category === "contractor" ? "Contractor" : "Employee"}</dd>
-          <dt>Pay</dt>
-          <dd className="emp-rates">
-            {w.pay_basis === "flat" ? (
-              <span className="pill">{money(w.flat_cents)} / shift</span>
-            ) : w.pay_basis === "hourly" ? (
-              data.roles.map((r) => (
-                <span className="pill" key={r.id}>{r.name} · {r.rate_cents === null ? "not set" : `${money(r.rate_cents)}/hr`}</span>
-              ))
-            ) : (
-              <span className="sub">Not set yet</span>
-            )}
-          </dd>
-        </dl>
+        <span className="eyebrow">Pay</span>
+        <div className="emp-rates">
+          {w.pay_basis === "flat" ? (
+            <span className="pill">{money(w.flat_cents)} / shift</span>
+          ) : w.pay_basis === "hourly" ? (
+            data.roles.map((r) => (
+              <span className="pill" key={r.id}>{r.name} · {r.rate_cents === null ? "not set" : `${money(r.rate_cents)}/hr`}</span>
+            ))
+          ) : (
+            <span className="sub">Not set yet</span>
+          )}
+        </div>
         <p className="sub">Clock in and out on the front-room iPad with your PIN. Ask a manager to change your rate or roles.</p>
       </section>
-      <section className="panel">
-        <span className="eyebrow">Security</span>
-        {msg && <div className="notice" role="status">{msg}</div>}
-        {pw ? (
-          <form className="tc-form" onSubmit={changePassword}>
-            <label>New password
-              <input type="password" autoComplete="new-password" minLength={10} maxLength={72} required
-                value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} />
-            </label>
-            <label>Confirm new password
-              <input type="password" autoComplete="new-password" minLength={10} maxLength={72} required
-                value={pw.confirm} onChange={(e) => setPw({ ...pw, confirm: e.target.value })} />
-            </label>
-            <div className="row wrap">
-              <button className="primary">Save password</button>
-              <button type="button" onClick={() => setPw(null)}>Cancel</button>
+      {settings && (
+        <div className="tc-confirm" role="dialog" aria-modal="true" aria-labelledby="emp-settings-title"
+          onKeyDown={(e) => e.key === "Escape" && closeSettings()}>
+          <div className="panel emp-settings">
+            <div className="between">
+              <h2 id="emp-settings-title">Profile settings</h2>
+              <button type="button" className="textbtn" onClick={closeSettings}>Close</button>
             </div>
-          </form>
-        ) : (
-          <button onClick={() => setPw({ next: "", confirm: "" })}>Change password</button>
-        )}
-      </section>
+            <span className="eyebrow">Login &amp; Security</span>
+            {msg && <div className="notice" role="status">{msg}</div>}
+            {pw ? (
+              <form className="tc-form" onSubmit={changePassword}>
+                <label>New password
+                  <input type="password" autoComplete="new-password" minLength={10} maxLength={72} required autoFocus
+                    value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} />
+                </label>
+                <label>Confirm new password
+                  <input type="password" autoComplete="new-password" minLength={10} maxLength={72} required
+                    value={pw.confirm} onChange={(e) => setPw({ ...pw, confirm: e.target.value })} />
+                </label>
+                <div className="row wrap">
+                  <button className="primary">Save password</button>
+                  <button type="button" onClick={() => setPw(null)}>Cancel</button>
+                </div>
+              </form>
+            ) : (
+              <button type="button" className="wide" onClick={() => { setMsg(""); setPw({ next: "", confirm: "" }); }}>Change password</button>
+            )}
+            <button type="button" className="wide emp-signout" onClick={onSignOut}>Sign out</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
