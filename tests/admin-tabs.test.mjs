@@ -87,7 +87,7 @@ test('owners see every tab', () => {
 test('timekeeping managers see staff management without owner-only financial tools', () => {
   const tabs = visibleAdminTabs(false, true).map(t => t.id);
   assert.ok(tabs.includes('timekeeping'));
-  for (const id of ['finances', 'artist-pay', 'settings', 'view-portal']) {
+  for (const id of ['finances', 'artist-pay', 'settings']) {
     assert.ok(!tabs.includes(id));
     assert.equal(resolveAdminTab(id, { canManageTimekeeping: true }), DEFAULT_ADMIN_TAB);
   }
@@ -97,21 +97,17 @@ test('timekeeping managers see staff management without owner-only financial too
   assert.match(fs.readFileSync(path.join(REPO_ROOT, 'app/bananas/timekeeping/page.js'), 'utf8'), /timekeepingPageGate/);
 });
 
-test('View Portal is a direct owner-only destination under ADMIN', () => {
-  const tab = adminTabById('view-portal');
-  assert.equal(tab.label, 'View Portal');
-  assert.equal(tab.group, 'ADMIN');
-  assert.equal(tab.ownerOnly, true);
-  assert.equal(tab.rendersOwnContent, true);
-  assert.equal(adminTabHref(tab), '/bananas/view-portal');
-  assert.ok(visibleAdminTabGroups(true).find((group) => group.group === 'ADMIN')
-    .tabs.some((item) => item.id === 'view-portal'));
-  assert.ok(!visibleAdminTabs(false).some((item) => item.id === 'view-portal'));
-  assert.equal(resolveAdminTab('view-portal', { isOwner: false }), DEFAULT_ADMIN_TAB);
-  assert.equal(resolveRootAdminTab('view-portal', { isOwner: true }), DEFAULT_ADMIN_TAB);
-  assert.equal(tabForPath('/bananas/view-portal'), 'view-portal');
-  assert.equal(tabForPath('/bananas/view-portal/'), 'view-portal');
-  assert.equal(crumbForPath('/bananas/view-portal'), null);
+test('View Portal is an owner-locked tile under Settings, not a sidebar tab', () => {
+  assert.equal(adminTabById('view-portal'), null);
+  assert.ok(!ADMIN_TABS.some((item) => item.id === 'view-portal'));
+  const tile = ADMIN_TILES.settings.find((t) => t.href === '/bananas/view-portal');
+  assert.ok(tile, 'Settings must contain a View Portal tile');
+  assert.equal(tile.title, 'View Portal');
+  assert.equal(tile.restricted, 'owner');
+  assert.equal(resolveAdminTab('view-portal', { isOwner: true }), DEFAULT_ADMIN_TAB);
+  assert.equal(tabForPath('/bananas/view-portal'), 'settings');
+  assert.equal(tabForPath('/bananas/view-portal/'), 'settings');
+  assert.deepEqual(crumbForPath('/bananas/view-portal'), { title: 'View Portal', tabId: 'settings' });
   const page = read('app/bananas/view-portal/page.js');
   assert.match(page, /ownerPageGate\(\)/);
   assert.match(page, /VIEW_PORTAL_OWNER_USER_ID/);
