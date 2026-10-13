@@ -151,11 +151,11 @@ const styles = {
   headerRight: { display: 'flex', gap: 12, alignItems: 'center' },
   settingsLink: {
     fontSize: 11, letterSpacing: 2, color: '#8a8a8a', textDecoration: 'none',
-    border: '1px solid rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: 999,
+    border: '1px solid rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: 8,
   },
   markAllBtn: {
     fontSize: 11, letterSpacing: 2, color: '#d9c48c', background: 'transparent',
-    border: '1px solid #d9c48c', padding: '8px 12px', borderRadius: 999, cursor: 'pointer',
+    border: '1px solid #d9c48c', padding: '8px 12px', borderRadius: 8, cursor: 'pointer',
   },
   empty: { padding: 60, textAlign: 'center', color: '#8a8a8a', fontSize: 14 },
   error: { padding: 24, textAlign: 'center', color: '#ff8686' },
