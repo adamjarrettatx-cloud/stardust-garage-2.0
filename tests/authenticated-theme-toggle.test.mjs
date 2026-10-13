@@ -194,7 +194,8 @@ test('authenticated theme token swap keeps the outer shell transparent while cha
 
   assert.equal(dark['--auth-root-bg'], 'transparent');
   assert.equal(light['--auth-root-bg'], 'transparent');
-  assert.equal(authThemeVars('dark', { slate: true })['--auth-root-bg'], '#1B2028');
+  assert.equal(authThemeVars('dark', { slate: true })['--auth-root-bg'], 'transparent');
+  assert.equal(authThemeVars('dark', { slate: true })['--auth-panel-bg'], '#181A20');
   assert.equal(authThemeVars('light', { slate: true })['--auth-root-bg'], 'transparent');
   assert.notEqual(dark['--auth-panel-bg'], light['--auth-panel-bg']);
   assert.notEqual(dark['--auth-panel-border'], light['--auth-panel-border']);
