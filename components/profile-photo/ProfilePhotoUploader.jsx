@@ -61,6 +61,7 @@ async function defaultAccountUpload(file) {
 export default function ProfilePhotoUploader({
   currentSignedUrl = null,
   nameOrEmail = '',
+  avatarRadius,
   variant = 'inline',      // 'inline' | 'modal-body'
   ctaLabel = 'UPLOAD PHOTO',
   helperText = 'One clear photo of your face. Door staff sees this next to your ticket at check-in.',
@@ -162,9 +163,9 @@ export default function ProfilePhotoUploader({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         {showingPreview ? (
-          <ProfileAvatar src={previewUrl} nameOrEmail={nameOrEmail} size={72} ring />
+          <ProfileAvatar src={previewUrl} nameOrEmail={nameOrEmail} size={72} radius={avatarRadius} ring />
         ) : (
-          <ProfileAvatar src={displayedSignedUrl} nameOrEmail={nameOrEmail} size={72} ring />
+          <ProfileAvatar src={displayedSignedUrl} nameOrEmail={nameOrEmail} size={72} radius={avatarRadius} ring />
         )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
