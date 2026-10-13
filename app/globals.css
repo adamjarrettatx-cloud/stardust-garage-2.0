@@ -51,6 +51,10 @@ body {
   color-scheme: dark;
 }
 
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] {
+  background: var(--auth-root-bg);
+}
+
 .auth-theme-root[data-auth-theme='light'] .vp-bar {
   background: color-mix(in srgb, var(--auth-panel-bg) 94%, transparent);
   -webkit-backdrop-filter: blur(10px);
@@ -59,6 +63,12 @@ body {
 
 .auth-theme-root[data-auth-theme='dark'] .vp-bar {
   background: rgba(10, 10, 10, 0.94);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] .vp-bar {
+  background: rgba(27, 32, 40, 0.94);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
@@ -288,6 +298,102 @@ select optgroup {
 .auth-theme-root[data-auth-theme='light'] [style*='background:white'] {
   background: var(--auth-text-strong) !important;
   color: var(--auth-strong-surface-text) !important;
+}
+
+/* Midnight slate dark theme (#1B2028). Hardcoded near-black inline surfaces
+   are lifted onto the slate ladder so they don't sit darker than the page. */
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#141414'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #141414'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(20, 20, 20)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#141414'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #141414'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(20, 20, 20)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#171717'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #171717'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(23, 23, 23)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#171717'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #171717'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(23, 23, 23)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#191919'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #191919'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(25, 25, 25)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#191919'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #191919'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(25, 25, 25)'] {
+  background: var(--auth-card-bg) !important;
+}
+
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#1a1a1a'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #1a1a1a'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(26, 26, 26)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#1a1a1a'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #1a1a1a'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(26, 26, 26)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#1a1a1d'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #1a1a1d'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(26, 26, 29)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#1a1a1d'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #1a1a1d'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(26, 26, 29)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#1e1e1e'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #1e1e1e'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(30, 30, 30)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#1e1e1e'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #1e1e1e'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(30, 30, 30)'] {
+  background: #2A323D !important;
+}
+
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#0a0a0a'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #0a0a0a'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(10, 10, 10)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#0a0a0a'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #0a0a0a'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(10, 10, 10)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#0d0d0d'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #0d0d0d'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(13, 13, 13)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#0d0d0d'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #0d0d0d'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(13, 13, 13)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#0f0f0f'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #0f0f0f'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(15, 15, 15)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#0f0f0f'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #0f0f0f'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(15, 15, 15)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#101010'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #101010'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(16, 16, 16)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#101010'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #101010'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(16, 16, 16)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#111'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #111'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(17, 17, 17)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#111'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #111'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(17, 17, 17)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#121212'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #121212'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(18, 18, 18)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#121212'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #121212'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(18, 18, 18)'] {
+  background: var(--auth-input-bg) !important;
+}
+
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] .bg-\[\#111\],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] .bg-neutral-900 {
+  background: var(--auth-input-bg) !important;
+}
+
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] .bg-\[\#1a1a1a\] {
+  background: #2A323D !important;
+}
+
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] .tc-root[data-theme=dark] {
+  --bg:#1B2028;--panel:#242B35;--raised:#2A323D;--border:#3A4350;--inverse:#1B2028;--warnbg:#3F3F3F;
 }
 
 /* Prevent long URLs / strings from blowing out the layout on mobile. */

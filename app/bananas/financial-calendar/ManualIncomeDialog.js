@@ -10,8 +10,8 @@ import { MANUAL_CATEGORIES, DEFAULT_MANUAL_CATEGORY, parseAmountToCents } from '
 // submit/link accent; it deepens on light so it reads on a white panel.
 const MODAL_THEMES = {
   dark: {
-    overlay: 'rgba(0,0,0,0.6)', panelBg: '#141414', panelBorder: 'rgba(255,255,255,0.1)',
-    text: '#f5f5f5', muted: '#8a8a8a', inputBg: '#0d0d0d', inputBorder: 'rgba(255,255,255,0.12)',
+    overlay: 'rgba(0,0,0,0.6)', panelBg: '#242B35', panelBorder: 'rgba(255,255,255,0.1)',
+    text: '#f5f5f5', muted: '#8a8a8a', inputBg: '#161B22', inputBorder: 'rgba(255,255,255,0.12)',
     linkBg: 'rgba(74,222,128,0.1)', linkText: '#4ade80', linkDot: '#4ade80',
     errBg: 'rgba(248,113,113,0.1)', errText: '#f87171',
     cancelBorder: 'rgba(255,255,255,0.15)', cancelText: '#aaa', hoverBg: 'rgba(255,255,255,0.1)',
