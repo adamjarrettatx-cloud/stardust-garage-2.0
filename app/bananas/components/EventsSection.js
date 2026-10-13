@@ -71,13 +71,6 @@ export default function EventsSection({ upcoming, past, metricsByEvent = {} }) {
         <Link href="/bananas/orders" className="text-[12px] font-semibold" style={{ color: 'var(--auth-muted)' }}>
           ORDERS &amp; REFUNDS
         </Link>
-        <Link
-          href="/bananas/calendar"
-          className="text-[12px] font-semibold tracking-[0.14em] transition-colors"
-          style={{ color: 'var(--auth-muted)' }}
-        >
-          + NEW EVENT → CALENDAR
-        </Link>
         </div>
       </div>
 
