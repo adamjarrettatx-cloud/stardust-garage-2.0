@@ -39,19 +39,16 @@ const UI_MODES = [
     ui: 'default',
     db: 'internal',
     label: 'Default (us)',
-    help: 'Sell tickets through our own checkout. Configure products below.',
   },
   {
     ui: 'external',
     db: 'external',
     label: 'External (other link)',
-    help: 'Point buyers at another ticket site (Ticket Tailor, Eventbrite, Dice, DoorList, etc).',
   },
   {
     ui: 'free',
     db: 'none',
     label: 'Free event',
-    help: 'No ticket widget on the event page. Free entry, RSVP, or walk-up.',
   },
 ];
 
@@ -328,18 +325,27 @@ export default function TicketingPanel({
         </p>
       </header>
 
-      <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
+      <div
+        role="radiogroup"
+        aria-label="Ticketing mode"
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, marginTop: 8 }}
+      >
         {UI_MODES.map((m) => (
           <label
             key={m.ui}
             style={{
               display: 'flex',
-              gap: 10,
-              alignItems: 'flex-start',
+              gap: 8,
+              alignItems: 'center',
+              justifyContent: 'center',
               padding: '10px 12px',
               border: `1px solid ${uiMode === m.ui ? 'var(--auth-accent, #7cf)' : 'var(--auth-border, #333)'}`,
               borderRadius: 6,
               cursor: 'pointer',
+              textAlign: 'center',
+              fontWeight: 600,
+              fontSize: 14,
+              lineHeight: 1.2,
             }}
           >
             <input
@@ -349,12 +355,9 @@ export default function TicketingPanel({
               checked={uiMode === m.ui}
               onChange={() => setUiMode(m.ui)}
               disabled={savingMode}
-              style={{ marginTop: 3 }}
+              style={{ margin: 0, flexShrink: 0 }}
             />
-            <span>
-              <div style={{ fontWeight: 600 }}>{m.label}</div>
-              <div style={{ fontSize: 12, opacity: 0.75 }}>{m.help}</div>
-            </span>
+            <span>{m.label}</span>
           </label>
         ))}
       </div>
