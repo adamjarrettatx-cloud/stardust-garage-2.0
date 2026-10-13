@@ -485,20 +485,15 @@ export default function EventForm({
             {isSdgOnly && (
               <div title="Restrict this event to a single membership tier. Leave as All members for a normal SDG-only drop.">
                 <label className={labelClass} style={labelStyle}>Member Tier</label>
-                <select
+                <Segmented
                   value={requiredTier}
-                  onChange={(e) => setRequiredTier(e.target.value)}
-                  className="h-[36px] rounded-[8px] border px-3 text-[12px] font-semibold tracking-[0.06em] outline-none"
-                  style={{
-                    background: 'var(--auth-input-bg)',
-                    borderColor: 'var(--auth-input-border)',
-                    color: 'var(--auth-input-text)',
-                  }}
-                >
-                  <option value="">All members (any tier)</option>
-                  <option value="iykyk">The Insider only</option>
-                  <option value="cowork">The Builder only</option>
-                </select>
+                  onChange={setRequiredTier}
+                  options={[
+                    { value: '', label: 'All Members' },
+                    { value: 'iykyk', label: 'Insider Only' },
+                    { value: 'cowork', label: 'Builder Only' },
+                  ]}
+                />
               </div>
             )}
           </>
