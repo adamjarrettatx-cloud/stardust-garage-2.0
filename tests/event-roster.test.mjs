@@ -80,3 +80,29 @@ test('endpoint gates before service-role reads, scopes by event, and does not re
   assert.match(route, /\.eq\('event_id', id\)/);
   assert.ok(!route.includes('ticket_code'));
 });
+
+test('roster column sort: asc/desc, missing values last, stable ties', async () => {
+  const { sortRoster } = await import('../lib/tickets/event-roster.js');
+  const t = (status) => ({ status });
+  const orders = [
+    { id: 'a', buyer_name: 'zoe', status: 'paid', total_cents: 2000, tickets: [t('used'), t('valid')] },
+    { id: 'b', buyer_name: null, buyer_email: null, status: 'refunded', total_cents: 500, tickets: [t('valid')] },
+    { id: 'c', buyer_name: 'Adam', status: 'paid', total_cents: 9000, tickets: [t('used'), t('used'), t('used')] },
+    { id: 'd', buyer_name: 'Mia', status: 'paid', total_cents: 2000, tickets: [] },
+  ];
+  const ids = (rows) => rows.map((r) => r.id).join('');
+  assert.equal(ids(sortRoster(orders, 'purchasers', 'purchaser', 'asc')), 'cdab');
+  assert.equal(ids(sortRoster(orders, 'purchasers', 'purchaser', 'desc')), 'adcb');
+  assert.equal(ids(sortRoster(orders, 'purchasers', 'total', 'asc')), 'badc');
+  assert.equal(ids(sortRoster(orders, 'purchasers', 'total', 'desc')), 'cadb');
+  assert.equal(ids(sortRoster(orders, 'purchasers', 'tickets', 'desc')), 'cabd');
+  assert.equal(ids(sortRoster(orders, 'purchasers', 'checked_in', 'desc')), 'cabd');
+  assert.equal(ids(sortRoster(orders, 'purchasers', null)), 'abcd');
+  const tickets = [
+    { id: '1', used_at: null, status: 'valid' },
+    { id: '2', used_at: '2026-10-10T03:00:00Z', status: 'used' },
+    { id: '3', used_at: '2026-10-10T01:00:00Z', status: 'used' },
+  ];
+  assert.equal(ids(sortRoster(tickets, 'tickets', 'checked_in', 'asc')), '321');
+  assert.equal(ids(sortRoster(tickets, 'tickets', 'checked_in', 'desc')), '231');
+});

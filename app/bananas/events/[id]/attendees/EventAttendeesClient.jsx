@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { matchesRosterSearch, rosterCsv, rosterTickets } from '@/lib/tickets/event-roster';
+import { matchesRosterSearch, rosterCsv, rosterTickets, sortRoster } from '@/lib/tickets/event-roster';
 import RefundDialog from '@/components/ticketing/RefundDialog';
 import RefundActivity from '@/components/ticketing/RefundActivity';
 import CompDialog from '@/components/ticketing/CompDialog';
@@ -38,6 +38,7 @@ export default function EventAttendeesClient({ event, deskMode = false }) {
   const [refundOrders, setRefundOrders] = useState(null);
   const [emailState, setEmailState] = useState({});
   const [compOpen, setCompOpen] = useState(false);
+  const [sort, setSort] = useState({ key: null, dir: 'asc' });
   const eventId = event?.id;
 
   useEffect(() => {
@@ -81,13 +82,19 @@ export default function EventAttendeesClient({ event, deskMode = false }) {
 
   // Filter changes intentionally clear selection. No invisible orders are
   // carried into a batch after switching event, view, or search.
-  useEffect(() => { setSelected(new Set()); }, [search, status, tab, eventFilter, reload]);
+  useEffect(() => { setSelected(new Set()); }, [search, status, tab, eventFilter, reload, sort]);
 
   const tickets = useMemo(() => rosterTickets(orders), [orders]);
-  const rows = useMemo(() => (tab === 'purchasers' ? orders : tickets)
+  const filteredRows = useMemo(() => (tab === 'purchasers' ? orders : tickets)
     .filter((row) => (eventFilter === 'all' || row.event_id === eventFilter)
       && (status === 'all' || row.status === status) && matchesRosterSearch(row, search)),
   [orders, tickets, tab, status, search, eventFilter]);
+  const rows = useMemo(() => sortRoster(filteredRows, tab, sort.key, sort.dir), [filteredRows, tab, sort]);
+  // First click sorts ascending, the next click on the same column flips it.
+  function sortBy(key) {
+    setSort((current) => ({ key, dir: current.key === key && current.dir === 'asc' ? 'desc' : 'asc' }));
+    setPage(0);
+  }
   const events = useMemo(() => [...new Map(orders.map((o) => [o.event_id,
     { id: o.event_id, title: o.event_title, date: o.event_date }])).values()]
     .sort((a, b) => (b.date || '').localeCompare(a.date || '')), [orders]);
@@ -204,7 +211,7 @@ export default function EventAttendeesClient({ event, deskMode = false }) {
           <div className={styles.tabs} role="group" aria-label="Roster view">
             {['purchasers', 'tickets'].map((value) => (
               <button key={value} className={styles.button} aria-pressed={tab === value}
-                onClick={() => { setTab(value); setStatus('all'); setPage(0); }}>
+                onClick={() => { setTab(value); setStatus('all'); setSort({ key: null, dir: 'asc' }); setPage(0); }}>
                 {value === 'purchasers' ? 'Purchasers' : 'Tickets & check-ins'}
               </button>
             ))}
@@ -280,9 +287,23 @@ export default function EventAttendeesClient({ event, deskMode = false }) {
                     checked={pageEligible.length > 0 && pageEligible.every((row) => selected.has(row.id))}
                     disabled={!pageEligible.length} onChange={togglePage} /></th>}
                   {(tab === 'purchasers'
-                  ? ['Purchaser', ...(!event ? ['Event'] : []), 'Order status', 'Tickets', 'Checked in', 'Total / refunded', 'Actions']
-                  : ['Attendee / purchaser', ...(!event ? ['Event'] : []), 'Ticket type', 'Ticket status', 'Checked in (Austin)', 'Order']
-                ).map((label) => <th key={label} scope="col">{label}</th>)}</tr></thead>
+                  ? [['Purchaser', 'purchaser'], ...(!event ? [['Event', 'event']] : []), ['Order status', 'status'], ['Tickets', 'tickets'],
+                    ['Checked in', 'checked_in'], ['Total / refunded', 'total'], ['Actions']]
+                  : [['Attendee / purchaser', 'attendee'], ...(!event ? [['Event', 'event']] : []), ['Ticket type', 'type'],
+                    ['Ticket status', 'status'], ['Checked in (Austin)', 'checked_in'], ['Order', 'order']]
+                ).map(([label, key]) => {
+                  if (!key) return <th key={label} scope="col">{label}</th>;
+                  const active = sort.key === key;
+                  return (
+                    <th key={label} scope="col" aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                      <button type="button" className={styles.sortButton} data-active={active} onClick={() => sortBy(key)}
+                        title={active && sort.dir === 'asc' ? `Sort ${label} descending` : `Sort ${label} ascending`}>
+                        {label}
+                        <span className={styles.sortIcon} aria-hidden="true">{active ? (sort.dir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </button>
+                    </th>
+                  );
+                })}</tr></thead>
                 <tbody>
                   {visible.map((row) => tab === 'purchasers' ? (
                     <tr key={row.id}>
