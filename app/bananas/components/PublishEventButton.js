@@ -12,7 +12,7 @@ import { adminFetch } from '@/lib/admin-fetch';
 //
 // The publish itself runs in /api/admin/events/:id/tt-publish (admin + MFA
 // gated). The TICKETTAILOR_API_KEY is never exposed to the browser.
-export default function PublishEventButton({ eventId, slug, status, ttEventSeriesId, visibility = 'public', embedded = false, controls = null }) {
+export default function PublishEventButton({ eventId, slug, status, ttEventSeriesId, visibility = 'public', embedded = false, header = false, controls = null }) {
   const router = useRouter();
   const [publishing, setPublishing] = useState(false);
   const [msg, setMsg] = useState('');
@@ -118,6 +118,59 @@ export default function PublishEventButton({ eventId, slug, status, ttEventSerie
       )}
     </>
   );
+
+  // Header: Status badge, Preview and Go Live sit inline with the page-header
+  // action buttons (Attendees & Orders, Financials). Same 38px pill height as
+  // those links so the whole row lines up. Feedback text floats under the row
+  // so it never pushes the header buttons out of line.
+  if (header) {
+    const pill = 'px-4 py-2.5 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border transition-colors';
+    return (
+      <>
+        <span
+          className={`${pill} inline-flex items-center`}
+          title="Status"
+          style={{
+            color: isDraft ? 'var(--auth-accent-text)' : 'var(--auth-strong-surface-text)',
+            background: isDraft ? 'var(--auth-accent)' : 'var(--auth-success)',
+            borderColor: isDraft ? 'var(--auth-accent)' : 'var(--auth-success)',
+          }}
+        >
+          {isDraft ? 'DRAFT' : 'PUBLISHED'}
+        </span>
+        {slug && (
+          <a
+            href={`/events/${slug}/preview`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`auth-theme-border-button ${pill}`}
+          >
+            PREVIEW
+          </a>
+        )}
+        {isDraft && !isTeamOnly && (
+          <button
+            type="button"
+            onClick={publish}
+            disabled={publishing}
+            title={ttEventSeriesId ? 'Also puts the linked ticket series on sale.' : undefined}
+            className={`${pill} disabled:opacity-40`}
+            style={{ background: 'var(--auth-success)', borderColor: 'var(--auth-success)', color: 'var(--auth-strong-surface-text)' }}
+          >
+            {publishing ? 'GOING LIVE…' : 'GO LIVE'}
+          </button>
+        )}
+        {(msg || error) && (
+          <p
+            className="basis-full text-right text-[12px]"
+            style={{ color: error ? 'var(--auth-danger)' : 'var(--auth-success-strong)' }}
+          >
+            {error || msg}
+          </p>
+        )}
+      </>
+    );
+  }
 
   // Embedded: rendered as the header strip of the editor's top control card,
   // which owns the surrounding border and padding.
