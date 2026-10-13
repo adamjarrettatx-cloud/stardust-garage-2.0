@@ -3,14 +3,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   AUTH_THEME_STORAGE_KEYS,
-  AUTH_THEMES,
+  resolveAuthThemePalette,
   resolveAuthTheme,
   authThemeVars,
 } from '@/lib/authenticated-theme';
 
 const AuthenticatedThemeContext = createContext(null);
 
-export default function AuthenticatedThemeProvider({ scope, children }) {
+export default function AuthenticatedThemeProvider({ scope, slate = false, children }) {
   const [theme, setTheme] = useState('dark');
 
   useEffect(() => {
@@ -39,8 +39,9 @@ export default function AuthenticatedThemeProvider({ scope, children }) {
     scope,
     theme,
     toggleTheme,
-    t: AUTH_THEMES[theme],
-  }), [scope, theme, toggleTheme]);
+    slate,
+    t: resolveAuthThemePalette(theme, { slate }),
+  }), [scope, slate, theme, toggleTheme]);
 
   return (
     <AuthenticatedThemeContext.Provider value={value}>
@@ -48,7 +49,8 @@ export default function AuthenticatedThemeProvider({ scope, children }) {
         className="auth-theme-root min-h-screen"
         data-auth-scope={scope}
         data-auth-theme={theme}
-        style={authThemeVars(theme)}
+        data-auth-surface={slate ? 'slate' : 'classic'}
+        style={authThemeVars(theme, { slate })}
       >
         {children}
       </div>
