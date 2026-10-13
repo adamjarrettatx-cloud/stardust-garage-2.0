@@ -525,6 +525,12 @@ export default function EventForm({
       })()}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="text-[13px] text-red-400 p-3 rounded-[10px] border border-red-500/30 bg-red-500/10">
+            {error}
+          </div>
+        )}
+
         {/* IDENTITY HERO — profile-style header with square thumbnail + title/slug. */}
         <section className="rounded-[14px] border p-5" style={cardStyle}>
           <div className="flex gap-5 items-start">
@@ -569,19 +575,39 @@ export default function EventForm({
             </label>
 
             <div className="flex-1 min-w-0 space-y-3">
-              <div>
+              <div className="flex items-end gap-3">
                 <input
                   type="text"
                   value={title}
                   onChange={handleTitleChange}
                   required
                   placeholder="Event title"
-                  className="w-full bg-transparent border-0 border-b outline-none text-[22px] font-bold pb-2 focus:border-white/40 transition-colors"
+                  className="flex-1 min-w-0 bg-transparent border-0 border-b outline-none text-[22px] font-bold pb-2 focus:border-white/40 transition-colors"
                   style={{
                     borderColor: 'var(--auth-card-border)',
                     color: 'var(--auth-text)',
                   }}
                 />
+                <div className="shrink-0 flex items-center gap-2 pb-1">
+                  <Link
+                    href="/bananas?tab=events"
+                    className="px-4 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.14em] transition-colors hover:bg-black/5"
+                    style={{ color: 'var(--auth-muted)' }}
+                  >
+                    CANCEL
+                  </Link>
+                  <button
+                    type="submit"
+                    disabled={saving || uploading}
+                    className="px-5 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.14em] transition-all disabled:opacity-50 whitespace-nowrap"
+                    style={{
+                      background: 'var(--auth-text-strong)',
+                      color: 'var(--auth-strong-surface-text)',
+                    }}
+                  >
+                    {saving ? 'SAVING…' : saveOk ? 'SAVED' : isEditing ? 'SAVE EVENT DETAILS' : 'CREATE EVENT'}
+                  </button>
+                </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap text-[12px]" style={helperStyle}>
                 <span>sdgatx.com/events/</span>
@@ -761,32 +787,8 @@ export default function EventForm({
           </section>
         ) : null}
 
-        {error && (
-          <div className="text-[13px] text-red-400 p-3 rounded-[10px] border border-red-500/30 bg-red-500/10">
-            {error}
-          </div>
-        )}
-
-        {/* Sticky action bar: matches the section cards above (same card bg,
-            same border, same radius) so it reads as an extension of the form,
-            not a random plank slapped on top. Buttons use the site's canonical
-            primary style (auth-text-strong on auth-strong-surface-text) — the
-            same pattern used across the admin. */}
-        <div
-          className="sticky bottom-4 z-10 flex items-center justify-end gap-2 px-4 py-3 rounded-[14px] border shadow-lg"
-          style={{
-            background: 'var(--auth-card-bg)',
-            borderColor: 'var(--auth-card-border)',
-          }}
-        >
-          <Link
-            href="/bananas?tab=events"
-            className="px-4 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.14em] transition-colors hover:bg-black/5"
-            style={{ color: 'var(--auth-muted)' }}
-          >
-            CANCEL
-          </Link>
-          {canGenerateCodes && (
+        {canGenerateCodes && (
+          <div className="flex justify-end">
             <button
               type="button"
               onClick={handleGenerateCodes}
@@ -797,19 +799,8 @@ export default function EventForm({
             >
               {generating ? 'GENERATING…' : 'MEMBER CODES'}
             </button>
-          )}
-          <button
-            type="submit"
-            disabled={saving || uploading}
-            className="px-6 py-2.5 rounded-[8px] text-[11px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
-            style={{
-              background: 'var(--auth-text-strong)',
-              color: 'var(--auth-strong-surface-text)',
-            }}
-          >
-            {saving ? 'SAVING…' : saveOk ? 'SAVED' : isEditing ? 'SAVE EVENT DETAILS' : 'CREATE EVENT'}
-          </button>
-        </div>
+          </div>
+        )}
 
         {generateMessage && (
           <p className="text-[12px] text-right" style={{ color: '#ffb84d' }}>
