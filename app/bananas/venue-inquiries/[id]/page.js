@@ -131,7 +131,7 @@ export default async function InquiryDetail({ params }) {
                   {i.areas_needed.map((area) => (
                     <span
                       key={area}
-                      className="text-[12px] font-medium px-3 py-1 rounded-full"
+                      className="text-[12px] font-medium px-3 py-1 rounded-[6px]"
                       style={{ background: 'var(--auth-card-bg-alt)', border: '1px solid var(--auth-card-border-strong)' }}
                     >
                       {area}

@@ -54,7 +54,7 @@ export default function SignupsClient({ signups, csvHref }) {
           <a
             href={csvHref}
             download={`signups-${new Date().toISOString().split('T')[0]}.csv`}
-            className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.14em] border transition-colors"
+            className="px-4 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.14em] border transition-colors"
             style={{ borderColor: 'var(--auth-ghost-border)', color: 'var(--auth-ghost-text)' }}
           >
             DOWNLOAD CSV

@@ -96,7 +96,7 @@ function StatusPill({ status, appliedAt, convertedAt, activationPhase }) {
   }
   return (
     <span
-      className="inline-block text-[10px] font-semibold tracking-[0.14em] uppercase px-2.5 py-1 rounded-full"
+      className="inline-block text-[10px] font-semibold tracking-[0.14em] uppercase px-2.5 py-1 rounded-[6px]"
       style={{ color, ...TRACK_STYLE }}
     >
       {label}
@@ -501,7 +501,7 @@ function FollowUpPill({ appliedAt, convertedAt }) {
   if (convertedAt) {
     return (
       <span
-        className="inline-block text-[10px] font-semibold tracking-[0.14em] uppercase px-2 py-0.5 rounded-full"
+        className="inline-block text-[10px] font-semibold tracking-[0.14em] uppercase px-2 py-0.5 rounded-[6px]"
         style={{ color: 'var(--auth-success)', background: 'var(--auth-card-bg-alt)' }}
       >
         Member
@@ -511,7 +511,7 @@ function FollowUpPill({ appliedAt, convertedAt }) {
   if (appliedAt) {
     return (
       <span
-        className="inline-block text-[10px] font-semibold tracking-[0.14em] uppercase px-2 py-0.5 rounded-full"
+        className="inline-block text-[10px] font-semibold tracking-[0.14em] uppercase px-2 py-0.5 rounded-[6px]"
         style={{ color: GOLD, background: 'var(--auth-card-bg-alt)' }}
       >
         Applied

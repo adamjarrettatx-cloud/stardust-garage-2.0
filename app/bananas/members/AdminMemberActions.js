@@ -37,7 +37,7 @@ export default function AdminMemberActions({ memberId }) {
       type="button"
       onClick={handleCancel}
       disabled={working}
-      className="px-3 py-1.5 rounded-full text-[10px] font-semibold tracking-[0.12em] border transition-colors hover:bg-red-500/10 hover:border-red-500/40 disabled:opacity-50"
+      className="px-3 py-1.5 rounded-[8px] text-[10px] font-semibold tracking-[0.12em] border transition-colors hover:bg-red-500/10 hover:border-red-500/40 disabled:opacity-50"
       style={{ borderColor: 'var(--auth-ghost-border)', color: 'var(--auth-ghost-text)' }}
     >
       CANCEL SUBSCRIPTION

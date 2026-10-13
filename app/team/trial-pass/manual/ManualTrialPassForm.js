@@ -132,7 +132,7 @@ export default function ManualTrialPassForm({ createdByEmail, compact = false })
           <button
             type="button"
             onClick={reset}
-            className="auth-theme-solid-button flex-1 px-6 py-3.5 rounded-full text-[12px] font-semibold tracking-[0.14em]"
+            className="auth-theme-solid-button flex-1 px-6 py-3.5 rounded-[8px] text-[12px] font-semibold tracking-[0.14em]"
           >
             CREATE ANOTHER
           </button>
@@ -152,8 +152,8 @@ export default function ManualTrialPassForm({ createdByEmail, compact = false })
 
   const formGap = compact ? 'gap-2.5' : 'gap-4';
   const buttonClass = compact
-    ? 'mt-1 w-full px-5 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.14em] transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0'
-    : 'mt-2 w-full px-7 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0';
+    ? 'mt-1 w-full px-5 py-2.5 rounded-[6px] text-[11px] font-semibold tracking-[0.14em] transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0'
+    : 'mt-2 w-full px-7 py-4 rounded-[8px] text-[12px] font-semibold tracking-[0.16em] transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0';
 
   return (
     <form onSubmit={handleSubmit} className={`flex flex-col ${formGap}`} noValidate>

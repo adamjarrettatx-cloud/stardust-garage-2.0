@@ -54,7 +54,7 @@ export function Pill({ children }) {
   if (!children) return null;
   return (
     <span
-      className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full"
+      className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-[6px]"
       style={{
         background: 'var(--auth-card-bg-alt)',
         color: 'var(--auth-text)',

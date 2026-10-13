@@ -974,7 +974,7 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
             {!inShell && (
               <Link
                 href="/team/progress"
-                className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"
+                className="px-5 py-3 rounded-[8px] text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"
                 style={{ borderColor: t.borderStrong, color: t.accent }}
               >
                 TASKS
@@ -983,7 +983,7 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
             {!inShell && (
               <button
                 onClick={handleSignOut}
-                className="px-4 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"
+                className="px-4 py-3 rounded-[8px] text-[12px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5"
                 style={{ borderColor: t.borderStrong, color: t.muted }}
               >
                 SIGN OUT
@@ -1061,7 +1061,7 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
                 <button
                   onClick={createChannel}
                   disabled={creatingChannel || !newChannelName.trim()}
-                  className="w-full mt-2 px-3 py-2 rounded-full text-[11px] font-semibold tracking-[0.14em] transition-opacity disabled:opacity-40"
+                  className="w-full mt-2 px-3 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.14em] transition-opacity disabled:opacity-40"
                   style={{ background: t.sendBg, color: t.sendText }}
                 >
                   {creatingChannel ? 'CREATING…' : 'CREATE CHANNEL'}
@@ -1126,7 +1126,7 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
                         <button
                           onClick={deleteChannel}
                           disabled={deletingChannel || !channelDeleteConfirmed(channelDeleteText, c.name)}
-                          className="flex-1 px-2 py-1.5 rounded-full text-[10px] font-semibold tracking-[0.12em] transition-opacity disabled:opacity-40"
+                          className="flex-1 px-2 py-1.5 rounded-[8px] text-[10px] font-semibold tracking-[0.12em] transition-opacity disabled:opacity-40"
                           style={{ background: t.sendBg, color: t.sendText }}
                         >
                           {deletingChannel ? 'DELETING…' : 'DELETE'}
@@ -1290,7 +1290,7 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
                     <span className="text-[10px]" style={{ color: t.faint }}>{formatMessageTime(m.created_at)}</span>
                     {mentionsMe && (
                       <span
-                        className="text-[9px] font-bold tracking-[0.1em] px-1.5 py-0.5 rounded-full"
+                        className="text-[9px] font-bold tracking-[0.1em] px-1.5 py-0.5 rounded-[6px]"
                         style={{ background: t.accent, color: t.panelBg }}
                       >
                         MENTIONED YOU
@@ -1445,7 +1445,7 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={sending || uploadingImage}
-                  className="px-4 py-3 rounded-full text-[16px] leading-none border transition-colors disabled:opacity-40"
+                  className="px-4 py-3 rounded-[8px] text-[16px] leading-none border transition-colors disabled:opacity-40"
                   style={{ borderColor: t.borderStrong, color: t.muted }}
                   aria-label="Attach an image"
                   title="Attach an image"
@@ -1470,7 +1470,7 @@ export default function TeamChatClient({ currentUserId, currentUserName, canCrea
                 <button
                   onClick={sendMessage}
                   disabled={sending || uploadingImage || (!draft.trim() && !pendingImage)}
-                  className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0"
+                  className="px-6 py-3 rounded-[8px] text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0"
                   style={{ background: t.sendBg, color: t.sendText }}
                 >
                   {uploadingImage ? 'UPLOADING…' : sending ? 'SENDING…' : 'SEND'}

@@ -162,7 +162,7 @@ function Row({ href, icon, action, title, sub, count = 0, counted, countLabel = 
   if (isHighlighted) {
     statusNode = (
       <span
-        className="inline-flex items-center h-[24px] px-[10px] rounded-full text-[12.5px] font-bold leading-none whitespace-nowrap"
+        className="inline-flex items-center h-[24px] px-[10px] rounded-[6px] text-[12.5px] font-bold leading-none whitespace-nowrap"
         style={{ background: 'var(--auth-accent)', color: 'var(--auth-accent-text)' }}
         aria-label={`${count} ${countLabel}`}
       >

@@ -5,7 +5,7 @@
 .head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:18px}
 .eyebrow{font-size:12px;letter-spacing:.13em;font-weight:700;color:var(--auth-muted);margin:0 0 6px}
 .title{font-size:30px;font-weight:800;letter-spacing:-.04em;line-height:1.2;margin:0}
-.pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px;border:1px solid var(--auth-card-border-strong);color:var(--auth-muted)}
+.pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;padding:6px 12px;border-radius:6px;border:1px solid var(--auth-card-border-strong);color:var(--auth-muted)}
 .pillLive{color:var(--auth-success-strong);border-color:var(--auth-success-border);background:var(--auth-success-bg)}
 .pillDot{width:7px;height:7px;border-radius:50%;background:currentColor}
 

@@ -451,7 +451,7 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
             <>
               <Link
                 href="/team/chat"
-                className="relative px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors"
+                className="relative px-5 py-3 rounded-[8px] text-[12px] font-semibold tracking-[0.14em] border transition-colors"
                 style={{ borderColor: 'var(--auth-ghost-border)', color: 'var(--auth-accent)' }}
               >
                 CHAT
@@ -467,14 +467,14 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
               </Link>
               <Link
                 href="/team/progress"
-                className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors"
+                className="px-5 py-3 rounded-[8px] text-[12px] font-semibold tracking-[0.14em] border transition-colors"
                 style={{ borderColor: 'var(--auth-ghost-border)', color: 'var(--auth-accent)' }}
               >
                 TASKS
               </Link>
               <Link
                 href="/team/documents"
-                className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors"
+                className="px-5 py-3 rounded-[8px] text-[12px] font-semibold tracking-[0.14em] border transition-colors"
                 style={{ borderColor: 'var(--auth-ghost-border)', color: 'var(--auth-accent)' }}
               >
                 SOPS
@@ -485,7 +485,7 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
             <button
               onClick={handleSignOut}
               disabled={signingOut}
-              className="px-4 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors disabled:opacity-50"
+              className="px-4 py-3 rounded-[8px] text-[12px] font-semibold tracking-[0.14em] border transition-colors disabled:opacity-50"
               style={{ borderColor: 'var(--auth-ghost-border)', color: t.muted }}
             >
               {signingOut ? 'SIGNING OUT...' : 'SIGN OUT'}
@@ -494,7 +494,7 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
           {!readOnly && (
             <button
               onClick={() => setModalState({ mode: 'create', date: today })}
-              className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5"
+              className="px-6 py-3 rounded-[8px] text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5"
               style={{ background: t.addEventBg, color: t.addEventText }}
             >
               + ADD TO CALENDAR
@@ -792,7 +792,7 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
                           <div className="text-[14px] font-bold" style={{ color: st.color }}>{evt.title}</div>
                           {internal && (
                             <span
-                              className="text-[10px] font-bold tracking-[0.1em] px-1.5 py-0.5 rounded-full uppercase"
+                              className="text-[10px] font-bold tracking-[0.1em] px-1.5 py-0.5 rounded-[6px] uppercase"
                               style={{ background: st.color, color: theme === 'light' ? '#fff' : '#0a0a0a' }}
                             >
                               Internal
@@ -800,7 +800,7 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
                           )}
                           {contractColor && (
                             <span
-                              className="text-[10px] font-semibold tracking-[0.05em] px-1.5 py-0.5 rounded-full inline-flex items-center gap-1"
+                              className="text-[10px] font-semibold tracking-[0.05em] px-1.5 py-0.5 rounded-[6px] inline-flex items-center gap-1"
                               style={{ background: `${contractColor}18`, color: contractColor, border: `1px solid ${contractColor}55` }}
                               title={CONTRACT_STRIPE_LABEL}
                             >
@@ -895,7 +895,7 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
             {!readOnly && (
               <button
                 onClick={() => setModalState({ mode: 'create', date: selectedDay })}
-                className="w-full mt-4 py-2.5 rounded-full text-[12px] font-semibold tracking-[0.12em] border transition-colors"
+                className="w-full mt-4 py-2.5 rounded-[8px] text-[12px] font-semibold tracking-[0.12em] border transition-colors"
                 style={{ borderColor: t.border, color: t.text, background: 'transparent' }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
@@ -958,7 +958,7 @@ export default function EventsCalendarClient({ publicEvents, teamEvents: initial
             {monthlyScorecard().map(([name, count], idx) => (
               <div
                 key={name}
-                className="flex items-center gap-2 px-4 py-2 rounded-full border"
+                className="flex items-center gap-2 px-4 py-2 rounded-[8px] border"
                 style={{
                   borderColor: idx === 0 ? 'rgba(139,92,246,0.5)' : t.border,
                   background: idx === 0 ? 'rgba(139,92,246,0.12)' : 'transparent',

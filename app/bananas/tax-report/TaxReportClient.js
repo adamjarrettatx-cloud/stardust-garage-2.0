@@ -105,12 +105,12 @@ export default function TaxReportClient() {
         <label className="flex flex-col text-sm">
           From
           <input type="date" value={from} onChange={(e) => setFrom(e.target.value)}
-                 className="mt-1 rounded-full border px-3 py-2" style={pillStyle} />
+                 className="mt-1 rounded-[8px] border px-3 py-2" style={pillStyle} />
         </label>
         <label className="flex flex-col text-sm">
           To
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)}
-                 className="mt-1 rounded-full border px-3 py-2" style={pillStyle} />
+                 className="mt-1 rounded-[8px] border px-3 py-2" style={pillStyle} />
         </label>
         <div className="flex gap-2">
           {['Q1', 'Q2', 'Q3', 'Q4'].map((label, i) => {
@@ -119,17 +119,17 @@ export default function TaxReportClient() {
             const end = new Date(Date.UTC(y, i * 3 + 3, 0)).toISOString().slice(0, 10);
             return (
               <button key={label} type="button" onClick={() => { setFrom(start); setTo(end); }}
-                      className="rounded-full border px-3 py-2 text-sm" style={pillStyle}>
+                      className="rounded-[8px] border px-3 py-2 text-sm" style={pillStyle}>
                 {label} {y}
               </button>
             );
           })}
           <button type="button" onClick={load} disabled={loading}
-                  className="rounded-full border px-4 py-2 text-sm font-medium" style={pillStyle}>
+                  className="rounded-[8px] border px-4 py-2 text-sm font-medium" style={pillStyle}>
             {loading ? 'Loading…' : 'Refresh'}
           </button>
           <button type="button" onClick={downloadCsv} disabled={!data}
-                  className="rounded-full border px-4 py-2 text-sm font-medium" style={pillStyle}>
+                  className="rounded-[8px] border px-4 py-2 text-sm font-medium" style={pillStyle}>
             Export CSV
           </button>
         </div>

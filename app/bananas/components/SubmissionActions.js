@@ -4,7 +4,7 @@ import useSubmissionStatus from './useSubmissionStatus';
 import { submissionActionsForStatus } from '@/lib/submission-workflow';
 
 const BTN_BASE =
-  'px-5 py-2.5 rounded-full text-[12px] font-semibold tracking-[0.12em] transition-all hover:-translate-y-0.5 disabled:opacity-50';
+  'px-5 py-2.5 rounded-[6px] text-[12px] font-semibold tracking-[0.12em] transition-all hover:-translate-y-0.5 disabled:opacity-50';
 
 const BTN_STYLES = {
   seen: {

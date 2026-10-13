@@ -244,12 +244,12 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
 
       {/* Month nav */}
       <div className="flex items-center gap-4 mb-4">
-        <button onClick={prevMonth} aria-label="Previous month" className="w-9 h-9 rounded-full border flex items-center justify-center transition-colors text-[16px]" style={{ borderColor: t.border, color: t.text, background: 'transparent' }} onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>‹</button>
+        <button onClick={prevMonth} aria-label="Previous month" className="w-9 h-9 rounded-[8px] border flex items-center justify-center transition-colors text-[16px]" style={{ borderColor: t.border, color: t.text, background: 'transparent' }} onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>‹</button>
         <h2 data-testid="fc-month-label" className="text-[22px] font-extrabold -tracking-[0.01em] min-w-[220px] text-center" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.textStrong }}>
           {MONTHS[month]} {year}
         </h2>
-        <button onClick={nextMonth} aria-label="Next month" className="w-9 h-9 rounded-full border flex items-center justify-center transition-colors text-[16px]" style={{ borderColor: t.border, color: t.text, background: 'transparent' }} onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>›</button>
-        <button onClick={goToday} className="ml-2 px-4 py-1.5 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors" style={{ borderColor: t.border, color: t.mutedStrong, background: 'transparent' }} onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>TODAY</button>
+        <button onClick={nextMonth} aria-label="Next month" className="w-9 h-9 rounded-[8px] border flex items-center justify-center transition-colors text-[16px]" style={{ borderColor: t.border, color: t.text, background: 'transparent' }} onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>›</button>
+        <button onClick={goToday} className="ml-2 px-4 py-1.5 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border transition-colors" style={{ borderColor: t.border, color: t.mutedStrong, background: 'transparent' }} onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>TODAY</button>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-5">
@@ -361,11 +361,11 @@ export default function FinancialCalendarClient({ entries, todayIso }) {
 
                     <div className="flex items-center gap-2 mb-2 text-[10px] tracking-[0.08em] uppercase" style={{ color: t.muted }}>
                       {entry.isManual && (
-                        <span className="px-1.5 py-0.5 rounded-full" style={{ background: t.revChipBg, color: t.rev }}>Manual</span>
+                        <span className="px-1.5 py-0.5 rounded-[6px]" style={{ background: t.revChipBg, color: t.rev }}>Manual</span>
                       )}
                       {entry.eventStatus && <span>{entry.eventStatus}</span>}
                       {entry.isFuture && (
-                        <span className="px-1.5 py-0.5 rounded-full" style={{ background: t.warnBadgeBg, color: t.warn }}>Upcoming</span>
+                        <span className="px-1.5 py-0.5 rounded-[6px]" style={{ background: t.warnBadgeBg, color: t.warn }}>Upcoming</span>
                       )}
                     </div>
 

@@ -142,7 +142,7 @@ function MemberRow({ member }) {
 
       <div className="flex flex-col items-end gap-2 flex-shrink-0">
         <div
-          className="text-[10px] font-semibold tracking-[0.14em] px-2.5 py-1 rounded-full"
+          className="text-[10px] font-semibold tracking-[0.14em] px-2.5 py-1 rounded-[6px]"
           style={{ background: tone.bg, color: tone.fg }}
         >
           {memberStatusLabel(member.subscription_status)}

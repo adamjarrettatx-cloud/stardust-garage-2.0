@@ -127,7 +127,7 @@ export default function ViewPortalClient({ personas, ready, statusMessage, taxon
             const on = group === filter;
             return (
               <button key={group} type="button" aria-pressed={on} onClick={() => setFilter(group)}
-                className="h-[30px] px-[11px] rounded-full border text-[13px] font-semibold whitespace-nowrap transition-colors"
+                className="h-[30px] px-[11px] rounded-[8px] border text-[13px] font-semibold whitespace-nowrap transition-colors"
                 style={{ borderColor: on ? 'var(--auth-card-border-strong)' : 'transparent', background: on ? 'var(--auth-card-bg)' : 'transparent', color: on ? 'var(--auth-text)' : 'var(--auth-muted)' }}>
                 {group}
               </button>

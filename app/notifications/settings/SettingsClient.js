@@ -141,7 +141,7 @@ const styles = {
   header: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 },
   back: {
     fontSize: 11, letterSpacing: 2, color: '#8a8a8a', textDecoration: 'none',
-    border: '1px solid rgba(255,255,255,0.1)', padding: '6px 10px', borderRadius: 999,
+    border: '1px solid rgba(255,255,255,0.1)', padding: '6px 10px', borderRadius: 8,
   },
   h1: { fontSize: 24, fontWeight: 300, letterSpacing: 1, margin: 0 },
   intro: { fontSize: 13, color: '#8a8a8a', marginBottom: 24 },

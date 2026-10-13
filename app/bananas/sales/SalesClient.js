@@ -79,7 +79,7 @@ function StatusPill({ status, tone = 'neutral', theme }) {
   }[tone] || {};
   return (
     <span
-      className="inline-flex items-center px-2 py-[3px] rounded-full text-[11px] font-semibold uppercase tracking-[0.06em]"
+      className="inline-flex items-center px-2 py-[3px] rounded-[6px] text-[11px] font-semibold uppercase tracking-[0.06em]"
       style={{ background: palette.bg, border: `1px solid ${palette.border}`, color: palette.text }}
     >
       {status}
@@ -585,7 +585,7 @@ function OrdersTab({ data, theme }) {
             <button
               key={f.id}
               onClick={() => setFilter(f.id)}
-              className="px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors"
+              className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold transition-colors"
               style={{
                 background: isActive ? theme.textStrong : theme.neutralChipBg,
                 color: isActive ? (theme.cardBg === '#ffffff' ? '#ffffff' : '#0a0a0a') : theme.mutedStrong,
@@ -772,7 +772,7 @@ function MembershipsTab({ data, theme }) {
               <li key={key} className="flex items-center justify-between">
                 <span className="text-[13px]" style={{ color: theme.text }}>{key}</span>
                 <span
-                  className="text-[12px] px-2 py-0.5 rounded-full font-semibold"
+                  className="text-[12px] px-2 py-0.5 rounded-[6px] font-semibold"
                   style={{
                     background: theme.neutralChipBg,
                     border: `1px solid ${theme.neutralChipBorder}`,

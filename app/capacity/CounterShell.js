@@ -96,7 +96,7 @@ export default function CounterShell({
               of {status.max} max
             </div>
             <div
-              className="kiosk-pill mt-2 rounded-full font-bold tracking-[0.1em] uppercase truncate max-w-full"
+              className="kiosk-pill mt-2 rounded-[6px] font-bold tracking-[0.1em] uppercase truncate max-w-full"
               style={{ background: 'rgba(255,255,255,0.06)', color: STATUS_COLOR[s] }}
             >
               {STATUS_LABEL[s]}

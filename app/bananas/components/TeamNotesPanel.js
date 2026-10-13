@@ -146,7 +146,7 @@ export default function TeamNotesPanel({ submissionType, submissionId, initialNo
           </h2>
         </div>
         <span
-          className="text-[10px] font-semibold tracking-[0.12em] px-2.5 py-1 rounded-full"
+          className="text-[10px] font-semibold tracking-[0.12em] px-2.5 py-1 rounded-[6px]"
           style={{ color: 'var(--auth-warn-strong)', border: '1px solid var(--auth-warn-border)' }}
         >
           INTERNAL · NOT VISIBLE TO SUBMITTER
@@ -172,7 +172,7 @@ export default function TeamNotesPanel({ submissionType, submissionId, initialNo
             type="button"
             onClick={addNote}
             disabled={saving || !draft.trim()}
-            className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.1em] hover:opacity-85 transition-opacity disabled:opacity-40"
+            className="px-4 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.1em] hover:opacity-85 transition-opacity disabled:opacity-40"
             style={{ background: 'var(--auth-text)', color: 'var(--auth-card-bg)' }}
           >
             {saving ? 'SAVING…' : 'ADD NOTE'}
@@ -270,7 +270,7 @@ export default function TeamNotesPanel({ submissionType, submissionId, initialNo
                       type="button"
                       onClick={() => saveEdit(n.id)}
                       disabled={busyId === n.id || !editDraft.trim()}
-                      className="px-4 py-1.5 rounded-full text-[11px] font-semibold tracking-[0.1em] hover:opacity-85 disabled:opacity-40"
+                      className="px-4 py-1.5 rounded-[8px] text-[11px] font-semibold tracking-[0.1em] hover:opacity-85 disabled:opacity-40"
                       style={{ background: 'var(--auth-text)', color: 'var(--auth-card-bg)' }}
                     >
                       {busyId === n.id ? 'SAVING…' : 'SAVE'}
