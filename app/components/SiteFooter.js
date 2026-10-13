@@ -9,36 +9,6 @@ const navLinks = [
   { label: 'Member Login', href: '/login' },
 ];
 
-function SocialIcon({ name }) {
-  const props = {
-    width: 18,
-    height: 18,
-    viewBox: '0 0 24 24',
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeWidth: 1.8,
-    strokeLinecap: 'round',
-    strokeLinejoin: 'round',
-  };
-  if (name === 'instagram') {
-    return (
-      <svg {...props}>
-        <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-        <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
-      </svg>
-    );
-  }
-  if (name === 'youtube') {
-    return (
-      <svg {...props} fill="currentColor" stroke="none">
-        <path d="M23.5 6.5c-.3-1-1-1.8-2-2C19.5 4 12 4 12 4s-7.5 0-9.5.5c-1 .3-1.8 1-2 2C0 8.5 0 12 0 12s0 3.5.5 5.5c.3 1 1 1.8 2 2C4.5 20 12 20 12 20s7.5 0 9.5-.5c1-.3 1.8-1 2-2 .5-2 .5-5.5.5-5.5s0-3.5-.5-5.5zM9.5 15.5v-7l6 3.5-6 3.5z" />
-      </svg>
-    );
-  }
-  return null;
-}
-
 export default function SiteFooter() {
   return (
     <footer
@@ -123,28 +93,6 @@ export default function SiteFooter() {
             © {new Date().getFullYear()} Stardust Garage
           </div>
 
-          <div className="flex gap-3">
-            <a
-              href="https://instagram.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Instagram"
-              className="w-10 h-10 rounded-full flex items-center justify-center border transition-all hover:bg-white/5 hover:-translate-y-0.5"
-              style={{ borderColor: 'rgba(255,255,255,0.12)', color: '#f5f5f5' }}
-            >
-              <SocialIcon name="instagram" />
-            </a>
-            <a
-              href="https://youtube.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="YouTube"
-              className="w-10 h-10 rounded-full flex items-center justify-center border transition-all hover:bg-white/5 hover:-translate-y-0.5"
-              style={{ borderColor: 'rgba(255,255,255,0.12)', color: '#f5f5f5' }}
-            >
-              <SocialIcon name="youtube" />
-            </a>
-          </div>
         </div>
       </div>
     </footer>
