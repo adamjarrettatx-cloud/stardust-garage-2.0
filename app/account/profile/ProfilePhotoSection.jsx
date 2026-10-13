@@ -15,7 +15,7 @@ import { useRouter } from 'next/navigation';
 import ProfilePhotoUploader from '@/components/profile-photo/ProfilePhotoUploader';
 import { createClient } from '@/lib/supabase/client';
 
-export default function ProfilePhotoSection({ initialSignedUrl, nameOrEmail }) {
+export default function ProfilePhotoSection({ initialSignedUrl, nameOrEmail, avatarRadius }) {
   const router = useRouter();
   const [signedUrl, setSignedUrl] = useState(initialSignedUrl || null);
   const [removing, setRemoving] = useState(false);
@@ -68,6 +68,7 @@ export default function ProfilePhotoSection({ initialSignedUrl, nameOrEmail }) {
       <ProfilePhotoUploader
         currentSignedUrl={signedUrl}
         nameOrEmail={nameOrEmail}
+        avatarRadius={avatarRadius}
         onUploaded={(res) => { setSignedUrl(res?.signedUrl || null); router.refresh(); }}
       />
       {signedUrl && (
