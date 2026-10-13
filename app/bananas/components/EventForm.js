@@ -109,16 +109,6 @@ export default function EventForm({
   );
   const [imageUrl, setImageUrl] = useState(event?.image_url || '');
   const [slug, setSlug] = useState(event?.slug || '');
-  // Event type: 'public' (Ticketed — sells tickets through internal checkout)
-  // or 'private' (Private Rental — venue rental with no ticket sales).
-  //
-  // Default is always 'public' (Ticketed) unless the event was explicitly
-  // marked as a private rental. There is no dedicated DB flag for private
-  // rental yet, so we only fall to 'private' when a stored hint says so;
-  // otherwise every event — new or existing — opens on Ticketed.
-  const [eventType, setEventType] = useState(
-    event?.event_type === 'private_rental' ? 'private' : 'public'
-  );
   // Visibility has three tiers (see lib/event-visibility.js):
   //   * 'public'   — shown on the public /events page and member surfaces.
   //   * 'unlisted' — hidden from every listing, but /events/[slug] renders for
@@ -245,7 +235,7 @@ export default function EventForm({
       description_html: description.trim() && descriptionHtml ? descriptionHtml : null,
       image_url: imageUrl.trim() || null,
       slug: slug.trim() || slugify(title),
-      ticket_url: eventType === 'public' ? (ticketUrl.trim() || null) : null,
+      ticket_url: ticketUrl.trim() || null,
       category,
       // Internal micro-party events are hidden from the public /events page and
       // member surfaces but keep all internal capabilities (contracts, SignNow,
@@ -452,7 +442,7 @@ export default function EventForm({
         {headerActions}
       </AuthenticatedPageHeader>
 
-      {/* TOP CONTROL CARD — Status, Visibility, Event Type and the Preview /
+      {/* TOP CONTROL CARD — Status, Visibility and the Preview /
           Go Live actions share one row. On edit, PublishEventButton owns the
           row and slots these controls in; on create there is no status yet, so
           the controls render on their own. Wired into the same form state;
@@ -463,9 +453,6 @@ export default function EventForm({
           : isUnlisted
             ? 'Only people with the secret link can open it once live.'
             : 'Shown on the public events page once live.';
-        const typeHint = eventType === 'private'
-          ? 'Venue rental. No ticket sales for this event.'
-          : 'Sells tickets through the internal checkout below.';
         const controls = (
           <>
             <div title={visibilityHint}>
@@ -477,17 +464,6 @@ export default function EventForm({
                   { value: 'public', label: 'Public' },
                   { value: 'unlisted', label: 'Secret' },
                   { value: 'internal', label: 'Draft' },
-                ]}
-              />
-            </div>
-            <div title={typeHint}>
-              <label className={labelClass} style={labelStyle}>Event Type</label>
-              <Segmented
-                value={eventType}
-                onChange={setEventType}
-                options={[
-                  { value: 'public', label: 'Ticketed' },
-                  { value: 'private', label: 'Private Rental' },
                 ]}
               />
             </div>
