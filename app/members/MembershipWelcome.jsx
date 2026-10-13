@@ -9,7 +9,6 @@ export default function MembershipWelcome() {
         <Link href="/home" className="brand" aria-label="Stardust Garage home">
           <Wordmark />
         </Link>
-        <Link href="/home" className="text-button">Back to site</Link>
       </header>
       <main className="quiz-main welcome-main">
         <h1>Find the membership that fits you.</h1>
@@ -24,8 +23,7 @@ export default function MembershipWelcome() {
         <p className="footnote">Your results will be saved to your Stardust account.</p>
       </main>
       <footer className="footer">
-        <span>AUSTIN, TEXAS</span>
-        <span><Link href="/account/profile">My account</Link> · <Link href="/privacy">Privacy</Link></span>
+        <span><Link href="/privacy">Privacy</Link></span>
       </footer>
     </div>
   );
