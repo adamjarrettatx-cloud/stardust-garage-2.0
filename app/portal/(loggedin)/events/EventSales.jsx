@@ -1,7 +1,38 @@
 'use client';
 import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 const money = (cents, currency = 'USD') => new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(Number(cents || 0) / 100);
+const purchasedTime = (value) => new Date(value).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+function AttendeeList({ attendees }) {
+  const [query, setQuery] = useState('');
+  const [order, setOrder] = useState('newest');
+  const rows = useMemo(() => {
+    const terms = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+    const matched = attendees.filter((row) => {
+      const text = [row.name, row.purchased_by, row.ticket_type].filter(Boolean).join(' ').toLocaleLowerCase();
+      return terms.every((term) => text.includes(term));
+    });
+    return order === 'oldest' ? [...matched].reverse() : matched;
+  }, [attendees, query, order]);
+  return <section className="attendee-section">
+    <div className="attendee-heading"><h2>Ticket buyers <span>{attendees.length}</span></h2></div>
+    <div className="attendee-tools">
+      <input type="search" aria-label="Search ticket buyers by name" placeholder="Search by name or ticket type" value={query} onChange={(e) => setQuery(e.target.value)} />
+      <select aria-label="Sort order" value={order} onChange={(e) => setOrder(e.target.value)}>
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+      </select>
+    </div>
+    {query.trim() && <p className="event-note attendee-count">Showing {rows.length} of {attendees.length}</p>}
+    {!attendees.length ? <div className="event-empty">No tickets sold yet. Buyers will appear here as orders come in.</div>
+      : !rows.length ? <div className="event-empty">No ticket buyers match “{query.trim()}”.</div>
+      : <ol className="attendee-list">{rows.map((row, i) => <li key={`${row.purchased_at}-${row.name}-${i}`}>
+        <div className="attendee-name"><strong>{row.name}</strong>{row.purchased_by && <span>Purchased by {row.purchased_by}</span>}</div>
+        <span className="attendee-type">{row.ticket_type}</span>
+        <time dateTime={row.purchased_at}>{purchasedTime(row.purchased_at)}</time>
+      </li>)}</ol>}
+  </section>;
+}
 export default function EventSales({ initial }) {
   const [data, setData] = useState(initial);
   const [error, setError] = useState('');
@@ -39,13 +70,12 @@ export default function EventSales({ initial }) {
       {error && <p role="alert" className="event-error">{error} The figures below are from the last successful update.</p>}
       <section><h2>Stardust Garage ticketing</h2>
         <div className="sales-grid">
-          {[['Tickets issued', data.internal.tickets_issued], ['Valid / used tickets', data.internal.tickets_valid], ['Checked in', data.internal.tickets_used], ['Complimentary tickets', data.internal.complimentary_tickets]].map(([label, value]) => <div className="sales-stat" key={label}><span>{label}</span><strong>{value}</strong></div>)}
+          <div className="sales-stat"><span>Tickets issued</span><strong>{data.internal.tickets_issued}</strong></div>
+          {data.internal.currencies.flatMap((row) => [['Gross collected', row.gross_collected_cents], ['Refunded', row.refunded_cents], ['Net collected', row.net_collected_cents]].map(([label, value]) => <div className="sales-stat" key={`${row.currency}-${label}`}><span>{label} · {row.currency}</span><strong>{money(value, row.currency)}</strong></div>))}
         </div>
-        {data.internal.currencies.map((row) => <div className="sales-grid" key={row.currency}>
-          {[['Gross collected', row.gross_collected_cents], ['Refunded', row.refunded_cents], ['Net collected', row.net_collected_cents]].map(([label, value]) => <div className="sales-stat" key={label}><span>{label} · {row.currency}</span><strong>{money(value, row.currency)}</strong></div>)}
-        </div>)}
         {!data.internal.currencies.length && <p>No completed Stardust Garage ticket orders yet.</p>}
-        <p className="event-note">Collected amounts include checkout fees and taxes. Net collected subtracts recorded refunds; it is not an organizer payout or profit. Complimentary tickets are included in issued tickets and shown separately.</p>
+        <p className="event-note">Collected amounts include checkout fees and taxes. Net collected subtracts recorded refunds; it is not an organizer payout or profit.</p>
+        <AttendeeList attendees={data.attendees || []} />
       </section>
       {(data.ticket_tailor.length > 0 || data.event.ticketing_mode === 'tickettailor') && <section><h2>Ticket Tailor history</h2><p className="event-note">Cached external summaries, shown separately and not added to Stardust Garage totals.</p>
         {!data.ticket_tailor.length && <p>No synced summary is available for this event yet.</p>}

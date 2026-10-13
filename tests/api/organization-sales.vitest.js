@@ -16,6 +16,8 @@ it('uses the authenticated client and never accepts a contact override', async (
   expect(response.status).toBe(200);
   expect(createRequestScopedClient).toHaveBeenCalledWith(request);
   expect(rpc).toHaveBeenCalledWith('partner_event_sales', { p_event_id: id });
+  expect(rpc).toHaveBeenCalledWith('partner_event_attendees', { p_event_id: id });
+  expect((await response.json()).attendees).toEqual([]);
   expect(response.headers.get('Cache-Control')).toBe('private, no-store');
 });
 it.each(['promoter', 'vendor', 'artist', 'other'])('denies %s before reading sales', async (type) => {
