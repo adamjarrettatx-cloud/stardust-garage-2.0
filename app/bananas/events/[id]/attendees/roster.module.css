@@ -31,6 +31,11 @@
 .tableWrap { width: 100%; overflow-x: auto; }
 .tableWrap table { border-collapse: collapse; width: 100%; min-width: 780px; text-align: left; }
 .tableWrap th { background: var(--auth-card-bg-alt, #f6f6f6); color: var(--roster-muted); font-size: 12px; font-weight: 600; padding: 12px 16px; white-space: nowrap; }
+.tableWrap .sortButton { display: inline-flex; align-items: center; gap: 6px; padding: 0; margin: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; white-space: nowrap; }
+.tableWrap .sortButton:hover, .tableWrap .sortButton[data-active="true"] { color: var(--auth-text-strong, #191919); }
+.tableWrap .sortButton:focus-visible { outline: 2px solid var(--auth-text-strong, #191919); outline-offset: 3px; border-radius: 4px; }
+.tableWrap .sortIcon { font-size: 10px; opacity: 0.45; }
+.tableWrap .sortButton[data-active="true"] .sortIcon { opacity: 1; }
 .tableWrap td { padding: 16px; border-top: 1px solid var(--roster-border); vertical-align: top; font-variant-numeric: tabular-nums; }
 .tableWrap .personCell { min-width: 220px; max-width: 320px; overflow-wrap: anywhere; }
 .tableWrap .checkCell { width: 40px; min-width: 40px; padding-right: 0; }
