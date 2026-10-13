@@ -94,14 +94,14 @@ function TopItemsCard({ t, topItemsByName, topItemsByKey, fragmentedNames }) {
       subtitle="Ranked by net revenue · SpotOn POS line items, voids excluded"
       testId="item-analytics-top-items"
     >
-      <div className="flex items-center gap-1 rounded-full border p-1 w-fit mb-4" style={{ borderColor: t.border || t.cardBorder }}>
+      <div className="flex items-center gap-1 rounded-[8px] border p-1 w-fit mb-4" style={{ borderColor: t.border || t.cardBorder }}>
         {[{ id: 'name', label: 'By item name' }, { id: 'key', label: 'By SpotOn menu ID' }].map((opt) => (
           <button
             key={opt.id}
             type="button"
             onClick={() => setGroupBy(opt.id)}
             data-testid={`item-analytics-groupby-${opt.id}`}
-            className="px-3 py-1.5 rounded-full text-[11px] font-semibold tracking-[0.06em] uppercase transition-colors"
+            className="px-3 py-1.5 rounded-[6px] text-[11px] font-semibold tracking-[0.06em] uppercase transition-colors"
             style={{
               background: groupBy === opt.id ? t.rev : 'transparent',
               color: groupBy === opt.id ? (t.addBtnText || '#0a0a0a') : t.mutedStrong,

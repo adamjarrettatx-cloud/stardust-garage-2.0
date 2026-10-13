@@ -282,7 +282,7 @@ export default function TtEventCreator() {
               accept="image/*"
               onChange={handleImageUpload}
               disabled={uploading}
-              className="text-[13px] file:mr-4 file:px-5 file:py-2.5 file:rounded-full file:border-0 file:text-[12px] file:font-semibold file:tracking-[0.12em] file:bg-white file:text-black file:cursor-pointer hover:file:bg-gray-200"
+              className="text-[13px] file:mr-4 file:px-5 file:py-2.5 file:rounded-[8px] file:border-0 file:text-[12px] file:font-semibold file:tracking-[0.12em] file:bg-white file:text-black file:cursor-pointer hover:file:bg-gray-200"
               style={{ color: '#8a8a8a' }}
             />
             {uploading && <p className="text-[13px]" style={{ color: '#8a8a8a' }}>Uploading...</p>}
@@ -317,14 +317,14 @@ export default function TtEventCreator() {
           <button
             type="submit"
             disabled={saving || uploading}
-            className="flex-1 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
+            className="flex-1 py-4 rounded-[8px] text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
             style={{ background: '#ffffff', color: '#0a0a0a' }}
           >
             {saving ? 'SAVING…' : 'SAVE & CONFIGURE TICKETS'}
           </button>
           <Link
             href="/bananas?tab=events"
-            className="px-8 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5 flex items-center"
+            className="px-8 py-4 rounded-[8px] text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5 flex items-center"
             style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
           >
             CANCEL

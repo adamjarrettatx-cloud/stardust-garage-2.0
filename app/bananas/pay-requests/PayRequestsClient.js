@@ -55,7 +55,7 @@ function RequestRow({ req, onApprove, onReject, busy }) {
               type="button"
               onClick={() => onApprove(req.id)}
               disabled={busy}
-              className="px-5 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.12em] transition-all hover:-translate-y-0.5 disabled:opacity-40"
+              className="px-5 py-2.5 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] transition-all hover:-translate-y-0.5 disabled:opacity-40"
               style={{ background: 'var(--auth-success)', color: 'var(--auth-accent-text)' }}
             >
               APPROVE
@@ -64,7 +64,7 @@ function RequestRow({ req, onApprove, onReject, busy }) {
               type="button"
               onClick={() => setRejecting(true)}
               disabled={busy}
-              className="px-5 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors disabled:opacity-40"
+              className="px-5 py-2.5 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border transition-colors disabled:opacity-40"
               style={{ borderColor: 'var(--auth-danger-border)', color: 'var(--auth-danger)' }}
             >
               REJECT
@@ -98,7 +98,7 @@ function RequestRow({ req, onApprove, onReject, busy }) {
               type="button"
               onClick={submitReject}
               disabled={busy}
-              className="px-5 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.12em] disabled:opacity-40"
+              className="px-5 py-2.5 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] disabled:opacity-40"
               style={{ background: 'var(--auth-danger)', color: 'var(--auth-accent-text)' }}
             >
               {busy ? 'SENDING…' : 'CONFIRM REJECT'}
@@ -111,7 +111,7 @@ function RequestRow({ req, onApprove, onReject, busy }) {
                 setError('');
               }}
               disabled={busy}
-              className="px-5 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.12em] border disabled:opacity-40"
+              className="px-5 py-2.5 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border disabled:opacity-40"
               style={{ borderColor: 'var(--auth-card-border-strong)', color: 'var(--auth-text)' }}
             >
               CANCEL
@@ -162,7 +162,7 @@ function NineNineNineTab({ requests, scoped }) {
               </div>
               <div className="flex items-center gap-3">
                 <span
-                  className="text-[10px] font-semibold tracking-[0.12em] px-2.5 py-1 rounded-full"
+                  className="text-[10px] font-semibold tracking-[0.12em] px-2.5 py-1 rounded-[6px]"
                   style={
                     w9ByContact.get(t.contact_id) === true
                       ? { color: 'var(--auth-success)', background: 'var(--auth-success-bg)', border: '1px solid var(--auth-success-border)' }
@@ -286,7 +286,7 @@ export default function PayRequestsClient({ eventId = null, eventTitle = null, e
       {eventId && !eventMissing && (
         <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
           <span
-            className="text-[11px] font-semibold tracking-[0.12em] px-3 py-1.5 rounded-full"
+            className="text-[11px] font-semibold tracking-[0.12em] px-3 py-1.5 rounded-[6px]"
             style={{
               color: 'var(--auth-accent)',
               background: 'var(--auth-card-bg-alt)',
@@ -383,7 +383,7 @@ export default function PayRequestsClient({ eventId = null, eventTitle = null, e
                       <span style={{ color: 'var(--auth-muted)' }}>&middot; {r.event?.title} &middot; {formatMoney(r.amount_cents)}</span>
                     </div>
                     <span
-                      className="text-[10px] font-semibold tracking-[0.12em] px-2.5 py-1 rounded-full"
+                      className="text-[10px] font-semibold tracking-[0.12em] px-2.5 py-1 rounded-[6px]"
                       style={
                         r.status === 'approved'
                           ? { color: 'var(--auth-success)', background: 'var(--auth-success-bg)', border: '1px solid var(--auth-success-border)' }

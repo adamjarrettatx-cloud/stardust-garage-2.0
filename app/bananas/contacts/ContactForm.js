@@ -385,7 +385,7 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
                 type="button"
                 onClick={() => toggleType(opt.value)}
                 aria-pressed={on}
-                className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-all"
+                className="px-4 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border transition-all"
                 style={{
                   background: on ? 'var(--auth-text-strong)' : 'var(--auth-card-bg)',
                   borderColor: on ? 'var(--auth-text-strong)' : 'var(--auth-card-border)',
@@ -616,7 +616,7 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
           <button
             type="button"
             onClick={addAdditional}
-            className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5"
+            className="px-4 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5"
             style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
           >
             + ADD PERSON
@@ -704,14 +704,14 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
         <button
           type="submit"
           disabled={saving}
-          className="flex-1 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
+          className="flex-1 py-4 rounded-[8px] text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
           style={{ background: '#ffffff', color: '#0a0a0a' }}
         >
           {saving ? 'SAVING...' : isEditing ? 'SAVE CHANGES' : 'CREATE CONTACT'}
         </button>
         <Link
           href={contactDirectoryHref(initialCategory)}
-          className="px-8 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5 flex items-center"
+          className="px-8 py-4 rounded-[8px] text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5 flex items-center"
           style={{ borderColor: 'var(--auth-card-border-strong)', color: 'var(--auth-text)' }}
         >
           CANCEL

@@ -95,7 +95,7 @@ export default function SettingsForm({ initialSettings }) {
           if (file) uploadFile(file, setLoadingState, setValue);
         }}
         disabled={loadingState}
-        className="auth-theme-file-input text-[13px] file:mr-4 file:px-5 file:py-2.5 file:rounded-full file:border-0 file:text-[12px] file:font-semibold file:tracking-[0.12em] file:cursor-pointer"
+        className="auth-theme-file-input text-[13px] file:mr-4 file:px-5 file:py-2.5 file:rounded-[8px] file:border-0 file:text-[12px] file:font-semibold file:tracking-[0.12em] file:cursor-pointer"
       />
       {loadingState && <p className="text-[13px] mt-2" style={{ color: 'var(--auth-muted)' }}>Uploading...</p>}
       <div className="mt-4">
@@ -136,7 +136,7 @@ export default function SettingsForm({ initialSettings }) {
             if (file) uploadFile(file, setUploadingLogo, setLogoUrl);
           }}
           disabled={uploadingLogo}
-          className="auth-theme-file-input text-[13px] file:mr-4 file:px-5 file:py-2.5 file:rounded-full file:border-0 file:text-[12px] file:font-semibold file:tracking-[0.12em] file:cursor-pointer"
+          className="auth-theme-file-input text-[13px] file:mr-4 file:px-5 file:py-2.5 file:rounded-[8px] file:border-0 file:text-[12px] file:font-semibold file:tracking-[0.12em] file:cursor-pointer"
         />
         {uploadingLogo && <p className="text-[13px] mt-2" style={{ color: 'var(--auth-muted)' }}>Uploading...</p>}
 
@@ -189,7 +189,7 @@ export default function SettingsForm({ initialSettings }) {
       <button
         type="submit"
         disabled={saving || uploadingLogo}
-        className="w-full py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
+        className="w-full py-4 rounded-[8px] text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
         style={{ background: 'var(--auth-text-strong)', color: 'var(--auth-strong-surface-text)' }}
       >
         {saving ? 'SAVING...' : 'SAVE SETTINGS'}

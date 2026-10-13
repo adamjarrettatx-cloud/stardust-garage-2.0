@@ -23,10 +23,10 @@ export default function EventsSection({ upcoming, past, metricsByEvent = {} }) {
     <div>
       {/* Header + tabs */}
       <div className="flex items-center justify-between mb-5">
-        <div className="flex items-center gap-1 p-1 rounded-full" style={{ background: 'var(--auth-card-bg)', border: '1px solid var(--auth-card-border)' }}>
+        <div className="flex items-center gap-1 p-1 rounded-[8px]" style={{ background: 'var(--auth-card-bg)', border: '1px solid var(--auth-card-border)' }}>
           <button
             onClick={() => setTab('upcoming')}
-            className="flex items-center gap-2 px-4 py-1.5 rounded-full text-[12px] font-semibold tracking-[0.12em] transition-all"
+            className="flex items-center gap-2 px-4 py-1.5 rounded-[6px] text-[12px] font-semibold tracking-[0.12em] transition-all"
             style={{
               background: tab === 'upcoming' ? 'var(--auth-text-strong)' : 'transparent',
               color: tab === 'upcoming' ? 'var(--auth-strong-surface-text)' : 'var(--auth-muted)',
@@ -45,7 +45,7 @@ export default function EventsSection({ upcoming, past, metricsByEvent = {} }) {
           </button>
           <button
             onClick={() => setTab('past')}
-            className="flex items-center gap-2 px-4 py-1.5 rounded-full text-[12px] font-semibold tracking-[0.12em] transition-all"
+            className="flex items-center gap-2 px-4 py-1.5 rounded-[6px] text-[12px] font-semibold tracking-[0.12em] transition-all"
             style={{
               background: tab === 'past' ? 'var(--auth-text-strong)' : 'transparent',
               color: tab === 'past' ? 'var(--auth-strong-surface-text)' : 'var(--auth-muted)',
@@ -104,7 +104,7 @@ export default function EventsSection({ upcoming, past, metricsByEvent = {} }) {
                   {event.series_id && (
                     <Link
                       href={`/bananas/series/${event.series_id}`}
-                      className="flex-shrink-0 text-[10px] font-semibold tracking-[0.12em] px-2 py-0.5 rounded-full border"
+                      className="flex-shrink-0 text-[10px] font-semibold tracking-[0.12em] px-2 py-0.5 rounded-[8px] border"
                       style={{ color: 'var(--auth-accent)', borderColor: 'var(--auth-card-border)' }}
                       title="View series financial rollup"
                     >
@@ -113,7 +113,7 @@ export default function EventsSection({ upcoming, past, metricsByEvent = {} }) {
                   )}
                   {(event.status === 'draft' || event.visibility === 'internal') && (
                     <span
-                      className="flex-shrink-0 text-[10px] font-semibold tracking-[0.12em] px-2 py-0.5 rounded-full"
+                      className="flex-shrink-0 text-[10px] font-semibold tracking-[0.12em] px-2 py-0.5 rounded-[6px]"
                       style={{ color: 'var(--auth-accent-text)', background: 'var(--auth-accent)' }}
                     >
                       DRAFT
@@ -121,7 +121,7 @@ export default function EventsSection({ upcoming, past, metricsByEvent = {} }) {
                   )}
                   {event.visibility === 'unlisted' && (
                     <span
-                      className="flex-shrink-0 text-[10px] font-semibold tracking-[0.12em] px-2 py-0.5 rounded-full"
+                      className="flex-shrink-0 text-[10px] font-semibold tracking-[0.12em] px-2 py-0.5 rounded-[6px]"
                       style={{ color: 'var(--auth-accent-text)', background: 'var(--auth-warn)' }}
                       title="Secret — reachable by its secret link only, not on the public events page"
                     >

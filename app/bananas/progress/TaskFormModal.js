@@ -147,12 +147,12 @@ export default function TaskFormModal({ task, assignees = [], onClose, onSaved }
 
         <div className="flex justify-end gap-3 mt-6">
           <button type="button" onClick={onClose}
-            className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.1em] hover:bg-white/5"
+            className="px-5 py-3 rounded-[8px] text-[12px] font-semibold tracking-[0.1em] hover:bg-white/5"
             style={{ minHeight: '44px', border: '1px solid rgba(255,255,255,0.15)', color: '#aaa', cursor: 'pointer' }}>
             CANCEL
           </button>
           <button type="submit" disabled={saving}
-            className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.1em] disabled:opacity-40"
+            className="px-6 py-3 rounded-[8px] text-[12px] font-semibold tracking-[0.1em] disabled:opacity-40"
             style={{ minHeight: '44px', background: '#ffb84d', color: '#0a0a0a', border: 'none', cursor: 'pointer' }}>
             {saving ? 'SAVING…' : editing ? 'SAVE CHANGES' : 'CREATE TASK'}
           </button>

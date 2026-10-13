@@ -88,7 +88,7 @@ function Row({ children }) {
 function Pill({ label, bg, fg }) {
   return (
     <span
-      className="text-[10px] font-semibold tracking-[0.12em] px-2.5 py-1 rounded-full whitespace-nowrap"
+      className="text-[10px] font-semibold tracking-[0.12em] px-2.5 py-1 rounded-[6px] whitespace-nowrap"
       style={{ background: bg, color: fg }}
     >
       {label}
