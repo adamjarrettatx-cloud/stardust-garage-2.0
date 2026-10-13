@@ -84,17 +84,17 @@ test('owners see every tab', () => {
   assert.equal(visibleAdminTabs(true).length, ADMIN_TABS.length);
 });
 
-test('timekeeping managers see staff management without owner-only financial tools', () => {
+test('staff managers see staff management without owner-only financial tools', () => {
   const tabs = visibleAdminTabs(false, true).map(t => t.id);
-  assert.ok(tabs.includes('timekeeping'));
+  assert.ok(tabs.includes('staff'));
   for (const id of ['finances', 'artist-pay', 'settings']) {
     assert.ok(!tabs.includes(id));
-    assert.equal(resolveAdminTab(id, { canManageTimekeeping: true }), DEFAULT_ADMIN_TAB);
+    assert.equal(resolveAdminTab(id, { canManageStaff: true }), DEFAULT_ADMIN_TAB);
   }
-  assert.ok(!visibleAdminTabs(false).some(t => t.id === 'timekeeping'));
-  assert.equal(resolveAdminTab('timekeeping'), DEFAULT_ADMIN_TAB);
-  assert.equal(resolveAdminTab('timekeeping', { canManageTimekeeping: true }), 'timekeeping');
-  assert.match(fs.readFileSync(path.join(REPO_ROOT, 'app/bananas/timekeeping/page.js'), 'utf8'), /timekeepingPageGate/);
+  assert.ok(!visibleAdminTabs(false).some(t => t.id === 'staff'));
+  assert.equal(resolveAdminTab('staff'), DEFAULT_ADMIN_TAB);
+  assert.equal(resolveAdminTab('staff', { canManageStaff: true }), 'staff');
+  assert.match(fs.readFileSync(path.join(REPO_ROOT, 'app/bananas/staff/page.js'), 'utf8'), /staffPageGate/);
 });
 
 test('View Portal is an owner-locked tile under Settings, not a sidebar tab', () => {

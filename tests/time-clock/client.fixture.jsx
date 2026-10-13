@@ -1,7 +1,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import Kiosk from "../../app/clock/Kiosk";
-import Timekeeping from "../../app/bananas/timekeeping/Timekeeping";
+import Staff from "../../app/bananas/staff/Staff";
 import EmployeePortal from "../../app/employee/EmployeePortal";
 import AuthenticatedThemeProvider, {
   useAuthenticatedTheme,
@@ -17,7 +17,7 @@ function OwnerPreview() {
           {theme === "light" ? "Switch to dark" : "Switch to light"}
         </button>
       </header>
-      <Timekeeping enabled />
+      <Staff enabled />
     </div>
   );
 }

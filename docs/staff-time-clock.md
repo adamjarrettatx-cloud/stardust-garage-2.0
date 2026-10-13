@@ -1,17 +1,17 @@
 # Staff time clock
 
-Integrated implementation for the approved SDG front-room iPad kiosk and timekeeping management view. Adam and Jeyu manage the roster themselves; there is no developer-mediated onboarding step. This feature is off by default and is not a payroll processor.
+Integrated implementation for the approved SDG front-room iPad kiosk and Staff management view. Adam and Jeyu manage the roster themselves; there is no developer-mediated onboarding step. This feature is off by default and is not a payroll processor.
 
 ## Routes and access
 
 - `/clock`: standalone shared-device kiosk. No owner links, public navbar, sound toggle, or marketing attribution. The response blocks framing and third-party scripts/connections.
 - `/api/time-clock/[action]`: paired device plus short-lived worker session. No staff Supabase account is required and no general application permission is granted.
-- `/bananas/timekeeping`: dedicated `timekeepingPageGate()` and sidebar visibility for Adam (`adam@sdgatx.com`) and Jeyu (`jeyu@sdgatx.com`), each also requiring verified `team_members.role = admin`.
-- `/api/admin/time-clock`: dedicated `requireTimekeepingManager()` on every read/write, including CSV and PIN reset. Uses verified Auth email, not editable metadata. MFA follows the repository's existing `ENFORCE_ADMIN_MFA` policy through `requireAdminMfa()`. Global owner gates and access to financials, Artist Pay, settings, and View Portal remain unchanged.
+- `/bananas/staff`: dedicated `staffPageGate()` and sidebar visibility for Adam (`adam@sdgatx.com`) and Jeyu (`jeyu@sdgatx.com`), each also requiring verified `team_members.role = admin`.
+- `/api/admin/time-clock`: dedicated `requireStaffManager()` on every read/write, including CSV and PIN reset. Uses verified Auth email, not editable metadata. MFA follows the repository's existing `ENFORCE_ADMIN_MFA` policy through `requireAdminMfa()`. Global owner gates and access to financials, Artist Pay, settings, and View Portal remain unchanged.
 
 ## Implemented
 
-- Backend **Timekeeping → Staff profiles**: Adam/Jeyu can create and edit names, employee/contractor labels, multiple role assignments, hourly rates per role or flat shift fees, and active/inactive status. Profiles do not require staff email addresses, Supabase logins, or developer input.
+- Backend **Staff → Staff profiles**: Adam/Jeyu can create and edit names, employee/contractor labels, multiple role assignments, hourly rates per role or flat shift fees, and active/inactive status. Profiles do not require staff email addresses, Supabase logins, or developer input.
 - Custom role names and responsibility templates; snapshots preserve old duties and rate values.
 - Manager-chosen four-digit PIN or random generation when left blank, on creation and reset. Leading zeros preserved. One-time management display, HMAC lookup plus salted scrypt verification. No stored PIN recovery, plaintext persistence or logs. Duplicate PINs rejected atomically; reset invalidates old credentials and current worker sessions.
 - Four-digit-only update (October 2): existing six-digit PINs need manager reset through Staff profiles before the next PIN login. Never truncate or guess old PINs. No database migration, secret rotation, worker deletion, or iPad re-pairing is needed; hours/pay records and open shifts are preserved. Eight-digit device-pairing codes and existing rate limits are unchanged. A four-digit PIN has fewer combinations than a six-digit PIN; paired-device restriction and server throttling remain in place.
@@ -23,7 +23,7 @@ Integrated implementation for the approved SDG front-room iPad kiosk and timekee
 - 90-second idle expiry and a 15-minute maximum worker session; device/PIN revocation rechecked server-side. Activity-triggered touch only, never polling-based extension.
 - Owner filtered reports, CSV, review notes, approvals, long-running-shift alerts, and audited start/end corrections in Austin time. Corrections reopen approval and preserve original punch events.
 - UTC storage, America/Chicago display. Local correction conversion rejects nonexistent spring-forward times and explicitly disambiguates repeated fall-back hours.
-- RLS on all timekeeping tables. Browser roles have no table or RPC grants; service-role direct writes are also revoked. Mutations occur through named server-only transactional RPCs.
+- RLS on all time-clock tables. Browser roles have no table or RPC grants; service-role direct writes are also revoked. Mutations occur through named server-only transactional RPCs.
 
 ## Scope and intentional limits
 
@@ -100,7 +100,7 @@ Next.js manager sign-in, deployed cookie/Origin/proxy behavior, hosted CSV UI, b
 4. Install a server-only random secret of at least 32 bytes, encoded as 43+ base64url characters, as `TIME_CLOCK_SECRET`. Do not expose it with a `NEXT_PUBLIC_` prefix or paste it into a ticket.
 5. Apply the reviewed migration to the selected environment.
 6. Set `TIME_CLOCK_ENABLED=true` in that environment and deploy the reviewed feature branch. Missing flag or secret fails closed. Do not enable a preview against production Supabase without explicit approval.
-7. Adam or Jeyu opens Timekeeping → Staff profiles. Create and update real profiles, assigned roles, and rates in the backend, and privately provide chosen/generated PINs. No roster needs to be supplied to a developer. Verify both permitted admin accounts can access the page, and other admins cannot.
+7. Adam or Jeyu opens Staff → Staff profiles. Create and update real profiles, assigned roles, and rates in the backend, and privately provide chosen/generated PINs. No roster needs to be supplied to a developer. Verify both permitted admin accounts can access the page, and other admins cannot.
 8. Adam or Jeyu creates a kiosk pairing code; enter it at `/clock` on the front-room iPad without leaving an admin session on the device. Verify iPad browser lockdown and loss/revocation procedures operationally.
 9. Perform a real worker test: clock in, refresh, switch role, record responsibility, clock out, owner sees exact record, export, and revoke a test device. Do not treat branch merge as proof of successful operation.
 10. Confirm pay model, fixed workweek, pay period, break policy and overtime treatment before extending base estimates into payroll.
@@ -110,7 +110,7 @@ Next.js manager sign-in, deployed cookie/Origin/proxy behavior, hosted CSV UI, b
 - `npm run test:time-clock`: real migration/state machine via PGlite plus API authorization/validation tests and crypto/pay/time helpers.
 - `node --test tests/admin-tabs.test.mjs`: navigation regression suite.
 - `npm run test:security`: existing restricted front-desk and security workflow regressions.
-- `npx eslint --ext .js,.jsx,.mjs app/clock app/components/time-clock app/bananas/timekeeping lib/time-clock app/api/admin/time-clock 'app/api/time-clock/[action]'`.
+- `npx eslint --ext .js,.jsx,.mjs app/clock app/components/time-clock app/bananas/staff lib/time-clock app/api/admin/time-clock 'app/api/time-clock/[action]'`.
 - `npm run build`: production Next.js bundle and route compile.
 - `npm run qa:time-clock`: localhost-only harness on 127.0.0.1:8090. Bundles the real React screens and API handlers with an isolated PGlite database. The Supabase transport and owner identity boundary are replaced only in this harness; it is not a production auth path.
   - Kiosk: `/clock`, pairing `12345678`, synthetic PIN `1234`.
@@ -144,7 +144,7 @@ The feature remains subject to production rollout and real-device verification e
 
 ## Schedule calendar and employee portal (October 2)
 
-- **Timekeeping → Schedule** (first tab): Events-Calendar-style rolling year grid with month segments and a day panel. Click a day to view, double-click or **+ Add shift** to schedule. One save can add several people to the same date/time, each with one of their assigned roles. Overnight shifts roll to the next day automatically. Click a chip to edit or remove it. Overlapping shifts for the same person and roles not assigned to that person are rejected.
+- **Staff → Schedule** (first tab): Events-Calendar-style rolling year grid with month segments and a day panel. Click a day to view, double-click or **+ Add shift** to schedule. One save can add several people to the same date/time, each with one of their assigned roles. Overnight shifts roll to the next day automatically. Click a chip to edit or remove it. Overlapping shifts for the same person and roles not assigned to that person are rejected.
 - **Staff profiles → Employee login**: create a login with a username, an email, or both. A password is generated (or chosen, 10+ characters) and shown once. If the email already has an SDG account, it is linked and keeps its current password. Managers can reset passwords for logins created here, disable/enable, or remove the login. Schedule and hour history are never deleted.
 - **`/employee/login`** accepts username or email. **`/employee`** shows only the signed-in person's own linked profile: next shift and coworkers on it, upcoming schedule, time-clock status, hours worked, pay rates and base pay estimates for 7/14/31/93 days, worked-shift history, and password change. Clock-in/out remains on the paired iPad.
 - The employee role is the profile link (`tc_workers.user_id` + `login_enabled`), not a `team_members` row, so it grants no team, admin, front-desk, member or partner access.
@@ -160,6 +160,6 @@ Migration `20261011200000_employee_hub_requests.sql` (additive) and the redesign
 - **Linking existing accounts** now refuses team and partner identities (use a username login instead) and sets the employee flag; unlinking a non-managed account clears it. A linked account that was already signed in picks up the flag at its next token refresh (up to one hour).
 - **Portal tabs.** Schedule (next shift, 7-day strip, upcoming by week, approved time off), Timesheet (Monday–Sunday pay week, hours, scheduled hours, base estimate, per-shift approval state, Request fix, Add a missed shift), Requests (create/cancel, manager notes), Account (rates, password).
 - **Requests** (`tc_change_requests`): `edit_shift` (closed own shift, one open fix per shift), `missed_shift` (assigned role, past 62 days, no overlap) and `time_off` (up to 31 days, up to a year ahead). Reason 3–500 characters, 20 open requests per person, 30 submissions per hour.
-- **Manager queue** (Timekeeping → Requests): Approve, Approve with changes, Decline (note required), Revoke approved time off (note required). Approved fixes go through `tc_admin('correct')` (audited before/after, original punches preserved in the audit) and the shift is then approved. Approved missed shifts create an approved `source = 'manager'` shift with no kiosk and the person's current role rate. Approved time off blocks scheduling (`schedule_time_off`) and reports any already-scheduled overlap.
+- **Manager queue** (Staff → Requests): Approve, Approve with changes, Decline (note required), Revoke approved time off (note required). Approved fixes go through `tc_admin('correct')` (audited before/after, original punches preserved in the audit) and the shift is then approved. Approved missed shifts create an approved `source = 'manager'` shift with no kiosk and the person's current role rate. Approved time off blocks scheduling (`schedule_time_off`) and reports any already-scheduled overlap.
 - **Mobile sign-in** `POST /api/employee/session` returns Supabase tokens for username or email, with the same limits and generic error as the web login. Mobile writes authenticate with a bearer token; website writes still require a same-site Origin.
 - Tests: `tests/time-clock-requests-db.vitest.js`, `tests/api/employee-hub.vitest.js`, `tests/employee-lockdown.test.mjs` (in `npm run test:time-clock`).

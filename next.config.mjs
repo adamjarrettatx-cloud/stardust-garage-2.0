@@ -50,6 +50,10 @@ const nextConfig = {
       // permanent so cached bookmarks, saved links in invite emails already in
       // people's inboxes, and any browser autocomplete still resolve. Keep this
       // in place for at least 90 days before removing.
+      // Timekeeping → Staff rename. Old bookmarks land on the new admin page.
+      { source: '/bananas/timekeeping', destination: '/bananas/staff', permanent: true },
+      { source: '/bananas/timekeeping/:path*', destination: '/bananas/staff/:path*', permanent: true },
+
       { source: '/partner', destination: '/portal', permanent: true },
       { source: '/partner/:path*', destination: '/portal/:path*', permanent: true },
     ];
