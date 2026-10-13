@@ -188,7 +188,7 @@ export default function CreateContractDrawer({
             ref={closeRef}
             type="button"
             onClick={() => !busy && onClose()}
-            className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5"
+            className="px-4 py-2 rounded-md text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5"
             style={{ borderColor: 'var(--auth-card-border-strong)', color: 'var(--auth-text)' }}
           >
             CLOSE
@@ -362,7 +362,7 @@ export default function CreateContractDrawer({
             <button
               type="submit"
               disabled={busy || !check.ok}
-              className="flex-1 py-3.5 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all disabled:opacity-50"
+              className="flex-1 py-3.5 rounded-md text-[12px] font-semibold tracking-[0.16em] transition-all disabled:opacity-50"
               style={{ background: '#ffffff', color: '#0a0a0a' }}
             >
               {busy ? 'CREATING…' : 'CREATE DRAFT'}
@@ -370,7 +370,7 @@ export default function CreateContractDrawer({
             <button
               type="button"
               onClick={() => !busy && onClose()}
-              className="px-8 py-3.5 rounded-full text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5"
+              className="px-8 py-3.5 rounded-md text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5"
               style={{ borderColor: 'var(--auth-card-border-strong)', color: 'var(--auth-text)' }}
             >
               CANCEL

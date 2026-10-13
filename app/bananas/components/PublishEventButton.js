@@ -51,7 +51,7 @@ export default function PublishEventButton({ eventId, slug, status, ttEventSerie
     }
   }
 
-  const buttonBase = 'px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 whitespace-nowrap';
+  const buttonBase = 'px-4 py-2 rounded-md text-[11px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 whitespace-nowrap';
   const labelCls = 'block text-[11px] font-semibold tracking-[0.14em] mb-1.5';
 
   // One row: Status | (Visibility, Event Type passed in as `controls`) | actions.
@@ -64,7 +64,7 @@ export default function PublishEventButton({ eventId, slug, status, ttEventSerie
           <label className={labelCls} style={{ color: 'var(--auth-muted)' }}>Status</label>
           <div className="h-[38px] flex items-center">
             <span
-              className="text-[10px] font-semibold tracking-[0.12em] px-2.5 py-1 rounded-full"
+              className="text-[10px] font-semibold tracking-[0.12em] px-2.5 py-1 rounded"
               style={{
                 color: isDraft ? 'var(--auth-accent-text)' : 'var(--auth-strong-surface-text)',
                 background: isDraft ? 'var(--auth-accent)' : 'var(--auth-success)',

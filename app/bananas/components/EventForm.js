@@ -75,7 +75,7 @@ function SecretLinkRow({ url }) {
       <button
         type="button"
         onClick={copy}
-        className="shrink-0 px-3 py-1.5 rounded-full text-[10px] font-semibold tracking-[0.14em]"
+        className="shrink-0 px-3 py-1.5 rounded-md text-[10px] font-semibold tracking-[0.14em]"
         style={{ background: 'var(--auth-text-strong)', color: 'var(--auth-strong-surface-text)' }}
       >
         {copied ? 'COPIED' : 'COPY LINK'}
@@ -412,7 +412,7 @@ export default function EventForm({
   function Segmented({ value, options, onChange }) {
     return (
       <div
-        className="inline-flex rounded-full p-1 border"
+        className="inline-flex rounded-md p-1 border"
         style={{ background: 'var(--auth-input-bg)', borderColor: 'var(--auth-input-border)' }}
       >
         {options.map((opt) => {
@@ -422,7 +422,7 @@ export default function EventForm({
               key={opt.value}
               type="button"
               onClick={() => onChange(opt.value)}
-              className="px-4 py-1.5 rounded-full text-[12px] font-semibold tracking-[0.08em] transition-all whitespace-nowrap"
+              className="px-4 py-1.5 rounded text-[12px] font-semibold tracking-[0.08em] transition-all whitespace-nowrap"
               style={{
                 background: active ? 'var(--auth-text-strong)' : 'transparent',
                 color: active ? 'var(--auth-strong-surface-text)' : 'var(--auth-muted)',
@@ -609,7 +609,7 @@ export default function EventForm({
                   <button
                     type="button"
                     onClick={() => setImageUrl('')}
-                    className="text-[11px] font-semibold tracking-[0.1em] px-3 py-1.5 rounded-full border transition-colors hover:bg-white/5"
+                    className="text-[11px] font-semibold tracking-[0.1em] px-3 py-1.5 rounded-md border transition-colors hover:bg-white/5"
                     style={{ borderColor: 'var(--auth-card-border)', color: 'var(--auth-muted)' }}
                   >
                     CLEAR
@@ -781,7 +781,7 @@ export default function EventForm({
         >
           <Link
             href="/bananas?tab=events"
-            className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.14em] transition-colors hover:bg-black/5"
+            className="px-4 py-2 rounded-md text-[11px] font-semibold tracking-[0.14em] transition-colors hover:bg-black/5"
             style={{ color: 'var(--auth-muted)' }}
           >
             CANCEL
@@ -791,7 +791,7 @@ export default function EventForm({
               type="button"
               onClick={handleGenerateCodes}
               disabled={generating}
-              className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.14em] border transition-colors hover:bg-black/5 disabled:opacity-50 whitespace-nowrap"
+              className="px-4 py-2 rounded-md text-[11px] font-semibold tracking-[0.14em] border transition-colors hover:bg-black/5 disabled:opacity-50 whitespace-nowrap"
               style={{ color: '#c17800', borderColor: 'rgba(193, 120, 0, 0.35)' }}
               title="Generate member ticket codes for this event"
             >
@@ -801,7 +801,7 @@ export default function EventForm({
           <button
             type="submit"
             disabled={saving || uploading}
-            className="px-6 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
+            className="px-6 py-2.5 rounded-md text-[11px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
             style={{
               background: 'var(--auth-text-strong)',
               color: 'var(--auth-strong-surface-text)',

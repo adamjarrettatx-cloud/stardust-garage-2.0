@@ -37,7 +37,7 @@ const EMPTY_FORM = {
 function Badge({ children, color, bg, border }) {
   return (
     <span
-      className="inline-block text-[10px] font-semibold tracking-[0.14em] px-2.5 py-1 rounded-full"
+      className="inline-block text-[10px] font-semibold tracking-[0.14em] px-2.5 py-1 rounded"
       style={{ color, background: bg, border: `1px solid ${border}` }}
     >
       {children}
@@ -97,7 +97,7 @@ function BookingForm({ form, setForm, busy, error, onSubmit, onCancel, submitLab
               key={opt.value}
               type="button"
               onClick={() => setForm({ ...form, pay_type: opt.value })}
-              className="px-5 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
+              className="px-5 py-2.5 rounded-md text-[11px] font-semibold tracking-[0.12em] border transition-colors"
               style={
                 form.pay_type === opt.value
                   ? { background: 'var(--auth-text-strong)', color: 'var(--auth-strong-surface-text)', borderColor: 'var(--auth-text-strong)' }
@@ -172,7 +172,7 @@ function BookingForm({ form, setForm, busy, error, onSubmit, onCancel, submitLab
         <button
           type="submit"
           disabled={busy}
-          className="px-6 py-3 rounded-full text-[11px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-40"
+          className="px-6 py-3 rounded-md text-[11px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-40"
           style={{ background: 'var(--auth-text-strong)', color: 'var(--auth-strong-surface-text)' }}
         >
           {busy ? 'SAVING…' : submitLabel}
@@ -181,7 +181,7 @@ function BookingForm({ form, setForm, busy, error, onSubmit, onCancel, submitLab
           type="button"
           onClick={onCancel}
           disabled={busy}
-          className="px-6 py-3 rounded-full text-[11px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5 disabled:opacity-40"
+          className="px-6 py-3 rounded-md text-[11px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5 disabled:opacity-40"
           style={{ borderColor: 'var(--auth-card-border-strong)', color: 'var(--auth-text)' }}
         >
           CANCEL
@@ -348,7 +348,7 @@ export default function ArtistLineupPanel({ eventId }) {
           <button
             type="button"
             onClick={openAdd}
-            className="px-5 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5"
+            className="px-5 py-2.5 rounded-md text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5"
             style={{ borderColor: 'var(--auth-card-border-strong)', color: 'var(--auth-text)' }}
           >
             ADD ARTIST
@@ -453,7 +453,7 @@ export default function ArtistLineupPanel({ eventId }) {
                     type="button"
                     onClick={() => (isEditing ? setEditing(null) : openEdit(booking))}
                     disabled={!isEditing && locked}
-                    className="px-4 py-2 rounded-full text-[10px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5 disabled:opacity-40"
+                    className="px-4 py-2 rounded-md text-[10px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5 disabled:opacity-40"
                     style={{ borderColor: 'var(--auth-card-border-strong)', color: 'var(--auth-text)' }}
                   >
                     {isEditing ? 'CLOSE' : 'EDIT'}
@@ -462,7 +462,7 @@ export default function ArtistLineupPanel({ eventId }) {
                     type="button"
                     onClick={() => handleRemove(booking)}
                     disabled={busy || locked}
-                    className="px-4 py-2 rounded-full text-[10px] font-semibold tracking-[0.12em] border transition-colors disabled:opacity-40"
+                    className="px-4 py-2 rounded-md text-[10px] font-semibold tracking-[0.12em] border transition-colors disabled:opacity-40"
                     style={{ borderColor: 'var(--auth-danger-border)', color: 'var(--auth-danger)' }}
                   >
                     REMOVE
@@ -495,7 +495,7 @@ export default function ArtistLineupPanel({ eventId }) {
                     type="button"
                     onClick={() => handleReopen(booking)}
                     disabled={busy}
-                    className="px-4 py-2 rounded-full text-[10px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5 disabled:opacity-40"
+                    className="px-4 py-2 rounded-md text-[10px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5 disabled:opacity-40"
                     style={{ borderColor: 'var(--auth-card-border-strong)', color: 'var(--auth-text)' }}
                   >
                     REOPEN FOR PAYMENT

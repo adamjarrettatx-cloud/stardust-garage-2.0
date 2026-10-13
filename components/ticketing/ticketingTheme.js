@@ -88,9 +88,9 @@ export function cardStyle({ padding } = {}) {
   };
 }
 
-// Inline pill call-to-action styles (paired with auth-theme-border-button)
+// Inline rectangular call-to-action styles (paired with auth-theme-border-button)
 export function pillClass(variant = 'default') {
-  const base = 'auth-theme-border-button px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.12em] border';
+  const base = 'auth-theme-border-button px-4 py-2 rounded-md text-[11px] font-semibold tracking-[0.12em] border';
   if (variant === 'primary') return base + ' shadow-sm';
   return base;
 }
@@ -202,7 +202,7 @@ export function statusPill({ tone = 'muted' } = {}) {
     background: p.bg,
     color: p.color,
     border: `1px solid ${p.border}`,
-    borderRadius: 999,
+    borderRadius: 4,
     fontSize: 11,
     letterSpacing: '0.06em',
     textTransform: 'uppercase',
