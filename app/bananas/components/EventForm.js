@@ -66,7 +66,7 @@ function SecretLinkRow({ url }) {
   };
   return (
     <div
-      className="mt-2.5 flex items-center gap-2 rounded-[8px] border pl-3 pr-1 py-1"
+      className="mt-2.5 flex items-center gap-2 rounded-[8px] border pl-3 pr-[3px] py-[3px]"
       style={{ background: 'var(--auth-input-bg)', borderColor: 'var(--auth-input-border)' }}
     >
       <span className="flex-1 min-w-0 truncate select-all text-[12px]" style={{ color: 'var(--auth-text-strong)' }} title={url}>
@@ -75,7 +75,7 @@ function SecretLinkRow({ url }) {
       <button
         type="button"
         onClick={copy}
-        className="shrink-0 px-3 py-1.5 rounded-full text-[10px] font-semibold tracking-[0.14em]"
+        className="shrink-0 h-[30px] px-3 rounded-[6px] text-[10px] font-semibold tracking-[0.14em]"
         style={{ background: 'var(--auth-text-strong)', color: 'var(--auth-strong-surface-text)' }}
       >
         {copied ? 'COPIED' : 'COPY LINK'}
@@ -412,7 +412,7 @@ export default function EventForm({
   function Segmented({ value, options, onChange }) {
     return (
       <div
-        className="inline-flex rounded-full p-1 border"
+        className="inline-flex h-[36px] rounded-[8px] p-[3px] border"
         style={{ background: 'var(--auth-input-bg)', borderColor: 'var(--auth-input-border)' }}
       >
         {options.map((opt) => {
@@ -422,7 +422,7 @@ export default function EventForm({
               key={opt.value}
               type="button"
               onClick={() => onChange(opt.value)}
-              className="px-4 py-1.5 rounded-full text-[12px] font-semibold tracking-[0.08em] transition-all whitespace-nowrap"
+              className="h-full px-3.5 rounded-[6px] text-[12px] font-semibold tracking-[0.06em] transition-colors whitespace-nowrap"
               style={{
                 background: active ? 'var(--auth-text-strong)' : 'transparent',
                 color: active ? 'var(--auth-strong-surface-text)' : 'var(--auth-muted)',
