@@ -51,10 +51,6 @@ body {
   color-scheme: dark;
 }
 
-.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] {
-  background: var(--auth-root-bg);
-}
-
 .auth-theme-root[data-auth-theme='light'] .vp-bar {
   background: color-mix(in srgb, var(--auth-panel-bg) 94%, transparent);
   -webkit-backdrop-filter: blur(10px);
@@ -68,7 +64,7 @@ body {
 }
 
 .auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] .vp-bar {
-  background: rgba(27, 32, 40, 0.94);
+  background: rgba(24, 26, 32, 0.94);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
@@ -300,8 +296,9 @@ select optgroup {
   color: var(--auth-strong-surface-text) !important;
 }
 
-/* Midnight slate dark theme (#1B2028). Hardcoded near-black inline surfaces
-   are lifted onto the slate ladder so they don't sit darker than the page. */
+/* Admin/Team dark theme: content sits in a #181A20 frame (like light mode's
+   cream frame) with the starfield visible around it. Hardcoded near-black
+   inline surfaces are lifted so they don't sit darker than the frame. */
 .auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#141414'],
 .auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #141414'],
 .auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(20, 20, 20)'],
@@ -341,7 +338,7 @@ select optgroup {
 .auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#1e1e1e'],
 .auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #1e1e1e'],
 .auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(30, 30, 30)'] {
-  background: #2A323D !important;
+  background: #2A2D36 !important;
 }
 
 .auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#0a0a0a'],
@@ -389,11 +386,11 @@ select optgroup {
 }
 
 .auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] .bg-\[\#1a1a1a\] {
-  background: #2A323D !important;
+  background: #2A2D36 !important;
 }
 
 .auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] .tc-root[data-theme=dark] {
-  --bg:#1B2028;--panel:#242B35;--raised:#2A323D;--border:#3A4350;--inverse:#1B2028;--warnbg:#3F3F3F;
+  --bg:#181A20;--panel:#22252D;--raised:#2A2D36;--border:#363A44;--inverse:#181A20;--warnbg:#3F3F3F;
 }
 
 /* Prevent long URLs / strings from blowing out the layout on mobile. */

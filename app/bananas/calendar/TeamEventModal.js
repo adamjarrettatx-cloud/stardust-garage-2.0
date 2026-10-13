@@ -59,15 +59,15 @@ const FREQ_OPTIONS = [
 const MODAL_THEMES = {
   dark: {
     overlay: 'rgba(0,0,0,0.75)',
-    panelBg: '#242B35',
+    panelBg: '#22252D',
     panelBorder: 'rgba(255,255,255,0.1)',
     text: '#f5f5f5',
     textStrong: '#ffffff',
     muted: '#8a8a8a',
     mutedStrong: '#aaaaaa',
-    inputBg: '#2A323D',
+    inputBg: '#2A2D36',
     inputBorder: 'rgba(255,255,255,0.12)',
-    swatchBg: '#2A323D',
+    swatchBg: '#2A2D36',
     swatchBorder: 'rgba(255,255,255,0.08)',
     hoverBg: 'rgba(255,255,255,0.05)',
     saveBg: '#ffffff',
