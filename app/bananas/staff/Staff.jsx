@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { PIN_LENGTH, PIN_PATTERN } from "@/lib/time-clock/pin.mjs";
 import {
   Frame,
-  ShiftTable,
   Status,
   request,
   time,
@@ -13,7 +12,6 @@ import {
 } from "@/app/components/time-clock/Shared";
 import {
   duration,
-  estimateCents,
   dollarsToCents,
   chicagoInput,
   chicagoToIso,
@@ -23,7 +21,7 @@ import ScheduleCalendar from "./ScheduleCalendar";
 import StaffList from "./StaffList";
 import RequestsQueue from "./RequestsQueue";
 import TimesheetCalendar from "./TimesheetCalendar";
-import { addDays, chicagoYmd, dayStartIso, payPeriodAt, payPeriodLabel } from "@/lib/time-clock/periods.mjs";
+import { addDays, chicagoYmd, dayStartIso, payPeriodEnd, payPeriodStart } from "@/lib/time-clock/periods.mjs";
 import RolesPanel from "./RolesPanel";
 
 const endpoint = "/api/admin/time-clock";
@@ -41,12 +39,9 @@ export default function Staff({ enabled }) {
     [tab, setTab] = useState("schedule"),
     [error, setError] = useState(""),
     [pendingRequests, setPendingRequests] = useState(0),
-    [sheetView, setSheetView] = useState("calendar");
+    [periodStart, setPeriodStart] = useState(() => payPeriodStart(chicagoYmd()));
   const detailRef = useRef(null);
-  const [busy, setBusy] = useState(false),
-    [period, setPeriod] = useState("-1"),
-    [status, setStatus] = useState("all"),
-    [search, setSearch] = useState("");
+  const [busy, setBusy] = useState(false);
   const [detail, setDetail] = useState(null),
     [reviewNote, setReviewNote] = useState("");
   const [editWorker, setEditWorker] = useState(null),
@@ -103,16 +98,16 @@ export default function Staff({ enabled }) {
       previous?.focus();
     };
   }, [confirm]);
-  // List view covers exactly one pay period (Monday–second Sunday, Austin).
-  const selectedPeriod = payPeriodAt(chicagoYmd(), Number(period));
+  // Page data and CSV export cover the pay period shown on the calendar
+  // (Monday through the second Sunday, Austin time).
   const range = useCallback(() => {
-    const { start, end } = payPeriodAt(chicagoYmd(), Number(period));
+    const end = payPeriodEnd(periodStart);
     return new URLSearchParams({
-      from: dayStartIso(start),
+      from: dayStartIso(periodStart),
       // The API includes `to`; stop 1 ms before the next period's midnight.
       to: new Date(Date.parse(dayStartIso(addDays(end, 1))) - 1).toISOString(),
     });
-  }, [period]);
+  }, [periodStart]);
   const load = useCallback(async () => {
     const generation = ++fetchGeneration.current;
     const next = await request(`${endpoint}?${range()}`);
@@ -267,19 +262,11 @@ export default function Staff({ enabled }) {
       await load();
     });
   }
-  const rows = (data?.shifts || []).filter(
-    (s) =>
-      (status === "all" || s.status === status) &&
-      s.worker_name.toLowerCase().includes(search.toLowerCase()),
-  );
-  const closed = rows.filter((s) => s.ended_at),
-    unpriced = closed.filter((s) => estimateCents(s) === null).length;
   const exportCsv = () =>
     run(async () => {
       const query = range();
       query.set("format", "csv");
-      query.set("status", status);
-      query.set("name", search);
+      query.set("status", "all");
       const response = await fetch(`${endpoint}?${query}`, {
         credentials: "same-origin",
         cache: "no-store",
@@ -432,43 +419,6 @@ export default function Staff({ enabled }) {
               {tab === "requests" && <RequestsQueue onCount={setPendingRequests} />}
               {tab === "timesheets" && (
                 <>
-                  <div className="tc-viewswitch" role="group" aria-label="Timesheet view">
-                    {[["calendar", "Calendar"], ["list", "List"]].map(([v, label]) => (
-                      <button key={v} className={sheetView === v ? "active" : ""} aria-pressed={sheetView === v}
-                        onClick={() => setSheetView(v)}>
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  {sheetView === "calendar" && (
-                    <TimesheetCalendar workers={data.workers} refreshKey={data} onOpenDetail={view} onChanged={calendarChanged} />
-                  )}
-                  {sheetView === "list" && (<>
-                  <div className="metrics metrics-two">
-                    <div className="metric">
-                      <span className="sub">Pay period base estimate</span>
-                      <b>
-                        {money(
-                          closed.reduce(
-                            (n, s) => n + (estimateCents(s) ?? 0),
-                            0,
-                          ),
-                        )}
-                      </b>
-                      <span className="sub small">
-                        {unpriced
-                          ? `${unpriced} shifts missing rates; total incomplete`
-                          : "Not final payroll"}
-                      </span>
-                    </div>
-                    <div className="metric">
-                      <span className="sub">Awaiting review</span>
-                      <b>
-                        {closed.filter((s) => s.status === "pending").length}
-                      </b>
-                      <span className="sub small">Current filters</span>
-                    </div>
-                  </div>
                   {data.open.some(
                     (s) => now - Date.parse(s.started_at) > 16 * 3600000,
                   ) && (
@@ -491,52 +441,13 @@ export default function Staff({ enabled }) {
                         ))}
                     </div>
                   )}
-                  <div className="filterbar">
-                    <label htmlFor="tc-range">Pay period</label>
-                    <select
-                      id="tc-range"
-                      value={period}
-                      onChange={(e) => setPeriod(e.target.value)}
-                    >
-                      {[0, -1, -2, -3, -4, -5, -6].map((n) => {
-                        const p = payPeriodAt(chicagoYmd(), n);
-                        const name = n === 0 ? "Current" : n === -1 ? "Prior" : null;
-                        return (
-                          <option key={n} value={String(n)}>
-                            {name ? `${name} · ` : ""}
-                            {payPeriodLabel(p.start)}
-                          </option>
-                        );
-                      })}
-                    </select>
-                    <label htmlFor="tc-search">Find staff</label>
-                    <input
-                      id="tc-search"
-                      type="search"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search by name"
-                    />
-                    <label htmlFor="tc-status">Status</label>
-                    <select
-                      id="tc-status"
-                      value={status}
-                      onChange={(e) => setStatus(e.target.value)}
-                    >
-                      <option value="all">All statuses</option>
-                      <option value="open">On shift</option>
-                      <option value="pending">Needs review</option>
-                      <option value="approved">Approved</option>
-                    </select>
-                  </div>
-                  <ShiftTable shifts={rows} owner onView={view} now={now} />
-                  <p className="tablefoot">
-                    Pay period {payPeriodLabel(selectedPeriod.start)}, Monday
-                    through the second Sunday, Austin time. Shifts count in the
-                    pay period they started. Open-shift amounts are not
-                    included. Estimates only; Gusto runs payroll.
-                  </p>
-                  </>)}
+                  <TimesheetCalendar
+                    workers={data.workers}
+                    refreshKey={data}
+                    onOpenDetail={view}
+                    onChanged={calendarChanged}
+                    onPeriodChange={setPeriodStart}
+                  />
                   {detail && (
                     <section className="panel details" ref={detailRef}>
                       <div className="between">

@@ -156,7 +156,6 @@
   .tc-root .emp-tabs button{padding:var(--s3) var(--s1);font-size:13px}
 }
 /* Timesheet calendar (owner Timesheets tab) */
-.tc-root .tc-viewswitch{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:var(--s5)}.tc-root .tc-viewswitch button{border:0;border-radius:0;min-height:40px;padding:var(--s2) var(--s5);color:var(--muted)}.tc-root .tc-viewswitch button.active{background:var(--raised);color:var(--text);font-weight:600}
 .tc-root .tcal-bar{display:flex;justify-content:space-between;align-items:center;gap:var(--s4);flex-wrap:wrap;margin-bottom:var(--s4)}.tc-root .tcal-nav{display:flex;align-items:center;gap:var(--s3)}.tc-root .tcal-nav h2{margin:0;min-width:190px;text-align:center}.tc-root .tcal-nav>button:not(.textbtn){min-height:40px;min-width:40px;padding:0;font-size:var(--text-lg)}.tc-root .tcal-person{display:flex;align-items:center;gap:var(--s2)}.tc-root .tcal-person select{min-height:40px;min-width:200px}
 .tc-root .tcal-metrics{margin-bottom:var(--s5)}
 .tc-root .tcal-grid{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--panel)}

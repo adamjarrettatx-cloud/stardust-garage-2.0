@@ -35,7 +35,7 @@ function austinIso(local) {
  * second Sunday) with daily and pay-period totals. Selecting a day lists every shift with scheduled vs. worked time,
  * one-click approval and an audited inline time correction.
  */
-export default function TimesheetCalendar({ workers, onOpenDetail, refreshKey, onChanged }) {
+export default function TimesheetCalendar({ workers, onOpenDetail, refreshKey, onChanged, onPeriodChange }) {
   const today = chicagoYmd();
   const [month, setMonth] = useState(today.slice(0, 7));
   const [shifts, setShifts] = useState(null);
@@ -127,6 +127,10 @@ export default function TimesheetCalendar({ workers, onOpenDetail, refreshKey, o
   const periodShifts = visible.filter((s) => inPeriod(chicagoYmd(s.started_at)));
   const periodPay = periodShifts.filter((s) => s.ended_at).reduce((n, s) => n + (estimateCents(s) ?? 0), 0);
   const currentPeriod = payPeriodStart(today);
+  // Let the page export the pay period currently shown.
+  useEffect(() => {
+    onPeriodChange?.(periodStart);
+  }, [periodStart, onPeriodChange]);
   const periodName =
     periodStart === currentPeriod ? "Current pay period"
       : periodStart === addDays(currentPeriod, -PAY_PERIOD_DAYS) ? "Prior pay period"
