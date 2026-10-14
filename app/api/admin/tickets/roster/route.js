@@ -26,14 +26,15 @@ export async function GET(request) {
     const ids = rows.map((r) => r.id);
     const profileIds = [...new Set(rows.map((r) => r.member_profile_id).filter(Boolean))];
     const userIds = [...new Set(rows.map((r) => r.user_id).filter(Boolean))];
-    const [tickets, attendees, items, profiles, userProfiles] = await Promise.all([
+    const [tickets, attendees, items, profiles, userProfiles, accountNames] = await Promise.all([
       ids.length ? readRosterRows(() => db.from('tickets').select('id, order_id, order_item_id, attendee_id, status, used_at').in('order_id', ids).order('id')) : [],
       ids.length ? readRosterRows(() => db.from('attendees').select('id, ticket_id, full_name, email').in('order_id', ids).order('id')) : [],
       ids.length ? readRosterRows(() => db.from('order_items').select('id, product_name_snapshot, tier_name_snapshot').in('order_id', ids).order('id')) : [],
       profileIds.length ? readRosterRows(() => db.from('member_profiles').select('id, user_id, full_name').in('id', profileIds).order('id')) : [],
       userIds.length ? readRosterRows(() => db.from('member_profiles').select('id, user_id, full_name').in('user_id', userIds).order('id')) : [],
+      userIds.length ? readRosterRows(() => db.from('free_accounts').select('user_id, full_name').in('user_id', userIds).order('user_id')) : [],
     ]);
-    return NextResponse.json({ orders: assembleRoster(rows, tickets, attendees, items, [...profiles, ...userProfiles]),
+    return NextResponse.json({ orders: assembleRoster(rows, tickets, attendees, items, [...profiles, ...userProfiles, ...accountNames]),
       next_page: rows.length === 100 ? page + 1 : null }, { headers });
   } catch (error) {
     console.error('[all-event-orders]', error);
