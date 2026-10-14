@@ -69,12 +69,14 @@ export default function EventSales({ initial }) {
       <p className="event-asof">Last successful update: {new Date(data.as_of).toLocaleString('en-US', { timeZone: 'America/Chicago' })} Central</p>
       {error && <p role="alert" className="event-error">{error} The figures below are from the last successful update.</p>}
       <section><h2>Stardust Garage ticketing</h2>
-        <div className="sales-grid">
-          <div className="sales-stat"><span>Tickets issued</span><strong>{data.internal.tickets_issued}</strong></div>
-          {data.internal.currencies.flatMap((row) => [['Gross collected', row.gross_collected_cents], ['Refunded', row.refunded_cents], ['Net collected', row.net_collected_cents]].map(([label, value]) => <div className="sales-stat" key={`${row.currency}-${label}`}><span>{label} · {row.currency}</span><strong>{money(value, row.currency)}</strong></div>))}
+        <div className="sales-summary">
+          <p className="sales-summary-count"><strong>{data.internal.tickets_issued}</strong> tickets issued</p>
+          {data.internal.currencies.map((row) => <p className="sales-summary-money" key={row.currency}>
+            Gross <b>{money(row.gross_collected_cents, row.currency)}</b> · Refunded <b>{money(row.refunded_cents, row.currency)}</b> · Net <b>{money(row.net_collected_cents, row.currency)}</b> {row.currency}
+          </p>)}
+          {!data.internal.currencies.length && <p className="sales-summary-money">No completed Stardust Garage ticket orders yet.</p>}
         </div>
-        {!data.internal.currencies.length && <p>No completed Stardust Garage ticket orders yet.</p>}
-        <p className="event-note">Collected amounts include checkout fees and taxes. Net collected subtracts recorded refunds; it is not an organizer payout or profit.</p>
+        <p className="event-note">Collected amounts include checkout fees and taxes. Net subtracts refunds; it is not an organizer payout or profit.</p>
         <AttendeeList attendees={data.attendees || []} />
       </section>
       {(data.ticket_tailor.length > 0 || data.event.ticketing_mode === 'tickettailor') && <section><h2>Ticket Tailor history</h2><p className="event-note">Cached external summaries, shown separately and not added to Stardust Garage totals.</p>
