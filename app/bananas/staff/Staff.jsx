@@ -299,34 +299,60 @@ export default function Staff({ enabled }) {
       <div className="between ownerhead">
         <h1>Team time & shifts</h1>
         <div className="row tc-headicons">
-          <a
-            className="tc-linkbutton tc-iconbtn"
-            href="/clock"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Open kiosk in a new tab"
-            title="Open kiosk"
-          >
-            {/* Tablet: the paired iPad time clock */}
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <rect x="4" y="2" width="16" height="20" rx="2" />
-              <line x1="11" y1="18" x2="13" y2="18" />
-            </svg>
-          </a>
-          <button
-            className="primary tc-iconbtn"
-            disabled={!data || busy}
-            onClick={exportCsv}
-            aria-label="Export CSV"
-            title="Export CSV"
-          >
-            {/* Download into tray: export the timesheet file */}
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-          </button>
+          <span className="tc-tip" data-tip="Devices">
+            <button
+              type="button"
+              className={`tc-iconbtn${tab === "devices" ? " active" : ""}`}
+              aria-label="Devices"
+              aria-pressed={tab === "devices"}
+              disabled={!enabled}
+              onClick={() => {
+                setTab("devices");
+                setDetail(null);
+                setCorrection(null);
+                setDisclosure(null);
+                setEditWorker(null);
+              }}
+            >
+              {/* Monitor + phone: paired kiosk devices */}
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8" />
+                <path d="M10 19v-4" />
+                <path d="M7 19h5" />
+                <rect x="16" y="12" width="6" height="10" rx="2" />
+              </svg>
+            </button>
+          </span>
+          <span className="tc-tip" data-tip="Open kiosk">
+            <a
+              className="tc-linkbutton tc-iconbtn"
+              href="/clock"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Open kiosk in a new tab"
+            >
+              {/* Tablet: the paired iPad time clock */}
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="4" y="2" width="16" height="20" rx="2" />
+                <line x1="11" y1="18" x2="13" y2="18" />
+              </svg>
+            </a>
+          </span>
+          <span className="tc-tip" data-tip="Export CSV">
+            <button
+              className="primary tc-iconbtn"
+              disabled={!data || busy}
+              onClick={exportCsv}
+              aria-label="Export CSV"
+            >
+              {/* Download into tray: export the timesheet file */}
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+            </button>
+          </span>
         </div>
       </div>
       {!enabled ? (
@@ -364,7 +390,7 @@ export default function Staff({ enabled }) {
             </section>
           )}
           <nav className="tabs" aria-label="Staff sections">
-            {["schedule", "timesheets", "requests", "people", "roles", "devices"].map((t) => (
+            {["schedule", "timesheets", "requests", "people", "roles"].map((t) => (
               <button
                 key={t}
                 type="button"
@@ -386,9 +412,7 @@ export default function Staff({ enabled }) {
                   ? pendingRequests ? `Requests (${pendingRequests})` : "Requests"
                   : t === "people"
                     ? "Staff profiles"
-                    : t === "roles"
-                      ? "Roles & duties"
-                      : "Devices"}
+                    : "Roles & duties"}
               </button>
             ))}
           </nav>
