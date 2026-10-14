@@ -266,7 +266,6 @@ export default function TimesheetCalendar({ workers, onOpenDetail, refreshKey, o
                       onClick={() => pick(d)}
                     >
                       <span className="tcal-date">{ymdLabel(d, { day: "numeric" })}</span>
-                      {list.length > 0 && <span className="tcal-total mono">{shortHours(ms)}</span>}
                       <span className="tcal-names">
                         {people.slice(0, 3).map((s) => {
                           const own = list.filter((x) => x.worker_id === s.worker_id);
