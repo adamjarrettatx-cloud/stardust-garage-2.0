@@ -6,6 +6,8 @@ import ProfileAvatar from "@/components/profile-photo/ProfileAvatar";
 import { createClient } from "@/lib/supabase/client";
 import { chicagoInput, chicagoToIso, duration, elapsedMs, estimateCents } from "@/lib/time-clock/core.mjs";
 import { addDays, chicagoYmd, dayStartIso, weekStart } from "@/lib/time-clock/periods.mjs";
+import { pinProblem, birthdateProblem } from "@/lib/time-clock/profile.mjs";
+import { preparePhoto } from "@/app/employee/setup/EmployeeSetup";
 
 const TZ = "America/Chicago";
 const fmt = (opts) => new Intl.DateTimeFormat("en-US", { timeZone: TZ, ...opts });
@@ -107,6 +109,8 @@ export default function EmployeePortal({ enabled }) {
           </div>
         ) : !data ? (
           <div className="empty" role="status">Loading…</div>
+        ) : data.profile && !data.profile.complete ? (
+          <CompleteProfile data={data} onDone={(message) => { setToast(message); load(); }} />
         ) : tab === "schedule" ? (
           <ScheduleTab data={data} now={now} today={today} onTimeOff={() => setModal({ kind: "time_off" })} />
         ) : tab === "timesheet" ? (
@@ -406,6 +410,7 @@ function RequestSummary({ r }) {
 function AccountTab({ data, onSignOut }) {
   const [settings, setSettings] = useState(false);
   const [pw, setPw] = useState(null);
+  const [pinForm, setPinForm] = useState(null);
   const [msg, setMsg] = useState("");
   const w = data.worker;
   const classification = w.category === "contractor" ? "Contractor" : "Employee";
@@ -419,9 +424,23 @@ function AccountTab({ data, onSignOut }) {
     setPw(null);
     setMsg("Password changed.");
   }
+  async function changePin(e) {
+    e.preventDefault();
+    setMsg("");
+    const problem = pinProblem(pinForm.pin, pinForm.confirm);
+    if (problem) return setMsg(problem);
+    try {
+      const r = await request("/api/employee/profile", { action: "set_pin", pin: pinForm.pin, pin_confirm: pinForm.confirm });
+      setPinForm(null);
+      setMsg(r.text || "New PIN saved.");
+    } catch (err) {
+      setMsg(err.message);
+    }
+  }
   function closeSettings() {
     setSettings(false);
     setPw(null);
+    setPinForm(null);
   }
   return (
     <div className="emp-profile">
@@ -435,7 +454,8 @@ function AccountTab({ data, onSignOut }) {
         </button>
       </div>
       <div className="emp-identity">
-        <ProfileAvatar nameOrEmail={w.name} size={88} radius={18} alt={`${w.name} initials`} />
+        <ProfileAvatar src={data.profile?.photo_url || undefined} nameOrEmail={w.name} size={88} radius={18}
+          alt={data.profile?.photo_url ? `${w.name} photo` : `${w.name} initials`} />
         <div className="emp-identity-text">
           <p className="emp-identity-name">{w.name}</p>
           {w.username && <p>{w.username}</p>}
@@ -486,11 +506,126 @@ function AccountTab({ data, onSignOut }) {
             ) : (
               <button type="button" className="wide" onClick={() => { setMsg(""); setPw({ next: "", confirm: "" }); }}>Change password</button>
             )}
+            <span className="eyebrow">iPad clock-in PIN</span>
+            {pinForm ? (
+              <form className="tc-form" onSubmit={changePin}>
+                <label>New PIN
+                  <input type="password" inputMode="numeric" autoComplete="off" pattern="[0-9]{4}" maxLength={4} required autoFocus
+                    value={pinForm.pin} onChange={(e) => setPinForm({ ...pinForm, pin: e.target.value.replace(/\D/g, "") })} />
+                </label>
+                <label>Confirm new PIN
+                  <input type="password" inputMode="numeric" autoComplete="off" pattern="[0-9]{4}" maxLength={4} required
+                    value={pinForm.confirm} onChange={(e) => setPinForm({ ...pinForm, confirm: e.target.value.replace(/\D/g, "") })} />
+                </label>
+                <p className="sub">Four digits. Easy PINs like 1234 or 0000 aren&apos;t allowed.</p>
+                <div className="row wrap">
+                  <button className="primary">Save PIN</button>
+                  <button type="button" onClick={() => setPinForm(null)}>Cancel</button>
+                </div>
+              </form>
+            ) : (
+              <button type="button" className="wide" onClick={() => { setMsg(""); setPinForm({ pin: "", confirm: "" }); }}>Change iPad PIN</button>
+            )}
             <button type="button" className="wide emp-signout" onClick={onSignOut}>Sign out</button>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+// Staff who had a login before email invites add the birthday and private
+// photo the invite now requires (and a PIN if they never had one) before the
+// rest of the portal opens.
+function CompleteProfile({ data, onDone }) {
+  const p = data.profile;
+  const [birthdate, setBirthdate] = useState("");
+  const [photo, setPhoto] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [pin, setPin] = useState({ pin: "", confirm: "" });
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const needPhoto = !p.photo_url;
+  useEffect(() => {
+    if (!photo) return setPreview(null);
+    const url = URL.createObjectURL(photo);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [photo]);
+  async function submit(e) {
+    e.preventDefault();
+    setMsg("");
+    const problem =
+      (!p.has_birthdate && birthdateProblem(birthdate, chicagoYmd())) ||
+      (needPhoto && !photo && "Add a photo of yourself.") ||
+      (!p.has_pin && pinProblem(pin.pin, pin.confirm));
+    if (problem) return setMsg(problem);
+    setBusy(true);
+    try {
+      if (!p.has_pin)
+        await request("/api/employee/profile", { action: "set_pin", pin: pin.pin, pin_confirm: pin.confirm });
+      const form = new FormData();
+      if (!p.has_birthdate) form.append("birthdate", birthdate);
+      if (photo) {
+        const prepared = await preparePhoto(photo);
+        form.append("photo", prepared, prepared.name || "photo.jpg");
+      }
+      if (!p.has_birthdate || photo) {
+        const res = await fetch("/api/employee/profile", { method: "POST", credentials: "same-origin", body: form });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || "Could not save your profile.");
+      }
+      onDone("Profile complete.");
+    } catch (err) {
+      setMsg(err.message);
+      setBusy(false);
+    }
+  }
+  return (
+    <form className="panel tc-form emp-complete" onSubmit={submit} noValidate>
+      <h2>Complete your profile</h2>
+      <p className="sub">Add the details below to keep using the staff portal.</p>
+      {!p.has_birthdate && (
+        <label>Birthday
+          <input type="date" required max={chicagoYmd()} value={birthdate} disabled={busy}
+            onChange={(e) => setBirthdate(e.target.value)} />
+        </label>
+      )}
+      {needPhoto && (
+        <div>
+          <span className="emp-complete-label">Private photo</span>
+          <div className="emp-photo-pick">
+            <label className="emp-photo-box">
+              {preview ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={preview} alt="Your photo" />
+              ) : (
+                <span>Take or upload photo</span>
+              )}
+              <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" className="sr-only"
+                disabled={busy} onChange={(e) => setPhoto(e.target.files?.[0] || null)} />
+            </label>
+            <p className="sub">Clear photo of your face. Only managers can see this photo.</p>
+          </div>
+        </div>
+      )}
+      {!p.has_pin && (
+        <>
+          <label>iPad clock-in PIN
+            <input type="password" inputMode="numeric" autoComplete="off" maxLength={4} value={pin.pin} disabled={busy}
+              onChange={(e) => setPin({ ...pin, pin: e.target.value.replace(/\D/g, "") })} />
+          </label>
+          <label>Confirm PIN
+            <input type="password" inputMode="numeric" autoComplete="off" maxLength={4} value={pin.confirm} disabled={busy}
+              onChange={(e) => setPin({ ...pin, confirm: e.target.value.replace(/\D/g, "") })} />
+          </label>
+        </>
+      )}
+      {msg && <p className="tc-error" role="alert">{msg}</p>}
+      <div className="row wrap">
+        <button className="primary" disabled={busy}>{busy ? "Saving…" : "Save and continue"}</button>
+      </div>
+    </form>
   );
 }
 

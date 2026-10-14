@@ -793,6 +793,25 @@ export default function Staff({ enabled }) {
                         Use your established classification; this setting does
                         not determine legal status.
                       </p>
+                      {editWorker.id && (editWorker.birthdate || editWorker.photo_url) && (
+                        <div className="sl-private">
+                          {editWorker.photo_url && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={editWorker.photo_url} alt={`${editWorker.name} photo`} />
+                          )}
+                          <div>
+                            <span className="sub">Private · managers only</span>
+                            <p>
+                              Birthday:{" "}
+                              {editWorker.birthdate
+                                ? new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" })
+                                    .format(new Date(`${editWorker.birthdate}T12:00:00Z`))
+                                : "Not added yet"}
+                            </p>
+                            {!editWorker.photo_url && <p>Photo: not added yet</p>}
+                          </div>
+                        </div>
+                      )}
                       {!editWorker.id && (
                         <label>
                           PIN (optional)
@@ -804,12 +823,12 @@ export default function Staff({ enabled }) {
                             maxLength={PIN_LENGTH}
                             value={editWorker.pin}
                             onChange={(e) => field("pin", e.target.value)}
-                            placeholder="Leave blank to generate"
+                            placeholder="Leave blank"
                           />
                           <span className="sub">
-                            Choose four digits or leave blank to generate a PIN.
-                            The saved PIN is displayed once for private
-                            delivery.
+                            Leave blank and the employee chooses their own PIN
+                            when they accept their email invite. If you set one
+                            here, it is displayed once for private delivery.
                           </span>
                         </label>
                       )}
@@ -912,7 +931,9 @@ export default function Staff({ enabled }) {
                       setConfirm({
                         action: "reset_pin",
                         id: w.id,
-                        label: `Reset ${w.name}'s PIN? The old PIN and current PIN session will stop working.`,
+                        label: w.has_pin
+                          ? `Set a new PIN for ${w.name}? The old PIN and current PIN session will stop working.`
+                          : `Set a PIN for ${w.name}?`,
                       });
                     }}
                     onDone={async ({ notice: text, disclosure: shown }) => {
@@ -923,8 +944,8 @@ export default function Staff({ enabled }) {
                   />
                   {!data.workers.length && (
                     <div className="empty">
-                      Add your first worker, assign roles, and privately provide
-                      their PIN.
+                      Add your first worker, assign roles, then invite them by
+                      email to choose their own PIN.
                     </div>
                   )}
                 </>
