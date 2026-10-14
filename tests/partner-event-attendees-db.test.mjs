@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 const uuid = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
-test('organizer attendee list returns names only, newest first, active tickets only', async () => {
+test('organizer attendee list returns names and purchaser email, newest first, active tickets only', async () => {
   const db = new PGlite();
   try {
     await db.exec(`
@@ -44,6 +44,9 @@ test('organizer attendee list returns names only, newest first, active tickets o
     const migration = await readFile(new URL('../supabase/migrations/20261013180000_partner_event_attendees.sql', import.meta.url), 'utf8');
     await db.exec(migration);
     await db.exec(migration); // Must be safe to retry.
+    const emailMigration = await readFile(new URL('../supabase/migrations/20261014030000_partner_event_attendees_email.sql', import.meta.url), 'utf8');
+    await db.exec(emailMigration);
+    await db.exec(emailMigration);
     await assert.rejects(db.query(`select partner_event_attendees('${uuid(22)}')`), /Event not found/);
     const report = Object.values((await db.query(`select partner_event_attendees('${uuid(21)}')`)).rows[0])[0];
     assert.deepEqual(report.attendees.map((r) => [r.name, r.purchased_by, r.ticket_type]), [
@@ -52,8 +55,12 @@ test('organizer attendee list returns names only, newest first, active tickets o
       ['Ada Buyer', null, 'Early Bird'],
       ['Grace Guest', 'Ada Buyer', 'Early Bird'],
     ]);
-    for (const row of report.attendees) assert.deepEqual(Object.keys(row).sort(), ['name', 'purchased_at', 'purchased_by', 'ticket_type']);
-    assert.doesNotMatch(JSON.stringify(report), /example\.invalid|\+1512|secret-code|pi_secret|00000000-0000/);
+    assert.deepEqual(report.attendees.map((r) => r.purchaser_email), [
+      'blank@example.invalid', 'noname@example.invalid', 'ada@example.invalid', 'ada@example.invalid',
+    ]);
+    for (const row of report.attendees) assert.deepEqual(Object.keys(row).sort(), ['name', 'purchased_at', 'purchased_by', 'purchaser_email', 'ticket_type']);
+    // Phone, ticket codes, payment/order IDs, attendee-only and non-purchaser emails stay private.
+    assert.doesNotMatch(JSON.stringify(report), /grace@|profile@|pending@|refund@|other@|\+1512|secret-code|pi_secret|00000000-0000/);
     assert.equal(Object.values((await db.query(`select has_function_privilege('anon','public.partner_event_attendees(uuid)','EXECUTE')`)).rows[0])[0], false);
   } finally { await db.close(); }
 });
