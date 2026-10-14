@@ -710,8 +710,6 @@ export default function Staff({ enabled }) {
                     </button>
                   </div>
                   <p className="sub sl-note">
-                    Adam and Jeyu manage profiles, roles, pay and PINs here. A
-                    time-clock profile does not grant access to other SDG tools.
                     PINs are four digits — reset any six-digit PIN before the
                     next clock-in.
                   </p>
