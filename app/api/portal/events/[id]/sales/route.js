@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { requirePartner, createRequestScopedClient } from '@/lib/auth-helpers';
-import { profileCapabilities } from '@/lib/profile-capabilities';
+import { partnerCanViewEvents } from '@/lib/profile-capabilities';
 export const dynamic = 'force-dynamic';
 const headers = { 'Cache-Control': 'private, no-store' };
 export async function GET(request, { params }) {
   const { unauthorized, partner } = await requirePartner(request);
   if (unauthorized) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers });
-  if (!profileCapabilities(partner.contact_type).events) return NextResponse.json({ error: 'Not found' }, { status: 404, headers });
+  if (!partnerCanViewEvents(partner)) return NextResponse.json({ error: 'Not found' }, { status: 404, headers });
   const { id } = await params;
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return NextResponse.json({ error: 'Not found' }, { status: 404, headers });
   const db = await createRequestScopedClient(request);
