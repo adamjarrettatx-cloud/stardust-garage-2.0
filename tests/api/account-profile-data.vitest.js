@@ -38,7 +38,9 @@ it('all table reads are filtered to the authenticated user, never a client-suppl
   const profile = await getAccountProfile();
   expect(profile.name).toBe('Own Person');
   for (const read of reads) {
-    expect(read.filters).toEqual([['user_id', user.id]]);
+    // Conversations are keyed by participant, still the authenticated user.
+    const ownKey = read.table === 'submission_threads' ? 'participant_user_id' : 'user_id';
+    expect(read.filters).toEqual([[ownKey, user.id]]);
     expect(read.fields).not.toBe('*');
   }
   expect(profile.workspaces).toEqual([]);
@@ -67,4 +69,13 @@ it('reads partner workspaces through the user-scoped RPCs and fails safely on er
   failedTable = 'partner_bookings';
   await expect(getAccountProfile()).rejects.toThrow('workspaces could not be loaded');
   expect(rpcs).toEqual(['partner_self', 'partner_grants', 'partner_bookings', 'partner_contracts']);
+});
+it('adds a Messages workspace only when the account has a conversation, with the unread count', async () => {
+  rows.submission_threads = [{ id: 't1', unread_by_guest: true }, { id: 't2', unread_by_guest: false }];
+  const profile = await getAccountProfile();
+  expect(profile.workspaces[0]).toEqual({ href: '/account/messages', label: 'Messages (1 new)' });
+  expect(profile.unreadMessages).toBe(1);
+  rows.submission_threads = [];
+  const none = await getAccountProfile();
+  expect(none.workspaces.some((w) => w.href === '/account/messages')).toBe(false);
 });

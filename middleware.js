@@ -97,8 +97,11 @@ export async function middleware(request) {
   // Employee portal: session refresh only. /employee pages and
   // /api/employee/* verify the linked staff profile server-side.
   const isEmployeeRoute = pathname === '/employee' || pathname.startsWith('/employee/');
+  // Conversation invite links: public, but the page reads the session to
+  // link the thread, so refresh cookies here like /events.
+  const isInboxRoute = pathname.startsWith('/inbox/');
 
-  if (!isAdminRoute && !isTeamRoute && !isMemberRoute && !isCapacityRoute && !isPartnerRoute && !isAccountRoute && !isEventsRoute && !isEmployeeRoute) {
+  if (!isAdminRoute && !isTeamRoute && !isMemberRoute && !isCapacityRoute && !isPartnerRoute && !isAccountRoute && !isEventsRoute && !isEmployeeRoute && !isInboxRoute) {
     return NextResponse.next();
   }
 
@@ -188,7 +191,7 @@ export async function middleware(request) {
   // this path — an unauthenticated visitor is fine here (the layout will
   // redirect them, with a proper `next=` for the specific subpath), and role
   // checks below (admin/team/partner) are meaningless for ticket buyers.
-  if (isAccountRoute || isEventsRoute || isEmployeeRoute) {
+  if (isAccountRoute || isEventsRoute || isEmployeeRoute || isInboxRoute) {
     // Both routes are publicly viewable \u2014 middleware ran only to refresh
     // the auth cookie for the client-side supabase.auth.getUser() call
     // that the ticket modal (and /account layout) does. No gating here.
