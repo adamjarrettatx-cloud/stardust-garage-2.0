@@ -9,7 +9,7 @@ function AttendeeList({ attendees }) {
   const rows = useMemo(() => {
     const terms = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
     const matched = attendees.filter((row) => {
-      const text = [row.name, row.purchased_by, row.ticket_type].filter(Boolean).join(' ').toLocaleLowerCase();
+      const text = [row.name, row.purchased_by, row.purchaser_email, row.ticket_type].filter(Boolean).join(' ').toLocaleLowerCase();
       return terms.every((term) => text.includes(term));
     });
     return order === 'oldest' ? [...matched].reverse() : matched;
@@ -17,7 +17,7 @@ function AttendeeList({ attendees }) {
   return <section className="attendee-section">
     <div className="attendee-heading"><h2>Ticket buyers <span>{attendees.length}</span></h2></div>
     <div className="attendee-tools">
-      <input type="search" aria-label="Search ticket buyers by name" placeholder="Search by name or ticket type" value={query} onChange={(e) => setQuery(e.target.value)} />
+      <input type="search" aria-label="Search ticket buyers by name, email or ticket type" placeholder="Search by name, email or ticket type" value={query} onChange={(e) => setQuery(e.target.value)} />
       <select aria-label="Sort order" value={order} onChange={(e) => setOrder(e.target.value)}>
         <option value="newest">Newest first</option>
         <option value="oldest">Oldest first</option>
@@ -27,7 +27,7 @@ function AttendeeList({ attendees }) {
     {!attendees.length ? <div className="event-empty">No tickets sold yet. Buyers will appear here as orders come in.</div>
       : !rows.length ? <div className="event-empty">No ticket buyers match “{query.trim()}”.</div>
       : <ol className="attendee-list">{rows.map((row, i) => <li key={`${row.purchased_at}-${row.name}-${i}`}>
-        <div className="attendee-name"><strong>{row.name}</strong>{row.purchased_by && <span>Purchased by {row.purchased_by}</span>}</div>
+        <div className="attendee-name"><strong>{row.name}</strong>{row.purchased_by && <span>Purchased by {row.purchased_by}</span>}{row.purchaser_email && <a className="attendee-email" href={`mailto:${row.purchaser_email}`}>{row.purchaser_email}</a>}</div>
         <span className="attendee-type">{row.ticket_type}</span>
         <time dateTime={row.purchased_at}>{purchasedTime(row.purchased_at)}</time>
       </li>)}</ol>}
