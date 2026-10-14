@@ -32,7 +32,7 @@ function QuestionCard({ q, onAnswer, disabled }) {
   }
   return (
     <li className="conversation-question">
-      <p className="conversation-question-from">{q.author_name} asked · {formatWhen(q.created_at)}</p>
+      <p className="conversation-question-from">SDG Team asked · {formatWhen(q.created_at)}</p>
       <p className="conversation-body">{q.body}</p>
       <label className="sr-only" htmlFor={`answer-${q.id}`}>Your answer</label>
       <textarea
@@ -119,7 +119,7 @@ export default function ConversationThread({ initial }) {
       <header className="conversation-header">
         <p className="account-hub-eyebrow">{conversation.type_label}{conversation.submitted_at ? ` · Sent ${formatDay(conversation.submitted_at)}` : ''}</p>
         <h2 id="conversation-title">{conversation.subject}</h2>
-        <p className="account-hub-note">A private conversation with the Stardust Garage team. Only you and our team can see it.</p>
+        <p className="account-hub-note">A private conversation with the SDG Team.</p>
       </header>
 
       {openQuestions.length > 0 && !closed && (
@@ -143,7 +143,7 @@ export default function ConversationThread({ initial }) {
               return (
                 <li key={m.id} className={`conversation-message ${mine ? 'is-mine' : 'is-team'}${m.kind === 'question' ? ' is-question' : ''}`}>
                   <p className="conversation-message-meta">
-                    <span>{mine ? 'You' : `${m.author_name} · Stardust Garage`}</span>
+                    <span>{mine ? 'You' : m.author_name}</span>
                     {m.kind === 'question' && <span className="conversation-tag">{m.open_question ? 'Question' : 'Answered'}</span>}
                     <span>{formatWhen(m.created_at)}</span>
                   </p>

@@ -8,7 +8,7 @@ const ADMIN = uuid(1);
 const JANE = uuid(2);
 const STRANGER = uuid(3);
 
-test('conversation tables: participant-only reads, admin reads, no browser writes, tokens server-only', async () => {
+test('conversation tables: admin-only browser reads, no browser writes, tokens server-only', async () => {
   const db = new PGlite();
   try {
     await db.exec(`
@@ -45,11 +45,13 @@ test('conversation tables: participant-only reads, admin reads, no browser write
       try { return await db.query(sql); } finally { await db.exec('reset role;'); }
     };
 
-    const janeThreads = await as(JANE, 'select id, unread_by_guest, awaiting_team from public.submission_threads');
-    assert.deepEqual(janeThreads.rows.map((r) => r.id), [uuid(10)]);
-    assert.equal(janeThreads.rows[0].unread_by_guest, true);
-    assert.equal(janeThreads.rows[0].awaiting_team, false);
-    assert.equal((await as(JANE, 'select body from public.submission_thread_messages')).rows.length, 1, 'soft-deleted hidden');
+    // Submitters never read these tables directly: that would expose teammate
+    // names and team read state. Their view comes only from the server API.
+    assert.equal((await as(JANE, 'select id from public.submission_threads')).rows.length, 0);
+    assert.equal((await as(JANE, 'select author_name from public.submission_thread_messages')).rows.length, 0);
+    const flags = await db.query(`select unread_by_guest, awaiting_team from public.submission_threads where id = '${uuid(10)}'`);
+    assert.equal(flags.rows[0].unread_by_guest, true);
+    assert.equal(flags.rows[0].awaiting_team, false);
     assert.equal((await as(STRANGER, 'select id from public.submission_threads')).rows.length, 0);
     assert.equal((await as(STRANGER, 'select id from public.submission_thread_messages')).rows.length, 0);
     assert.equal((await as(ADMIN, 'select id from public.submission_threads')).rows.length, 2);

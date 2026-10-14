@@ -167,6 +167,7 @@ test('invite creates one thread, an opening question, a hashed link, and marks t
   assert.equal(h.sent.invites[0].url, `https://sdgatx.test/inbox/tok_${'1'.padStart(30, 'x')}`);
   assert.equal(h.sent.invites[0].hasAccount, true);
   assert.equal(h.sent.invites[0].isQuestion, true);
+  assert.ok(!('senderName' in h.sent.invites[0]), 'emails never carry a teammate name');
   assert.equal(h.db.tables.venue_inquiries[0].status, 'contacted');
 
   // A second invite reuses the same thread.
@@ -250,6 +251,12 @@ test('guests only see their own thread, answer questions, and alert the admins',
   assert.equal(view.status, 200);
   assert.equal(view.body.conversation.unread, false, 'opening the thread reads it');
   const question = view.body.messages[0];
+  // Anonymity: the submitter sees "SDG Team", never the teammate, and never team read state.
+  assert.equal(question.author_name, 'SDG Team');
+  const payload = JSON.stringify(view.body);
+  for (const leak of ['Adam', 'Jeyu', 'u-adam', 'author_id', 'team_last_read_at', 'awaiting_team']) {
+    assert.ok(!payload.includes(leak), `guest payload must not include ${leak}`);
+  }
   assert.equal(question.open_question, true);
   assert.equal(h.db.tables.submission_threads[0].unread_by_guest, undefined, 'derived, not stored');
   assert.ok(h.db.tables.submission_threads[0].guest_last_read_at, 'opening marks it read');
@@ -273,6 +280,7 @@ test('guests only see their own thread, answer questions, and alert the admins',
   assert.equal(team.body.thread.awaiting_team, false, 'viewing marks replies read for the team');
 
   const list = await listMyConversations({ deps: h.deps });
+  assert.ok(!JSON.stringify(list.body).match(/Adam|Jeyu|team_last_read_at|awaiting_team/), 'list is anonymous too');
   assert.equal(list.body.conversations.length, 1);
   assert.equal(list.body.conversations[0].open_questions, 0);
   assert.equal((await listMyConversations({ deps: h.as({ getUser: async () => OTHER }) })).body.conversations.length, 0);

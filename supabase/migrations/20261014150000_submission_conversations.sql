@@ -13,10 +13,13 @@
 --   3. Both sides write messages. The team can mark a message as a Question;
 --      the submitter answers it inline (reply_to_id points at the question).
 --
--- Everything is written by server routes using the service role. Browsers
--- get read-only RLS: admins see all threads, a participant sees only their
--- own thread and its non-deleted messages. Invite tokens are never readable
--- from a browser. Team Notes (submission_notes) stay a separate, internal
+-- Everything is read and written by server routes using the service role.
+-- Only admins can read these tables directly from a browser. Submitters read
+-- their conversation solely through /api/account/conversations, which signs
+-- every team message as "SDG Team" and never exposes which teammate wrote it
+-- (author_id, author_name) or whether the team has read their messages
+-- (team_last_read_at, awaiting_team). Invite tokens are never readable from
+-- a browser. Team Notes (submission_notes) stay a separate, internal
 -- table and are never shown to the submitter.
 
 create table if not exists public.submission_threads (
@@ -109,21 +112,12 @@ alter table public.submission_thread_invites enable row level security;
 drop policy if exists submission_threads_select on public.submission_threads;
 create policy submission_threads_select on public.submission_threads
   for select to authenticated
-  using (public.is_admin() or participant_user_id = (select auth.uid()));
+  using (public.is_admin());
 
 drop policy if exists submission_thread_messages_select on public.submission_thread_messages;
 create policy submission_thread_messages_select on public.submission_thread_messages
   for select to authenticated
-  using (
-    public.is_admin()
-    or (
-      deleted_at is null
-      and exists (
-        select 1 from public.submission_threads t
-        where t.id = thread_id and t.participant_user_id = (select auth.uid())
-      )
-    )
-  );
+  using (public.is_admin());
 
 -- No browser policy at all on invites: tokens are server-only.
 
@@ -134,7 +128,7 @@ revoke insert, update, delete on public.submission_threads from authenticated;
 revoke insert, update, delete on public.submission_thread_messages from authenticated;
 
 comment on table public.submission_threads is
-  'One SDG-to-submitter conversation per incoming submission. Server-written; participants read their own.';
+  'One SDG-to-submitter conversation per incoming submission. Server-only for submitters (they see SDG Team only); admins read directly.';
 comment on table public.submission_thread_messages is
   'Messages and team Questions in a submission conversation. Soft-deleted rows stay as audit evidence.';
 comment on table public.submission_thread_invites is

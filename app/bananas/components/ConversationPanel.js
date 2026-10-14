@@ -305,7 +305,7 @@ export default function ConversationPanel({ submissionType, submissionId, initia
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[10px] font-semibold tracking-[0.12em] px-2.5 py-1 rounded-[6px]" style={{ color: 'var(--auth-text)', border: '1px solid var(--auth-card-border-strong)' }}>
-            VISIBLE TO {first.toUpperCase()}
+            VISIBLE TO {first.toUpperCase()} · SENT AS SDG TEAM
           </span>
           {thread && !thread.joined && thread.status === 'open' && (
             <button type="button" onClick={() => setEditingEmail((v) => !v)} disabled={busy} className="px-3 py-1.5 rounded-[8px] text-[11px] font-semibold tracking-[0.08em] hover:opacity-80 disabled:opacity-40" style={secondaryButton}>
@@ -353,7 +353,7 @@ export default function ConversationPanel({ submissionType, submissionId, initia
           />
           <div className="flex items-center justify-between gap-3 mt-2 flex-wrap">
             <span className="text-[11px]" style={{ color: 'var(--auth-muted)' }}>
-              {openingKind === 'question' ? `${first} gets an answer box under this question.` : 'Sent with your name. Moves the submission to Contacted.'}
+              {openingKind === 'question' ? `${first} gets an answer box under this question.` : `${first} sees it from SDG Team, never your name. Moves the submission to Contacted.`}
             </span>
             <button
               type="button"
