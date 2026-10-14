@@ -125,10 +125,7 @@ export default function TimesheetCalendar({ workers, onOpenDetail, refreshKey, o
   const periodEnd = payPeriodEnd(periodStart);
   const inPeriod = (d) => d >= periodStart && d <= periodEnd;
   const periodShifts = visible.filter((s) => inPeriod(chicagoYmd(s.started_at)));
-  const periodMs = periodShifts.reduce((n, s) => n + elapsedMs(s, now), 0);
   const periodPay = periodShifts.filter((s) => s.ended_at).reduce((n, s) => n + (estimateCents(s) ?? 0), 0);
-  const periodReview = periodShifts.filter((s) => s.ended_at && s.status === "pending").length;
-  const periodMissing = [...missing.entries()].filter(([d]) => inPeriod(d)).reduce((n, [, l]) => n + l.length, 0);
   const currentPeriod = payPeriodStart(today);
   const periodName =
     periodStart === currentPeriod ? "Current pay period"
@@ -220,14 +217,13 @@ export default function TimesheetCalendar({ workers, onOpenDetail, refreshKey, o
         </label>
       </div>
 
-      <p className="tcal-periodname">
-        <span className="eyebrow">{periodName}</span> <span className="mono">{payPeriodLabel(periodStart)}</span>
-      </p>
-      <div className="metrics tcal-metrics">
-        <div className="metric"><span className="sub">Hours</span><b className="mono">{hours(periodMs)}</b></div>
-        <div className="metric"><span className="sub">Known base estimate</span><b className="mono">{money(periodPay)}</b></div>
-        <div className="metric"><span className="sub">Needs review</span><b className="mono">{periodReview}</b></div>
-        <div className="metric"><span className="sub">Scheduled, no clock-in</span><b className="mono">{periodMissing}</b></div>
+      <div className="tcal-periodline">
+        <p className="tcal-periodname">
+          <span className="eyebrow">{periodName}</span> <span className="mono">{payPeriodLabel(periodStart)}</span>
+        </p>
+        <p className="tcal-estimate">
+          <span className="sub">Known base estimate</span> <b className="mono">{money(periodPay)}</b>
+        </p>
       </div>
 
       {error && <div className="notice tc-error" role="alert">{error}</div>}

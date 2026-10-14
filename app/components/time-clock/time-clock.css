@@ -357,3 +357,5 @@
 .tc-root .ownerhead{align-items:center}.tc-root .ownerhead h1{margin:0}
 .tc-root .tc-iconbtn{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;min-width:48px;min-height:48px;padding:0;border-radius:8px}
 @media(max-width:600px){.tc-root .ownerhead{flex-direction:row;align-items:center}.tc-root .ownerhead .row.tc-headicons{width:auto}.tc-root .ownerhead .row.tc-headicons button{flex:none}}
+.tc-root .tcal-periodline{display:flex;justify-content:space-between;align-items:center;gap:var(--s3);flex-wrap:wrap;margin-bottom:var(--s4)}.tc-root .tcal-periodline .tcal-periodname{margin:0}
+.tc-root .tcal-estimate{display:inline-flex;align-items:baseline;gap:var(--s2);margin:0;padding:var(--s2) var(--s4);border:1px solid var(--border);border-radius:8px;background:var(--panel);font-size:var(--text-sm)}.tc-root .tcal-estimate b{font-size:var(--text-base);font-weight:600}
