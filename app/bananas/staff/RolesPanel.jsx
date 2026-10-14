@@ -62,7 +62,6 @@ const Icon = {
 
 export default function RolesPanel({ data, busy, onSave, onError }) {
   const [query, setQuery] = useState(""),
-    [status, setStatus] = useState("all"),
     [selected, setSelected] = useState(null),
     [mobileOpen, setMobileOpen] = useState(false),
     [draft, setDraft] = useState(null);
@@ -86,15 +85,8 @@ export default function RolesPanel({ data, busy, onSave, onError }) {
     return map;
   }, [data.workers, data.assignments]);
 
-  const counts = {
-    all: roles.length,
-    active: roles.filter((r) => r.active).length,
-    inactive: roles.filter((r) => !r.active).length,
-  };
   const q = query.trim().toLowerCase();
   const rows = roles.filter((r) => {
-    if (status === "active" && !r.active) return false;
-    if (status === "inactive" && r.active) return false;
     if (!q) return true;
     return r.name.toLowerCase().includes(q) || r.tasks.some((t) => t.toLowerCase().includes(q));
   });
@@ -198,24 +190,6 @@ export default function RolesPanel({ data, busy, onSave, onError }) {
             onChange={(e) => setQuery(e.target.value)}
           />
         </label>
-        <div className="sl-seg" role="group" aria-label="Status">
-          {[
-            ["all", "All"],
-            ["active", "Active"],
-            ["inactive", "Inactive"],
-          ].map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              aria-pressed={status === key}
-              className={status === key ? "on" : ""}
-              onClick={() => setStatus(key)}
-            >
-              {label}
-              <b>{counts[key]}</b>
-            </button>
-          ))}
-        </div>
       </div>
 
       <div className={`rd${mobileOpen && showDetail ? " has-detail" : ""}`}>
