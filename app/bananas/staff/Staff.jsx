@@ -297,28 +297,35 @@ export default function Staff({ enabled }) {
   return (
     <Frame owner>
       <div className="between ownerhead">
-        <div>
-          <span className="eyebrow">OPERATIONS / STAFF</span>
-          <h1>Team time & shifts</h1>
-          <p className="sub">
-            Track work, review hours, and follow up on responsibilities.
-          </p>
-        </div>
-        <div className="row">
+        <h1>Team time & shifts</h1>
+        <div className="row tc-headicons">
           <a
-            className="tc-linkbutton"
+            className="tc-linkbutton tc-iconbtn"
             href="/clock"
             target="_blank"
             rel="noopener noreferrer"
+            aria-label="Open kiosk in a new tab"
+            title="Open kiosk"
           >
-            Open kiosk
+            {/* Tablet: the paired iPad time clock */}
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="4" y="2" width="16" height="20" rx="2" />
+              <line x1="11" y1="18" x2="13" y2="18" />
+            </svg>
           </a>
           <button
-            className="primary"
+            className="primary tc-iconbtn"
             disabled={!data || busy}
             onClick={exportCsv}
+            aria-label="Export CSV"
+            title="Export CSV"
           >
-            Export CSV
+            {/* Download into tray: export the timesheet file */}
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
           </button>
         </div>
       </div>
