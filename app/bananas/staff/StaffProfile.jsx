@@ -69,7 +69,7 @@ export default function StaffProfile({ worker: w, data, onEdit, onClose }) {
           <h2>{w.name}</h2>
           <div className="sp-chips">
             <span className="sp-chip">{titleCase(w.category)}</span>
-            <span className={`sp-chip${w.active ? " ok" : ""}`}>{w.active ? "Active" : "Inactive"}</span>
+            <span className={`sp-chip${w.active ? " ok" : ""}`}>{w.active ? "Active" : "Dismissed"}</span>
           </div>
           <p className="sub">{idLine}</p>
         </div>
