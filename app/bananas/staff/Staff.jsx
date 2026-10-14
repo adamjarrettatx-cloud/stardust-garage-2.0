@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { PIN_LENGTH, PIN_PATTERN } from "@/lib/time-clock/pin.mjs";
 import {
   Frame,
-  ShiftTable,
   Status,
   request,
   time,
@@ -13,7 +12,6 @@ import {
 } from "@/app/components/time-clock/Shared";
 import {
   duration,
-  estimateCents,
   dollarsToCents,
   chicagoInput,
   chicagoToIso,
@@ -21,9 +19,10 @@ import {
 
 import ScheduleCalendar from "./ScheduleCalendar";
 import StaffList from "./StaffList";
+import StaffProfile from "./StaffProfile";
 import RequestsQueue from "./RequestsQueue";
 import TimesheetCalendar from "./TimesheetCalendar";
-import { addDays, chicagoYmd, dayStartIso, payPeriodAt, payPeriodLabel } from "@/lib/time-clock/periods.mjs";
+import { addDays, chicagoYmd, dayStartIso, payPeriodEnd, payPeriodStart } from "@/lib/time-clock/periods.mjs";
 import RolesPanel from "./RolesPanel";
 
 const endpoint = "/api/admin/time-clock";
@@ -41,14 +40,12 @@ export default function Staff({ enabled }) {
     [tab, setTab] = useState("schedule"),
     [error, setError] = useState(""),
     [pendingRequests, setPendingRequests] = useState(0),
-    [sheetView, setSheetView] = useState("calendar");
+    [periodStart, setPeriodStart] = useState(() => payPeriodStart(chicagoYmd()));
   const detailRef = useRef(null);
-  const [busy, setBusy] = useState(false),
-    [period, setPeriod] = useState("-1"),
-    [status, setStatus] = useState("all"),
-    [search, setSearch] = useState("");
+  const [busy, setBusy] = useState(false);
   const [detail, setDetail] = useState(null),
     [reviewNote, setReviewNote] = useState("");
+  const [profileId, setProfileId] = useState(null);
   const [editWorker, setEditWorker] = useState(null),
     [disclosure, setDisclosure] = useState(null);
   const [deviceName, setDeviceName] = useState("Front room iPad"),
@@ -103,16 +100,16 @@ export default function Staff({ enabled }) {
       previous?.focus();
     };
   }, [confirm]);
-  // List view covers exactly one pay period (Monday–second Sunday, Austin).
-  const selectedPeriod = payPeriodAt(chicagoYmd(), Number(period));
+  // Page data and CSV export cover the pay period shown on the calendar
+  // (Monday through the second Sunday, Austin time).
   const range = useCallback(() => {
-    const { start, end } = payPeriodAt(chicagoYmd(), Number(period));
+    const end = payPeriodEnd(periodStart);
     return new URLSearchParams({
-      from: dayStartIso(start),
+      from: dayStartIso(periodStart),
       // The API includes `to`; stop 1 ms before the next period's midnight.
       to: new Date(Date.parse(dayStartIso(addDays(end, 1))) - 1).toISOString(),
     });
-  }, [period]);
+  }, [periodStart]);
   const load = useCallback(async () => {
     const generation = ++fetchGeneration.current;
     const next = await request(`${endpoint}?${range()}`);
@@ -185,6 +182,7 @@ export default function Staff({ enabled }) {
       w
         ? {
             ...w,
+            birthdate: w.birthdate || "",
             flat: w.flat_cents === null ? "" : (w.flat_cents / 100).toFixed(2),
             roles: Object.fromEntries(
               data.assignments
@@ -217,14 +215,16 @@ export default function Staff({ enabled }) {
           rate_cents: dollarsToCents(rate),
         })),
         ...(!editWorker.id ? { pin: editWorker.pin } : {}),
+        ...(editWorker.birthdate ? { birthdate: editWorker.birthdate } : {}),
       };
       const result = await request(endpoint, {
         action: "save_worker",
         payload,
       });
       setEditWorker(null);
+      if (result.id) setProfileId(result.id);
       setNotice(
-        "Worker and assignments saved. Historical rates are unchanged.",
+        "Profile saved. Historical rates are unchanged.",
       );
       if (result.pin)
         setDisclosure({
@@ -267,19 +267,11 @@ export default function Staff({ enabled }) {
       await load();
     });
   }
-  const rows = (data?.shifts || []).filter(
-    (s) =>
-      (status === "all" || s.status === status) &&
-      s.worker_name.toLowerCase().includes(search.toLowerCase()),
-  );
-  const closed = rows.filter((s) => s.ended_at),
-    unpriced = closed.filter((s) => estimateCents(s) === null).length;
   const exportCsv = () =>
     run(async () => {
       const query = range();
       query.set("format", "csv");
-      query.set("status", status);
-      query.set("name", search);
+      query.set("status", "all");
       const response = await fetch(`${endpoint}?${query}`, {
         credentials: "same-origin",
         cache: "no-store",
@@ -299,34 +291,61 @@ export default function Staff({ enabled }) {
       <div className="between ownerhead">
         <h1>Team time & shifts</h1>
         <div className="row tc-headicons">
-          <a
-            className="tc-linkbutton tc-iconbtn"
-            href="/clock"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Open kiosk in a new tab"
-            title="Open kiosk"
-          >
-            {/* Tablet: the paired iPad time clock */}
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <rect x="4" y="2" width="16" height="20" rx="2" />
-              <line x1="11" y1="18" x2="13" y2="18" />
-            </svg>
-          </a>
-          <button
-            className="primary tc-iconbtn"
-            disabled={!data || busy}
-            onClick={exportCsv}
-            aria-label="Export CSV"
-            title="Export CSV"
-          >
-            {/* Download into tray: export the timesheet file */}
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-          </button>
+          <span className="tc-tip" data-tip="Devices">
+            <button
+              type="button"
+              className={`tc-iconbtn${tab === "devices" ? " active" : ""}`}
+              aria-label="Devices"
+              aria-pressed={tab === "devices"}
+              disabled={!enabled}
+              onClick={() => {
+                setTab("devices");
+                setDetail(null);
+                setCorrection(null);
+                setDisclosure(null);
+                setEditWorker(null);
+                setProfileId(null);
+              }}
+            >
+              {/* Monitor + phone: paired kiosk devices */}
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8" />
+                <path d="M10 19v-4" />
+                <path d="M7 19h5" />
+                <rect x="16" y="12" width="6" height="10" rx="2" />
+              </svg>
+            </button>
+          </span>
+          <span className="tc-tip" data-tip="Open kiosk">
+            <a
+              className="tc-linkbutton tc-iconbtn"
+              href="/clock"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Open kiosk in a new tab"
+            >
+              {/* Tablet: the paired iPad time clock */}
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="4" y="2" width="16" height="20" rx="2" />
+                <line x1="11" y1="18" x2="13" y2="18" />
+              </svg>
+            </a>
+          </span>
+          <span className="tc-tip" data-tip="Export CSV">
+            <button
+              className="primary tc-iconbtn"
+              disabled={!data || busy}
+              onClick={exportCsv}
+              aria-label="Export CSV"
+            >
+              {/* Download into tray: export the timesheet file */}
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+            </button>
+          </span>
         </div>
       </div>
       {!enabled ? (
@@ -364,7 +383,7 @@ export default function Staff({ enabled }) {
             </section>
           )}
           <nav className="tabs" aria-label="Staff sections">
-            {["schedule", "timesheets", "requests", "people", "roles", "devices"].map((t) => (
+            {["schedule", "timesheets", "requests", "people", "roles"].map((t) => (
               <button
                 key={t}
                 type="button"
@@ -376,6 +395,7 @@ export default function Staff({ enabled }) {
                   setCorrection(null);
                   setDisclosure(null);
                   setEditWorker(null);
+                  setProfileId(null);
                 }}
               >
                 {t === "schedule"
@@ -386,9 +406,7 @@ export default function Staff({ enabled }) {
                   ? pendingRequests ? `Requests (${pendingRequests})` : "Requests"
                   : t === "people"
                     ? "Staff profiles"
-                    : t === "roles"
-                      ? "Roles & duties"
-                      : "Devices"}
+                    : "Roles & duties"}
               </button>
             ))}
           </nav>
@@ -408,43 +426,6 @@ export default function Staff({ enabled }) {
               {tab === "requests" && <RequestsQueue onCount={setPendingRequests} />}
               {tab === "timesheets" && (
                 <>
-                  <div className="tc-viewswitch" role="group" aria-label="Timesheet view">
-                    {[["calendar", "Calendar"], ["list", "List"]].map(([v, label]) => (
-                      <button key={v} className={sheetView === v ? "active" : ""} aria-pressed={sheetView === v}
-                        onClick={() => setSheetView(v)}>
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  {sheetView === "calendar" && (
-                    <TimesheetCalendar workers={data.workers} refreshKey={data} onOpenDetail={view} onChanged={calendarChanged} />
-                  )}
-                  {sheetView === "list" && (<>
-                  <div className="metrics metrics-two">
-                    <div className="metric">
-                      <span className="sub">Pay period base estimate</span>
-                      <b>
-                        {money(
-                          closed.reduce(
-                            (n, s) => n + (estimateCents(s) ?? 0),
-                            0,
-                          ),
-                        )}
-                      </b>
-                      <span className="sub small">
-                        {unpriced
-                          ? `${unpriced} shifts missing rates; total incomplete`
-                          : "Not final payroll"}
-                      </span>
-                    </div>
-                    <div className="metric">
-                      <span className="sub">Awaiting review</span>
-                      <b>
-                        {closed.filter((s) => s.status === "pending").length}
-                      </b>
-                      <span className="sub small">Current filters</span>
-                    </div>
-                  </div>
                   {data.open.some(
                     (s) => now - Date.parse(s.started_at) > 16 * 3600000,
                   ) && (
@@ -467,52 +448,13 @@ export default function Staff({ enabled }) {
                         ))}
                     </div>
                   )}
-                  <div className="filterbar">
-                    <label htmlFor="tc-range">Pay period</label>
-                    <select
-                      id="tc-range"
-                      value={period}
-                      onChange={(e) => setPeriod(e.target.value)}
-                    >
-                      {[0, -1, -2, -3, -4, -5, -6].map((n) => {
-                        const p = payPeriodAt(chicagoYmd(), n);
-                        const name = n === 0 ? "Current" : n === -1 ? "Prior" : null;
-                        return (
-                          <option key={n} value={String(n)}>
-                            {name ? `${name} · ` : ""}
-                            {payPeriodLabel(p.start)}
-                          </option>
-                        );
-                      })}
-                    </select>
-                    <label htmlFor="tc-search">Find staff</label>
-                    <input
-                      id="tc-search"
-                      type="search"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search by name"
-                    />
-                    <label htmlFor="tc-status">Status</label>
-                    <select
-                      id="tc-status"
-                      value={status}
-                      onChange={(e) => setStatus(e.target.value)}
-                    >
-                      <option value="all">All statuses</option>
-                      <option value="open">On shift</option>
-                      <option value="pending">Needs review</option>
-                      <option value="approved">Approved</option>
-                    </select>
-                  </div>
-                  <ShiftTable shifts={rows} owner onView={view} now={now} />
-                  <p className="tablefoot">
-                    Pay period {payPeriodLabel(selectedPeriod.start)}, Monday
-                    through the second Sunday, Austin time. Shifts count in the
-                    pay period they started. Open-shift amounts are not
-                    included. Estimates only; Gusto runs payroll.
-                  </p>
-                  </>)}
+                  <TimesheetCalendar
+                    workers={data.workers}
+                    refreshKey={data}
+                    onOpenDetail={view}
+                    onChanged={calendarChanged}
+                    onPeriodChange={setPeriodStart}
+                  />
                   {detail && (
                     <section className="panel details" ref={detailRef}>
                       <div className="between">
@@ -759,7 +701,10 @@ export default function Staff({ enabled }) {
                     <h2>Staff profiles</h2>
                     <button
                       className="primary"
-                      onClick={() => chooseWorker(null)}
+                      onClick={() => {
+                        setProfileId(null);
+                        chooseWorker(null);
+                      }}
                     >
                       Add staff profile
                     </button>
@@ -771,12 +716,34 @@ export default function Staff({ enabled }) {
                     next clock-in.
                   </p>
                   {editWorker && (
-                    <form id="staff-edit-form" className="panel tc-form" onSubmit={saveWorker}>
-                      <h2>
-                        {editWorker.id
-                          ? "Edit staff profile"
-                          : "New staff profile"}
-                      </h2>
+                    <form id="staff-edit-form" className="panel tc-form sp-edit" onSubmit={saveWorker}>
+                      <div className="sp-edithead">
+                        <h2>{editWorker.id ? "Edit profile" : "New staff profile"}</h2>
+                        <span className="tc-tip" data-tip="Close">
+                          <button type="button" className="tc-iconbtn" aria-label="Close without saving" onClick={() => setEditWorker(null)}>
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                              <path d="M6 6l12 12M18 6L6 18" />
+                            </svg>
+                          </button>
+                        </span>
+                      </div>
+                      {editWorker.id && (
+                        <div className="sp-lock">
+                          <div className="sp-photo sm">
+                            {editWorker.photo_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={editWorker.photo_url} alt={`${editWorker.name} photo`} />
+                            ) : (
+                              <span aria-hidden="true">—</span>
+                            )}
+                          </div>
+                          <p className="sub">
+                            {editWorker.photo_url
+                              ? "Photo is added by the employee from their invite or the staff portal."
+                              : "No photo yet. The employee adds it from their invite or the staff portal."}
+                          </p>
+                        </div>
+                      )}
                       <label>
                         Name
                         <input
@@ -786,16 +753,27 @@ export default function Staff({ enabled }) {
                           onChange={(e) => field("name", e.target.value)}
                         />
                       </label>
-                      <label>
-                        Worker category
-                        <select
-                          value={editWorker.category}
-                          onChange={(e) => field("category", e.target.value)}
-                        >
-                          <option value="employee">Employee</option>
-                          <option value="contractor">Contractor</option>
-                        </select>
-                      </label>
+                      <div className="sp-two">
+                        <label>
+                          Status
+                          <select
+                            value={editWorker.category}
+                            onChange={(e) => field("category", e.target.value)}
+                          >
+                            <option value="employee">Employee</option>
+                            <option value="contractor">Contractor</option>
+                          </select>
+                        </label>
+                        <label>
+                          Birthday
+                          <input
+                            type="date"
+                            value={editWorker.birthdate || ""}
+                            max={new Date().toISOString().slice(0, 10)}
+                            onChange={(e) => field("birthdate", e.target.value)}
+                          />
+                        </label>
+                      </div>
                       <p className="sub">
                         Use your established classification; this setting does
                         not determine legal status.
@@ -811,12 +789,12 @@ export default function Staff({ enabled }) {
                             maxLength={PIN_LENGTH}
                             value={editWorker.pin}
                             onChange={(e) => field("pin", e.target.value)}
-                            placeholder="Leave blank to generate"
+                            placeholder="Leave blank"
                           />
                           <span className="sub">
-                            Choose four digits or leave blank to generate a PIN.
-                            The saved PIN is displayed once for private
-                            delivery.
+                            Leave blank and the employee chooses their own PIN
+                            when they accept their email invite. If you set one
+                            here, it is displayed once for private delivery.
                           </span>
                         </label>
                       )}
@@ -826,9 +804,9 @@ export default function Staff({ enabled }) {
                           value={editWorker.pay_basis}
                           onChange={(e) => field("pay_basis", e.target.value)}
                         >
-                          <option value="unset">Not configured</option>
                           <option value="hourly">Hourly by role</option>
                           <option value="flat">Flat shift fee</option>
+                          <option value="unset">Not configured</option>
                         </select>
                       </label>
                       {editWorker.pay_basis === "flat" && (
@@ -842,44 +820,52 @@ export default function Staff({ enabled }) {
                           />
                         </label>
                       )}
-                      <h2>Assigned roles</h2>
-                      {data.roles.map((r) => (
-                        <div key={r.id} className="tc-assignment">
-                          <label className="task">
-                            <input
-                              type="checkbox"
-                              checked={Object.hasOwn(editWorker.roles, r.id)}
-                              onChange={(e) => {
-                                const roles = { ...editWorker.roles };
-                                if (e.target.checked) roles[r.id] = "";
-                                else delete roles[r.id];
-                                field("roles", roles);
-                              }}
-                            />
-                            <span>
-                              {r.name}
-                              {!r.active && " (inactive)"}
-                            </span>
-                          </label>
-                          {Object.hasOwn(editWorker.roles, r.id) &&
-                            editWorker.pay_basis === "hourly" && (
-                              <label>
-                                Hourly rate ($)
+                      <div className="sp-label">
+                        {editWorker.pay_basis === "hourly" ? "Roles and hourly rate" : "Roles"}
+                      </div>
+                      <div className="sp-roles">
+                        {data.roles.map((r) => {
+                          const on = Object.hasOwn(editWorker.roles, r.id);
+                          return (
+                            <div key={r.id} className={`sp-rr${on ? " on" : ""}`}>
+                              <label className="sp-rrname">
                                 <input
-                                  inputMode="decimal"
-                                  placeholder="Not configured"
-                                  value={editWorker.roles[r.id]}
-                                  onChange={(e) =>
-                                    field("roles", {
-                                      ...editWorker.roles,
-                                      [r.id]: e.target.value,
-                                    })
-                                  }
+                                  type="checkbox"
+                                  checked={on}
+                                  onChange={(e) => {
+                                    const roles = { ...editWorker.roles };
+                                    if (e.target.checked) roles[r.id] = "";
+                                    else delete roles[r.id];
+                                    field("roles", roles);
+                                  }}
                                 />
+                                <span>
+                                  {r.name}
+                                  {!r.active && " (inactive)"}
+                                </span>
                               </label>
-                            )}
-                        </div>
-                      ))}
+                              {editWorker.pay_basis === "hourly" &&
+                                (on ? (
+                                  <input
+                                    className="sp-rate"
+                                    inputMode="decimal"
+                                    aria-label={`${r.name} hourly rate in dollars`}
+                                    placeholder="$/hr"
+                                    value={editWorker.roles[r.id]}
+                                    onChange={(e) =>
+                                      field("roles", {
+                                        ...editWorker.roles,
+                                        [r.id]: e.target.value,
+                                      })
+                                    }
+                                  />
+                                ) : (
+                                  <span className="sub sp-rateoff">—</span>
+                                ))}
+                            </div>
+                          );
+                        })}
+                      </div>
                       {editWorker.id && (
                         <label className="task">
                           <input
@@ -888,24 +874,38 @@ export default function Staff({ enabled }) {
                             onChange={(e) => field("active", e.target.checked)}
                           />
                           <span>
-                            Active (unchecking blocks PIN access immediately;
-                            open shifts remain for correction)
+                            Active <span className="sub">· turning this off blocks the iPad PIN right away. Open shifts stay for correction.</span>
                           </span>
                         </label>
                       )}
-                      <button className="primary" disabled={busy}>
-                        Save profile
-                      </button>
-                      <button type="button" onClick={() => setEditWorker(null)}>
-                        Cancel
-                      </button>
+                      <div className="row sp-buttons">
+                        <button className="primary" disabled={busy}>
+                          Save
+                        </button>
+                        <button type="button" onClick={() => setEditWorker(null)}>
+                          Cancel
+                        </button>
+                      </div>
                     </form>
+                  )}
+                  {!editWorker && profileId && data.workers.some((w) => w.id === profileId) && (
+                    <StaffProfile
+                      worker={data.workers.find((w) => w.id === profileId)}
+                      data={data}
+                      onEdit={() => chooseWorker(data.workers.find((w) => w.id === profileId))}
+                      onClose={() => setProfileId(null)}
+                    />
                   )}
                   <StaffList
                     data={data}
                     busy={busy}
                     run={run}
+                    onOpen={(w) => {
+                      setEditWorker(null);
+                      setProfileId(w.id);
+                    }}
                     onEdit={(w) => {
+                      setProfileId(w.id);
                       chooseWorker(w);
                       requestAnimationFrame(() =>
                         document
@@ -919,7 +919,9 @@ export default function Staff({ enabled }) {
                       setConfirm({
                         action: "reset_pin",
                         id: w.id,
-                        label: `Reset ${w.name}'s PIN? The old PIN and current PIN session will stop working.`,
+                        label: w.has_pin
+                          ? `Set a new PIN for ${w.name}? The old PIN and current PIN session will stop working.`
+                          : `Set a PIN for ${w.name}?`,
                       });
                     }}
                     onDone={async ({ notice: text, disclosure: shown }) => {
@@ -930,8 +932,8 @@ export default function Staff({ enabled }) {
                   />
                   {!data.workers.length && (
                     <div className="empty">
-                      Add your first worker, assign roles, and privately provide
-                      their PIN.
+                      Add your first worker, assign roles, then invite them by
+                      email to choose their own PIN.
                     </div>
                   )}
                 </>

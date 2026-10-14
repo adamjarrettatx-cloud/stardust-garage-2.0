@@ -8,6 +8,7 @@ import {
   ClockError,
 } from "@/lib/time-clock/server";
 import { periodRange } from "@/lib/time-clock/periods.mjs";
+import { staffPhotoUrls } from "@/lib/time-clock/invites";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,13 +33,30 @@ export async function GET(request) {
       to = new Date().toISOString();
       from = new Date(Date.now() - days * 86400000).toISOString();
     }
-    const view = await rpc(db(), "tc_employee_view", { p_user: user.id, p_from: from, p_to: to });
+    const client = db();
+    const view = await rpc(client, "tc_employee_view", { p_user: user.id, p_from: from, p_to: to });
     if (!view)
       throw new ClockError(
         "This account is not linked to an active staff profile. Ask a manager to enable your employee login.",
         403,
         "not_employee",
       );
-    return json({ ...view, from, to });
+    // Profile completeness for the setup gate (birthday + private photo) and
+    // the employee's own photo. If these columns are unavailable (e.g. an
+    // older preview database), the portal simply does not gate.
+    let profile = { complete: true, has_pin: true, has_birthdate: true, photo_url: null };
+    const { data: own, error: ownError } = await (async () =>
+      client.from("tc_workers").select("birthdate,photo_path,pin_lookup").eq("id", view.worker.id).maybeSingle())()
+      .catch((error) => ({ error }));
+    if (!ownError && own) {
+      const photos = own.photo_path ? await staffPhotoUrls(client, [own.photo_path]) : new Map();
+      profile = {
+        complete: Boolean(own.birthdate && own.photo_path),
+        has_birthdate: Boolean(own.birthdate),
+        has_pin: Boolean(own.pin_lookup),
+        photo_url: own.photo_path ? photos.get(own.photo_path) || null : null,
+      };
+    }
+    return json({ ...view, profile, from, to });
   });
 }

@@ -50,6 +50,24 @@ export async function initialize() {
       "utf8",
     ),
   );
+  await testDb.exec(
+    readFileSync(
+      new URL(
+        "../../supabase/migrations/20261014150000_staff_email_invites.sql",
+        "file://" + process.cwd() + "/tests/time-clock/",
+      ),
+      "utf8",
+    ),
+  );
+  await testDb.exec(
+    readFileSync(
+      new URL(
+        "../../supabase/migrations/20261014220000_staff_birthdate_manager.sql",
+        "file://" + process.cwd() + "/tests/time-clock/",
+      ),
+      "utf8",
+    ),
+  );
   const pin = "1234",
     secret = process.env.TIME_CLOCK_SECRET;
   const worker = await createAdminClient().rpc("tc_admin", {
