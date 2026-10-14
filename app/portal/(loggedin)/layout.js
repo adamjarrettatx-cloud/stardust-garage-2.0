@@ -48,7 +48,7 @@ export default async function PartnerPortalLayout({ children }) {
     grants: results[0].data || [],
     bookings: results[1].data || [],
     contracts: results[2].data || [],
-  });
+  }, { managesEventOrganization: partner?.manages_event_organization === true });
 
   return (
     <div className="min-h-screen">
