@@ -23,6 +23,7 @@ import ScheduleCalendar from "./ScheduleCalendar";
 import StaffList from "./StaffList";
 import RequestsQueue from "./RequestsQueue";
 import TimesheetCalendar from "./TimesheetCalendar";
+import { addDays, chicagoYmd, dayStartIso, payPeriodAt, payPeriodLabel } from "@/lib/time-clock/periods.mjs";
 import RolesPanel from "./RolesPanel";
 
 const endpoint = "/api/admin/time-clock";
@@ -43,7 +44,7 @@ export default function Staff({ enabled }) {
     [sheetView, setSheetView] = useState("calendar");
   const detailRef = useRef(null);
   const [busy, setBusy] = useState(false),
-    [days, setDays] = useState("14"),
+    [period, setPeriod] = useState("-1"),
     [status, setStatus] = useState("all"),
     [search, setSearch] = useState("");
   const [detail, setDetail] = useState(null),
@@ -102,13 +103,16 @@ export default function Staff({ enabled }) {
       previous?.focus();
     };
   }, [confirm]);
+  // List view covers exactly one pay period (Monday–second Sunday, Austin).
+  const selectedPeriod = payPeriodAt(chicagoYmd(), Number(period));
   const range = useCallback(() => {
-    const end = Date.now();
+    const { start, end } = payPeriodAt(chicagoYmd(), Number(period));
     return new URLSearchParams({
-      from: new Date(end - Number(days) * 86400000).toISOString(),
-      to: new Date(end).toISOString(),
+      from: dayStartIso(start),
+      // The API includes `to`; stop 1 ms before the next period's midnight.
+      to: new Date(Date.parse(dayStartIso(addDays(end, 1))) - 1).toISOString(),
     });
-  }, [days]);
+  }, [period]);
   const load = useCallback(async () => {
     const generation = ++fetchGeneration.current;
     const next = await request(`${endpoint}?${range()}`);
@@ -411,7 +415,7 @@ export default function Staff({ enabled }) {
                   {sheetView === "list" && (<>
                   <div className="metrics metrics-two">
                     <div className="metric">
-                      <span className="sub">Known base estimate</span>
+                      <span className="sub">Pay period base estimate</span>
                       <b>
                         {money(
                           closed.reduce(
@@ -457,16 +461,22 @@ export default function Staff({ enabled }) {
                     </div>
                   )}
                   <div className="filterbar">
-                    <label htmlFor="tc-range">Range</label>
+                    <label htmlFor="tc-range">Pay period</label>
                     <select
                       id="tc-range"
-                      value={days}
-                      onChange={(e) => setDays(e.target.value)}
+                      value={period}
+                      onChange={(e) => setPeriod(e.target.value)}
                     >
-                      <option value="7">Last 7 days</option>
-                      <option value="14">Last 14 days</option>
-                      <option value="31">Last 31 days</option>
-                      <option value="93">Last 93 days</option>
+                      {[0, -1, -2, -3, -4, -5, -6].map((n) => {
+                        const p = payPeriodAt(chicagoYmd(), n);
+                        const name = n === 0 ? "Current" : n === -1 ? "Prior" : null;
+                        return (
+                          <option key={n} value={String(n)}>
+                            {name ? `${name} · ` : ""}
+                            {payPeriodLabel(p.start)}
+                          </option>
+                        );
+                      })}
                     </select>
                     <label htmlFor="tc-search">Find staff</label>
                     <input
@@ -490,9 +500,10 @@ export default function Staff({ enabled }) {
                   </div>
                   <ShiftTable shifts={rows} owner onView={view} now={now} />
                   <p className="tablefoot">
-                    America/Chicago. Rows are selected by clock-in timestamp in
-                    the rolling date range, not a finalized payroll workweek.
-                    Open-shift amounts are not included.
+                    Pay period {payPeriodLabel(selectedPeriod.start)}, Monday
+                    through the second Sunday, Austin time. Shifts count in the
+                    pay period they started. Open-shift amounts are not
+                    included. Estimates only; Gusto runs payroll.
                   </p>
                   </>)}
                   {detail && (

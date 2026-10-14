@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { request, time, money } from "@/app/components/time-clock/Shared";
 import { chicagoInput, chicagoToIso, duration, elapsedMs, estimateCents } from "@/lib/time-clock/core.mjs";
-import { addDays, chicagoYmd, weekStart } from "@/lib/time-clock/periods.mjs";
+import { addDays, chicagoYmd, payPeriodEnd, payPeriodLabel, payPeriodStart, PAY_PERIOD_DAYS, weekStart } from "@/lib/time-clock/periods.mjs";
 
 const endpoint = "/api/admin/time-clock";
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -31,8 +31,8 @@ function austinIso(local) {
 }
 
 /**
- * Payroll calendar for Timesheets: Monday–Sunday weeks with daily and weekly
- * totals. Selecting a day lists every shift with scheduled vs. worked time,
+ * Payroll calendar for Timesheets: two-week pay periods (Monday through the
+ * second Sunday) with daily and pay-period totals. Selecting a day lists every shift with scheduled vs. worked time,
  * one-click approval and an audited inline time correction.
  */
 export default function TimesheetCalendar({ workers, onOpenDetail, refreshKey, onChanged }) {
@@ -50,14 +50,16 @@ export default function TimesheetCalendar({ workers, onOpenDetail, refreshKey, o
   const panel = useRef(null);
   const generation = useRef(0);
 
-  const gridStart = weekStart(`${month}-01`);
+  // Whole pay periods only, so no pay period is ever split across the grid edge.
+  const gridStart = payPeriodStart(weekStart(`${month}-01`));
   const lastOfMonth = (() => {
     const [y, m] = month.split("-").map(Number);
     return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
   })();
-  const gridEnd = addDays(weekStart(lastOfMonth), 6);
-  const weeks = [];
-  for (let d = gridStart; d <= gridEnd; d = addDays(d, 7)) weeks.push(Array.from({ length: 7 }, (_, i) => addDays(d, i)));
+  const gridEnd = payPeriodEnd(payPeriodStart(lastOfMonth));
+  const periods = [];
+  for (let d = gridStart; d <= gridEnd; d = addDays(d, PAY_PERIOD_DAYS))
+    periods.push(Array.from({ length: PAY_PERIOD_DAYS }, (_, i) => addDays(d, i)));
 
   const load = useCallback(async () => {
     const id = ++generation.current;
@@ -118,11 +120,20 @@ export default function TimesheetCalendar({ workers, onOpenDetail, refreshKey, o
   }, [visibleSchedule, shifts, now]);
 
   const inMonth = (d) => d.slice(0, 7) === month;
-  const monthShifts = visible.filter((s) => inMonth(chicagoYmd(s.started_at)));
-  const monthMs = monthShifts.reduce((n, s) => n + elapsedMs(s, now), 0);
-  const monthPay = monthShifts.filter((s) => s.ended_at).reduce((n, s) => n + (estimateCents(s) ?? 0), 0);
-  const monthReview = monthShifts.filter((s) => s.ended_at && s.status === "pending").length;
-  const monthMissing = [...missing.entries()].filter(([d]) => inMonth(d)).reduce((n, [, l]) => n + l.length, 0);
+  // Summary cards follow the pay period of the selected day.
+  const periodStart = payPeriodStart(selected);
+  const periodEnd = payPeriodEnd(periodStart);
+  const inPeriod = (d) => d >= periodStart && d <= periodEnd;
+  const periodShifts = visible.filter((s) => inPeriod(chicagoYmd(s.started_at)));
+  const periodMs = periodShifts.reduce((n, s) => n + elapsedMs(s, now), 0);
+  const periodPay = periodShifts.filter((s) => s.ended_at).reduce((n, s) => n + (estimateCents(s) ?? 0), 0);
+  const periodReview = periodShifts.filter((s) => s.ended_at && s.status === "pending").length;
+  const periodMissing = [...missing.entries()].filter(([d]) => inPeriod(d)).reduce((n, [, l]) => n + l.length, 0);
+  const currentPeriod = payPeriodStart(today);
+  const periodName =
+    periodStart === currentPeriod ? "Current pay period"
+      : periodStart === addDays(currentPeriod, -PAY_PERIOD_DAYS) ? "Prior pay period"
+        : "Pay period";
 
   function pick(d) {
     setSelected(d);
@@ -209,11 +220,14 @@ export default function TimesheetCalendar({ workers, onOpenDetail, refreshKey, o
         </label>
       </div>
 
+      <p className="tcal-periodname">
+        <span className="eyebrow">{periodName}</span> <span className="mono">{payPeriodLabel(periodStart)}</span>
+      </p>
       <div className="metrics tcal-metrics">
-        <div className="metric"><span className="sub">Hours this month</span><b className="mono">{hours(monthMs)}</b></div>
-        <div className="metric"><span className="sub">Known base estimate</span><b className="mono">{money(monthPay)}</b></div>
-        <div className="metric"><span className="sub">Needs review</span><b className="mono">{monthReview}</b></div>
-        <div className="metric"><span className="sub">Scheduled, no clock-in</span><b className="mono">{monthMissing}</b></div>
+        <div className="metric"><span className="sub">Hours</span><b className="mono">{hours(periodMs)}</b></div>
+        <div className="metric"><span className="sub">Known base estimate</span><b className="mono">{money(periodPay)}</b></div>
+        <div className="metric"><span className="sub">Needs review</span><b className="mono">{periodReview}</b></div>
+        <div className="metric"><span className="sub">Scheduled, no clock-in</span><b className="mono">{periodMissing}</b></div>
       </div>
 
       {error && <div className="notice tc-error" role="alert">{error}</div>}
@@ -221,18 +235,20 @@ export default function TimesheetCalendar({ workers, onOpenDetail, refreshKey, o
       <div className="tcal-grid" role="grid" aria-label="Timesheet calendar">
         <div className="tcal-head" role="row">
           {DOW.map((d) => <span key={d} role="columnheader">{d}</span>)}
-          <span role="columnheader">Week</span>
+          <span role="columnheader">Pay period</span>
         </div>
         {!shifts ? (
           <div className="empty" role="status">Loading…</div>
         ) : (
-          weeks.map((days) => {
-            const weekShifts = days.flatMap((d) => byDay.get(d) || []);
-            const weekMs = weekShifts.reduce((n, s) => n + elapsedMs(s, now), 0);
-            const weekPay = weekShifts.filter((s) => s.ended_at).reduce((n, s) => n + (estimateCents(s) ?? 0), 0);
+          periods.map((days) => {
+            const periodList = days.flatMap((d) => byDay.get(d) || []);
+            const totalMs = periodList.reduce((n, s) => n + elapsedMs(s, now), 0);
+            const totalPay = periodList.filter((s) => s.ended_at).reduce((n, s) => n + (estimateCents(s) ?? 0), 0);
+            const active = days[0] === periodStart;
             return (
-              <div className="tcal-week" role="row" key={days[0]}>
-                {days.map((d) => {
+              <div className={`tcal-period${active ? " active" : ""}`} role="row" key={days[0]}
+                aria-label={`Pay period ${payPeriodLabel(days[0])}`}>
+                {days.map((d, i) => {
                   const list = byDay.get(d) || [];
                   const ms = list.reduce((n, s) => n + elapsedMs(s, now), 0);
                   const waiting = list.filter((s) => s.ended_at && s.status === "pending").length;
@@ -245,7 +261,8 @@ export default function TimesheetCalendar({ workers, onOpenDetail, refreshKey, o
                       role="gridcell"
                       aria-selected={d === selected}
                       aria-label={`${ymdLabel(d, { weekday: "long", month: "long", day: "numeric" })}: ${list.length} shifts, ${hours(ms)} hours${waiting ? `, ${waiting} need review` : ""}`}
-                      className={`tcal-day${inMonth(d) ? "" : " out"}${d === today ? " today" : ""}${d === selected ? " selected" : ""}${list.length ? " has" : ""}`}
+                      style={{ gridRow: i < 7 ? 1 : 2, gridColumn: (i % 7) + 1 }}
+                      className={`tcal-day${inMonth(d) ? "" : " out"}${i >= 7 ? " wk2" : ""}${d === today ? " today" : ""}${d === selected ? " selected" : ""}${list.length ? " has" : ""}`}
                       onClick={() => pick(d)}
                     >
                       <span className="tcal-date">{ymdLabel(d, { day: "numeric" })}</span>
@@ -269,11 +286,12 @@ export default function TimesheetCalendar({ workers, onOpenDetail, refreshKey, o
                     </button>
                   );
                 })}
-                <div className="tcal-weektotal" role="gridcell">
-                  {weekShifts.length ? (
+                <div className="tcal-weektotal tcal-periodtotal" role="gridcell">
+                  <span className="sub small">{payPeriodLabel(days[0])}</span>
+                  {periodList.length ? (
                     <>
-                      <b className="mono">{hours(weekMs)} h</b>
-                      <span className="sub mono">{money(weekPay)}</span>
+                      <b className="mono">{hours(totalMs)} h</b>
+                      <span className="sub mono">{money(totalPay)}</span>
                     </>
                   ) : (
                     <span className="sub">—</span>
@@ -285,7 +303,7 @@ export default function TimesheetCalendar({ workers, onOpenDetail, refreshKey, o
         )}
       </div>
       <p className="tablefoot">
-        Austin time. Shifts are placed on the day they started. Weekly totals run Monday–Sunday. Estimates exclude tips,
+        Austin time. Pay periods run two weeks, Monday through the second Sunday. Shifts count on the day they started. Estimates exclude tips,
         taxes and shifts without a rate.
       </p>
 
