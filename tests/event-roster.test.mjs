@@ -106,3 +106,11 @@ test('roster column sort: asc/desc, missing values last, stable ties', async () 
   assert.equal(ids(sortRoster(tickets, 'tickets', 'checked_in', 'asc')), '321');
   assert.equal(ids(sortRoster(tickets, 'tickets', 'checked_in', 'desc')), '231');
 });
+
+test('purchaserName falls back to the account legal name when Stripe gave none', async () => {
+  const { purchaserName } = await import('../lib/tickets/event-roster.js');
+  const order = { buyer_name: null, member_profile_id: null, user_id: 'u1' };
+  assert.equal(purchaserName(order, [{ user_id: 'u1', full_name: 'Morgan Bartley' }]), 'Morgan Bartley');
+  assert.equal(purchaserName(order, [{ id: 'm1', user_id: 'u1', full_name: '' }, { user_id: 'u1', full_name: 'Morgan Bartley' }]), 'Morgan Bartley');
+  assert.equal(purchaserName({ ...order, buyer_name: 'Saved Name' }, [{ user_id: 'u1', full_name: 'Other' }]), 'Saved Name');
+});

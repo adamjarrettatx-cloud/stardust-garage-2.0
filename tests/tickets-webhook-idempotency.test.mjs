@@ -84,3 +84,22 @@ test('finalizeTicketOrder: missing paymentIntent.id is a hard error', async () =
     /paymentIntent.id is required/,
   );
 });
+
+test('accountNameForOrder: uses the account legal name, then member profile, never throws', async () => {
+  const { accountNameForOrder } = await import('../lib/tickets/fulfillment.js');
+  const mk = (tables) => ({
+    from(table) {
+      const q = { _f: [], select() { return q; }, eq(c, v) { q._f.push([c, v]); return q; },
+        async maybeSingle() {
+          if (tables[table] === 'throw') throw new Error('down');
+          const r = (tables[table] || []).find((row) => q._f.every(([c, v]) => row[c] === v));
+          return { data: r || null, error: null };
+        } };
+      return q;
+    },
+  });
+  assert.equal(await accountNameForOrder(mk({ free_accounts: [{ user_id: 'u1', full_name: ' Morgan Bartley ' }] }), 'u1'), 'Morgan Bartley');
+  assert.equal(await accountNameForOrder(mk({ free_accounts: 'throw', member_profiles: [{ user_id: 'u1', full_name: 'Member Name' }] }), 'u1'), 'Member Name');
+  assert.equal(await accountNameForOrder(mk({}), 'u1'), null);
+  assert.equal(await accountNameForOrder(mk({}), null), null);
+});
