@@ -7,6 +7,7 @@ import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import { WhatsAppButton } from '@/app/bananas/components/ContactButtons';
 import ReplyPanel from '@/app/bananas/components/ReplyPanel';
 import TeamNotes from '@/app/bananas/components/TeamNotes';
+import Conversation from '@/app/bananas/components/Conversation';
 import {
   ProfileHeader,
   ContactChip,
@@ -95,6 +96,8 @@ export default async function CollaborationDetail({ params }) {
       />
 
       <CollaborationActions collaborationId={c.id} currentStatus={c.status || 'new'} />
+
+      <Conversation submissionType="collaborations" submissionId={c.id} />
 
       <TeamNotes submissionType="collaborations" submissionId={c.id} />
 

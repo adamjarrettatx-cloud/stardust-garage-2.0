@@ -6,6 +6,7 @@ import {
 } from '../lib/admin-tabs.js';
 
 const destinations = [
+  ['Conversations', '/bananas/conversations', 'conversationsAwaitingTeam', 'REVIEW'],
   ['Collaborations', '/bananas/collaborations', 'collaborations', 'REVIEW'],
   ['Signups', '/bananas/signups', 'newSignups', 'VIEW'],
   ['Venue Inquiries', '/bananas/venue-inquiries', 'venueInquiries', 'REVIEW'],
