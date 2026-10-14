@@ -13,16 +13,39 @@ import { UUID, shiftsCsv } from "@/lib/time-clock/core.mjs";
 import { isValidPin } from "@/lib/time-clock/pin.mjs";
 import { isInternalEmployeeEmail } from "@/lib/time-clock/employee.mjs";
 import { NextResponse } from "next/server";
+import { staffPhotoUrls } from "@/lib/time-clock/invites";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const safeWorkerColumns =
-  "id,name,category,active,pay_basis,flat_cents,created_at,user_id,username,login_enabled,login_managed";
+  "id,name,category,active,pay_basis,flat_cents,created_at,user_id,username,login_enabled,login_managed,pin_lookup,birthdate,photo_path,pin_set_by_employee_at";
 // Display-only email for linked employee logins. Internal placeholder
 // addresses for username-only logins are never shown.
+// pin_lookup and photo_path never leave the server: they become has_pin and
+// a short-lived signed photo_url. Open invites are summarized per profile.
 async function withLoginEmails(client, workers) {
+  const { data: invites } = await client
+    .from("tc_invites")
+    .select("worker_id,kind,email,created_at,expires_at")
+    .is("used_at", null)
+    .is("revoked_at", null)
+    .order("created_at", { ascending: false });
+  const inviteFor = new Map();
+  for (const i of invites || []) {
+    const key = `${i.worker_id}:${i.kind}`;
+    if (!inviteFor.has(key)) inviteFor.set(key, i);
+  }
+  const photos = await staffPhotoUrls(client, workers.map((w) => w.photo_path));
   return Promise.all(
-    workers.map(async ({ user_id, ...w }) => {
+    workers.map(async ({ user_id, pin_lookup, photo_path, ...w }) => {
+      const invite = inviteFor.get(`${w.id}:setup`);
+      const pinInvite = inviteFor.get(`${w.id}:pin`);
+      w.has_pin = Boolean(pin_lookup);
+      w.photo_url = photo_path ? photos.get(photo_path) || null : null;
+      w.invite = invite && !user_id
+        ? { email: invite.email, sent_at: invite.created_at, expires_at: invite.expires_at }
+        : null;
+      w.pin_invite = pinInvite ? { sent_at: pinInvite.created_at, expires_at: pinInvite.expires_at } : null;
       let login_email = null;
       if (user_id) {
         const { data } = await client.auth.admin.getUserById(user_id).catch(() => ({}));
@@ -254,7 +277,9 @@ export async function POST(request) {
         flat_cents: p.pay_basis === "flat" ? p.flat_cents : null,
         roles,
       };
-      if (!p.id) {
+      if (!p.id && p.pin !== undefined && p.pin !== "") {
+        // Optional. Left blank, the profile has no PIN until the employee
+        // chooses one from their email invite (or a manager sets one).
         const pin = assignedPin(p.pin);
         payload.pin_lookup = hash("pin-lookup", pin);
         payload.pin_verifier = await hashPin(
@@ -262,6 +287,9 @@ export async function POST(request) {
           process.env.TIME_CLOCK_SECRET,
         );
         disclosure = { pin }; // Returned once to the gated manager; never persisted plaintext.
+      } else if (!p.id) {
+        payload.pin_lookup = null;
+        payload.pin_verifier = null;
       } else if (p.pin !== undefined && p.pin !== "") {
         throw new ClockError(
           "Use Reset PIN to change an existing profile's PIN.",

@@ -4,6 +4,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { request, money } from "@/app/components/time-clock/Shared";
 
 const loginEndpoint = "/api/admin/time-clock/login";
+const inviteEndpoint = "/api/admin/time-clock/invite";
+const shortDate = (iso) =>
+  new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric" }).format(new Date(iso));
+function expiresIn(iso, now = Date.now()) {
+  const ms = Date.parse(iso) - now;
+  if (ms <= 0) return null;
+  const h = Math.ceil(ms / 3600000);
+  return h >= 48 ? `Expires in ${Math.floor(h / 24)} days` : h > 1 ? `Expires in ${h} hours` : "Expires within an hour";
+}
 const SIGN_IN = "sdgatx.com/employee/login";
 
 function initials(name = "") {
@@ -22,7 +31,8 @@ export default function StaffList({ data, busy, run, onEdit, onResetPin, onDone 
     [status, setStatus] = useState("all"),
     [category, setCategory] = useState("all"),
     [menu, setMenu] = useState(null),
-    [loginForm, setLoginForm] = useState(null);
+    [loginForm, setLoginForm] = useState(null),
+    [inviteForm, setInviteForm] = useState(null);
   const listRef = useRef(null);
 
   // Close the ••• menu on outside click or Escape.
@@ -69,6 +79,42 @@ export default function StaffList({ data, busy, run, onEdit, onResetPin, onDone 
 
   const call = (w, action, payload = {}) =>
     request(loginEndpoint, { action, payload: { worker_id: w.id, ...payload } });
+  const invite = (w, action, payload = {}) =>
+    request(inviteEndpoint, { action, payload: { worker_id: w.id, ...payload } });
+
+  function sendInvite(e, w) {
+    e.preventDefault();
+    run(async () => {
+      const r = await invite(w, "send", { email: inviteForm.email });
+      setInviteForm(null);
+      await onDone({ notice: r.text });
+    });
+  }
+  function resendInvite(w) {
+    run(async () => {
+      const r = await invite(w, "resend");
+      await onDone({ notice: r.text });
+    });
+  }
+  function cancelInvite(w) {
+    if (!window.confirm(`Cancel ${w.name}'s invite? The emailed link will stop working.`)) return;
+    run(async () => {
+      const r = await invite(w, "cancel");
+      await onDone({ notice: r.text });
+    });
+  }
+  function sendPinReset(w) {
+    if (!window.confirm(`Email ${w.name} a link to choose a new PIN? Their current PIN keeps working until they do.`)) return;
+    run(async () => {
+      const r = await invite(w, "pin_reset");
+      await onDone({ notice: r.text });
+    });
+  }
+  const openInvite = (w) => {
+    setMenu(null);
+    setLoginForm(null);
+    setInviteForm({ id: w.id, email: w.invite?.email || "" });
+  };
   const loginId = (w) => w.username || w.login_email;
 
   function createLogin(e, w) {
@@ -115,6 +161,7 @@ export default function StaffList({ data, busy, run, onEdit, onResetPin, onDone 
   }
   const openCreate = (w) => {
     setMenu(null);
+    setInviteForm(null);
     setLoginForm({ id: w.id, values: { username: "", email: "", password: "" } });
   };
   const setLoginField = (k, v) =>
@@ -185,8 +232,17 @@ export default function StaffList({ data, busy, run, onEdit, onResetPin, onDone 
           const roles = assignmentsFor(w);
           const open = menu === w.id;
           const formOpen = loginForm?.id === w.id;
-          const loginState = w.has_login ? (w.login_enabled ? "ok" : "off") : "";
-          const loginLabel = w.has_login ? (w.login_enabled ? "Enabled" : "Disabled") : "Not set up";
+          const inviteOpen = inviteForm?.id === w.id;
+          const invited = !w.has_login && w.invite;
+          const inviteLeft = invited ? expiresIn(w.invite.expires_at) : null;
+          const loginState = w.has_login
+            ? w.login_enabled ? "ok" : "off"
+            : invited && inviteLeft ? "wait" : "";
+          const loginLabel = w.has_login
+            ? w.login_enabled ? "Enabled" : "Disabled"
+            : invited
+              ? inviteLeft ? `Invited · ${shortDate(w.invite.sent_at)}` : "Invite expired"
+              : "Not set up";
           const rateText = (a) =>
             w.pay_basis === "hourly"
               ? a.rate_cents === null
@@ -212,14 +268,21 @@ export default function StaffList({ data, busy, run, onEdit, onResetPin, onDone 
           return (
             <div key={w.id} className={`sl-item${w.active ? "" : " inactive"}${open ? " menu-open" : ""}`} onClick={(e) => rowClick(e, w)}>
               <div className="sl-who">
-                <span className="sl-av" aria-hidden="true">{initials(w.name)}</span>
+                <span className="sl-av" aria-hidden="true">
+                  {w.photo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={w.photo_url} alt="" />
+                  ) : (
+                    initials(w.name)
+                  )}
+                </span>
                 <div>
                   <b>
                     {w.name}
                     {!w.active && <span className="sl-status">Inactive</span>}
                   </b>
                   <small>
-                    {titleCase(w.category)} · {w.active ? "Active" : "PIN access blocked"}
+                    {titleCase(w.category)} · {w.active ? (w.has_pin ? "Active" : "No PIN yet") : "PIN access blocked"}
                   </small>
                 </div>
               </div>
@@ -234,9 +297,12 @@ export default function StaffList({ data, busy, run, onEdit, onResetPin, onDone 
               <div className="sl-login">
                 {w.has_login && <span className="sl-id">{loginId(w) || "Linked account"}</span>}
                 <span className={`sl-dot ${loginState}`}>{loginLabel}</span>
-                {!w.has_login && w.active && !formOpen && (
-                  <button type="button" className="sl-link" disabled={busy} onClick={() => openCreate(w)}>
-                    Create login
+                {invited && inviteLeft && <small className="sl-sub">{inviteLeft}</small>}
+                {w.has_login && w.pin_set_by_employee_at && <small className="sl-sub">PIN set by employee</small>}
+                {w.has_login && w.pin_invite && <small className="sl-sub">PIN reset sent · {shortDate(w.pin_invite.sent_at)}</small>}
+                {!w.has_login && w.active && !formOpen && !inviteOpen && (
+                  <button type="button" className="sl-link" disabled={busy} onClick={() => (invited && !inviteLeft ? resendInvite(w) : openInvite(w))}>
+                    {invited ? (inviteLeft ? "Change email" : "Resend invite") : "Invite"}
                   </button>
                 )}
               </div>
@@ -263,14 +329,34 @@ export default function StaffList({ data, busy, run, onEdit, onResetPin, onDone 
                     <button type="button" role="menuitem" className="sl-only-mobile" onClick={() => pick(() => onEdit(w))}>
                       Edit profile
                     </button>
+                    {w.has_login && w.login_email && (
+                      <button type="button" role="menuitem" disabled={busy || !w.active} onClick={() => pick(() => sendPinReset(w))}>
+                        Send PIN reset email
+                      </button>
+                    )}
                     <button type="button" role="menuitem" disabled={busy} onClick={() => pick(() => onResetPin(w))}>
-                      Reset PIN
+                      {w.has_pin ? "Set PIN manually" : "Set PIN"}
                     </button>
                     <hr />
                     <div className="sl-menulabel">Employee login</div>
+                    {!w.has_login && !w.invite && (
+                      <button type="button" role="menuitem" disabled={busy || !w.active} onClick={() => openInvite(w)}>
+                        Invite by email
+                      </button>
+                    )}
+                    {!w.has_login && w.invite && (
+                      <button type="button" role="menuitem" disabled={busy || !w.active} onClick={() => pick(() => resendInvite(w))}>
+                        Resend invite
+                      </button>
+                    )}
+                    {!w.has_login && w.invite && (
+                      <button type="button" role="menuitem" disabled={busy} onClick={() => pick(() => cancelInvite(w))}>
+                        Cancel invite
+                      </button>
+                    )}
                     {!w.has_login && (
                       <button type="button" role="menuitem" disabled={busy || !w.active} onClick={() => openCreate(w)}>
-                        Create employee login
+                        Create username login
                       </button>
                     )}
                     {w.has_login && w.login_managed && (
@@ -299,9 +385,37 @@ export default function StaffList({ data, busy, run, onEdit, onResetPin, onDone 
                   </span>
                 ))}
                 {payText && <span>{payText}</span>}
-                {!w.has_login && <span>Login not set up</span>}
+                {!w.has_login && <span className={`sl-dot ${loginState}`}>{invited ? loginLabel : "Login not set up"}</span>}
                 {w.has_login && <span className={`sl-dot ${loginState}`}>Login {loginLabel.toLowerCase()}</span>}
               </div>
+              {inviteOpen && (
+                <form className="tc-form sl-loginform" onSubmit={(e) => sendInvite(e, w)}>
+                  <h3>Invite {w.name}</h3>
+                  <label>
+                    Email
+                    <input
+                      type="email"
+                      required
+                      autoFocus
+                      autoComplete="off"
+                      maxLength={254}
+                      value={inviteForm.email}
+                      onChange={(e) => setInviteForm((f) => ({ ...f, email: e.target.value }))}
+                    />
+                  </label>
+                  <p className="sub">
+                    They&apos;ll get a link to set their password, iPad PIN, birthday and private photo. The link expires in
+                    72 hours. If this email already has an SDG account, it&apos;s linked and keeps its password.
+                  </p>
+                  <div className="row wrap">
+                    <button className="primary" disabled={busy}>{w.invite ? "Send new invite" : "Send invite"}</button>
+                    <button type="button" disabled={busy} onClick={() => setInviteForm(null)}>Cancel</button>
+                    <button type="button" className="sl-link sl-alt" disabled={busy} onClick={() => openCreate(w)}>
+                      No email? Create username login instead
+                    </button>
+                  </div>
+                </form>
+              )}
               {formOpen && (
                 <form className="tc-form sl-loginform" onSubmit={(e) => createLogin(e, w)}>
                   <h3>Create employee login for {w.name}</h3>
