@@ -23,10 +23,10 @@ const titleCase = (s = "") => s.charAt(0).toUpperCase() + s.slice(1);
 
 // Staff profiles as a single scannable list. Each row: identity, roles and
 // rates, pay basis, employee-login state, then Edit plus a ••• menu holding
-// Reset PIN and the login actions. The row itself also
-// opens Edit. Login create/reset/enable/remove calls are unchanged from the
+// Reset PIN and the login actions. Clicking the row opens the read-only
+// profile card; Edit opens the form directly. Login create/reset/enable/remove calls are unchanged from the
 // previous card layout.
-export default function StaffList({ data, busy, run, onEdit, onResetPin, onDone }) {
+export default function StaffList({ data, busy, run, onOpen, onEdit, onResetPin, onDone }) {
   const [query, setQuery] = useState(""),
     [status, setStatus] = useState("all"),
     [category, setCategory] = useState("all"),
@@ -169,7 +169,7 @@ export default function StaffList({ data, busy, run, onEdit, onResetPin, onDone 
 
   function rowClick(e, w) {
     if (e.target.closest("button, a, input, select, label, form, .sl-menu")) return;
-    onEdit(w);
+    (onOpen || onEdit)(w);
   }
   function pick(fn) {
     setMenu(null);

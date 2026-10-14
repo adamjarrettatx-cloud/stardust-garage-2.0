@@ -398,6 +398,27 @@ it("creates a new profile with no PIN when none is chosen (employee picks it fro
   expect(p.pin_lookup).toBeNull();
   expect(p.pin_verifier).toBeNull();
 });
+it("saves a manager birthday correction after the profile, and validates it first", async () => {
+  const id = "33333333-3333-4333-8333-333333333333";
+  client.rpc.mockImplementation(async (name) => ({ data: name === "tc_admin" ? { id } : { changed: true }, error: null }));
+  const base = { id, name: "Staff", category: "employee", active: true, pay_basis: "unset", roles: [] };
+  const ok = await ownerPost(req("owner", { action: "save_worker", payload: { ...base, birthdate: "1994-07-09" } }));
+  expect(ok.status).toBe(200);
+  const names = client.rpc.mock.calls.map((c) => c[0]);
+  expect(names.indexOf("tc_admin")).toBeLessThan(names.indexOf("tc_worker_birthdate"));
+  expect(client.rpc.mock.calls.find((c) => c[0] === "tc_worker_birthdate")[1]).toEqual({
+    p_actor: actor, p_worker: id, p_birthdate: "1994-07-09",
+  });
+  expect(client.rpc.mock.calls.find((c) => c[0] === "tc_admin")[1].p_payload).not.toHaveProperty("birthdate");
+  client.rpc.mockClear();
+  for (const bad of ["2020-01-01", "1994-02-30", "July 9"]) {
+    const r = await ownerPost(req("owner", { action: "save_worker", payload: { ...base, birthdate: bad } }));
+    expect(r.status).toBe(400);
+  }
+  expect(client.rpc).not.toHaveBeenCalled();
+  await ownerPost(req("owner", { action: "save_worker", payload: base }));
+  expect(client.rpc.mock.calls.some((c) => c[0] === "tc_worker_birthdate")).toBe(false);
+});
 it("rejects oversized payloads and does not leak raw database errors", async () => {
   const huge = await POST(
     req("pair", { code: "12345678", ignored: "x".repeat(17000) }),

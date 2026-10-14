@@ -44,6 +44,7 @@ beforeAll(async () => {
     "20261011200000_employee_hub_requests.sql",
     "20261012150000_employee_view_preview.sql",
     "20261014150000_staff_email_invites.sql",
+    "20261014220000_staff_birthdate_manager.sql",
   ])
     await db.exec(mig(m));
 }, 30000);
@@ -174,4 +175,19 @@ it("grants the new functions and invite table to service_role only", async () =>
   }
   const s = await row(`select has_function_privilege('service_role', 'public.tc_invite_peek(text)', 'execute') f`);
   expect(s.f).toBe(true);
+});
+
+it("lets a manager correct a birthday, audits it, and keeps it service-role only", async () => {
+  const set = (d) => call("tc_worker_birthdate", [actor, worker, d]);
+  expect(await set("1994-07-09")).toMatchObject({ changed: true });
+  expect(await set("1994-07-09")).toMatchObject({ changed: false });
+  expect(String((await row("select birthdate::text b from tc_workers where id=$1", [worker])).b)).toBe("1994-07-09");
+  await fails(set("2999-01-01"), "profile_incomplete");
+  await fails(call("tc_worker_birthdate", [null, worker, "1994-07-09"]), "not_authorized");
+  const audit = await row("select count(*)::int n from tc_audit where worker_id=$1 and action='birthdate_set'", [worker]);
+  expect(audit.n).toBe(1);
+  for (const role of ["anon", "authenticated"]) {
+    const r = await row(`select has_function_privilege('${role}', 'public.tc_worker_birthdate(uuid,uuid,date)', 'execute') f`);
+    expect(r.f).toBe(false);
+  }
 });
