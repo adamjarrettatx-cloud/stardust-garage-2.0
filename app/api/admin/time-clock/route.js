@@ -14,6 +14,7 @@ import { isValidPin } from "@/lib/time-clock/pin.mjs";
 import { isInternalEmployeeEmail } from "@/lib/time-clock/employee.mjs";
 import { NextResponse } from "next/server";
 import { staffPhotoUrls } from "@/lib/time-clock/invites";
+import { birthdateProblem } from "@/lib/time-clock/profile.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -203,6 +204,7 @@ export async function POST(request) {
     const action = input.action,
       p = input.payload || {};
     let payload,
+      birthdate = null,
       disclosure = {};
     if (action === "save_role") {
       if (
@@ -268,6 +270,13 @@ export async function POST(request) {
           p.flat_cents > 100000000)
       )
         throw new ClockError("Enter a valid flat shift fee.");
+      // Optional manager correction. The photo stays employee-owned.
+      if (p.birthdate !== undefined && p.birthdate !== null && p.birthdate !== "") {
+        const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date());
+        if (typeof p.birthdate !== "string" || birthdateProblem(p.birthdate, today))
+          throw new ClockError("Enter a valid birthday (age 14 to 100).");
+        birthdate = p.birthdate;
+      }
       payload = {
         id: p.id || null,
         name: p.name.trim(),
@@ -344,6 +353,12 @@ export async function POST(request) {
       p_action: action,
       p_payload: payload,
     });
+    if (birthdate && result?.id)
+      await rpc(client, "tc_worker_birthdate", {
+        p_actor: actor.id,
+        p_worker: result.id,
+        p_birthdate: birthdate,
+      });
     return json({ ...result, ...disclosure });
   });
 }

@@ -19,6 +19,7 @@ import {
 
 import ScheduleCalendar from "./ScheduleCalendar";
 import StaffList from "./StaffList";
+import StaffProfile from "./StaffProfile";
 import RequestsQueue from "./RequestsQueue";
 import TimesheetCalendar from "./TimesheetCalendar";
 import { addDays, chicagoYmd, dayStartIso, payPeriodEnd, payPeriodStart } from "@/lib/time-clock/periods.mjs";
@@ -44,6 +45,7 @@ export default function Staff({ enabled }) {
   const [busy, setBusy] = useState(false);
   const [detail, setDetail] = useState(null),
     [reviewNote, setReviewNote] = useState("");
+  const [profileId, setProfileId] = useState(null);
   const [editWorker, setEditWorker] = useState(null),
     [disclosure, setDisclosure] = useState(null);
   const [deviceName, setDeviceName] = useState("Front room iPad"),
@@ -180,6 +182,7 @@ export default function Staff({ enabled }) {
       w
         ? {
             ...w,
+            birthdate: w.birthdate || "",
             flat: w.flat_cents === null ? "" : (w.flat_cents / 100).toFixed(2),
             roles: Object.fromEntries(
               data.assignments
@@ -212,14 +215,16 @@ export default function Staff({ enabled }) {
           rate_cents: dollarsToCents(rate),
         })),
         ...(!editWorker.id ? { pin: editWorker.pin } : {}),
+        ...(editWorker.birthdate ? { birthdate: editWorker.birthdate } : {}),
       };
       const result = await request(endpoint, {
         action: "save_worker",
         payload,
       });
       setEditWorker(null);
+      if (result.id) setProfileId(result.id);
       setNotice(
-        "Worker and assignments saved. Historical rates are unchanged.",
+        "Profile saved. Historical rates are unchanged.",
       );
       if (result.pin)
         setDisclosure({
@@ -299,6 +304,7 @@ export default function Staff({ enabled }) {
                 setCorrection(null);
                 setDisclosure(null);
                 setEditWorker(null);
+                setProfileId(null);
               }}
             >
               {/* Monitor + phone: paired kiosk devices */}
@@ -389,6 +395,7 @@ export default function Staff({ enabled }) {
                   setCorrection(null);
                   setDisclosure(null);
                   setEditWorker(null);
+                  setProfileId(null);
                 }}
               >
                 {t === "schedule"
@@ -694,7 +701,10 @@ export default function Staff({ enabled }) {
                     <h2>Staff profiles</h2>
                     <button
                       className="primary"
-                      onClick={() => chooseWorker(null)}
+                      onClick={() => {
+                        setProfileId(null);
+                        chooseWorker(null);
+                      }}
                     >
                       Add staff profile
                     </button>
@@ -706,12 +716,34 @@ export default function Staff({ enabled }) {
                     next clock-in.
                   </p>
                   {editWorker && (
-                    <form id="staff-edit-form" className="panel tc-form" onSubmit={saveWorker}>
-                      <h2>
-                        {editWorker.id
-                          ? "Edit staff profile"
-                          : "New staff profile"}
-                      </h2>
+                    <form id="staff-edit-form" className="panel tc-form sp-edit" onSubmit={saveWorker}>
+                      <div className="sp-edithead">
+                        <h2>{editWorker.id ? "Edit profile" : "New staff profile"}</h2>
+                        <span className="tc-tip" data-tip="Close">
+                          <button type="button" className="tc-iconbtn" aria-label="Close without saving" onClick={() => setEditWorker(null)}>
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                              <path d="M6 6l12 12M18 6L6 18" />
+                            </svg>
+                          </button>
+                        </span>
+                      </div>
+                      {editWorker.id && (
+                        <div className="sp-lock">
+                          <div className="sp-photo sm">
+                            {editWorker.photo_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={editWorker.photo_url} alt={`${editWorker.name} photo`} />
+                            ) : (
+                              <span aria-hidden="true">—</span>
+                            )}
+                          </div>
+                          <p className="sub">
+                            {editWorker.photo_url
+                              ? "Photo is added by the employee from their invite or the staff portal."
+                              : "No photo yet. The employee adds it from their invite or the staff portal."}
+                          </p>
+                        </div>
+                      )}
                       <label>
                         Name
                         <input
@@ -721,39 +753,31 @@ export default function Staff({ enabled }) {
                           onChange={(e) => field("name", e.target.value)}
                         />
                       </label>
-                      <label>
-                        Worker category
-                        <select
-                          value={editWorker.category}
-                          onChange={(e) => field("category", e.target.value)}
-                        >
-                          <option value="employee">Employee</option>
-                          <option value="contractor">Contractor</option>
-                        </select>
-                      </label>
+                      <div className="sp-two">
+                        <label>
+                          Status
+                          <select
+                            value={editWorker.category}
+                            onChange={(e) => field("category", e.target.value)}
+                          >
+                            <option value="employee">Employee</option>
+                            <option value="contractor">Contractor</option>
+                          </select>
+                        </label>
+                        <label>
+                          Birthday
+                          <input
+                            type="date"
+                            value={editWorker.birthdate || ""}
+                            max={new Date().toISOString().slice(0, 10)}
+                            onChange={(e) => field("birthdate", e.target.value)}
+                          />
+                        </label>
+                      </div>
                       <p className="sub">
                         Use your established classification; this setting does
                         not determine legal status.
                       </p>
-                      {editWorker.id && (editWorker.birthdate || editWorker.photo_url) && (
-                        <div className="sl-private">
-                          {editWorker.photo_url && (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={editWorker.photo_url} alt={`${editWorker.name} photo`} />
-                          )}
-                          <div>
-                            <span className="sub">Private · managers only</span>
-                            <p>
-                              Birthday:{" "}
-                              {editWorker.birthdate
-                                ? new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" })
-                                    .format(new Date(`${editWorker.birthdate}T12:00:00Z`))
-                                : "Not added yet"}
-                            </p>
-                            {!editWorker.photo_url && <p>Photo: not added yet</p>}
-                          </div>
-                        </div>
-                      )}
                       {!editWorker.id && (
                         <label>
                           PIN (optional)
@@ -780,9 +804,9 @@ export default function Staff({ enabled }) {
                           value={editWorker.pay_basis}
                           onChange={(e) => field("pay_basis", e.target.value)}
                         >
-                          <option value="unset">Not configured</option>
                           <option value="hourly">Hourly by role</option>
                           <option value="flat">Flat shift fee</option>
+                          <option value="unset">Not configured</option>
                         </select>
                       </label>
                       {editWorker.pay_basis === "flat" && (
@@ -796,44 +820,52 @@ export default function Staff({ enabled }) {
                           />
                         </label>
                       )}
-                      <h2>Assigned roles</h2>
-                      {data.roles.map((r) => (
-                        <div key={r.id} className="tc-assignment">
-                          <label className="task">
-                            <input
-                              type="checkbox"
-                              checked={Object.hasOwn(editWorker.roles, r.id)}
-                              onChange={(e) => {
-                                const roles = { ...editWorker.roles };
-                                if (e.target.checked) roles[r.id] = "";
-                                else delete roles[r.id];
-                                field("roles", roles);
-                              }}
-                            />
-                            <span>
-                              {r.name}
-                              {!r.active && " (inactive)"}
-                            </span>
-                          </label>
-                          {Object.hasOwn(editWorker.roles, r.id) &&
-                            editWorker.pay_basis === "hourly" && (
-                              <label>
-                                Hourly rate ($)
+                      <div className="sp-label">
+                        {editWorker.pay_basis === "hourly" ? "Roles and hourly rate" : "Roles"}
+                      </div>
+                      <div className="sp-roles">
+                        {data.roles.map((r) => {
+                          const on = Object.hasOwn(editWorker.roles, r.id);
+                          return (
+                            <div key={r.id} className={`sp-rr${on ? " on" : ""}`}>
+                              <label className="sp-rrname">
                                 <input
-                                  inputMode="decimal"
-                                  placeholder="Not configured"
-                                  value={editWorker.roles[r.id]}
-                                  onChange={(e) =>
-                                    field("roles", {
-                                      ...editWorker.roles,
-                                      [r.id]: e.target.value,
-                                    })
-                                  }
+                                  type="checkbox"
+                                  checked={on}
+                                  onChange={(e) => {
+                                    const roles = { ...editWorker.roles };
+                                    if (e.target.checked) roles[r.id] = "";
+                                    else delete roles[r.id];
+                                    field("roles", roles);
+                                  }}
                                 />
+                                <span>
+                                  {r.name}
+                                  {!r.active && " (inactive)"}
+                                </span>
                               </label>
-                            )}
-                        </div>
-                      ))}
+                              {editWorker.pay_basis === "hourly" &&
+                                (on ? (
+                                  <input
+                                    className="sp-rate"
+                                    inputMode="decimal"
+                                    aria-label={`${r.name} hourly rate in dollars`}
+                                    placeholder="$/hr"
+                                    value={editWorker.roles[r.id]}
+                                    onChange={(e) =>
+                                      field("roles", {
+                                        ...editWorker.roles,
+                                        [r.id]: e.target.value,
+                                      })
+                                    }
+                                  />
+                                ) : (
+                                  <span className="sub sp-rateoff">—</span>
+                                ))}
+                            </div>
+                          );
+                        })}
+                      </div>
                       {editWorker.id && (
                         <label className="task">
                           <input
@@ -842,24 +874,38 @@ export default function Staff({ enabled }) {
                             onChange={(e) => field("active", e.target.checked)}
                           />
                           <span>
-                            Active (unchecking blocks PIN access immediately;
-                            open shifts remain for correction)
+                            Active <span className="sub">· turning this off blocks the iPad PIN right away. Open shifts stay for correction.</span>
                           </span>
                         </label>
                       )}
-                      <button className="primary" disabled={busy}>
-                        Save profile
-                      </button>
-                      <button type="button" onClick={() => setEditWorker(null)}>
-                        Cancel
-                      </button>
+                      <div className="row sp-buttons">
+                        <button className="primary" disabled={busy}>
+                          Save
+                        </button>
+                        <button type="button" onClick={() => setEditWorker(null)}>
+                          Cancel
+                        </button>
+                      </div>
                     </form>
+                  )}
+                  {!editWorker && profileId && data.workers.some((w) => w.id === profileId) && (
+                    <StaffProfile
+                      worker={data.workers.find((w) => w.id === profileId)}
+                      data={data}
+                      onEdit={() => chooseWorker(data.workers.find((w) => w.id === profileId))}
+                      onClose={() => setProfileId(null)}
+                    />
                   )}
                   <StaffList
                     data={data}
                     busy={busy}
                     run={run}
+                    onOpen={(w) => {
+                      setEditWorker(null);
+                      setProfileId(w.id);
+                    }}
                     onEdit={(w) => {
+                      setProfileId(w.id);
                       chooseWorker(w);
                       requestAnimationFrame(() =>
                         document

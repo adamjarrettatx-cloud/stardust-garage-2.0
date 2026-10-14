@@ -380,3 +380,43 @@
 .tc-root .tc-tip:hover::after,.tc-root .tc-tip:has(:focus-visible)::after{opacity:1}
 .tc-root .tc-tip:last-child::after{left:auto;right:0;transform:none}
 .tc-root .tc-iconbtn.active{background:var(--raised);border-color:var(--text)}
+/* Staff profile card (read-only view; gear opens the edit form). */
+.tc-root .sp-card{max-width:720px;margin-block:var(--s6)}
+.tc-root .sp-top{display:flex;gap:var(--s5);align-items:flex-start}
+.tc-root .sp-photo{width:96px;height:96px;flex:none;border-radius:6px;overflow:hidden;background:var(--raised);border:1px solid var(--border);display:grid;place-items:center;font-size:var(--text-lg);font-weight:600;color:var(--muted)}
+.tc-root .sp-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.tc-root .sp-photo.sm{width:56px;height:56px;font-size:var(--text-sm)}
+.tc-root .sp-id{min-width:0;flex:1}
+.tc-root .sp-id h2{margin:var(--s1) 0 var(--s2);font-size:var(--text-lg);overflow-wrap:anywhere}
+.tc-root .sp-id .sub{margin:var(--s3) 0 0}
+.tc-root .sp-chips{display:flex;gap:var(--s2);flex-wrap:wrap}
+.tc-root .sp-chip{font-size:var(--text-xs);padding:3px 8px;border:1px solid var(--border);border-radius:4px;color:var(--muted)}
+.tc-root .sp-chip.ok{color:var(--success);border-color:var(--success)}
+.tc-root .sp-acts{display:flex;gap:var(--s2);flex:none}
+.tc-root .sp-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:var(--s3);margin-top:var(--s5);padding-top:var(--s5);border-top:1px solid var(--border)}
+.tc-root .sp-fact{border:1px solid var(--border);border-radius:6px;padding:var(--s3) var(--s4);font-size:var(--text-sm)}
+.tc-root .sp-fact span{display:block;font-size:var(--text-xs);color:var(--muted);margin-bottom:2px}
+.tc-root .sp-fact b{font-weight:500}.tc-root .sp-fact small{color:var(--muted)}
+.tc-root .sp-sec{margin-top:var(--s5);padding-top:var(--s4);border-top:1px solid var(--border)}
+.tc-root .sp-label{font-size:var(--text-xs);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:var(--s2)}
+.tc-root .sp-role{display:flex;justify-content:space-between;gap:var(--s4);padding:var(--s3) 0;border-bottom:1px solid var(--border);font-size:var(--text-sm)}
+.tc-root .sp-role:last-child{border-bottom:0}
+.tc-root .sp-foot{margin:var(--s4) 0 0;padding-top:var(--s4);border-top:1px solid var(--border)}
+/* Staff edit form, compact layout */
+.tc-root .sp-edithead{display:flex;justify-content:space-between;align-items:center;gap:var(--s4)}
+.tc-root .sp-edithead h2{margin:0}
+.tc-root .sp-lock{display:flex;gap:var(--s4);align-items:center;padding:var(--s3);border:1px dashed var(--border);border-radius:6px}
+.tc-root .sp-lock .sub{margin:0}
+.tc-root .sp-two{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3)}
+.tc-root .sp-edit input:not([type=checkbox]),.tc-root .sp-edit select{min-height:48px;height:48px;box-sizing:border-box;padding:0 var(--s3)}
+.tc-root .sp-edit>.sub{margin:calc(var(--s2) * -1) 0 0}
+.tc-root .sp-roles{border-top:1px solid var(--border)}
+.tc-root .sp-rr{display:grid;grid-template-columns:1fr 120px;align-items:center;gap:var(--s3);min-height:48px;border-bottom:1px solid var(--border)}
+.tc-root .tc-form .sp-rrname{flex-direction:row;align-items:center;gap:var(--s3);cursor:pointer;min-height:44px}
+.tc-root .sp-rrname input{width:20px;height:20px;margin:0}
+.tc-root .sp-edit input.sp-rate{min-height:38px;height:38px;width:100%;text-align:right}
+.tc-root .sp-edit>label.task{border-top:0;padding-top:0}
+.tc-root .sp-rateoff{text-align:right;padding-right:var(--s3)}
+.tc-root .sp-buttons{margin-top:var(--s2)}
+.tc-root .sp-buttons button{min-width:120px}
+@media(max-width:600px){.tc-root .sp-top{flex-wrap:wrap}.tc-root .sp-photo{width:80px;height:80px}.tc-root .sp-acts{order:-1;width:100%;justify-content:flex-end;margin-bottom:calc(var(--s3) * -1)}.tc-root .sp-two{grid-template-columns:1fr}.tc-root .sp-rr{grid-template-columns:1fr 100px}}
