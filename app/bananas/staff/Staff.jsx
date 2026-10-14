@@ -870,11 +870,11 @@ export default function Staff({ enabled }) {
                         <label className="task">
                           <input
                             type="checkbox"
-                            checked={editWorker.active}
-                            onChange={(e) => field("active", e.target.checked)}
+                            checked={!editWorker.active}
+                            onChange={(e) => field("active", !e.target.checked)}
                           />
                           <span>
-                            Active <span className="sub">· turning this off blocks the iPad PIN right away. Open shifts stay for correction.</span>
+                            Dismissed <span className="sub">· blocks the iPad PIN right away and moves them to Dismissed. Open shifts stay for correction. You can undo this.</span>
                           </span>
                         </label>
                       )}

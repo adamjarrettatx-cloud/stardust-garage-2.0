@@ -28,7 +28,7 @@ const titleCase = (s = "") => s.charAt(0).toUpperCase() + s.slice(1);
 // previous card layout.
 export default function StaffList({ data, busy, run, onOpen, onEdit, onResetPin, onDone }) {
   const [query, setQuery] = useState(""),
-    [status, setStatus] = useState("all"),
+    [dismissed, setDismissed] = useState(false),
     [category, setCategory] = useState("all"),
     [menu, setMenu] = useState(null),
     [loginForm, setLoginForm] = useState(null),
@@ -62,15 +62,11 @@ export default function StaffList({ data, busy, run, onOpen, onEdit, onResetPin,
     () => [...data.workers].sort((a, b) => a.name.localeCompare(b.name)),
     [data.workers],
   );
-  const counts = {
-    all: sorted.length,
-    active: sorted.filter((w) => w.active).length,
-    inactive: sorted.filter((w) => !w.active).length,
-  };
+  // Current staff by default. Dismissed profiles sit behind a quiet toggle.
+  const dismissedCount = sorted.filter((w) => !w.active).length;
   const q = query.trim().toLowerCase();
   const rows = sorted.filter((w) => {
-    if (status === "active" && !w.active) return false;
-    if (status === "inactive" && w.active) return false;
+    if (dismissed ? w.active : !w.active) return false;
     if (category !== "all" && w.category !== category) return false;
     if (!q) return true;
     if (w.name.toLowerCase().includes(q)) return true;
@@ -194,30 +190,19 @@ export default function StaffList({ data, busy, run, onOpen, onEdit, onResetPin,
             onChange={(e) => setQuery(e.target.value)}
           />
         </label>
-        <div className="sl-seg" role="group" aria-label="Status">
-          {[
-            ["all", "All"],
-            ["active", "Active"],
-            ["inactive", "Inactive"],
-          ].map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              aria-pressed={status === key}
-              className={status === key ? "on" : ""}
-              onClick={() => setStatus(key)}
-            >
-              {label}
-              <b>{counts[key]}</b>
-            </button>
-          ))}
-        </div>
         <select aria-label="Category" value={category} onChange={(e) => setCategory(e.target.value)}>
           <option value="all">All categories</option>
           <option value="employee">Employees</option>
           <option value="contractor">Contractors</option>
         </select>
-        <span className="sl-count">Sorted by name</span>
+        <button
+          type="button"
+          className={`sl-dismissed${dismissed ? " on" : ""}`}
+          aria-pressed={dismissed}
+          onClick={() => setDismissed((v) => !v)}
+        >
+          {dismissed ? "Back to current staff" : `Dismissed (${dismissedCount})`}
+        </button>
       </div>
 
       <div className="sl-list" ref={listRef}>
@@ -266,7 +251,7 @@ export default function StaffList({ data, busy, run, onOpen, onEdit, onResetPin,
               }))
             : [{ key: "none", role: null, pay: payText || "—", unset: w.pay_basis !== "flat" }];
           return (
-            <div key={w.id} className={`sl-item${w.active ? "" : " inactive"}${open ? " menu-open" : ""}`} onClick={(e) => rowClick(e, w)}>
+            <div key={w.id} className={`sl-item${w.active ? "" : " dismissed"}${open ? " menu-open" : ""}`} onClick={(e) => rowClick(e, w)}>
               <div className="sl-who">
                 <span className="sl-av" aria-hidden="true">
                   {w.photo_url ? (
@@ -279,10 +264,9 @@ export default function StaffList({ data, busy, run, onOpen, onEdit, onResetPin,
                 <div>
                   <b>
                     {w.name}
-                    {!w.active && <span className="sl-status">Inactive</span>}
                   </b>
                   <small>
-                    {titleCase(w.category)} · {w.active ? (w.has_pin ? "Active" : "No PIN yet") : "PIN access blocked"}
+                    {titleCase(w.category)} · {w.active ? (w.has_pin ? "Active" : "No PIN yet") : "Dismissed"}
                   </small>
                 </div>
               </div>
@@ -465,7 +449,11 @@ export default function StaffList({ data, busy, run, onOpen, onEdit, onResetPin,
             </div>
           );
         })}
-        {!rows.length && <div className="empty">No staff match these filters.</div>}
+        {!rows.length && (
+          <div className="empty">
+            {dismissed && !dismissedCount ? "No dismissed staff." : "No staff match these filters."}
+          </div>
+        )}
       </div>
       <p className="tablefoot">Pay amounts are base estimates, not payroll. Rate edits apply to future shifts only.</p>
     </div>
