@@ -66,3 +66,39 @@
 .profile-door-pass-copy{min-width:0}.profile-door-pass-copy .account-hub-note:first-of-type{margin-top:6px}
 .profile-door-pass-lead{font:700 18px/1.4 'Plus Jakarta Sans',sans-serif;margin:0}
 @media(max-width:760px){.profile-door-pass-body{flex-direction:column;align-items:stretch;text-align:center;padding:16px;gap:16px}.profile-door-pass-qr{margin:0 auto}}
+/* Messages: conversations with the SDG team about a submission. */
+.account-messages-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}
+.account-messages-list{list-style:none;margin:0;padding:0;border:1px solid var(--hub-line);border-radius:12px;overflow:hidden;background:var(--hub-surface)}
+.account-messages-list li+li{border-top:1px solid var(--hub-line)}
+.account-messages-list a{display:flex;align-items:center;gap:14px;padding:16px 20px;color:var(--hub-text);text-decoration:none;min-height:68px}
+.account-messages-list a:hover{background:var(--hub-raised)}
+.account-messages-dot{flex:0 0 8px;width:8px;height:8px;border-radius:50%;background:transparent}
+.account-messages-list a.is-unread .account-messages-dot{background:var(--hub-gold)}
+.account-messages-list a.is-unread .account-messages-subject{color:#fff}
+.account-messages-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.account-messages-subject{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.account-messages-meta,.account-messages-date{color:var(--hub-muted);font-size:12px}
+.account-messages-preview{color:var(--hub-muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.account-messages-side{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.account-messages-badge{padding:2px 8px;border-radius:6px;background:var(--hub-selected);border:1px solid #4a3f24;color:var(--hub-gold);font-size:11px;font-weight:600}
+.conversation-back{display:inline-block;padding-left:0;margin-bottom:8px}
+.conversation-header{margin-bottom:20px}.conversation-header h2{font-size:22px}
+.conversation-questions{border-color:#4a3f24}
+.conversation-questions ul{list-style:none;margin:0;padding:0}
+.conversation-question{padding:18px 24px;border-bottom:1px solid var(--hub-line)}.conversation-question:last-child{border-bottom:0}
+.conversation-question-from{margin:0 0 6px;color:var(--hub-gold);font-size:12px;font-weight:600}
+.conversation textarea{display:block;width:100%;min-height:88px;margin-top:12px;padding:10px 12px;border:1px solid var(--hub-line);border-radius:8px;background:var(--hub-bg);color:var(--hub-text);font:inherit;font-size:16px;line-height:1.55;resize:vertical}
+.conversation textarea:focus{border-color:var(--hub-gold);outline:none}
+.conversation-actions{display:flex;justify-content:flex-end;margin-top:10px}
+.conversation-thread{list-style:none;margin:0;padding:16px 24px;display:flex;flex-direction:column;gap:12px;max-height:60vh;overflow-y:auto}
+.conversation-message{max-width:85%;padding:12px 14px;border:1px solid var(--hub-line);border-radius:10px;background:var(--hub-raised)}
+.conversation-message.is-mine{align-self:flex-end;background:var(--hub-selected);border-color:#3a3322}
+.conversation-message.is-team{align-self:flex-start}
+.conversation-message.is-question{border-color:var(--hub-gold)}
+.conversation-message-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 6px;color:var(--hub-muted);font-size:12px}
+.conversation-message-meta span:first-child{color:var(--hub-text);font-weight:600}
+.conversation-tag{padding:1px 7px;border-radius:6px;background:var(--hub-gold);color:var(--hub-bg);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.conversation-quote{margin:0 0 6px;padding-left:8px;border-left:2px solid var(--hub-gold);color:var(--hub-muted);font-size:12px;line-height:1.5}
+.conversation-body{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}
+.conversation-composer{padding:4px 24px 20px;border-top:1px solid var(--hub-line)}
+@media(max-width:760px){.account-messages-list a{padding:14px 16px}.conversation-thread{padding:12px 16px}.conversation-message{max-width:92%}.conversation-question{padding:16px}.conversation-composer{padding:4px 16px 16px}}

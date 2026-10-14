@@ -12,6 +12,7 @@ import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import { WhatsAppButton } from '@/app/bananas/components/ContactButtons';
 import ReplyPanel from '@/app/bananas/components/ReplyPanel';
 import TeamNotes from '@/app/bananas/components/TeamNotes';
+import Conversation from '@/app/bananas/components/Conversation';
 import {
   ProfileHeader,
   ContactChip,
@@ -128,6 +129,8 @@ export default async function ApplicationDetail({ params }) {
         accountCreated={app.account_created || false}
         hasPhoto={hasPhoto}
       />
+
+      <Conversation submissionType="applications" submissionId={app.id} />
 
       <TeamNotes submissionType="applications" submissionId={app.id} />
 

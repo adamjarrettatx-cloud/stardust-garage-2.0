@@ -7,6 +7,7 @@ import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import { WhatsAppButton } from '@/app/bananas/components/ContactButtons';
 import ReplyPanel from '@/app/bananas/components/ReplyPanel';
 import TeamNotes from '@/app/bananas/components/TeamNotes';
+import Conversation from '@/app/bananas/components/Conversation';
 import {
   ProfileHeader,
   ContactChip,
@@ -102,6 +103,8 @@ export default async function MicroPartyDetail({ params }) {
       />
 
       <MicroPartyActions inquiryId={i.id} currentStatus={i.status || 'new'} />
+
+      <Conversation submissionType="micro-parties" submissionId={i.id} />
 
       <TeamNotes submissionType="micro-parties" submissionId={i.id} />
 
