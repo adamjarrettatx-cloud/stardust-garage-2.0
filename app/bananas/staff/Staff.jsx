@@ -162,6 +162,20 @@ export default function Staff({ enabled }) {
       requestAnimationFrame(() => detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
     });
   }
+  // The calendar saves its own approvals/corrections; refresh the list view
+  // and any open Details panel so no section keeps showing old punches.
+  async function calendarChanged() {
+    await load().catch((e) => setError(e.message));
+    const open = detail?.id;
+    if (!open) return;
+    try {
+      const r = await request(`${endpoint}?shift=${open}`);
+      setDetail((d) => (d?.id === open ? r.shift : d));
+      setCorrection(null);
+    } catch (e) {
+      setError(e.message);
+    }
+  }
   function chooseWorker(w) {
     setEditWorker(
       w
@@ -392,7 +406,7 @@ export default function Staff({ enabled }) {
                     ))}
                   </div>
                   {sheetView === "calendar" && (
-                    <TimesheetCalendar workers={data.workers} refreshKey={data} onOpenDetail={view} />
+                    <TimesheetCalendar workers={data.workers} refreshKey={data} onOpenDetail={view} onChanged={calendarChanged} />
                   )}
                   {sheetView === "list" && (<>
                   <div className="metrics metrics-two">
