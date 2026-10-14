@@ -33,3 +33,13 @@ test('Free has no membership action; both trial states link to public Membership
   }
   assert.equal(profileMembershipAction({ member: {}, passes: [{}] }).href, '/member');
 });
+test('an organization main contact sees My Events without gaining other organization views', async () => {
+  const { partnerCanViewEvents } = await import('../lib/profile-capabilities.js');
+  assert.equal(partnerCanViewEvents({ contact_type: ['person'] }), false);
+  assert.equal(partnerCanViewEvents({ contact_type: ['person'], manages_event_organization: true }), true);
+  assert.equal(partnerCanViewEvents({ contact_type: ['event_organizer'] }), true);
+  assert.equal(partnerCanViewEvents(null), false);
+  assert.deepEqual(partnerViews(['person'], {}, { managesEventOrganization: true }),
+    { guestList: false, pay: false, contracts: false, events: true });
+  assert.deepEqual(partnerViews(['person']), { guestList: false, pay: false, contracts: false, events: false });
+});
