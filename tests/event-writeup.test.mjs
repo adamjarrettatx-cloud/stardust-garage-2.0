@@ -71,3 +71,40 @@ test('no organizer percent means no payout', () => {
   assert.equal(w.organizerPercent, null);
   assert.equal(w.netPayoutCents, 0);
 });
+
+import { computeTicketTailorOnline } from '../lib/event-writeup.js';
+
+test('legacy Ticket Tailor event uses the frozen snapshot (matches retired page)', () => {
+  const w = computeWriteup({
+    config: {},
+    ticketTailor: {
+      metrics: { tickets_sold: 109, orders_count: 80, gross_cents: 342557, fees_cents: 0, status: 'ok', fetched_at: '2026-10-15T06:23:00Z' },
+      perTicketFeeCents: 52,
+    },
+  });
+  assert.equal(w.online.source, 'tickettailor');
+  assert.equal(w.online.perTicketFeesTotalCents, 5668);
+  assert.equal(w.online.netCents, 336889);
+  assert.equal(w.online.bookingFeesCents, 0);
+  assert.equal(w.stardustKeepsCents, 336889);
+});
+
+test('Ticket Tailor online plus typed door sales settle with the organizer', () => {
+  const w = computeWriteup({
+    config: { door_gross_cents: 100000, organizer_percent: 50 },
+    ticketTailor: { metrics: { tickets_sold: 10, gross_cents: 20000, fees_cents: 1000 }, perTicketFeeCents: 52 },
+  });
+  // online net = 20000 - 1000 - 520 = 18480; door net = 100000 - 8250 - 3850 = 87900
+  assert.equal(w.online.netCents, 18480);
+  assert.equal(w.netTicketRevenueCents, 106380);
+  assert.equal(w.netPayoutCents, 53190);
+  assert.equal(w.stardustKeepsCents, 53190);
+});
+
+test('Ticket Tailor net never goes below zero', () => {
+  assert.equal(computeTicketTailorOnline({ tickets_sold: 5, gross_cents: 100, fees_cents: 500 }).netCents, 0);
+});
+
+test('sdgatx.com events are tagged as such', () => {
+  assert.equal(computeOnline([]).source, 'sdgatx');
+});
