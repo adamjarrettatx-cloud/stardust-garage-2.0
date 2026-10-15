@@ -81,6 +81,13 @@ export default async function EditEventPage({ params }) {
           >
             FINANCIALS
           </Link>
+          <Link
+            href={`/bananas/events/${event.id}/writeup`}
+            className="auth-theme-border-button px-4 py-2.5 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border transition-colors"
+            style={{ color: 'var(--auth-accent)' }}
+          >
+            WRITE-UP
+          </Link>
         </>
       )}
       footerPanels={(
