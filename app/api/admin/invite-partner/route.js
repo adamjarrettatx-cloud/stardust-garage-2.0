@@ -163,7 +163,7 @@ export async function POST(request) {
     let emailSent = true;
     let emailError = null;
     try {
-      await sendPartnerInvite({ email, fullName, role, contactTypeDisplay, activationUrl, isContractor });
+      await sendPartnerInvite({ email, fullName, role, contactTypeDisplay, activationUrl, isContractor, isProgrammer: (contact.contact_type || []).includes('programmer') });
     } catch (err) {
       emailSent = false;
       emailError = err?.message || String(err);

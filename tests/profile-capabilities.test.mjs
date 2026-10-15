@@ -5,10 +5,10 @@ import { partnerViews } from '../lib/partner-access.js';
 
 test('profile rules cannot be expanded by accidentally assigned resources', () => {
   const resources = { bookings: [{}], grants: [{}], contracts: [{}] };
-  assert.deepEqual(partnerViews(['promoter'], resources), { guestList: true, pay: false, contracts: false, events: false });
-  assert.deepEqual(partnerViews(['vendor'], resources), { guestList: false, pay: false, contracts: true, events: false });
+  assert.deepEqual(partnerViews(['promoter'], resources), { guestList: true, pay: false, contracts: false, events: false, calendar: false, pitches: false });
+  assert.deepEqual(partnerViews(['vendor'], resources), { guestList: false, pay: false, contracts: true, events: false, calendar: false, pitches: false });
   for (const type of ['organization', 'collective', 'event_organizer']) {
-    assert.deepEqual(partnerViews([type], resources), { guestList: true, pay: false, contracts: true, events: true });
+    assert.deepEqual(partnerViews([type], resources), { guestList: true, pay: false, contracts: true, events: true, calendar: false, pitches: false });
   }
   assert.equal(profileCapabilities(['promoter', 'artist']).pay, true);
   assert.equal(profileCapabilities([]).events, false);
@@ -40,6 +40,6 @@ test('an organization main contact sees My Events without gaining other organiza
   assert.equal(partnerCanViewEvents({ contact_type: ['event_organizer'] }), true);
   assert.equal(partnerCanViewEvents(null), false);
   assert.deepEqual(partnerViews(['person'], {}, { managesEventOrganization: true }),
-    { guestList: false, pay: false, contracts: false, events: true });
-  assert.deepEqual(partnerViews(['person']), { guestList: false, pay: false, contracts: false, events: false });
+    { guestList: false, pay: false, contracts: false, events: true, calendar: false, pitches: false });
+  assert.deepEqual(partnerViews(['person']), { guestList: false, pay: false, contracts: false, events: false, calendar: false, pitches: false });
 });

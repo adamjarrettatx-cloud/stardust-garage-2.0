@@ -22,7 +22,7 @@ const source = fs.readFileSync(path.join(ROOT, 'app/bananas/contacts/ContactsLis
 test('the directory combines organizers and collectives into Organizations', () => {
   const expected = ['Persons', 'Organizations', 'Venue Renter', 'Vendor'];
   assert.deepEqual(CONTACT_DIRECTORY_SECTIONS.map(section => section.label), expected);
-  assert.deepEqual(CONTACT_TYPE_OPTIONS.map(option => option.label), ['Artist', 'Organization', 'Venue Renter', 'Vendor', 'Promoter', 'Person']);
+  assert.deepEqual(CONTACT_TYPE_OPTIONS.map(option => option.label), ['Artist', 'Organization', 'Venue Renter', 'Vendor', 'Promoter', 'Programmer', 'Person']);
 });
 
 test('contact statuses exclude Inactive while legacy records stay in the normal directory', () => {
