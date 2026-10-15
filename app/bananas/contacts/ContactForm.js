@@ -16,6 +16,7 @@ import {
   contactDirectorySection,
   contactDirectoryHref,
   isContractorContact,
+  isProgrammerContact,
 } from '@/lib/contact-helpers';
 import {
   ENTITY_TYPE_OPTIONS,
@@ -165,8 +166,10 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
       setError('Choose Active, Do Not Book, or Archived for this contact.');
       return;
     }
-    if (!isEditing && isContractorContact(contactTypes) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError('Enter the artist’s email so they can finish their profile and W-9.');
+    if (!isEditing && (isContractorContact(contactTypes) || isProgrammerContact(contactTypes)) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError(isContractorContact(contactTypes)
+        ? 'Enter the artist’s email so they can finish their profile and W-9.'
+        : 'Enter the programmer’s email so they can be invited to the Programmer Portal.');
       return;
     }
 
@@ -258,7 +261,7 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
     }
     const category = contactDirectorySection(initialCategory)?.value;
     const query = new URLSearchParams(category ? { category } : {});
-    if (!isEditing && isContractorContact(payload.contact_type)) {
+    if (!isEditing && (isContractorContact(payload.contact_type) || isProgrammerContact(payload.contact_type))) {
       // The contact is already saved. An invitation error must never prompt a
       // second insert; navigate to the saved profile with a safe retry notice.
       let sent = false;
@@ -707,7 +710,7 @@ export default function ContactForm({ contact = null, initialCategory = null, pr
           className="flex-1 py-4 rounded-[8px] text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
           style={{ background: '#ffffff', color: '#0a0a0a' }}
         >
-          {saving ? 'SAVING...' : isEditing ? 'SAVE CHANGES' : 'CREATE CONTACT'}
+          {saving ? 'SAVING...' : isEditing ? 'SAVE CHANGES' : isProgrammerContact(contactTypes) ? 'SAVE AND INVITE AS PROGRAMMER' : 'CREATE CONTACT'}
         </button>
         <Link
           href={contactDirectoryHref(initialCategory)}

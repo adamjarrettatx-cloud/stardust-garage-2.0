@@ -10,6 +10,7 @@ export const ORGANIZER_CONTACT_TYPES = [
   'event_organizer',
   'collective',
   'promoter',
+  'programmer',
   'venue_renter',
   'artist',
   'dj',

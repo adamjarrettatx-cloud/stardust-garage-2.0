@@ -150,9 +150,10 @@ export default function ContactDetailClient({
       </section>
     </>
   );
+  const inviteRole = (contact.contact_type || []).includes('programmer') ? 'Programmer' : 'Artist';
   return (<>
-    {searchParams?.get('invite') === 'sent' && <p className={styles.banner} role="status">Artist profile created. The invitation email has been sent.</p>}
-    {searchParams?.get('invite') === 'retry' && <p className={`${styles.banner} ${styles.bannerWarning}`} role="alert">The artist profile was saved, but the invitation was not confirmed. An administrator should use Manage portal access to send the invitation. Do not create another contact.</p>}
+    {searchParams?.get('invite') === 'sent' && <p className={styles.banner} role="status">{inviteRole} profile created. The invitation email has been sent.</p>}
+    {searchParams?.get('invite') === 'retry' && <p className={`${styles.banner} ${styles.bannerWarning}`} role="alert">The {inviteRole.toLowerCase()} profile was saved, but the invitation was not confirmed. An administrator should use Manage portal access to send the invitation. Do not create another contact.</p>}
     <ContactForm key={contact.id} contact={contact} initialCategory={category} profile={{
       onSaved: setContact, isAdmin, isOrganizer, organizerGaps, w9Missing, showTaxStatus: isContractor,
       initialTab: searchParams?.get('tab'), w9Status: taxProfile?.status,
