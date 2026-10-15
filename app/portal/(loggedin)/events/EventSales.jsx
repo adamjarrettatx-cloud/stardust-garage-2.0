@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import OrganizerWriteup from '@/app/components/OrganizerWriteup';
 const money = (cents, currency = 'USD') => new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(Number(cents || 0) / 100);
 const purchasedTime = (value) => new Date(value).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 function AttendeeList({ attendees }) {
@@ -77,6 +78,7 @@ export default function EventSales({ initial }) {
           {!data.internal.currencies.length && <p className="sales-summary-money">No completed Stardust Garage ticket orders yet.</p>}
         </div>
         <p className="event-note">Collected amounts include checkout fees and taxes. Net subtracts refunds; it is not an organizer payout or profit.</p>
+        {data.writeup?.shared && <OrganizerWriteup view={data.writeup.writeup} proofs={data.writeup.proofs || []} sharedAt={data.writeup.shared_at} proofHref={(proofId) => `/api/portal/events/${data.event.id}/writeup/proofs/${proofId}`} />}
         <AttendeeList attendees={data.attendees || []} />
       </section>
       {(data.ticket_tailor.length > 0 || data.event.ticketing_mode === 'tickettailor') && <section><h2>Ticket Tailor history</h2><p className="event-note">Cached external summaries, shown separately and not added to Stardust Garage totals.</p>
