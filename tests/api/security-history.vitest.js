@@ -7,7 +7,7 @@ function db({incidents=[warning],reminders=[],restrictions=[],fail=null,linkedPa
   return {from(table){
     let overlap=null,condition=null;
     const q={
-      select:()=>q,order:()=>q,limit:()=>q,eq:(f,v)=>{condition=[f,v];return q},
+      select:()=>q,order:()=>q,limit:()=>q,is:()=>q,or:()=>q,eq:(f,v)=>{condition=[f,v];return q},
       in:(f,v)=>{condition=[f,v];return q},overlaps:(f,v)=>{overlap=[f,v];return q},
       single:async()=>({data:{id:id(1),full_name:'Test Guest',user_id:id(2)}}),maybeSingle:async()=>({data:null}),
       then(resolve,reject){
@@ -15,7 +15,7 @@ function db({incidents=[warning],reminders=[],restrictions=[],fail=null,linkedPa
         let data=[];
         if(table==='security_incidents')data=incidents;
         if(table==='security_warning_reminders')data=reminders;
-        if(table==='access_restrictions')data=restrictions.filter(r=>r[overlap[0]].some(k=>overlap[1].includes(k)));
+        if(table==='access_restrictions')data=overlap?restrictions.filter(r=>r[overlap[0]].some(k=>overlap[1].includes(k))):restrictions;
         if(table==='trial_passes'&&linkedPass&&condition?.[0]==='member_profile_id')data=[{id:id(3),member_profile_id:id(1),user_id:id(2),guest_profile_id:id(4)}];
         return Promise.resolve({data}).then(resolve,reject);
       },

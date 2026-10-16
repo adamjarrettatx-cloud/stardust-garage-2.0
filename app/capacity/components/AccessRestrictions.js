@@ -17,6 +17,39 @@ async function save(payload) {
   refreshAccess();
   return json;
 }
+// Normalize phone photos (including iPhone HEIC in Safari) to a resized JPEG
+// before upload. If the browser cannot decode it, send the original and let
+// the server validate the type.
+async function preparePhoto(file) {
+  try {
+    const url = URL.createObjectURL(file);
+    const img = await new Promise((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = reject; i.src = url; });
+    const scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(img.naturalWidth * scale); canvas.height = Math.round(img.naturalHeight * scale);
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    URL.revokeObjectURL(url);
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.88));
+    return blob || file;
+  } catch { return file; }
+}
+async function uploadPhoto(id, file) {
+  const form = new FormData();
+  form.set('id', id);
+  form.set('photo', await preparePhoto(file), 'photo.jpg');
+  const res = await fetch(`${API}/photo`, { method: 'POST', body: form });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error || 'Photo could not be uploaded.');
+  refreshAccess();
+}
+const EVENT_LABELS = { created: 'Added', note: 'Note', lifted: 'Lifted', same_person: 'Confirmed same person: banned', different_person: 'Override: not banned', updated: 'Edited' };
+function Photo({ url, label, empty, size = 'h-40' }) {
+  return <figure className="min-w-0 flex-1">
+    <figcaption className="text-xs text-neutral-400 mb-1">{label}</figcaption>
+    {url ? <img src={url} alt={label} className={`${size} w-full rounded-md object-cover border border-white/20 bg-black`} />
+      : <div className={`${size} w-full rounded-md border border-dashed border-white/20 flex items-center justify-center text-xs text-neutral-500 text-center p-2`}>{empty}</div>}
+  </figure>;
+}
 function date(value) { return value ? new Date(value).toLocaleString('en-US', { timeZone: 'America/Chicago', timeZoneName: 'short' }) : ''; }
 
 function RecordNotes({ row }) {
@@ -26,7 +59,7 @@ function RecordNotes({ row }) {
     {row.expires_at && <p className="text-xs text-amber-200">Expires {date(row.expires_at)}</p>}
     {row.lifted_at && <p className="text-sm text-green-300">Lifted {date(row.lifted_at)}: {row.lift_reason}</p>}
     {(row.events || []).map(event => <div key={event.id} className="border-t border-white/10 pt-2">
-      <div className="text-xs text-neutral-400">{event.actor_label} · {date(event.created_at)} · {event.action.replaceAll('_', ' ')}</div>
+      <div className="text-xs text-neutral-400">{event.actor_label} · {date(event.created_at)} · {EVENT_LABELS[event.action] || event.action.replaceAll('_', ' ')}</div>
       <div className="text-sm whitespace-pre-wrap">{event.comment}</div>
     </div>)}
   </div>;
@@ -56,6 +89,7 @@ export function AccessCheck({ subject, onStatus, extra = null }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
+  const [decision, setDecision] = useState(null);
   const callback = useRef(onStatus);
   callback.current = onStatus;
   const kind = subject?.kind, id = subject?.id;
@@ -86,9 +120,9 @@ export function AccessCheck({ subject, onStatus, extra = null }) {
     return () => { alive = false; clearInterval(timer); window.removeEventListener('sdg:access-changed', changed); };
   }, [kind, id, extraKey]);
   async function identify(row, action) {
-    if (!note.trim()) { setError('Explain how you verified their identity before saving.'); return; }
+    if (!note.trim()) { setError(action === 'different_person' ? 'Leave a comment explaining the override before saving.' : 'Explain how you confirmed it is the same person.'); return; }
     setBusy(true); setError('');
-    try { await save({ action, id: row.id, subject, extra, comment: note }); setNote(''); }
+    try { await save({ action, id: row.id, subject, extra, comment: note }); setNote(''); setDecision(null); }
     catch (err) { setError(err.message); }
     finally { setBusy(false); }
   }
@@ -100,8 +134,8 @@ export function AccessCheck({ subject, onStatus, extra = null }) {
   }
   return <section className="my-3 rounded-xl border border-white/15 bg-[#151515] p-3" aria-label="Guest access status">
     <div className="flex items-center justify-between gap-2">
-      <strong className={`text-sm ${data?.status === 'blocked' ? 'text-red-300' : data?.status === 'verify' || data?.pending_reminders?.length ? 'text-amber-200' : 'text-green-300'}`}>
-        {error ? 'HOLD ENTRY' : !data ? 'Checking access…' : data.status === 'blocked' ? 'DO NOT ADMIT' : data.status === 'verify' ? 'VERIFY IDENTITY' : data.pending_reminders?.length ? 'PRIOR RULE WARNING' : 'No active restriction found'}
+      <strong className={`text-sm ${data?.status === 'blocked' || data?.status === 'verify' ? 'text-red-300' : data?.pending_reminders?.length ? 'text-amber-200' : 'text-green-300'}`}>
+        {error ? 'HOLD ENTRY' : !data ? 'Checking access…' : data.status === 'blocked' ? 'DO NOT ADMIT: BANNED' : data.status === 'verify' ? 'POSSIBLE BANNED GUEST: HOLD ENTRY' : data.pending_reminders?.length ? 'PRIOR RULE WARNING' : 'No active restriction found'}
       </strong>
       <button type="button" className={button} onClick={() => openRestrictions(subject, data?.full_name)}>Restrict / notes</button>
     </div>
@@ -126,20 +160,38 @@ export function AccessCheck({ subject, onStatus, extra = null }) {
         <p className="text-xs text-neutral-400">{date(row.created_at)} · {row.actor_label}</p>
       </div>)}
     </details>}
-    {data?.matches.map(row => <div key={row.id} className="mt-3 border-t border-white/15 pt-3">
+    {data?.matches.map(row => <div key={row.id} className="mt-3 rounded-lg border border-red-500/50 bg-red-950/20 p-3">
       <div className="font-bold">{row.full_name} · {row.kind === 'banned' ? 'Banned' : row.kind === 'review' ? 'Manager review' : 'Temporary restriction'}</div>
-      <p className="text-xs text-amber-200 my-1">{row.match === 'confirmed' ? 'Confirmed profile match. Only an authorized manager can lift this restriction.' : 'Possible match only. Compare identity and identifying notes before deciding.'}</p>
+      <p className="text-sm text-red-200 my-1">{row.match_reason}</p>
+      <p className="text-xs text-neutral-300 mb-3">{row.match === 'confirmed'
+        ? 'Do not admit. No override at the door. Only an authorized manager can lift this ban.'
+        : 'Compare the banned-list photo with this account and the person in front of you.'}</p>
+      <div className="flex gap-3 mb-3">
+        <Photo url={row.photo_url} label="Banned list photo" empty="No photo on file for this ban" />
+        <Photo url={data.guest_photo_url} label={`This account: ${data.full_name || 'Guest'}`} empty="No account photo" />
+      </div>
       <RecordNotes row={row} />
-      <InlineNote row={row} />
-      {row.match === 'possible' && <div className="space-y-2 mt-3">
-        <label className="block text-xs">Identity verification note
-          <textarea className={field} maxLength={2000} value={note} onChange={e => setNote(e.target.value)} placeholder="How did you confirm these are the same or different people?" />
-        </label>
-        <div className="flex gap-2 flex-wrap">
-          <button className={button} type="button" disabled={busy} onClick={() => identify(row, 'same_person')}>Same person: block entry</button>
-          <button className={button} type="button" disabled={busy} onClick={() => identify(row, 'different_person')}>Different person: save verification</button>
-        </div>
+      {row.match === 'possible' && <div className="space-y-2 mt-3 border-t border-white/15 pt-3">
+        {!decision || decision.id !== row.id ? <div className="flex gap-2 flex-wrap">
+          <button className={`${button} bg-white text-black`} type="button" disabled={busy} onClick={() => { setDecision({ id: row.id, action: 'different_person' }); setNote(''); setError(''); }}>Not banned – override</button>
+          <button className={`${button} border-red-400/60 text-red-200`} type="button" disabled={busy} onClick={() => { setDecision({ id: row.id, action: 'same_person' }); setNote(''); setError(''); }}>Same person – keep banned</button>
+        </div> : <>
+          <label className="block text-xs">{decision.action === 'different_person'
+            ? 'Override comment (required). What did you compare, and why is this not the banned person?'
+            : 'Comment (required). How did you confirm this is the banned person?'}
+            <textarea autoFocus className={field} rows={3} maxLength={2000} value={note} onChange={e => setNote(e.target.value)} />
+          </label>
+          <p className="text-xs text-neutral-400">{decision.action === 'different_person'
+            ? 'Saved with your name for admins and other staff. This account will not be flagged for this ban again.'
+            : 'Links this account to the ban. Future check-ins are blocked without an override option.'}</p>
+          <div className="flex gap-2 flex-wrap">
+            <button className={`${button} ${decision.action === 'different_person' ? 'bg-white text-black' : 'bg-red-950'}`} type="button" disabled={busy || !note.trim()}
+              onClick={() => identify(row, decision.action)}>{busy ? 'Saving…' : decision.action === 'different_person' ? 'Confirm override' : 'Confirm: keep banned'}</button>
+            <button className={button} type="button" disabled={busy} onClick={() => { setDecision(null); setNote(''); }}>Cancel</button>
+          </div>
+        </>}
       </div>}
+      <InlineNote row={row} />
     </div>)}
     {data?.history?.map(row => <details key={row.id} className="mt-3 border-t border-white/15 pt-2">
       <summary className="text-sm cursor-pointer">{row.full_name}: {row.lifted_at ? 'lifted restriction' : 'expired restriction'}{row.match === 'possible' ? ' (possible name/contact match)' : ''}</summary>
@@ -164,13 +216,14 @@ export default function AccessRestrictions({ allowCreate = true }) {
   const [comment, setComment] = useState('');
   const [confirmLift, setConfirmLift] = useState(false);
   const [confirmManager, setConfirmManager] = useState(null);
+  const [editing, setEditing] = useState(false);
   const dialog = useRef(null);
   useEffect(() => {
     function show(event) {
       setSubject(event.detail?.subject || null);
       setName(event.detail?.name || '');
       setCreating(Boolean(event.detail?.subject));
-      setSelected(null); setError(''); setComment(''); setConfirmLift(false); setConfirmManager(null); setOpen(true);
+      setSelected(null); setError(''); setComment(''); setConfirmLift(false); setConfirmManager(null); setEditing(false); setOpen(true);
     }
     window.addEventListener('sdg:restrictions-open', show);
     return () => window.removeEventListener('sdg:restrictions-open', show);
@@ -195,11 +248,15 @@ export default function AccessRestrictions({ allowCreate = true }) {
     const timer = setTimeout(() => load(controller.signal).catch(e => { if (e.name !== 'AbortError') setError(e.message); }), 200);
     return () => { clearTimeout(timer); controller.abort(); };
   }, [open, load]);
-  async function mutate(payload) {
+  async function mutate(payload, photo = null) {
     setBusy(true); setError('');
     try {
       const result = await save(payload);
-      setCreating(false); setSubject(null); setComment(''); setConfirmLift(false); setConfirmManager(null); setSelected(result.id);
+      if (photo) {
+        try { await uploadPhoto(result.id, photo); }
+        catch (err) { setError(`Restriction saved, but the photo did not upload: ${err.message} Open the record and use Edit info to try again.`); }
+      }
+      setCreating(false); setEditing(false); setSubject(null); setComment(''); setConfirmLift(false); setConfirmManager(null); setSelected(result.id);
       await load();
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
@@ -210,8 +267,31 @@ export default function AccessRestrictions({ allowCreate = true }) {
     const values = Object.fromEntries(form);
     // Duration avoids browser-local timezone ambiguity. All displayed dates
     // are America/Chicago; expiry is persisted as an absolute instant.
-    await mutate({ ...values, action: 'create', subject, aliases: values.aliases.split(',').map(s => s.trim()).filter(Boolean),
-      expires_at: values.kind === 'temporary' ? new Date(Date.now() + Number(values.duration) * 3600000).toISOString() : null });
+    const { photo, ...fields } = values;
+    await mutate({ ...fields, action: 'create', subject, aliases: values.aliases.split(',').map(s => s.trim()).filter(Boolean),
+      expires_at: values.kind === 'temporary' ? new Date(Date.now() + Number(values.duration) * 3600000).toISOString() : null },
+    photo?.size ? photo : null);
+  }
+  async function edit(event, current) {
+    event.preventDefault();
+    const values = Object.fromEntries(new FormData(event.currentTarget));
+    const aliases = values.aliases.split(',').map(s => s.trim()).filter(Boolean);
+    const changes = {};
+    if (values.full_name.trim() !== current.full_name) changes.full_name = values.full_name;
+    if (aliases.join(',') !== (current.aliases || []).join(',')) changes.aliases = aliases;
+    if (values.email.trim() !== (current.email || '')) changes.email = values.email;
+    if (values.phone.trim() !== (current.phone || '')) changes.phone = values.phone;
+    if (values.identifying_details.trim() !== (current.identifying_details || '')) changes.identifying_details = values.identifying_details;
+    const photo = values.photo?.size ? values.photo : null;
+    if (!Object.keys(changes).length && !photo) { setError('No changes to save.'); return; }
+    setBusy(true); setError('');
+    try {
+      if (Object.keys(changes).length) await save({ action: 'update', id: current.id, ...changes });
+      if (photo) await uploadPhoto(current.id, photo);
+      setEditing(false);
+      await load();
+    } catch (err) { setError(err.message); }
+    finally { setBusy(false); }
   }
   const row = data?.rows.find(r => r.id === selected);
   return <>
@@ -246,12 +326,37 @@ export default function AccessRestrictions({ allowCreate = true }) {
           </label>
           <label className="block text-sm">Reason / initial note<textarea required name="reason" maxLength={2000} className={field} rows={3} /></label>
           <label className="block text-sm">Identifying details / staff instructions<textarea name="identifying_details" maxLength={2000} className={field} rows={3} /></label>
-          <p className="text-xs text-neutral-400">No trial pass or membership is required. Manual name matches require verification at the door.</p>
+          <label className="block text-sm">Photo (recommended)<input name="photo" type="file" accept="image/*" className={field} /></label>
+          <p className="text-xs text-neutral-400">No account is required. Anyone checking in with the same or a similar name, email or phone is held at the door, and staff compare this photo before admitting.</p>
           <button type="submit" disabled={busy} className={`${button} bg-red-950`}>{busy ? 'Saving…' : 'Save restriction'}</button>
         </form> : row ? <div className="space-y-3">
-          <button type="button" className={button} onClick={() => setSelected(null)}>Back to list</button>
-          <h3 className="text-xl font-bold">{row.full_name}</h3>
-          <div className="text-sm text-amber-200">{row.kind === 'banned' ? 'Banned' : row.kind === 'review' ? 'Manager review' : 'Temporary restriction'}</div>
+          <button type="button" className={button} onClick={() => { setSelected(null); setEditing(false); }}>Back to list</button>
+          <div className="flex gap-4 items-start">
+            <div className="w-32 shrink-0"><Photo url={row.photo_url} label="Photo" empty="No photo yet" size="h-32" /></div>
+            <div className="min-w-0">
+              <h3 className="text-xl font-bold break-words">{row.full_name}</h3>
+              <div className="text-sm text-amber-200">{row.kind === 'banned' ? 'Banned' : row.kind === 'review' ? 'Manager review' : 'Temporary restriction'}</div>
+              {Boolean(row.aliases?.length) && <p className="text-xs text-neutral-300 mt-1">Also known as: {row.aliases.join(', ')}</p>}
+              {row.email && <p className="text-xs text-neutral-300">{row.email}</p>}
+              {row.phone && <p className="text-xs text-neutral-300">{row.phone}</p>}
+              {allowCreate && !row.lifted_at && !editing && <button type="button" className={`${button} mt-2`} onClick={() => { setEditing(true); setError(''); }}>Edit info / photo</button>}
+            </div>
+          </div>
+          {editing && allowCreate && !row.lifted_at && <form className="space-y-3 border border-white/15 rounded-lg p-3" onSubmit={e => edit(e, row)}>
+            <label className="block text-sm">Full name<input required maxLength={160} name="full_name" defaultValue={row.full_name} className={field} /></label>
+            <label className="block text-sm">Known aliases, comma-separated<input name="aliases" maxLength={1000} defaultValue={(row.aliases || []).join(', ')} className={field} /></label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="text-sm">Email<input name="email" type="email" maxLength={254} defaultValue={row.email || ''} className={field} /></label>
+              <label className="text-sm">Phone<input name="phone" maxLength={40} defaultValue={row.phone || ''} className={field} /></label>
+            </div>
+            <label className="block text-sm">Identifying details / staff instructions<textarea name="identifying_details" maxLength={2000} rows={3} defaultValue={row.identifying_details || ''} className={field} /></label>
+            <label className="block text-sm">{row.photo_url ? 'Replace photo' : 'Add photo'}<input name="photo" type="file" accept="image/*" className={field} /></label>
+            <p className="text-xs text-neutral-400">Earlier names, emails and phone numbers keep matching after an edit. Every change is saved to the history with your name.</p>
+            <div className="flex gap-2">
+              <button type="submit" disabled={busy} className={`${button} bg-white text-black`}>{busy ? 'Saving…' : 'Save changes'}</button>
+              <button type="button" disabled={busy} className={button} onClick={() => setEditing(false)}>Cancel</button>
+            </div>
+          </form>}
           <RecordNotes row={row} />
           <label className="block text-sm">Add note / reason to lift<textarea className={field} value={comment} onChange={e => setComment(e.target.value)} maxLength={2000} rows={3} /></label>
           <div className="flex gap-2 flex-wrap">
@@ -267,10 +372,14 @@ export default function AccessRestrictions({ allowCreate = true }) {
         </div> : <>
           <label className="block text-sm">Search restricted guests<input className={field} value={query} onChange={e => { setQuery(e.target.value); setPage(0); }} placeholder="Search name" /></label>
           <label className="flex gap-2 text-sm"><input type="checkbox" checked={history} onChange={e => { setHistory(e.target.checked); setPage(0); }} />Include lifted / expired</label>
-          {!data ? <p>Loading…</p> : data.rows.length === 0 ? <p className="text-sm text-neutral-400">No restrictions found.</p> : data.rows.map(r => <button type="button" key={r.id} className="w-full text-left p-3 border border-white/15 rounded-xl" onClick={() => { setSelected(r.id); setComment(''); }}>
+          {!data ? <p>Loading…</p> : data.rows.length === 0 ? <p className="text-sm text-neutral-400">No restrictions found.</p> : data.rows.map(r => <button type="button" key={r.id} className="w-full text-left p-3 border border-white/15 rounded-xl flex gap-3 items-start" onClick={() => { setSelected(r.id); setComment(''); setEditing(false); }}>
+            {r.photo_url ? <img src={r.photo_url} alt="" className="h-14 w-14 shrink-0 rounded-md object-cover border border-white/20" />
+              : <span className="h-14 w-14 shrink-0 rounded-md border border-dashed border-white/20 flex items-center justify-center text-[10px] text-neutral-500">No photo</span>}
+            <span className="min-w-0 flex-1">
             <span className="block font-bold">{r.full_name}</span>
             <span className="block text-xs text-amber-200">{r.lifted_at ? 'Lifted' : r.expires_at && Date.parse(r.expires_at) <= Date.now() ? 'Expired' : r.kind === 'banned' ? 'Banned' : r.kind === 'review' ? 'Manager review' : 'Temporary restriction'}</span>
             <span className="block text-sm text-neutral-300 line-clamp-2">{r.reason}</span>
+            </span>
           </button>)}
           <div className="flex gap-2">
             <button className={button} disabled={!page} onClick={() => setPage(p => p - 1)}>Previous</button>
