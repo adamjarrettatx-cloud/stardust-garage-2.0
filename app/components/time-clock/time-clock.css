@@ -428,3 +428,17 @@
    pressed against the right edge. */
 .tc-root select,.tc-root.tc-owner select{-webkit-appearance:none;appearance:none;padding-right:44px!important;background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2212%22%20height%3D%228%22%20viewBox%3D%220%200%2012%208%22%3E%3Cpath%20d%3D%22M1%201.5l5%205%205-5%22%20fill%3D%22none%22%20stroke%3D%22%23666862%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 16px center!important;background-size:12px 8px!important}
 .tc-root[data-theme=dark] select,.tc-root.tc-owner[data-theme=dark] select{background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2212%22%20height%3D%228%22%20viewBox%3D%220%200%2012%208%22%3E%3Cpath%20d%3D%22M1%201.5l5%205%205-5%22%20fill%3D%22none%22%20stroke%3D%22%23a3aba3%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E")!important}
+/* Add hours (Timesheets) and quick-add person (Timesheets + Schedule) */
+.tc-root .tcal-add{border:1px solid var(--border);border-radius:8px;padding:var(--s4);margin:var(--s3) 0}
+.tc-root .tcal-addtitle{grid-column:1/-1;margin:0;font-size:var(--text-base)}
+.tc-root .tcal-add select{min-height:44px;border:1px solid var(--border);border-radius:6px;background:var(--panel);color:var(--text);padding:var(--s2) var(--s3)}
+.tc-root .tcal-addnew{grid-column:1/-1}
+.tc-root .qa-person{display:flex;flex-direction:column;gap:var(--s3);border:1px solid var(--border);border-radius:8px;padding:var(--s3) var(--s4);margin-top:var(--s3);background:var(--panel)}
+.tc-root .qa-grid{display:grid;grid-template-columns:2fr 1fr 1.4fr 1fr 1fr;gap:var(--s3);align-items:end}
+.tc-root .qa-grid label{display:flex;flex-direction:column;gap:var(--s1);font-size:var(--text-xs);color:var(--muted)}
+.tc-root .qa-grid input,.tc-root .qa-grid select{min-height:44px;border:1px solid var(--border);border-radius:6px;background:var(--panel);color:var(--text);padding:var(--s2) var(--s3);min-width:0}
+.tc-root .qa-person p{margin:0}
+.tc-root .sch-addperson{align-self:flex-start;padding-left:0}
+@media(max-width:900px){.tc-root .qa-grid{grid-template-columns:1fr 1fr}.tc-root .qa-grid .qa-wide{grid-column:1/-1}}
+.tc-root .sch-form .qa-grid{grid-template-columns:1fr 1fr}.tc-root .sch-form .qa-grid .qa-wide{grid-column:1/-1}.tc-root .sch-form .qa-person{margin-top:0}
+.tc-root .sch-form{max-height:calc(100vh - 48px);overflow:auto}.tc-root .sch-form .sch-people{flex-shrink:0;min-height:min(160px,30vh)}.tc-root .sch-form .qa-person{flex-shrink:0}

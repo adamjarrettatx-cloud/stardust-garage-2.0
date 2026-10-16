@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { request, time } from "@/app/components/time-clock/Shared";
 import { chicagoInput, chicagoToIso, duration } from "@/lib/time-clock/core.mjs";
 import { austinShiftRange, scheduledHours } from "@/lib/time-clock/schedule.mjs";
+import QuickAddPerson from "./QuickAddPerson";
 
 const endpoint = "/api/admin/time-clock/schedule";
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -27,7 +28,7 @@ const fromKey = (k) => {
 };
 const shortTime = (iso) => time(iso).replace(":00", "").replace(" ", "").toLowerCase();
 
-export default function ScheduleCalendar({ workers, roles, assignments }) {
+export default function ScheduleCalendar({ workers, roles, assignments, onWorkersChanged }) {
   const today = useMemo(() => {
     const k = austinDay(new Date().toISOString());
     return fromKey(k);
@@ -340,6 +341,7 @@ export default function ScheduleCalendar({ workers, roles, assignments }) {
             </div>
             {overnight && <p className="sub">Ends the next day.</p>}
             {modal.mode === "create" ? (
+              <>
               <fieldset className="sch-people">
                 <legend>People and roles</legend>
                 {!activeWorkers.length && <p className="sub">Add staff profiles first.</p>}
@@ -375,6 +377,21 @@ export default function ScheduleCalendar({ workers, roles, assignments }) {
                   );
                 })}
               </fieldset>
+              {modal.adding ? (
+                <QuickAddPerson
+                  roles={roles}
+                  onCancel={() => set("adding", false)}
+                  onCreated={async (id, roleId) => {
+                    await onWorkersChanged?.();
+                    setModal((m) => ({ ...m, adding: false, people: { ...m.people, [id]: roleId } }));
+                  }}
+                />
+              ) : (
+                <button type="button" className="textbtn sch-addperson" onClick={() => set("adding", true)}>
+                  + Someone not listed
+                </button>
+              )}
+              </>
             ) : (
               <div className="sch-times">
                 <label>
