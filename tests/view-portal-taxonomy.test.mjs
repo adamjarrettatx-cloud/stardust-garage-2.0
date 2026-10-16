@@ -20,8 +20,8 @@ test('Organizations is one selectable type with two existing test scenarios', ()
 test('grouping preserves every fixed identity exactly once and creates no new login type', () => {
   const before = JSON.stringify(VIEW_PERSONAS);
   const flattened = viewOptions().flatMap((option) => option.scenarios);
-  assert.equal(flattened.length, 21);
-  assert.equal(new Set(flattened.map((p) => p.id)).size, 21);
+  assert.equal(flattened.length, 22);
+  assert.equal(new Set(flattened.map((p) => p.id)).size, 22);
   for (const p of flattened) {
     assert.equal(p, viewPersona(p.id));
     assert.equal(personaEmail(p.id), `view-${p.id}@preview.sdgatx.invalid`);
@@ -55,4 +55,12 @@ test('grouping respects an explicitly supplied reduced catalog', () => {
   const options = viewOptions([viewPersona('organizer')]);
   assert.equal(options.length, 1);
   assert.deepEqual(options[0].scenarios.map((p) => p.id), ['organizer']);
+});
+
+test('Programmer is a Persons view on the calendar with the Programmer partner tag', () => {
+  const p = viewPersona('programmer');
+  assert.equal(p.group, 'Persons');
+  assert.equal(p.path, '/portal/calendar');
+  assert.deepEqual(p.partner, ['programmer']);
+  assert.match(VIEW_GROUP_DESCRIPTIONS.Persons, /Programmers/);
 });

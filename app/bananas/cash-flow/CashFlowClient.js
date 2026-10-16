@@ -18,10 +18,10 @@ import { CASHFLOW_THEMES as THEMES } from '@/lib/admin-theme';
 import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
 import CashFlowTrendChart from './CashFlowTrendChart';
 import SpotOnImportDialog from './SpotOnImportDialog';
-import SyncTicketTailorButton from './SyncTicketTailorButton';
 
 const SOURCE_LABEL = {
-  tickettailor: 'TicketTailor',
+  tickettailor: 'Ticket Tailor',
+  sdgatx: 'sdgatx.com',
   spoton_csv: 'SpotOn CSV',
 };
 
@@ -135,7 +135,7 @@ export default function CashFlowClient({
           </div>
           <p className="text-[13px]" style={{ color: t.mutedStrong }}>
             Apply <code style={{ color: t.textStrong }}>supabase/migrations/20260726_financial_ledger.sql</code> in
-            this environment, then sync TicketTailor to populate the dashboard.
+            this environment to populate the dashboard.
           </p>
         </div>
       )}
@@ -188,7 +188,9 @@ export default function CashFlowClient({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <SyncTicketTailorButton t={t} />
+          <span className="text-[11px] font-semibold tracking-[0.10em] uppercase" style={{ color: t.muted }} data-testid="cf-tt-final">
+            Ticket Tailor history (final)
+          </span>
           <button
             type="button"
             onClick={() => setImportOpen(true)}
@@ -488,14 +490,19 @@ export default function CashFlowClient({
                 <span style={{ color: t.mutedStrong }}>{fmtDate(txn.date)}</span>
                 <span className="truncate">
                   {txn.linkedEventId ? (
-                    <Link
-                      href={`/bananas/events/${txn.linkedEventId}`}
-                      className="hover:underline"
-                      style={{ color: t.text }}
-                      title="Open the source event"
-                    >
-                      {eventTitles[txn.linkedEventId] || SOURCE_LABEL[txn.source] || txn.source}
-                    </Link>
+                    <>
+                      <Link
+                        href={`/bananas/events/${txn.linkedEventId}`}
+                        className="hover:underline"
+                        style={{ color: t.text }}
+                        title="Open the source event"
+                      >
+                        {eventTitles[txn.linkedEventId] || SOURCE_LABEL[txn.source] || txn.source}
+                      </Link>
+                      {SOURCE_LABEL[txn.source] ? (
+                        <span style={{ color: t.muted }}> · {SOURCE_LABEL[txn.source]}</span>
+                      ) : null}
+                    </>
                   ) : (
                     <span style={{ color: t.text }} title={txn.externalRef || ''}>
                       {batch ? batch.filename : SOURCE_LABEL[txn.source] || txn.source}
@@ -519,8 +526,8 @@ export default function CashFlowClient({
       )}
 
       <p className="mt-6 text-[12px]" style={{ color: t.faint }}>
-        TicketTailor rows are recognized on the event date and mirror the cached sales metrics — re-syncing
-        updates them in place. SpotOn rows keep their original CSV row in metadata, so a later tips/refunds/fees
+        Ticket sales are recognized on the event date at gross. Ticket Tailor rows (Mar 1 – Sept 19, 2026) are the
+        final record and no longer change; sdgatx.com rows update automatically every night. SpotOn rows keep their original CSV row in metadata, so a later tips/refunds/fees
         breakdown will not need a re-import.
       </p>
 

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { profileCapabilities } from '@/lib/profile-capabilities';
 import { PITCH_STATUS_LABELS } from '@/lib/date-pitches';
 import WithdrawButton from './WithdrawButton';
+import { isViewPortalSandbox } from '@/lib/view-portal/preview-only';
 import '../programmer.css';
 
 export const revalidate = 0;
@@ -26,6 +27,7 @@ export default async function ProgrammerPitchesPage() {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc('partner_my_pitches');
   if (error) console.error('[programmer pitches]', error.message);
+  const previewOnly = isViewPortalSandbox();
   const pitches = (data || []).slice().sort((a, b) => b.pitch_date.localeCompare(a.pitch_date));
 
   return (
@@ -48,7 +50,7 @@ export default async function ProgrammerPitchesPage() {
                   <div className="d">{utcDate(p.pitch_date, { month: 'short', day: 'numeric' })}<small>{utcDate(p.pitch_date, { weekday: 'short', year: 'numeric' })}</small></div>
                   <div><div className="ttl">{p.title}</div><div className="sub">Sent {sentLabel(p.created_at)}{extra}</div></div>
                   <div className="acts">
-                    {p.status === 'pending' && <WithdrawButton id={p.id} />}
+                    {p.status === 'pending' && <WithdrawButton id={p.id} disabled={previewOnly} />}
                     <span className={`pg-pill ${p.status}`}>{p.status === 'pending' ? 'Pending' : PITCH_STATUS_LABELS[p.status]}</span>
                   </div>
                 </li>

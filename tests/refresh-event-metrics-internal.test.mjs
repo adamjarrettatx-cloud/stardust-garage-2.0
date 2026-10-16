@@ -28,7 +28,7 @@ test('Ticket Tailor-linked events are frozen, never refreshed or overwritten', (
 });
 
 test('the events query pulls ticketing_mode so the provider branch can decide', () => {
-  assert.match(ROUTE, /'events'\)\.select\('id, title, tt_event_series_id, ticketing_mode'\)/);
+  assert.match(ROUTE, /'events'\)\.select\('id, title, event_date, tt_event_series_id, ticketing_mode'\)/);
 });
 
 test('internal-ticketing events are aggregated from orders and tickets locally', () => {

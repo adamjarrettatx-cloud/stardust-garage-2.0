@@ -1,7 +1,7 @@
 'use client';
 
 // Macro "everything in one place" view for the very top of the Financials
-// page: total revenue across BOTH TicketTailor (event/ticket income) and
+// page: total revenue across ticket sales (Ticket Tailor + sdgatx.com) and
 // SpotOn (point-of-sale income), stacked into a single bar per day/week/
 // month so a glance answers "how is the business doing overall" without
 // picking a tab first. Buckets are produced by the same
@@ -60,6 +60,8 @@ export default function TotalSalesChart({ dailyRevenue, todayIso, t }) {
   }, [dailyRevenue, ytdDailyRows, granularity]);
 
   const rangeEventGross = useMemo(() => buckets.reduce((sum, b) => sum + b.eventGrossCents, 0), [buckets]);
+  const rangeTtGross = useMemo(() => buckets.reduce((sum, b) => sum + (b.ticketTailorGrossCents || 0), 0), [buckets]);
+  const rangeSdgatxGross = useMemo(() => buckets.reduce((sum, b) => sum + (b.sdgatxGrossCents || 0), 0), [buckets]);
   const rangePosRevenue = useMemo(() => buckets.reduce((sum, b) => sum + b.posRevenueCents, 0), [buckets]);
   const rangeTotalGross = useMemo(() => buckets.reduce((sum, b) => sum + b.totalGrossCents, 0), [buckets]);
   const daysWithIncome = useMemo(() => buckets.reduce((sum, b) => sum + (b.totalGrossCents > 0 ? (b.days || 1) : 0), 0), [buckets]);
@@ -86,7 +88,7 @@ export default function TotalSalesChart({ dailyRevenue, todayIso, t }) {
             className="text-[16px] font-extrabold"
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.textStrong }}
           >
-            Total sales — TicketTailor + SpotOn
+            Total sales — tickets + SpotOn
           </h2>
           <p className="text-[12px] mt-0.5" style={{ color: t.muted }}>
             {granularity === 'ytd'
@@ -134,7 +136,10 @@ export default function TotalSalesChart({ dailyRevenue, todayIso, t }) {
       <div className="flex flex-wrap items-center gap-4 mb-5 text-[12px]">
         <span className="flex items-center gap-1.5" style={{ color: t.mutedStrong }}>
           <span className="inline-block w-2.5 h-2.5 rounded-[2px]" style={{ background: t.rev }} />
-          TicketTailor / event: {centsToUsd(rangeEventGross)}
+          Tickets &amp; events: {centsToUsd(rangeEventGross)}
+          <span style={{ color: t.muted }}>
+            (Ticket Tailor {centsToUsd(rangeTtGross)} · sdgatx.com {centsToUsd(rangeSdgatxGross)})
+          </span>
         </span>
         <span className="flex items-center gap-1.5" style={{ color: t.mutedStrong }}>
           <span className="inline-block w-2.5 h-2.5 rounded-[2px]" style={{ background: t.pos }} />
@@ -179,7 +184,7 @@ export default function TotalSalesChart({ dailyRevenue, todayIso, t }) {
                         onBlur={() => setHovered(null)}
                         tabIndex={0}
                         role="img"
-                        aria-label={`${b.tooltipLabel}: ${centsToUsd(b.totalGrossCents)} total (${centsToUsd(b.eventGrossCents)} TicketTailor, ${centsToUsd(b.posRevenueCents)} SpotOn)`}
+                        aria-label={`${b.tooltipLabel}: ${centsToUsd(b.totalGrossCents)} total (${centsToUsd(b.ticketTailorGrossCents || 0)} Ticket Tailor, ${centsToUsd(b.sdgatxGrossCents || 0)} sdgatx.com, ${centsToUsd(b.posRevenueCents)} SpotOn)`}
                       >
                         <div
                           className={`w-full overflow-hidden transition-opacity ${dense ? 'rounded-t-[1px]' : 'rounded-t-[2px]'}`}
@@ -203,7 +208,15 @@ export default function TotalSalesChart({ dailyRevenue, todayIso, t }) {
                             style={{ background: t.cardBg, borderColor: t.cardBorder, boxShadow: '0 6px 20px rgba(0,0,0,0.35)' }}
                           >
                             <div className="text-[11px] font-semibold" style={{ color: t.textStrong }}>{b.tooltipLabel}</div>
-                            <div className="text-[12px] font-extrabold" style={{ color: t.rev }}>TicketTailor {centsToUsd(b.eventGrossCents)}</div>
+                            {b.ticketTailorGrossCents > 0 && (
+                              <div className="text-[12px] font-extrabold" style={{ color: t.rev }}>Ticket Tailor {centsToUsd(b.ticketTailorGrossCents)}</div>
+                            )}
+                            {b.sdgatxGrossCents > 0 && (
+                              <div className="text-[12px] font-extrabold" style={{ color: t.rev }}>sdgatx.com {centsToUsd(b.sdgatxGrossCents)}</div>
+                            )}
+                            {b.eventGrossCents - (b.ticketTailorGrossCents || 0) - (b.sdgatxGrossCents || 0) > 0 && (
+                              <div className="text-[12px] font-extrabold" style={{ color: t.rev }}>Other event income {centsToUsd(b.eventGrossCents - (b.ticketTailorGrossCents || 0) - (b.sdgatxGrossCents || 0))}</div>
+                            )}
                             <div className="text-[12px] font-extrabold" style={{ color: t.pos }}>SpotOn {centsToUsd(b.posRevenueCents)}</div>
                             {b.posRefundCents > 0 && (
                               <div className="text-[11px]" style={{ color: t.warn }}>SpotOn refunds −{centsToUsd(b.posRefundCents)}</div>
