@@ -16,6 +16,14 @@ import MoneyInput from './MoneyInput.jsx';
 import { createClient } from '@/lib/supabase/client';
 import { uploadEventImage } from '@/lib/event-image-upload';
 import { INSIDER_PRIVATE_SPACE_DISCOUNT_PERCENT, insiderPrivateSpacePriceCents } from '@/lib/membership-tiers';
+import {
+  LEFT_DOOR_DEFAULT_DESCRIPTION,
+  LEFT_DOOR_DEFAULT_IMAGE_URL,
+  LEFT_DOOR_NAME,
+  isLeftDoor,
+  leftDoorPriceTier,
+  leftDoorState,
+} from '@/lib/left-door';
 
 // Admin manager for "private space" rentals attached to an event.
 //
@@ -32,6 +40,11 @@ import { INSIDER_PRIVATE_SPACE_DISCOUNT_PERCENT, insiderPrivateSpacePriceCents }
 //
 // Multiple different spaces per event are supported (rentals for different
 // rooms at different prices).
+//
+// The Left Door (system_key = 'left_door') is permanent: the database adds it
+// to every event with the default photo and description but no price. It is
+// pinned first, cannot be deleted, sells only once a price is set, and can be
+// switched off per event ("Sell at this event").
 
 function money(cents) {
   if (typeof cents !== 'number') return '';
@@ -100,8 +113,16 @@ function toEditShape(p) {
   };
 }
 
-function SpaceForm({ eventId, initial, onSave, onCancel, saving }) {
-  const [s, setS] = useState(() => (initial ? toEditShape(initial) : blankSpace(eventId)));
+function SpaceForm({ eventId, initial, onSave, onCancel, saving, leftDoor = false }) {
+  const [s, setS] = useState(() => {
+    const shape = initial ? toEditShape(initial) : blankSpace(eventId);
+    // The Left Door starts without a price; show an empty price box rather
+    // than $0.00 so the admin has to type this event's price.
+    if (leftDoor && !leftDoorPriceTier(initial)) {
+      shape.tiers = [{ ...shape.tiers[0], price_cents: null }];
+    }
+    return shape;
+  });
   const [uploading, setUploading] = useState(false);
   const [uploadErr, setUploadErr] = useState(null);
 
@@ -128,7 +149,9 @@ function SpaceForm({ eventId, initial, onSave, onCancel, saving }) {
 
   const tier = s.tiers[0];
   const nameValid = s.name.trim().length > 0;
-  const priceValid = Number.isFinite(tier.price_cents) && tier.price_cents >= 0;
+  const priceValid = leftDoor
+    ? Number.isInteger(tier.price_cents) && tier.price_cents > 0
+    : Number.isFinite(tier.price_cents) && tier.price_cents >= 0;
   const canSave = nameValid && priceValid && !saving && !uploading;
 
   function setPriceDollars(v) {
@@ -162,12 +185,27 @@ function SpaceForm({ eventId, initial, onSave, onCancel, saving }) {
       tier_reveal_threshold: 10,
       capacity: s.capacity === '' || s.capacity === null || s.capacity === undefined ? null : Number(s.capacity),
     };
+    if (leftDoor) {
+      payload.name = LEFT_DOOR_NAME;
+      payload.capacity = 1;
+      payload.min_per_order = 1;
+      payload.max_per_order = 1;
+    }
     onSave(payload);
   }
 
   return (
     <div style={{ ...cardStyle({ padding: 20 }), marginBottom: 14 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: leftDoor ? '2fr 1fr' : '2fr 1fr 1fr', gap: 14 }}>
+        {leftDoor ? (
+          <div>
+            <div style={fieldLabelStyle()}>Space</div>
+            <div style={{ padding: '9px 0', fontSize: 14, fontWeight: 700, color: T.strongText, fontFamily: T.fontStack }}>
+              {LEFT_DOOR_NAME}
+              <span style={{ fontWeight: 400, color: T.muted, fontSize: 12 }}> · 1 room per event</span>
+            </div>
+          </div>
+        ) : (
         <label>
           <div style={fieldLabelStyle()}>Space name *</div>
           <input
@@ -178,20 +216,23 @@ function SpaceForm({ eventId, initial, onSave, onCancel, saving }) {
             placeholder="Outer Space — Green Room / Upstairs Office"
           />
         </label>
+        )}
         <label>
-          <div style={fieldLabelStyle()}>Price ($)</div>
+          <div style={fieldLabelStyle()}>{leftDoor ? 'Price for this event ($) *' : 'Price ($)'}</div>
           {/* Uses MoneyInput so the mouse wheel can't nudge the value
               while focused (the "scrolls by cents" bug on the events
               admin edit page) and so mid-typing values aren't reformatted
               on every keystroke. Stored as integer cents. */}
           <MoneyInput
             valueCents={tier.price_cents}
-            onChangeCents={(c) => setS({ ...s, tiers: [{ ...tier, price_cents: c ?? 0 }] })}
-            style={inputStyle({ invalid: !priceValid })}
-            placeholder="500.00"
+            onChangeCents={(c) => setS({ ...s, tiers: [{ ...tier, price_cents: leftDoor ? c : (c ?? 0) }] })}
+            style={inputStyle({ invalid: !priceValid && !(leftDoor && tier.price_cents === null) })}
+            placeholder={leftDoor ? 'Set price' : '500.00'}
+            allowEmpty={leftDoor}
             title="Price ($)"
           />
         </label>
+        {!leftDoor && (
         <label>
           <div style={fieldLabelStyle()}>Capacity</div>
           <input
@@ -203,9 +244,21 @@ function SpaceForm({ eventId, initial, onSave, onCancel, saving }) {
             placeholder="1"
           />
         </label>
+        )}
 
         <label style={{ gridColumn: '1 / -1' }}>
-          <div style={fieldLabelStyle()}>Description</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
+            <div style={fieldLabelStyle()}>Description</div>
+            {leftDoor && s.description !== LEFT_DOOR_DEFAULT_DESCRIPTION && (
+              <button
+                type="button"
+                onClick={() => setS({ ...s, description: LEFT_DOOR_DEFAULT_DESCRIPTION })}
+                style={{ background: 'none', border: 0, padding: 0, color: T.muted, fontSize: 11, textDecoration: 'underline', cursor: 'pointer', fontFamily: T.fontStack }}
+              >
+                Use default
+              </button>
+            )}
+          </div>
           <textarea
             rows={3}
             value={s.description}
@@ -248,6 +301,17 @@ function SpaceForm({ eventId, initial, onSave, onCancel, saving }) {
                 style={{ display: 'none' }}
               />
             </label>
+            {leftDoor && s.image_url !== LEFT_DOOR_DEFAULT_IMAGE_URL && !uploading && (
+              <button
+                type="button"
+                onClick={() => setS({ ...s, image_url: LEFT_DOOR_DEFAULT_IMAGE_URL })}
+                disabled={saving}
+                className={pillClass()}
+                style={ghostPillStyle({ disabled: saving })}
+              >
+                USE DEFAULT PHOTO
+              </button>
+            )}
             {s.image_url && !uploading && (
               <button
                 type="button"
@@ -288,13 +352,13 @@ function SpaceForm({ eventId, initial, onSave, onCancel, saving }) {
         </div>
         <div style={{ marginTop: 4 }}>
           Price:{' '}
-          <strong style={{ color: T.strongText }}>{money(tier.price_cents)}</strong>
+          <strong style={{ color: T.strongText }}>{Number.isInteger(tier.price_cents) ? money(tier.price_cents) : '—'}</strong>
           {' · '}
-          <span style={{ color: T.muted }}>{s.capacity || 1} available</span>
+          <span style={{ color: T.muted }}>{leftDoor ? 1 : (s.capacity || 1)} available</span>
         </div>
         <div style={{ marginTop: 4 }}>
           Insider members:{' '}
-          <strong style={{ color: T.strongText }}>{money(insiderPrivateSpacePriceCents(tier.price_cents))}</strong>
+          <strong style={{ color: T.strongText }}>{Number.isInteger(tier.price_cents) ? money(insiderPrivateSpacePriceCents(tier.price_cents)) : '—'}</strong>
           <span style={{ color: T.muted }}> · {INSIDER_PRIVATE_SPACE_DISCOUNT_PERCENT}% off</span>
         </div>
       </div>
@@ -307,7 +371,7 @@ function SpaceForm({ eventId, initial, onSave, onCancel, saving }) {
           className={pillClass('primary')}
           style={primaryPillStyle({ disabled: !canSave })}
         >
-          {saving ? 'SAVING\u2026' : (s.id ? 'SAVE SPACE' : 'CREATE SPACE')}
+          {saving ? 'SAVING\u2026' : (leftDoor ? 'SAVE THE LEFT DOOR' : (s.id ? 'SAVE SPACE' : 'CREATE SPACE'))}
         </button>
         <button
           type="button"
@@ -319,7 +383,7 @@ function SpaceForm({ eventId, initial, onSave, onCancel, saving }) {
           CANCEL
         </button>
         {!nameValid && <span style={{ color: T.danger, fontSize: 12 }}>Name required</span>}
-        {nameValid && !priceValid && <span style={{ color: T.danger, fontSize: 12 }}>Valid price required</span>}
+        {nameValid && !priceValid && <span style={{ color: T.danger, fontSize: 12 }}>{leftDoor ? 'Set a price above $0' : 'Valid price required'}</span>}
       </div>
     </div>
   );
@@ -408,15 +472,220 @@ function SpaceCard({ p, onEdit, onDelete, saving }) {
   );
 }
 
-export default function PrivateSpacesManager({ eventId, products, onReload }) {
-  const [enabled, setEnabled] = useState(() =>
-    (products || []).some((p) => p.kind === 'private_space')
+// On/off switch used for "Sell at this event".
+function SellSwitch({ checked, onChange, disabled }) {
+  return (
+    <label
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 10, cursor: disabled ? 'not-allowed' : 'pointer',
+        fontSize: 12, color: T.text, fontFamily: T.fontStack, userSelect: 'none', whiteSpace: 'nowrap',
+      }}
+    >
+      <span style={{ letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 600, color: checked ? T.strongText : T.muted }}>
+        Sell at this event
+      </span>
+      <input
+        type="checkbox"
+        role="switch"
+        aria-checked={checked}
+        checked={checked}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+        style={{ position: 'absolute', opacity: 0, width: 1, height: 1 }}
+      />
+      <span
+        aria-hidden="true"
+        style={{
+          width: 38, height: 22, borderRadius: 4, position: 'relative', flex: '0 0 auto',
+          background: checked ? T.success : 'rgba(255,255,255,0.12)',
+          border: `1px solid ${checked ? T.success : T.border}`,
+          opacity: disabled ? 0.5 : 1, transition: 'background 120ms',
+        }}
+      >
+        <span
+          style={{
+            position: 'absolute', top: 2, left: checked ? 18 : 2, width: 16, height: 16, borderRadius: 3,
+            background: '#fff', transition: 'left 120ms',
+          }}
+        />
+      </span>
+    </label>
   );
+}
+
+// Payload that re-saves the Left Door exactly as it is, with overrides.
+function leftDoorPayload(p, overrides = {}) {
+  return {
+    id: p.id,
+    event_id: p.event_id,
+    kind: 'private_space',
+    name: LEFT_DOOR_NAME,
+    description: p.description ?? null,
+    image_url: p.image_url ?? null,
+    member_only: false,
+    is_active: p.is_active !== false,
+    capacity: 1,
+    min_per_order: 1,
+    max_per_order: 1,
+    display_order: p.display_order ?? 0,
+    tier_reveal_threshold: 10,
+    sales_start_at: p.sales_start_at ?? null,
+    sales_end_at: p.sales_end_at ?? null,
+    tiers: (p.tiers || []).map((t) => ({ ...t })),
+    ...overrides,
+  };
+}
+
+// Permanent Left Door card: always first, cannot be deleted.
+function LeftDoorCard({ p, eventId, onSave, onEdit, onRestore, saving }) {
+  const [priceDraft, setPriceDraft] = useState(null);
+
+  if (!p) {
+    return (
+      <div style={{ ...cardStyle({ padding: 18 }), marginBottom: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 13, color: T.muted, fontFamily: T.fontStack }}>
+          <strong style={{ color: T.strongText }}>{LEFT_DOOR_NAME}</strong> isn't on this event.
+        </div>
+        <button type="button" onClick={onRestore} disabled={saving} className={pillClass('primary')} style={primaryPillStyle({ disabled: saving })}>
+          ADD THE LEFT DOOR
+        </button>
+      </div>
+    );
+  }
+
+  const state = leftDoorState(p);
+  const on = state !== 'off';
+  const tier = leftDoorPriceTier(p);
+  const price = tier?.price_cents ?? null;
+
+  function toggle(next) {
+    if (!next && (p.sold_count || 0) > 0) {
+      if (!confirm('The Left Door is already booked for this event. Turning it off stops new sales; the existing booking stays valid.')) return;
+    }
+    onSave(leftDoorPayload(p, { is_active: next }));
+  }
+
+  function savePrice() {
+    if (!(Number.isInteger(priceDraft) && priceDraft > 0)) return;
+    const base = tier || {
+      id: null, name: 'Rental', currency: 'usd', starts_at: null, ends_at: null,
+      is_active: true, display_order: 0, status: 'active', access_codes: null,
+      booking_fee_cents_override: null,
+    };
+    onSave(leftDoorPayload(p, {
+      is_active: true,
+      tiers: [{ ...base, price_cents: priceDraft, status: 'active', is_active: true }],
+    }));
+  }
+
+  const statusTag = {
+    selling: <span style={statusPill({ tone: 'success' })}>On sale</span>,
+    needs_price: <span style={statusPill({ tone: 'warning' })}>Needs price</span>,
+    sold: <span style={statusPill({ tone: 'accent' })}>Booked</span>,
+    off: <span style={statusPill({ tone: 'muted' })}>Not selling</span>,
+  }[state];
+
+  return (
+    <div style={{ ...cardStyle({ padding: 18 }), marginBottom: 14, opacity: on ? 1 : 0.8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        {on && p.image_url && (
+          <img
+            src={p.image_url}
+            alt=""
+            style={{ width: 96, height: 72, objectFit: 'cover', borderRadius: 4, border: `1px solid ${T.border}`, flex: '0 0 auto', display: 'block' }}
+          />
+        )}
+        <div style={{ flex: '1 1 260px', minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 700, color: T.strongText, fontSize: 16, fontFamily: T.fontStack }}>{LEFT_DOOR_NAME}</span>
+            {statusTag}
+          </div>
+          {on && p.description && (
+            <div style={{ fontSize: 13, color: T.muted, marginTop: 6, whiteSpace: 'pre-wrap' }}>{p.description}</div>
+          )}
+          {!on && (
+            <div style={{ fontSize: 13, color: T.muted, marginTop: 6 }}>
+              Hidden from buyers for this event. Photo, description and price are kept.
+            </div>
+          )}
+        </div>
+        <SellSwitch checked={on} onChange={toggle} disabled={saving} />
+      </div>
+
+      {state === 'needs_price' && (
+        <div
+          style={{
+            marginTop: 14, padding: 12, borderRadius: 4, border: `1px solid rgba(245,158,11,0.4)`,
+            background: 'rgba(245,158,11,0.08)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+          }}
+        >
+          <span style={{ fontSize: 13, color: T.text, fontFamily: T.fontStack, flex: '1 1 220px' }}>
+            Set this event's price to start selling. Buyers don't see the room until then.
+          </span>
+          <div style={{ width: 130 }}>
+            <MoneyInput
+              valueCents={priceDraft}
+              onChangeCents={setPriceDraft}
+              allowEmpty
+              placeholder="Price ($)"
+              title="Left Door price for this event"
+              style={inputStyle()}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={savePrice}
+            disabled={saving || !(Number.isInteger(priceDraft) && priceDraft > 0)}
+            className={pillClass('primary')}
+            style={primaryPillStyle({ disabled: saving || !(Number.isInteger(priceDraft) && priceDraft > 0) })}
+          >
+            {saving ? 'SAVING\u2026' : 'SET PRICE'}
+          </button>
+        </div>
+      )}
+
+      {on && (
+        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ fontFamily: T.fontStack }}>
+            {state !== 'needs_price' && (
+              <>
+                <span style={{ fontSize: 22, fontWeight: 700, color: T.strongText }}>{money(price)}</span>
+                <span style={{ fontSize: 12, color: T.muted }}>
+                  {' · '}Insider {money(insiderPrivateSpacePriceCents(price))}
+                  {' · '}1 room{' · '}{p.sold_count || 0} sold
+                </span>
+              </>
+            )}
+          </div>
+          <div className="sdg-row-icon-group" role="group" aria-label="Manage The Left Door" style={{ opacity: saving ? 0.5 : 1 }}>
+            <button
+              type="button"
+              onClick={onEdit}
+              disabled={saving}
+              className="sdg-row-icon-btn"
+              aria-label="Edit The Left Door"
+              title="Edit photo, description and price"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M16.9 3.6a2.1 2.1 0 0 1 3 3L8.5 18 4 19.5 5.5 15z" />
+                <path d="M14.5 6l3.5 3.5" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function PrivateSpacesManager({ eventId, products, onReload }) {
   const [editing, setEditing] = useState(null); // null | 'new' | product-id
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(null);
 
-  const spaces = (products || []).filter((p) => p.kind === 'private_space');
+  const allSpaces = (products || []).filter((p) => p.kind === 'private_space');
+  const leftDoor = allSpaces.find(isLeftDoor) || null;
+  const spaces = allSpaces.filter((p) => !isLeftDoor(p));
   const target = editing === 'new' ? null : (spaces.find((p) => p.id === editing) || null);
 
   async function save(payload) {
@@ -431,6 +700,25 @@ export default function PrivateSpacesManager({ eventId, products, onReload }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Save failed');
       setEditing(null);
+      await onReload();
+    } catch (e) {
+      setErr(String(e.message || e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function restoreLeftDoor() {
+    setSaving(true);
+    setErr(null);
+    try {
+      const res = await fetch('/api/admin/tickets/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ensure_left_door: true, event_id: eventId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not add The Left Door');
       await onReload();
     } catch (e) {
       setErr(String(e.message || e));
@@ -454,42 +742,8 @@ export default function PrivateSpacesManager({ eventId, products, onReload }) {
     }
   }
 
-  // Not enabled and no existing spaces \u2014 show the "enable" toggle only.
-  if (!enabled && spaces.length === 0) {
-    return (
-      <div>
-        <label
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '10px 14px',
-            border: `1px solid ${T.border}`,
-            borderRadius: 10,
-            background: T.innerBg,
-            cursor: 'pointer',
-            fontFamily: T.fontStack,
-            color: T.text,
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={false}
-            onChange={() => { setEnabled(true); setEditing('new'); }}
-            style={{ accentColor: T.accent, width: 16, height: 16 }}
-          />
-          <span style={{ fontSize: 13 }}>Also sell private space rentals for this event</span>
-        </label>
-      </div>
-    );
-  }
-
   return (
     <div>
-      <p style={sectionSubStyle()}>
-        Rentable private spaces at this event (e.g. Outer Space — Green Room / Upstairs Office).
-        Each has a single price and its own capacity. Buyers pay the space price on top of any ticket they buy.
-      </p>
 
       {err && (
         <div
@@ -506,6 +760,27 @@ export default function PrivateSpacesManager({ eventId, products, onReload }) {
         >
           {err}
         </div>
+      )}
+
+      {leftDoor && editing === leftDoor.id ? (
+        <SpaceForm
+          key={leftDoor.id}
+          eventId={eventId}
+          initial={leftDoor}
+          onSave={(payload) => save({ ...payload, is_active: true })}
+          onCancel={() => { setEditing(null); setErr(null); }}
+          saving={saving}
+          leftDoor
+        />
+      ) : (
+        <LeftDoorCard
+          p={leftDoor}
+          eventId={eventId}
+          onSave={save}
+          onEdit={() => setEditing(leftDoor.id)}
+          onRestore={restoreLeftDoor}
+          saving={saving}
+        />
       )}
 
       {spaces.map((p) => (
@@ -537,8 +812,6 @@ export default function PrivateSpacesManager({ eventId, products, onReload }) {
           onCancel={() => {
             setEditing(null);
             setErr(null);
-            // If they cancelled the very first one, collapse the section back.
-            if (spaces.length === 0) setEnabled(false);
           }}
           saving={saving}
         />
@@ -549,10 +822,10 @@ export default function PrivateSpacesManager({ eventId, products, onReload }) {
           <button
             type="button"
             onClick={() => setEditing('new')}
-            className={pillClass('primary')}
-            style={primaryPillStyle()}
+            className={pillClass()}
+            style={ghostPillStyle()}
           >
-            + ADD PRIVATE SPACE
+            + ADD ANOTHER PRIVATE SPACE
           </button>
         </div>
       )}

@@ -538,7 +538,7 @@ export default function TicketingPanel({
           <div style={{ marginTop: 28 }}>
             <h3 style={{ margin: 0, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Private spaces</h3>
             <p style={{ margin: '4px 0 12px 0', fontSize: 12, opacity: 0.7 }}>
-              Optional. Sell reservable private spaces alongside tickets (e.g. Outer Space — Green Room / Upstairs Office). Each space has its own price and capacity.
+              The Left Door is included on every event. Set its price for this event, or switch off Sell at this event to remove it.
             </p>
             {productsLoading && !products.length ? (
               <div style={{ opacity: 0.7, fontSize: 13 }}>Loading…</div>
