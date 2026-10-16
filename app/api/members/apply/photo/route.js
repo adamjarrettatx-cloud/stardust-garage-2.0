@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
+import { refreshProfilePhotoThumb } from '@/lib/profile-photo-thumbs';
 import { randomUUID } from 'node:crypto';
 import { getRequestUser } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -108,6 +109,11 @@ export async function POST(request) {
       { status: 500 },
     );
   }
+
+  // Rebuild the small list-size copy from the bytes we just stored, after
+  // the response so the upload stays fast (see lib/profile-photo-thumbs.js).
+  const thumbSource = Buffer.from(arrayBuffer);
+  after(() => refreshProfilePhotoThumb(admin, path, thumbSource));
 
   const signed = await createProfilePhotoSignedUrl(admin, path);
   return NextResponse.json({

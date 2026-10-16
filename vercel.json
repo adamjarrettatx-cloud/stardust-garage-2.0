@@ -35,6 +35,10 @@
     {
       "path": "/api/cron/trial-pass-accounts",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/profile-photo-thumbs",
+      "schedule": "*/10 * * * *"
     }
   ]
 }
