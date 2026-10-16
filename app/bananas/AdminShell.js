@@ -18,6 +18,7 @@ import {
 import AdminDashboardClient from './AdminDashboardClient';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import LogoutButton from './components/LogoutButton';
+import PeopleSearch from './components/PeopleSearch';
 import { AdminShellProvider } from '@/app/components/AdminShellContext';
 
 // ---------------------------------------------------------------------------
@@ -242,6 +243,9 @@ export default function AdminShell({
       />
 
       <div className="mt-6 lg:mt-0 min-w-0">
+        {/* Find anyone by name, phone or email from every admin page. */}
+        <PeopleSearch />
+
         {crumb && section && (
           <SectionTrail
             sectionLabel={section.label}
