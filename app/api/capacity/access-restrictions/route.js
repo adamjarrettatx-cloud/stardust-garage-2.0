@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireFrontDeskOrTeam } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { accessStatus, resolveAccessSubject, resolveAccessIdentity, restrictionPhotoUrl } from '@/lib/capacity/access-restrictions';
-import { UUID, contactKeys, validateRestriction, validateRestrictionEdit } from '@/lib/capacity/access-policy';
+import { UUID, contactKeys, validateRestriction, validateRestrictionEdit, RESTRICTION_PHOTO_BUCKET } from '@/lib/capacity/access-policy';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -48,7 +48,9 @@ export async function GET(request) {
     }
     const photos = await Promise.all(rows.map(r => restrictionPhotoUrl(admin, r.photo_path)));
     return reply({ rows: rows.map((r, i) => ({ ...r, photo_url: photos[i], events: events.filter(e => e.restriction_id === r.id) })),
-      canLift: Boolean(manager), canManagePermissions: Boolean(manager?.can_manage_permissions), staff, page });
+      canLift: Boolean(manager), canManagePermissions: Boolean(manager?.can_manage_permissions),
+      // UI hint only; the database independently restricts deletion to the owner.
+      canDelete: Boolean(manager?.can_manage_permissions) && !gate.station, staff, page });
   } catch {
     return reply({ error: 'Could not load access restrictions. Hold entry until the check is available.' }, 503);
   }
@@ -63,8 +65,26 @@ export async function POST(request) {
   if (gate.station && !['check', 'acknowledge', 'note', 'same_person', 'different_person'].includes(action)) {
     return reply({ error: 'This station cannot perform that action.' }, 403);
   }
-  if (!['check', 'acknowledge', 'create', 'update', 'note', 'lift', 'same_person', 'different_person', 'manager'].includes(action)) return reply({ error: 'Invalid action' }, 400);
+  if (!['check', 'acknowledge', 'create', 'update', 'note', 'lift', 'same_person', 'different_person', 'manager', 'delete'].includes(action)) return reply({ error: 'Invalid action' }, 400);
   const admin = createAdminClient();
+  if (action === 'delete') {
+    if (gate.station) return reply({ error: 'This station cannot perform that action.' }, 403);
+    if (!UUID.test(body.id || '') || typeof body.comment !== 'string' || !body.comment.trim() || body.comment.length > 2000) {
+      return reply({ error: 'A reason for deleting is required.' }, 400);
+    }
+    const { error } = await admin.rpc('delete_access_restriction', { p_actor: gate.user.id, p_id: body.id, p_reason: body.comment.trim() });
+    if (error) {
+      if (error.code === '42501') return reply({ error: 'Only the owner can delete banned-list entries.' }, 403);
+      return reply({ error: /not found/i.test(error.message || '') ? 'This entry was already deleted. Refresh the list.' : 'Could not delete. Refresh and try again.' }, 409);
+    }
+    // Remove every photo ever uploaded for this entry (current and replaced).
+    try {
+      const bucket = admin.storage.from(RESTRICTION_PHOTO_BUCKET);
+      const { data: files } = await bucket.list(body.id, { limit: 1000 });
+      if (files?.length) await bucket.remove(files.map(f => `${body.id}/${f.name}`));
+    } catch { /* entry is already gone; orphaned private files are unreachable */ }
+    return reply({ ok: true, deleted: body.id });
+  }
   if (action === 'check') {
     try { return reply(await accessStatus(admin, body.subject, body.extra)); }
     catch { return reply({ error: 'Access check unavailable. Hold entry and retry.' }, 503); }
