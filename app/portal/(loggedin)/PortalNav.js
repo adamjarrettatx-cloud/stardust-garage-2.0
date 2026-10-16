@@ -6,6 +6,8 @@ import { portalName } from '@/lib/role-label';
 
 const TABS = [
   { href: '/account/profile', label: 'Profile' },
+  { href: '/portal/calendar', label: 'Calendar', key: 'calendar' },
+  { href: '/portal/pitches', label: 'My pitches', key: 'pitches' },
   { href: '/portal/guest-list', label: 'Guest list', key: 'guestList' },
   { href: '/portal/pay', label: 'Bookings & pay', key: 'pay' },
   { href: '/portal/contracts', label: 'Contracts', key: 'contracts' },
