@@ -12,12 +12,13 @@ export default async function EventSalesPage({ params }) {
   const { id } = await params;
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) notFound();
   const db = await createClient();
-  const [sales, roster] = await Promise.all([
+  const [sales, roster, writeup] = await Promise.all([
     db.rpc('partner_event_sales', { p_event_id: id }),
     db.rpc('partner_event_attendees', { p_event_id: id }),
+    db.rpc('partner_event_writeup', { p_event_id: id }),
   ]);
   const error = sales.error || roster.error;
   if (error?.code === 'P0002') notFound();
   if (error || !sales.data) throw new Error('Event sales could not be loaded. Please try again.');
-  return <EventSales initial={{ ...sales.data, attendees: roster.data?.attendees || [] }} />;
+  return <EventSales initial={{ ...sales.data, attendees: roster.data?.attendees || [], writeup: writeup.error ? null : writeup.data }} />;
 }

@@ -1,8 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { adminFetch } from '@/lib/admin-fetch';
-import { computeSettlement } from '@/lib/event-writeup';
+import { createClient } from '@/lib/supabase/client';
+import { computeSettlement, PROOF_MAX_BYTES, PROOF_MIME } from '@/lib/event-writeup';
+import OrganizerWriteup from '@/app/components/OrganizerWriteup';
 
 const CARD = { background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' };
 const INPUT_STYLE = { background: 'var(--auth-input-bg)', border: '1px solid var(--auth-input-border)', color: 'var(--auth-input-text)' };
@@ -61,8 +63,30 @@ function Card({ title, subtitle, children }) {
   );
 }
 
+function pick(json) {
+  return {
+    event: json.event,
+    config: json.config,
+    writeup: json.writeup,
+    proofs: json.proofs || [],
+    organizer: json.organizer || null,
+    sharing: json.sharing || { shared: false, shared_at: null, outdated: false },
+    organizerPreview: json.organizerPreview || null,
+  };
+}
+
+function fmtTime(v) {
+  return new Date(v).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
 export default function WriteupClient({ eventId, initial }) {
-  const [data, setData] = useState(initial);
+  const [data, setData] = useState(() => pick(initial));
+  const [uploading, setUploading] = useState(false);
+  const [proofMsg, setProofMsg] = useState(null);
+  const [sharing, setSharing] = useState(false);
+  const [shareMsg, setShareMsg] = useState(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const fileRef = useRef(null);
   const online = data.writeup.online;
   const isTicketTailor = online.source === 'tickettailor';
 
@@ -124,13 +148,80 @@ export default function WriteupClient({ eventId, initial }) {
           notes,
         }),
       });
-      setData({ event: json.event, config: json.config, writeup: json.writeup });
+      setData(pick(json));
       setDirty(false);
       setMsg({ error: false, text: 'Saved.' });
     } catch (err) {
       setMsg({ error: true, text: err.message || 'Save failed' });
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function uploadProofs(fileList) {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    setUploading(true);
+    setProofMsg(null);
+    try {
+      const supabase = createClient();
+      let latest = null;
+      for (const file of files) {
+        if (!PROOF_MIME[file.type]) throw new Error(`${file.name}: upload a PNG, JPG, WEBP or HEIC image.`);
+        if (file.size > PROOF_MAX_BYTES) throw new Error(`${file.name}: images must be 15 MB or smaller.`);
+        const signed = await adminFetch(`/api/admin/events/${eventId}/writeup/proofs/upload-url`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content_type: file.type, size: file.size }),
+        });
+        const { error: upErr } = await supabase.storage
+          .from(signed.bucket)
+          .uploadToSignedUrl(signed.path, signed.token, file, { contentType: file.type });
+        if (upErr) throw new Error(upErr.message || 'Upload failed');
+        latest = await adminFetch(`/api/admin/events/${eventId}/writeup/proofs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: signed.path, name: file.name }),
+        });
+      }
+      if (latest) setData(pick(latest));
+      setProofMsg({ error: false, text: files.length > 1 ? 'Screenshots uploaded.' : 'Screenshot uploaded.' });
+    } catch (err) {
+      setProofMsg({ error: true, text: err.message || 'Upload failed' });
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  }
+
+  async function removeProof(proofId) {
+    if (!window.confirm('Remove this screenshot? The organizer will no longer be able to view it.')) return;
+    setProofMsg(null);
+    try {
+      const json = await adminFetch(`/api/admin/events/${eventId}/writeup/proofs/${proofId}`, { method: 'DELETE' });
+      setData(pick(json));
+    } catch (err) {
+      setProofMsg({ error: true, text: err.message || 'Remove failed' });
+    }
+  }
+
+  async function share(action) {
+    if (action === 'share' && dirty) { setShareMsg({ error: true, text: 'Save the write-up first.' }); return; }
+    if (action === 'unshare' && !window.confirm('Stop sharing? The organizer will no longer see this settlement.')) return;
+    setSharing(true);
+    setShareMsg(null);
+    try {
+      const json = await adminFetch(`/api/admin/events/${eventId}/writeup/share`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      setData(pick(json));
+      setShareMsg({ error: false, text: action === 'share' ? 'Shared with organizer.' : 'No longer shared.' });
+    } catch (err) {
+      setShareMsg({ error: true, text: err.message || 'Could not update sharing' });
+    } finally {
+      setSharing(false);
     }
   }
 
@@ -235,6 +326,47 @@ export default function WriteupClient({ eventId, initial }) {
           <Row label={`Sales tax (${pct(d.salesTaxBps)})`} value={minus(d.salesTaxCents)} />
           <Row label={`CC fees (${pct(d.ccFeeBps)})`} value={minus(d.ccFeesCents)} />
           <Row bold label="Net door" value={usd(d.netCents)} />
+
+          <div className="pt-3 mt-1" style={{ borderTop: ROW_BORDER }}>
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <span className={SECTION} style={{ color: MUTED }}>POS proof</span>
+              <label className={`auth-theme-border-button px-3 py-1.5 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                {uploading ? 'UPLOADING…' : '+ UPLOAD SCREENSHOT'}
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/heic,image/heif"
+                  multiple
+                  className="sr-only"
+                  onChange={(e) => uploadProofs(e.target.files)}
+                />
+              </label>
+            </div>
+            {data.proofs.length === 0 ? (
+              <p className="text-[12px]" style={{ color: MUTED }}>Upload a screenshot of the POS ticket sales. The organizer can open it from their settlement.</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {data.proofs.map((p) => (
+                  <li key={p.id} className="flex items-center justify-between gap-3 text-[13px]">
+                    <a
+                      href={`/api/admin/events/${eventId}/writeup/proofs/${p.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="truncate underline underline-offset-2"
+                      style={{ color: TEXT }}
+                    >
+                      {p.name}
+                    </a>
+                    <span className="flex items-center gap-3 shrink-0">
+                      <span className="text-[12px]" style={{ color: MUTED }}>{fmtTime(p.uploaded_at)}</span>
+                      <button type="button" onClick={() => removeProof(p.id)} title="Remove screenshot" aria-label={`Remove ${p.name}`} className="auth-theme-border-button px-2 py-1 rounded-[8px] text-[11px] border">✕</button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {proofMsg ? <p className="text-[12px] mt-2" style={{ color: proofMsg.error ? 'var(--auth-pink)' : 'var(--auth-success)' }}>{proofMsg.text}</p> : null}
+          </div>
         </Card>
       </div>
 
@@ -325,13 +457,13 @@ export default function WriteupClient({ eventId, initial }) {
         <Row bold label="Net payout to organizer" value={usd(live.netPayoutCents)} />
       </Card>
 
-      <Card title="Stardust Garage keeps">
+      <Card title="Stardust Garage keeps" subtitle="Admin only. Never shown to the organizer.">
         <Row top={false} label="Net ticket revenue after organizer payout" value={usd(live.netTicketRevenueCents - live.netPayoutCents)} />
         {isTicketTailor ? null : <Row label="Booking fees" value={usd(o.bookingFeesCents)} />}
         <Row bold label="Total to Stardust Garage" value={usd(live.stardustKeepsCents)} />
       </Card>
 
-      <Card title="Notes">
+      <Card title="Internal notes" subtitle="Never shown to the organizer.">
         <textarea
           value={notes}
           onChange={(e) => touch(setNotes)(e.target.value)}
@@ -342,6 +474,45 @@ export default function WriteupClient({ eventId, initial }) {
           className="w-full rounded-[6px] px-3 py-2 text-[13px]"
           style={INPUT_STYLE}
         />
+      </Card>
+
+      <Card
+        title="Organizer view"
+        subtitle={data.organizer
+          ? `Visible to ${data.organizer.name} and its main contacts in their portal, only after you share. They see the online, door and payout figures and POS proof, never what Stardust Garage keeps.`
+          : 'No Organizer is set on this event. Set one in the event editor to share this write-up.'}
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          {data.sharing.shared ? (
+            <>
+              <span className="text-[13px]" style={{ color: data.sharing.outdated ? 'var(--auth-warn)' : 'var(--auth-success)' }}>
+                {data.sharing.outdated
+                  ? `Shared ${fmtTime(data.sharing.shared_at)} · numbers changed since, the organizer still sees the shared version`
+                  : `Shared ${fmtTime(data.sharing.shared_at)}`}
+              </span>
+              {data.sharing.outdated ? (
+                <button type="button" onClick={() => share('share')} disabled={sharing || !data.organizer} className="auth-theme-solid-button px-4 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] disabled:opacity-50">UPDATE SHARED VERSION</button>
+              ) : null}
+              <button type="button" onClick={() => share('unshare')} disabled={sharing} className="auth-theme-border-button px-4 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border disabled:opacity-50">STOP SHARING</button>
+            </>
+          ) : (
+            <button type="button" onClick={() => share('share')} disabled={sharing || !data.organizer} className="auth-theme-solid-button px-4 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] disabled:opacity-50">SHARE WITH ORGANIZER</button>
+          )}
+          <button type="button" onClick={() => setShowPreview((v) => !v)} className="auth-theme-border-button px-4 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border">
+            {showPreview ? 'HIDE PREVIEW' : 'PREVIEW ORGANIZER VIEW'}
+          </button>
+          {shareMsg ? <span className="text-[12px]" style={{ color: shareMsg.error ? 'var(--auth-pink)' : 'var(--auth-success)' }}>{shareMsg.text}</span> : null}
+        </div>
+        {showPreview ? (
+          <div className="mt-4 rounded-[8px] p-5" style={{ background: '#0f0e0c', border: '1px solid #39362f' }}>
+            {dirty ? <p className="text-[12px] mb-2" style={{ color: 'var(--auth-warn)' }}>Preview reflects the last saved values. Save to update it.</p> : null}
+            <OrganizerWriteup
+              view={data.organizerPreview}
+              proofs={data.proofs}
+              proofHref={(proofId) => `/api/admin/events/${eventId}/writeup/proofs/${proofId}`}
+            />
+          </div>
+        ) : null}
       </Card>
 
       <div className="flex flex-wrap items-center gap-3 pb-8">
