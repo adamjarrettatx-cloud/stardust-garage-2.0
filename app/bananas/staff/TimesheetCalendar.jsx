@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { request, time, money } from "@/app/components/time-clock/Shared";
-import { chicagoInput, chicagoToIso, duration, elapsedMs, estimateCents } from "@/lib/time-clock/core.mjs";
+import { chicagoInput, chicagoToIso, dollarsToCents, duration, elapsedMs, estimateCents } from "@/lib/time-clock/core.mjs";
+import QuickAddPerson from "./QuickAddPerson";
 import { addDays, chicagoYmd, payPeriodEnd, payPeriodLabel, payPeriodStart, PAY_PERIOD_DAYS, weekStart } from "@/lib/time-clock/periods.mjs";
 
 const endpoint = "/api/admin/time-clock";
@@ -35,7 +36,7 @@ function austinIso(local) {
  * second Sunday) with daily and pay-period totals. Selecting a day lists every shift with scheduled vs. worked time,
  * one-click approval and an audited inline time correction.
  */
-export default function TimesheetCalendar({ workers, onOpenDetail, refreshKey, onChanged, onPeriodChange }) {
+export default function TimesheetCalendar({ workers, roles = [], assignments = [], onOpenDetail, refreshKey, onChanged, onPeriodChange, onWorkersChanged }) {
   const today = chicagoYmd();
   const [month, setMonth] = useState(today.slice(0, 7));
   const [shifts, setShifts] = useState(null);
@@ -46,8 +47,11 @@ export default function TimesheetCalendar({ workers, onOpenDetail, refreshKey, o
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [edit, setEdit] = useState(null);
+  // Manager "Add hours" for someone with no punch that day (or not on the list yet).
+  const [add, setAdd] = useState(null);
   const [now, setNow] = useState(Date.now());
   const panel = useRef(null);
+  const addRef = useRef(null);
   const generation = useRef(0);
 
   // Whole pay periods only, so no pay period is ever split across the grid edge.
@@ -139,6 +143,7 @@ export default function TimesheetCalendar({ workers, onOpenDetail, refreshKey, o
   function pick(d) {
     setSelected(d);
     setEdit(null);
+    setAdd(null);
     setNotice("");
     requestAnimationFrame(() => panel.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
@@ -185,6 +190,59 @@ export default function TimesheetCalendar({ workers, onOpenDetail, refreshKey, o
       });
       setEdit(null);
     }, "Times corrected. Original punches kept in the activity log; approval reopened.");
+  }
+
+  const activeWorkers = useMemo(
+    () => workers.filter((w) => w.active).sort((a, b) => a.name.localeCompare(b.name)),
+    [workers],
+  );
+  const activeRoles = roles.filter((r) => r.active);
+  const assignmentFor = (workerId, roleId) => assignments.find((a) => a.worker_id === workerId && a.role_id === roleId);
+  const firstRole = (workerId) =>
+    assignments.find((a) => a.worker_id === workerId && activeRoles.some((r) => r.id === a.role_id))?.role_id || activeRoles[0]?.id || "";
+  function openAdd(from) {
+    setEdit(null);
+    setNotice("");
+    setError("");
+    const worker_id = from?.worker_id || "";
+    setAdd({
+      worker_id,
+      role_id: from?.role_id || (worker_id ? firstRole(worker_id) : ""),
+      start: from ? chicagoInput(from.starts_at).slice(0, 16) : `${selected}T20:00`,
+      end: from ? chicagoInput(from.ends_at).slice(0, 16) : `${addDays(selected, 1)}T02:00`,
+      reason: from ? "Worked scheduled shift; did not clock in on the iPad" : "",
+      rate: "",
+      creating: false,
+    });
+    requestAnimationFrame(() => addRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
+  }
+  const addWorker = add && workers.find((w) => w.id === add.worker_id);
+  const addAssigned = add && assignmentFor(add.worker_id, add.role_id);
+  // Ask for a one-off rate only when the profile has none for this role.
+  const addNeedsRate = !!addWorker && addWorker.pay_basis !== "flat" && (!addAssigned || addAssigned.rate_cents === null);
+  function saveAdd(e) {
+    e.preventDefault();
+    const who = addWorker?.name || "this person";
+    act(async () => {
+      if (!add.worker_id) throw new Error("Choose a person.");
+      if (!add.role_id) throw new Error("Choose a role.");
+      const start = austinIso(add.start), end = austinIso(add.end);
+      if (Date.parse(end) <= Date.parse(start)) throw new Error("Clock-out must be after clock-in.");
+      await request(endpoint, {
+        action: "add_shift",
+        payload: {
+          worker_id: add.worker_id,
+          role_id: add.role_id,
+          started_at: start,
+          ended_at: end,
+          reason: add.reason,
+          rate_cents: addNeedsRate ? dollarsToCents(add.rate.trim().replace(/^\$/, "")) : null,
+        },
+      });
+      // Jump to the day the hours count on (the clock-in day).
+      setSelected(chicagoYmd(start));
+      setAdd(null);
+    }, `Hours added for ${who}. Marked Needs review — approve when ready. No payment sent.`);
   }
 
   const dayShifts = byDay.get(selected) || [];
@@ -318,6 +376,7 @@ export default function TimesheetCalendar({ workers, onOpenDetail, refreshKey, o
           <div className="row wrap">
             <button aria-label="Previous day" onClick={() => pick(addDays(selected, -1))}>‹ Prev</button>
             <button aria-label="Next day" onClick={() => pick(addDays(selected, 1))}>Next ›</button>
+            <button disabled={busy} onClick={() => (add ? setAdd(null) : openAdd())}>{add ? "Close" : "+ Add hours"}</button>
             {dayWaiting.length > 1 && (
               <button className="primary" disabled={busy} onClick={() => approve(dayWaiting)}>
                 Approve all {dayWaiting.length}
@@ -326,6 +385,84 @@ export default function TimesheetCalendar({ workers, onOpenDetail, refreshKey, o
           </div>
         </div>
         {notice && <div className="notice" role="status">{notice}</div>}
+
+        {add && (
+          <form className="tcal-edit tcal-add" ref={addRef} onSubmit={saveAdd} aria-label="Add hours">
+            <h3 className="tcal-addtitle">Add hours</h3>
+            <label>Person
+              <select required value={add.creating ? "__new" : add.worker_id} onChange={(e) => {
+                const v = e.target.value;
+                if (v === "__new") setAdd({ ...add, creating: true });
+                else setAdd({ ...add, creating: false, worker_id: v, role_id: firstRole(v), rate: "" });
+              }}>
+                <option value="" disabled>Choose…</option>
+                {activeWorkers.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+                <option value="__new">+ Someone not listed…</option>
+              </select>
+            </label>
+            {add.creating ? <span /> : <label>Role
+              <select required value={add.role_id} onChange={(e) => setAdd({ ...add, role_id: e.target.value })}>
+                {(() => {
+                  const mine = activeRoles.filter((r) => assignmentFor(add.worker_id, r.id));
+                  const other = activeRoles.filter((r) => !assignmentFor(add.worker_id, r.id));
+                  return (
+                    <>
+                      {mine.length > 0 && <optgroup label="Their roles">{mine.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</optgroup>}
+                      {other.length > 0 && <optgroup label={mine.length ? "Other roles" : "Roles"}>{other.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</optgroup>}
+                    </>
+                  );
+                })()}
+              </select>
+            </label>}
+            {addNeedsRate && !add.creating ? (
+              <label>Rate for this shift ($/hr)
+                <input inputMode="decimal" placeholder="Optional" value={add.rate} onChange={(e) => setAdd({ ...add, rate: e.target.value })} />
+              </label>
+            ) : <span />}
+            {add.creating ? (
+              <div className="tcal-addnew">
+                <QuickAddPerson
+                  roles={roles}
+                  defaultRole={add.role_id}
+                  onCancel={() => setAdd({ ...add, creating: false })}
+                  onCreated={async (id, roleId) => {
+                    await onWorkersChanged?.();
+                    setAdd((a) => ({ ...a, creating: false, worker_id: id, role_id: roleId, rate: "" }));
+                  }}
+                />
+              </div>
+            ) : (
+              <>
+                <label>Clock-in (Austin)
+                  <input type="datetime-local" required value={add.start} onChange={(e) => setAdd({ ...add, start: e.target.value })} />
+                </label>
+                <label>Clock-out (Austin)
+                  <input type="datetime-local" required value={add.end} onChange={(e) => setAdd({ ...add, end: e.target.value })} />
+                </label>
+                <label className="tcal-reason">Reason (required)
+                  <input required minLength={5} maxLength={2000} value={add.reason}
+                    placeholder="e.g. Forgot to clock in; confirmed with door lead"
+                    onChange={(e) => setAdd({ ...add, reason: e.target.value })} />
+                </label>
+                <div className="row">
+                  <button className="primary" disabled={busy || !add.worker_id}>Add hours</button>
+                  <button type="button" onClick={() => setAdd(null)}>Cancel</button>
+                </div>
+                <p className="sub small">
+                  {(() => {
+                    try {
+                      const ms = Date.parse(austinIso(add.end)) - Date.parse(austinIso(add.start));
+                      return ms > 0 ? `Length ${duration(ms)}. ` : "";
+                    } catch {
+                      return "";
+                    }
+                  })()}
+                  Saved as Needs review and labeled Added by manager. The reason is kept in the activity log.
+                </p>
+              </>
+            )}
+          </form>
+        )}
 
         {!dayShifts.length && !dayMissing.length ? (
           <div className="empty">No hours recorded this day.</div>
@@ -426,7 +563,9 @@ export default function TimesheetCalendar({ workers, onOpenDetail, refreshKey, o
                 <span role="cell" className="mono tcal-hide-sm">—</span>
                 <span role="cell" className="mono tcal-hide-sm">—</span>
                 <span role="cell"><span className="pill warning">Missing</span></span>
-                <span role="cell" className="sub small">If they worked, they can send a missed-shift request.</span>
+                <span role="cell" className="tcal-actions">
+                  <button disabled={busy} onClick={() => openAdd(e)}>Add hours</button>
+                </span>
               </div>
             ))}
           </div>

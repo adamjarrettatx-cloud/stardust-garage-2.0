@@ -347,6 +347,46 @@ export async function POST(request) {
           payload[key] = new Date(p[key]).toISOString();
         }
       }
+    } else if (action === "add_shift") {
+      // Manager-entered hours for someone with no iPad punch that day.
+      if (!UUID.test(p.worker_id ?? "")) throw new ClockError("Choose a person.");
+      if (!/^[a-z_]{2,40}$/.test(p.role_id ?? "")) throw new ClockError("Choose a role.");
+      if (
+        typeof p.reason !== "string" ||
+        p.reason.trim().length < 5 ||
+        p.reason.length > 2000
+      )
+        throw new ClockError("Add a reason of at least five characters.");
+      if (
+        !(
+          p.rate_cents === undefined ||
+          p.rate_cents === null ||
+          (Number.isInteger(p.rate_cents) &&
+            p.rate_cents >= 0 &&
+            p.rate_cents <= 100000000)
+        )
+      )
+        throw new ClockError("Enter a valid hourly rate.");
+      for (const key of ["started_at", "ended_at"]) {
+        if (
+          typeof p[key] !== "string" ||
+          !/(Z|[+-]\d{2}:\d{2})$/.test(p[key]) ||
+          !Number.isFinite(Date.parse(p[key]))
+        )
+          throw new ClockError("Times must include a UTC offset.");
+      }
+      const added = await rpc(client, "tc_add_manual_shift", {
+        p_actor: actor.id,
+        p_payload: {
+          worker_id: p.worker_id,
+          role_id: p.role_id,
+          started_at: new Date(p.started_at).toISOString(),
+          ended_at: new Date(p.ended_at).toISOString(),
+          reason: p.reason.trim(),
+          rate_cents: p.rate_cents ?? null,
+        },
+      });
+      return json(added);
     } else throw new ClockError("Invalid action.");
     const result = await rpc(client, "tc_admin", {
       p_actor: actor.id,

@@ -421,6 +421,7 @@ export default function Staff({ enabled }) {
                   workers={data.workers}
                   roles={data.roles}
                   assignments={data.assignments}
+                  onWorkersChanged={load}
                 />
               )}
               {tab === "requests" && <RequestsQueue onCount={setPendingRequests} />}
@@ -450,6 +451,9 @@ export default function Staff({ enabled }) {
                   )}
                   <TimesheetCalendar
                     workers={data.workers}
+                    roles={data.roles}
+                    assignments={data.assignments}
+                    onWorkersChanged={load}
                     refreshKey={data}
                     onOpenDetail={view}
                     onChanged={calendarChanged}
