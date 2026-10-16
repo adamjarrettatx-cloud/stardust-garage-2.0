@@ -5,9 +5,18 @@ import Link from 'next/link';
 import styles from './profile.module.css';
 
 // Additional people at an organization. Each one is a real Person profile in
-// Contacts, linked here with a role. Linking grants no login, portal access,
-// or signing authority.
-export default function OrganizationPeople({ contactId, disabled }) {
+// Contacts, linked here with a role. Linking alone grants no login, portal
+// access, or signing authority. An admin can separately turn on Event sales
+// access per person, which shows this organization's events and sales in that
+// person's own My Events (they still need their own portal login).
+const PORTAL_NOTE = {
+  active: 'Sees this organization’s events, ticket sales and buyer emails in My Events.',
+  invited: 'Portal invite sent. Access starts when they activate their login.',
+  disabled: 'Their portal login is disabled, so they cannot see sales until it is re-enabled.',
+  none: 'Needs a portal login before they can see anything.',
+};
+
+export default function OrganizationPeople({ contactId, disabled, isAdmin = false }) {
   const uid = useId();
   const endpoint = `/api/admin/contacts/${contactId}/people`;
   const [people, setPeople] = useState(null);
@@ -23,6 +32,7 @@ export default function OrganizationPeople({ contactId, disabled }) {
   const [draft, setDraft] = useState({ name: '', email: '', phone: '' });
   const [editing, setEditing] = useState(null);
   const [roleDraft, setRoleDraft] = useState('');
+  const [salesBusy, setSalesBusy] = useState(null);
 
   async function load(signal) {
     try {
@@ -64,6 +74,34 @@ export default function OrganizationPeople({ contactId, disabled }) {
       setCandidates(data.candidates); setSearched(true);
     } catch (err) { setError(err.message); } finally { setSearching(false); }
   }
+  async function setSalesAccess(person, enabled) {
+    if (salesBusy || disabled || !isAdmin) return;
+    setSalesBusy(person.link_id); setError(''); setMessage('');
+    try {
+      const response = await fetch(`${endpoint}/sales-access`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ linkId: person.link_id, enabled }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Could not change event sales access.');
+      setPeople(data.people);
+      setMessage(enabled ? `${person.name} can now see this organization’s event sales.` : `${person.name} no longer sees this organization’s event sales.`);
+    } catch (err) { setError(err.message); } finally { setSalesBusy(null); }
+  }
+  async function invite(person) {
+    if (salesBusy || disabled || !isAdmin) return;
+    setSalesBusy(person.link_id); setError(''); setMessage('');
+    try {
+      const response = await fetch('/api/admin/invite-partner', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contactId: person.id }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Could not send the portal invite.');
+      setMessage(`Portal invite sent to ${person.email}.`);
+      await load();
+    } catch (err) { setError(err.message); } finally { setSalesBusy(null); }
+  }
+  const salesCount = (people || []).filter((p) => p.can_view_event_sales).length;
   const add = (body, label) => send('POST', { ...body, role }, () => { reset(); setMessage(`${label} added and linked.`); });
 
   const roleField = <div className={styles.field}><label htmlFor={`${uid}-role`}>Role at this organization</label>
@@ -74,13 +112,35 @@ export default function OrganizationPeople({ contactId, disabled }) {
   return <section className={`${styles.card} ${styles.organizationContact}`} aria-labelledby={`${uid}-heading`}>
     <div className={styles.cardHeading}><h2 id={`${uid}-heading`}>Additional contacts</h2><span>Linked people</span></div>
     <div className={styles.cardBody}>
-      <p className={styles.hint}>Other people associated with this organization. Each person has their own profile under Persons. Linking does not grant portal access or signing authority.</p>
+      <p className={styles.hint}>Other people associated with this organization. Each person has their own profile under Persons. Linking alone does not grant portal access or signing authority.</p>
+      <p className={styles.hint}>Turn on <strong>Event sales access</strong> for anyone who should see this organization’s events, live ticket counts and buyer list (names and emails) before, during and after each event. The main contact always has it. Guest lists, pay and contracts are not shared.{people && people.length > 0 ? ` ${salesCount} of ${people.length} ${people.length === 1 ? 'person has' : 'people have'} access.` : ''}</p>
       {!people && !error && <p role="status">Loading people…</p>}
       {people && people.length === 0 && <p>No additional contacts yet.</p>}
       {people && people.length > 0 && <ul className={styles.peopleList}>{people.map((person) => <li key={person.link_id} className={styles.peopleItem}>
         <div className={styles.peopleText}>
           <h3>{person.name}{person.role && <span className={styles.peopleRole}> · {person.role}</span>}</h3>
           <p>{[person.email, person.phone].filter(Boolean).join(' · ') || 'No email or phone on file'}{person.status !== 'active' ? ` · ${person.status === 'do_not_book' ? 'Do Not Book' : person.status}` : ''}</p>
+          <div className={styles.salesAccess}>
+            <label className={styles.switchLabel}>
+              <input type="checkbox" role="switch" className={styles.switchInput}
+                checked={person.can_view_event_sales === true}
+                disabled={!isAdmin || blocked || salesBusy === person.link_id}
+                aria-describedby={`${uid}-sales-${person.link_id}`}
+                onChange={(event) => setSalesAccess(person, event.target.checked)} />
+              <span className={styles.switchTrack} aria-hidden="true"><span className={styles.switchThumb} /></span>
+              <span>Event sales access</span>
+            </label>
+            <span id={`${uid}-sales-${person.link_id}`} className={person.can_view_event_sales
+              ? (person.portal === 'active' ? styles.salesOn : styles.salesWarn) : styles.salesOff}>
+              {salesBusy === person.link_id ? 'Saving…' : person.can_view_event_sales
+                ? PORTAL_NOTE[person.portal] || PORTAL_NOTE.none
+                : isAdmin ? 'Off' : 'Off · An admin can turn this on.'}
+            </span>
+            {isAdmin && person.can_view_event_sales && person.portal === 'none' && (person.email
+              ? <button type="button" className={styles.textButton} disabled={blocked || salesBusy === person.link_id}
+                  onClick={() => invite(person)}>Send portal invite<span className={styles.srOnly}> to {person.name}</span></button>
+              : <Link className={styles.textButton} href={`/bananas/contacts/${person.id}`}>Add an email to invite →</Link>)}
+          </div>
           {editing === person.link_id && <form className={styles.contactSearch} onSubmit={(event) => {
             event.preventDefault();
             send('PATCH', { linkId: person.link_id, role: roleDraft }, () => { setEditing(null); setMessage('Role updated.'); });

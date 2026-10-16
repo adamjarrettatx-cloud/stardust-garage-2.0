@@ -221,7 +221,7 @@ export default function ContactProfileLayout({
         <OrganizationMainContact contactId={contact.id} legacyName={contact.primary_contact_name}
           isAdmin={profile.isAdmin} disabled={dirty || saving || contact.status === 'archived'} />}
       {activeSection === 'overview' && !profile.createMode && contactProfileKind(contact) === 'organization' &&
-        <OrganizationPeople contactId={contact.id} disabled={dirty || saving || contact.status === 'archived'} />}
+        <OrganizationPeople contactId={contact.id} isAdmin={profile.isAdmin} disabled={dirty || saving || contact.status === 'archived'} />}
       {activeSection === 'overview' && !profile.createMode && contactProfileKind(contact) === 'person' &&
         <PersonOrganizations contactId={contact.id} />}
       {activeSection === 'overview' && organization && profile.createMode &&
