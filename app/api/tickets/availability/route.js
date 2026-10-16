@@ -82,7 +82,7 @@ export async function GET(request) {
 
   const { data: products } = await supabaseAdmin
     .from('ticket_products')
-    .select('id, name, description, kind, image_url, min_per_order, max_per_order, member_only, sales_start_at, sales_end_at, display_order, is_active')
+    .select('id, name, description, kind, system_key, image_url, min_per_order, max_per_order, member_only, sales_start_at, sales_end_at, display_order, is_active')
     .eq('event_id', eventId)
     .eq('is_active', true)
     .order('display_order', { ascending: true });
@@ -111,7 +111,14 @@ export async function GET(request) {
   const invByProduct = new Map((inv || []).map((r) => [r.product_id, r]));
   const now = new Date();
 
-  const items = (products || []).map((p) => {
+  // The permanent Left Door row exists on every event but stays invisible to
+  // buyers until an admin sets that event's price (it is created without a
+  // price tier), so an unpriced room never appears as "Not on sale".
+  const listedProducts = (products || []).filter(
+    (p) => !(p.system_key === 'left_door' && !(tiersByProduct.get(p.id) || []).length),
+  );
+
+  const items = listedProducts.map((p) => {
     const productTiers = tiersByProduct.get(p.id) || [];
     const invRow = invByProduct.get(p.id);
     // Unlimited capacity is stored as NULL. JS arithmetic silently coerces
