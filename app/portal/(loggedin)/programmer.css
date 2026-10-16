@@ -61,6 +61,8 @@
 .pg-field input:focus,.pg-field select:focus,.pg-field textarea:focus{outline:none;border-color:var(--hub-gold)}
 .pg-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .pg-note{font-size:12px;color:var(--hub-muted);background:var(--hub-raised);border:1px solid var(--hub-line);border-radius:6px;padding:10px 12px;margin:4px 0 18px}
+.pg-note.pg-preview{color:var(--pend-text);background:var(--pend);border-color:#6b5520}
+.pg-btn:disabled[title]{cursor:not-allowed}
 .pg-error{font-size:13px;color:#e99797;margin:0 0 14px}
 .pg-btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--hub-line);background:var(--hub-raised);border-radius:6px;padding:10px 16px;font-weight:600;cursor:pointer;min-height:42px;text-decoration:none;color:var(--hub-text)}
 .pg-btn.primary{background:var(--hub-gold);border-color:var(--hub-gold);color:#14110a}

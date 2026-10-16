@@ -3,6 +3,7 @@ import { requirePartner } from '@/lib/auth-helpers';
 import { createClient } from '@/lib/supabase/server';
 import { profileCapabilities } from '@/lib/profile-capabilities';
 import ProgrammingCalendar from './ProgrammingCalendar';
+import { isViewPortalSandbox } from '@/lib/view-portal/preview-only';
 import '../programmer.css';
 
 export const revalidate = 0;
@@ -30,7 +31,7 @@ export default async function ProgrammerCalendarPage() {
           <h1>Find an open date.</h1>
           <p>Green dates are open. Choose one to pitch an event. Public shows are listed so you can plan around them.</p>
         </div>
-        <ProgrammingCalendar days={calendar.data || []} pitches={pitches.data || []} />
+        <ProgrammingCalendar days={calendar.data || []} pitches={pitches.data || []} previewOnly={isViewPortalSandbox()} />
       </div>
     </main>
   );
