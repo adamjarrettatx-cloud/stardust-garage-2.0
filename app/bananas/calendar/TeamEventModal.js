@@ -59,15 +59,15 @@ const FREQ_OPTIONS = [
 const MODAL_THEMES = {
   dark: {
     overlay: 'rgba(0,0,0,0.75)',
-    panelBg: '#141414',
+    panelBg: '#22252D',
     panelBorder: 'rgba(255,255,255,0.1)',
     text: '#f5f5f5',
     textStrong: '#ffffff',
     muted: '#8a8a8a',
     mutedStrong: '#aaaaaa',
-    inputBg: '#1a1a1a',
+    inputBg: '#2A2D36',
     inputBorder: 'rgba(255,255,255,0.12)',
-    swatchBg: '#1a1a1a',
+    swatchBg: '#2A2D36',
     swatchBorder: 'rgba(255,255,255,0.08)',
     hoverBg: 'rgba(255,255,255,0.05)',
     saveBg: '#ffffff',
@@ -329,7 +329,7 @@ export default function TeamEventModal({
           </h2>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-[20px] leading-none transition-colors"
+            className="w-8 h-8 rounded-[8px] flex items-center justify-center text-[20px] leading-none transition-colors"
             style={{ color: m.muted }}
             onMouseEnter={(e) => { e.currentTarget.style.background = m.hoverBg; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
@@ -387,7 +387,7 @@ export default function TeamEventModal({
             <button
               type="button"
               onClick={goToPublicCreator}
-              className="w-full py-3 rounded-full text-[13px] font-semibold tracking-[0.14em] transition-all"
+              className="w-full py-3 rounded-[8px] text-[13px] font-semibold tracking-[0.14em] transition-all"
               style={{ background: m.saveBg, color: m.saveText }}
             >
               CONTINUE TO PUBLIC EVENT CREATOR →
@@ -395,7 +395,7 @@ export default function TeamEventModal({
             <button
               type="button"
               onClick={onClose}
-              className="w-full py-2.5 rounded-full text-[12px] font-semibold tracking-[0.12em] border transition-colors"
+              className="w-full py-2.5 rounded-[8px] text-[12px] font-semibold tracking-[0.12em] border transition-colors"
               style={{ borderColor: m.cancelBorder, color: m.text, background: 'transparent' }}
             >
               CANCEL
@@ -496,7 +496,7 @@ export default function TeamEventModal({
               <option value="">— No linked event —</option>
               {linkableEvents.map(evt => (
                 <option key={evt.id} value={evt.id}>
-                  {`${evt.title} — ${formatEventDate(evt.event_date)}${evt.visibility === 'internal' ? ' (internal)' : ''}`}
+                  {`${evt.title} — ${formatEventDate(evt.event_date)}${evt.visibility === 'internal' ? ' (draft)' : ''}`}
                 </option>
               ))}
             </select>
@@ -644,7 +644,7 @@ export default function TeamEventModal({
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 py-3.5 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
+              className="flex-1 py-3.5 rounded-[8px] text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
               style={{ background: m.saveBg, color: m.saveText }}
             >
               {saving
@@ -658,7 +658,7 @@ export default function TeamEventModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-3.5 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-colors"
+              className="px-6 py-3.5 rounded-[8px] text-[12px] font-semibold tracking-[0.14em] border transition-colors"
               style={{ borderColor: m.cancelBorder, color: m.text }}
               onMouseEnter={(e) => { e.currentTarget.style.background = m.hoverBg; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
@@ -680,7 +680,7 @@ export default function TeamEventModal({
                     type="button"
                     onClick={() => handleDeleteConfirm('one')}
                     disabled={deleting}
-                    className="w-full py-2.5 rounded-full text-[12px] font-semibold tracking-[0.12em] border transition-all hover:bg-white/5 disabled:opacity-50"
+                    className="w-full py-2.5 rounded-[8px] text-[12px] font-semibold tracking-[0.12em] border transition-all hover:bg-white/5 disabled:opacity-50"
                     style={{ borderColor: 'rgba(239,68,68,0.4)', color: '#f87171' }}
                   >
                     {deleting ? 'DELETING...' : 'DELETE THIS OCCURRENCE ONLY'}
@@ -689,7 +689,7 @@ export default function TeamEventModal({
                     type="button"
                     onClick={() => handleDeleteConfirm('all')}
                     disabled={deleting}
-                    className="w-full py-2.5 rounded-full text-[12px] font-semibold tracking-[0.12em] transition-all disabled:opacity-50"
+                    className="w-full py-2.5 rounded-[8px] text-[12px] font-semibold tracking-[0.12em] transition-all disabled:opacity-50"
                     style={{ background: '#ef4444', color: '#fff' }}
                   >
                     {deleting ? 'DELETING...' : 'DELETE ENTIRE SERIES'}
@@ -709,7 +709,7 @@ export default function TeamEventModal({
                     type="button"
                     onClick={() => handleDeleteConfirm('one')}
                     disabled={deleting}
-                    className="w-full py-2.5 rounded-full text-[12px] font-semibold tracking-[0.12em] transition-all disabled:opacity-50"
+                    className="w-full py-2.5 rounded-[8px] text-[12px] font-semibold tracking-[0.12em] transition-all disabled:opacity-50"
                     style={{ background: '#ef4444', color: '#fff' }}
                   >
                     {deleting ? 'DELETING...' : 'CONFIRM DELETE'}
@@ -730,7 +730,7 @@ export default function TeamEventModal({
                 <button
                   type="button"
                   onClick={handleDeleteClick}
-                  className="w-full mt-3 py-2.5 rounded-full text-[12px] font-semibold tracking-[0.14em] border transition-all hover:bg-red-500/10"
+                  className="w-full mt-3 py-2.5 rounded-[8px] text-[12px] font-semibold tracking-[0.14em] border transition-all hover:bg-red-500/10"
                   style={{ borderColor: 'rgba(239,68,68,0.3)', color: '#ef4444' }}
                 >
                   DELETE EVENT

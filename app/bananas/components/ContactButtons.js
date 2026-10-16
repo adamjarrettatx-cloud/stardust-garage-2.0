@@ -25,7 +25,7 @@ export function EmailButton({ email, style }) {
   return (
     <a
       href={`mailto:${email}`}
-      className="inline-flex items-center gap-1.5 shrink-0 px-3 py-1.5 rounded-full text-[11px] font-semibold tracking-[0.08em] hover:opacity-80 transition-opacity"
+      className="inline-flex items-center gap-1.5 shrink-0 px-3 py-1.5 rounded-[8px] text-[11px] font-semibold tracking-[0.08em] hover:opacity-80 transition-opacity"
       style={{
         background: 'var(--auth-card-bg-alt)',
         border: '1px solid var(--auth-card-border-strong)',
@@ -51,7 +51,7 @@ export function WhatsAppButton({ phone, style }) {
       href={`https://wa.me/${waNumber}`}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center gap-1.5 shrink-0 px-3 py-1.5 rounded-full text-[11px] font-semibold tracking-[0.08em] hover:opacity-85 transition-opacity"
+      className="inline-flex items-center gap-1.5 shrink-0 px-3 py-1.5 rounded-[8px] text-[11px] font-semibold tracking-[0.08em] hover:opacity-85 transition-opacity"
       style={{
         background: '#25D366',
         border: '1px solid #1DA851',

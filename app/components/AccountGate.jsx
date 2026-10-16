@@ -34,6 +34,7 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import LegalNameInput from './LegalNameInput';
 import { validateLegalName } from '@/lib/legal-name';
+import InAppBrowserNotice, { useInAppBrowser } from './InAppBrowserNotice';
 
 // Field styles factored out because they repeat 4x below and any drift
 // between the two tabs is a visual bug.
@@ -99,6 +100,10 @@ export default function AccountGate({
 
   const supabase = createClient();
 
+  // Instagram/Facebook/TikTok built-in browsers: Google blocks OAuth there,
+  // so swap the Google button for an open-in-browser notice.
+  const browser = useInAppBrowser();
+
   // Build the redirect URL Google hands back to. Same-page + ?signup=complete
   // is the contract with InternalTicketModal: on mount, if signup=complete is
   // present AND the user is authenticated, the modal jumps straight to the
@@ -149,7 +154,7 @@ export default function AccountGate({
         if (res.status === 409 || data?.code === 'already_registered') {
           setSiEmail(suEmail);
           setTab('signin');
-          setError('That email is already registered \u2014 sign in below.');
+          setError('You already have an account with this email. Sign in below. If you used Google before or don\u2019t know your password, tap Forgot password.');
           return;
         }
         throw new Error(data?.error || 'Could not create account.');
@@ -229,7 +234,13 @@ export default function AccountGate({
 
       {tab === 'signup' ? (
         <form onSubmit={handleSignUp} className="space-y-3.5">
-          <GoogleButton onClick={handleGoogle} disabled={busy} label="Continue with Google" />
+          {browser.inApp
+            ? <InAppBrowserNotice app={browser.app} platform={browser.platform} mode="signup" />
+            : (
+              <div style={{ visibility: browser.checked ? 'visible' : 'hidden' }}>
+                <GoogleButton onClick={handleGoogle} disabled={busy || !browser.checked} label="Continue with Google" />
+              </div>
+            )}
           <div className="flex items-center gap-3 my-2" aria-hidden="true">
             <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.1)' }} />
             <div className="text-[11px] tracking-[0.14em]" style={{ color: '#666' }}>OR</div>
@@ -290,7 +301,13 @@ export default function AccountGate({
         </form>
       ) : (
         <form onSubmit={handleSignIn} className="space-y-3.5">
-          <GoogleButton onClick={handleGoogle} disabled={busy} label="Sign in with Google" />
+          {browser.inApp
+            ? <InAppBrowserNotice app={browser.app} platform={browser.platform} mode="signin" />
+            : (
+              <div style={{ visibility: browser.checked ? 'visible' : 'hidden' }}>
+                <GoogleButton onClick={handleGoogle} disabled={busy || !browser.checked} label="Sign in with Google" />
+              </div>
+            )}
           <div className="flex items-center gap-3 my-2" aria-hidden="true">
             <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.1)' }} />
             <div className="text-[11px] tracking-[0.14em]" style={{ color: '#666' }}>OR</div>
@@ -332,6 +349,17 @@ export default function AccountGate({
           >
             {busy ? 'SIGNING IN\u2026' : 'SIGN IN & CONTINUE'}
           </button>
+          <div className="text-center pt-1">
+            <a
+              href="/forgot-password"
+              target="_blank"
+              rel="noopener"
+              className="text-[12px] underline underline-offset-4"
+              style={{ color: '#a0a0a0' }}
+            >
+              Forgot password?
+            </a>
+          </div>
         </form>
       )}
     </div>

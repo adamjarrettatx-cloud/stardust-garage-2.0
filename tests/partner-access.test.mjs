@@ -34,10 +34,10 @@ test('restricted staff roles remain restricted even with a partner row', () => {
   assert.equal(isRestrictedStaffRole('team'), false);
 });
 test('views follow contact types AND assigned resources, never unrelated records', () => {
-  assert.deepEqual(partnerViews(['promoter']), { guestList: true, pay: false, contracts: false, events: false });
-  assert.deepEqual(partnerViews(['dj']), { guestList: true, pay: true, contracts: false, events: false });
-  assert.deepEqual(partnerViews(['other']), { guestList: false, pay: false, contracts: false, events: false });
+  assert.deepEqual(partnerViews(['promoter']), { guestList: true, pay: false, contracts: false, events: false, calendar: false, pitches: false });
+  assert.deepEqual(partnerViews(['dj']), { guestList: true, pay: true, contracts: false, events: false, calendar: false, pitches: false });
+  assert.deepEqual(partnerViews(['other']), { guestList: false, pay: false, contracts: false, events: false, calendar: false, pitches: false });
   assert.deepEqual(partnerViews(['other'], { grants: [{}], bookings: [{}], contracts: [{}] }), {
-    guestList: false, pay: false, contracts: false, events: false,
+    guestList: false, pay: false, contracts: false, events: false, calendar: false, pitches: false,
   });
 });

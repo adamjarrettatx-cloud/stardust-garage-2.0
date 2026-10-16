@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { memberDiscountCalloutRows } from '@/lib/event-discount-display';
 import { formatEventTime } from '@/lib/events/format-event-time';
 import InternalTicketModal from './InternalTicketModal';
+import { sanitizeEventDescriptionHtml } from '@/lib/rich-text';
 
 // Shared render for a single event's public detail page. Used by both the
 // live route (app/events/[slug]/page.js) and the admin-only preview route
@@ -27,6 +28,9 @@ export default function EventDetail({ event, preview = false }) {
   // member_discount_percent_cowork / _iykyk / (legacy) member_discount_percent
   // are set. Rendered inside a single gold pill below the ticket CTA.
   const memberRows = memberDiscountCalloutRows(event);
+  // Formatted description only when a plain one exists too; the plain column
+  // is authoritative (the app or an import may have rewritten it).
+  const descriptionHtml = event.description ? sanitizeEventDescriptionHtml(event.description_html) : '';
 
   return (
     <main className="max-w-[1100px] mx-auto px-4 md:px-6 py-8 md:py-10">
@@ -161,7 +165,13 @@ export default function EventDetail({ event, preview = false }) {
             >
               About
             </div>
-            {event.description ? (
+            {descriptionHtml ? (
+              <div
+                className="text-[15px] leading-[1.7] [&_p]:m-0 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:underline [&_a]:underline-offset-2"
+                // Sanitized against a strict allow-list on every render.
+                dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+              />
+            ) : event.description ? (
               <div className="text-[15px] leading-[1.7]" style={{ whiteSpace: 'pre-wrap' }}>
                 {event.description}
               </div>

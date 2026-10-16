@@ -192,7 +192,7 @@ export default function TaskDrawer({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="progress-drawer-close shrink-0 w-11 h-11 rounded-full flex items-center justify-center text-[20px]"
+            className="progress-drawer-close shrink-0 w-11 h-11 rounded-[8px] flex items-center justify-center text-[20px]"
             style={{ border: `1px solid ${t.controlBorder}`, color: t.closeText }}
           >
             ×
@@ -289,7 +289,7 @@ export default function TaskDrawer({
               <button
                 type="submit"
                 disabled={posting || !body.trim()}
-                className="progress-drawer-submit ml-auto px-5 py-2.5 rounded-full text-[12px] font-semibold tracking-[0.1em] disabled:opacity-40"
+                className="progress-drawer-submit ml-auto px-5 py-2.5 rounded-[8px] text-[12px] font-semibold tracking-[0.1em] disabled:opacity-40"
                 style={{
                   background: t.accent,
                   color: t.accentText,
@@ -376,7 +376,7 @@ function ActionBtn({ children, onClick, disabled, danger, t }) {
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="progress-drawer-action px-4 py-2.5 rounded-full text-[12px] font-semibold tracking-[0.08em] disabled:opacity-40"
+      className="progress-drawer-action px-4 py-2.5 rounded-[8px] text-[12px] font-semibold tracking-[0.08em] disabled:opacity-40"
       style={{
         minHeight: '44px',
         background: danger ? t.dangerBg : t.controlBg,

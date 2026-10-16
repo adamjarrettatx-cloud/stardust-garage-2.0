@@ -33,7 +33,7 @@ const EMPTY_FORM = {
 function Badge({ children, color, bg, border }) {
   return (
     <span
-      className="inline-block text-[10px] font-semibold tracking-[0.14em] px-2.5 py-1 rounded-full"
+      className="inline-block text-[10px] font-semibold tracking-[0.14em] px-2.5 py-1 rounded-[6px]"
       style={{ color, background: bg, border: `1px solid ${border}` }}
     >
       {children}
@@ -151,7 +151,7 @@ function GrantForm({ form, setForm, usage = null, busy, error, onSubmit, onCance
         <button
           type="submit"
           disabled={busy}
-          className="px-6 py-3 rounded-full text-[11px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-40"
+          className="px-6 py-3 rounded-[8px] text-[11px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-40"
           style={{ background: 'var(--auth-text-strong)', color: 'var(--auth-strong-surface-text)' }}
         >
           {busy ? 'SAVING…' : submitLabel}
@@ -160,7 +160,7 @@ function GrantForm({ form, setForm, usage = null, busy, error, onSubmit, onCance
           type="button"
           onClick={onCancel}
           disabled={busy}
-          className="px-6 py-3 rounded-full text-[11px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5 disabled:opacity-40"
+          className="px-6 py-3 rounded-[8px] text-[11px] font-semibold tracking-[0.14em] border transition-colors hover:bg-white/5 disabled:opacity-40"
           style={{ borderColor: 'var(--auth-card-border-strong)', color: 'var(--auth-text)' }}
         >
           CANCEL
@@ -372,7 +372,7 @@ export default function GuestListPanel({ eventId }) {
           <button
             type="button"
             onClick={openAdd}
-            className="px-5 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5"
+            className="px-5 py-2.5 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5"
             style={{ borderColor: 'var(--auth-card-border-strong)', color: 'var(--auth-text)' }}
           >
             GRANT SLOTS
@@ -494,7 +494,7 @@ export default function GuestListPanel({ eventId }) {
                     <button
                       type="button"
                       onClick={() => (isEditing ? setEditing(null) : openEdit(grant))}
-                      className="px-4 py-2 rounded-full text-[10px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5"
+                      className="px-4 py-2 rounded-[8px] text-[10px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5"
                       style={{
                         borderColor: 'var(--auth-card-border-strong)',
                         color: 'var(--auth-text)',
@@ -506,7 +506,7 @@ export default function GuestListPanel({ eventId }) {
                       type="button"
                       onClick={() => handleRevoke(grant)}
                       disabled={busy}
-                      className="px-4 py-2 rounded-full text-[10px] font-semibold tracking-[0.12em] border transition-colors disabled:opacity-40"
+                      className="px-4 py-2 rounded-[8px] text-[10px] font-semibold tracking-[0.12em] border transition-colors disabled:opacity-40"
                       style={{
                         borderColor: 'var(--auth-danger-border)',
                         color: 'var(--auth-danger)',

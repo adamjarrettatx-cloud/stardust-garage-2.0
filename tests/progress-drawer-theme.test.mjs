@@ -17,7 +17,7 @@ test('light drawer theme matches the cream progress page palette', () => {
   const dark = PROGRESS_DRAWER_THEMES.dark;
   const light = PROGRESS_DRAWER_THEMES.light;
 
-  assert.equal(dark.panelBg, '#0f0f0f');
+  assert.equal(dark.panelBg, '#22252D');
   assert.equal(light.panelBg, '#f2efe8');
   assert.equal(light.cardBg, '#ffffff');
   assert.equal(light.headerBg, light.panelBg);

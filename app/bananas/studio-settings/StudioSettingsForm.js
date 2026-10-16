@@ -37,7 +37,7 @@ function HourSelector({ value, onChange, label }) {
       <select
         value={value}
         onChange={(e) => onChange(parseInt(e.target.value, 10))}
-        className="w-full px-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30"
+        className="w-full px-5 py-3.5 rounded-[8px] text-[14px] outline-none border transition-colors focus:border-white/30"
         style={{
           background: '#141414',
           borderColor: 'rgba(255,255,255,0.1)',
@@ -146,7 +146,7 @@ export default function StudioSettingsForm({ settings }) {
             step="0.01"
             value={rate}
             onChange={(e) => setRate(parseFloat(e.target.value) || 0)}
-            className="w-full pl-10 pr-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30"
+            className="w-full pl-10 pr-5 py-3.5 rounded-[8px] text-[14px] outline-none border transition-colors focus:border-white/30"
             style={{
               background: '#141414',
               borderColor: 'rgba(255,255,255,0.1)',
@@ -176,7 +176,7 @@ export default function StudioSettingsForm({ settings }) {
                 key={d.num}
                 type="button"
                 onClick={() => toggleDay(d.num)}
-                className="px-4 py-2 rounded-full text-[12px] font-semibold tracking-[0.1em] border transition-all"
+                className="px-4 py-2 rounded-[8px] text-[12px] font-semibold tracking-[0.1em] border transition-all"
                 style={{
                   background: isOn ? '#ffffff' : 'transparent',
                   color: isOn ? '#0a0a0a' : '#f5f5f5',
@@ -203,7 +203,7 @@ export default function StudioSettingsForm({ settings }) {
             min="0"
             value={minAdvance}
             onChange={(e) => setMinAdvance(parseInt(e.target.value, 10) || 0)}
-            className="w-full px-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30"
+            className="w-full px-5 py-3.5 rounded-[8px] text-[14px] outline-none border transition-colors focus:border-white/30"
             style={{
               background: '#141414',
               borderColor: 'rgba(255,255,255,0.1)',
@@ -223,7 +223,7 @@ export default function StudioSettingsForm({ settings }) {
             min="1"
             value={minBooking}
             onChange={(e) => setMinBooking(parseInt(e.target.value, 10) || 1)}
-            className="w-full px-5 py-3.5 rounded-full text-[14px] outline-none border transition-colors focus:border-white/30"
+            className="w-full px-5 py-3.5 rounded-[8px] text-[14px] outline-none border transition-colors focus:border-white/30"
             style={{
               background: '#141414',
               borderColor: 'rgba(255,255,255,0.1)',
@@ -247,7 +247,7 @@ export default function StudioSettingsForm({ settings }) {
         type="button"
         onClick={handleSave}
         disabled={saving}
-        className="w-full py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
+        className="w-full py-4 rounded-[8px] text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
         style={{ background: '#ffffff', color: '#0a0a0a' }}
       >
         {saving ? 'SAVING…' : 'SAVE SETTINGS'}

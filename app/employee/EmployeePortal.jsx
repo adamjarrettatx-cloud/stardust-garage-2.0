@@ -1,36 +1,60 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Frame, request, time, date, money } from "@/app/components/time-clock/Shared";
+import { Frame, request, time, money } from "@/app/components/time-clock/Shared";
+import ProfileAvatar from "@/components/profile-photo/ProfileAvatar";
 import { createClient } from "@/lib/supabase/client";
-import { duration, elapsedMs, estimateCents } from "@/lib/time-clock/core.mjs";
+import { chicagoInput, chicagoToIso, duration, elapsedMs, estimateCents } from "@/lib/time-clock/core.mjs";
+import { addDays, chicagoYmd, dayStartIso, weekStart } from "@/lib/time-clock/periods.mjs";
+import { pinProblem, birthdateProblem } from "@/lib/time-clock/profile.mjs";
+import { preparePhoto } from "@/app/employee/setup/EmployeeSetup";
 
-const weekday = (iso) =>
-  new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Chicago",
-    weekday: "long",
-    month: "short",
-    day: "numeric",
-  }).format(new Date(iso));
+const TZ = "America/Chicago";
+const fmt = (opts) => new Intl.DateTimeFormat("en-US", { timeZone: TZ, ...opts });
+const dayLong = (iso) => fmt({ weekday: "long", month: "short", day: "numeric" }).format(new Date(iso));
+const dayShort = (iso) => fmt({ weekday: "short", month: "short", day: "numeric" }).format(new Date(iso));
+const ymdLabel = (ymd, opts) =>
+  new Intl.DateTimeFormat("en-US", { timeZone: "UTC", ...opts }).format(new Date(`${ymd}T12:00:00Z`));
+const shortTime = (iso) =>
+  fmt({ hour: "numeric", minute: "2-digit" }).format(new Date(iso)).replace(":00", "").replace(" ", "").toLowerCase();
 const hours = (ms) => (ms / 3600000).toFixed(2);
+const span = (a, b) => `${time(a)} – ${time(b)}`;
+
+const KIND_LABEL = { edit_shift: "Hours fix", missed_shift: "Missed shift", time_off: "Time off" };
+const STATUS_LABEL = { pending: "Waiting for manager", approved: "Approved", denied: "Declined", cancelled: "Cancelled" };
+const SHIFT_STATUS = { open: "On the clock", pending: "Awaiting review", approved: "Approved" };
+
+// Austin wall-clock input -> ISO. The repeated fall-back hour defaults to its
+// first occurrence (CDT); every other invalid value surfaces a message.
+function austinIso(local) {
+  try {
+    return chicagoToIso(local);
+  } catch (e) {
+    if (/occurs twice/.test(e.message)) return chicagoToIso(local, "-05:00");
+    throw e;
+  }
+}
+const localValue = (iso) => chicagoInput(iso).slice(0, 16);
 
 export default function EmployeePortal({ enabled }) {
+  const today = chicagoYmd();
+  const [tab, setTab] = useState("schedule");
+  const [week, setWeek] = useState(weekStart(today));
   const [data, setData] = useState(null);
-  const [days, setDays] = useState("14");
   const [error, setError] = useState("");
   const [now, setNow] = useState(Date.now());
-  const [pw, setPw] = useState(null);
-  const [pwMsg, setPwMsg] = useState("");
+  const [modal, setModal] = useState(null);
+  const [toast, setToast] = useState("");
 
   const load = useCallback(async () => {
     try {
       setError("");
-      setData(await request(`/api/employee/me?days=${days}`));
+      setData(await request(`/api/employee/me?from=${week}&to=${addDays(week, 6)}`));
     } catch (e) {
       if (e.status === 401) window.location.replace("/employee/login");
       else setError(e.message);
     }
-  }, [days]);
+  }, [week]);
   useEffect(() => {
     if (enabled) load();
   }, [enabled, load]);
@@ -38,234 +62,684 @@ export default function EmployeePortal({ enabled }) {
     const t = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(t);
   }, []);
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(""), 4000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   async function signOut() {
     await fetch("/api/employee/logout", { method: "POST", credentials: "same-origin" }).catch(() => {});
     window.location.replace("/employee/login");
   }
-  async function changePassword(e) {
-    e.preventDefault();
-    setPwMsg("");
-    if (pw.next.length < 10) return setPwMsg("Use at least 10 characters.");
-    if (pw.next !== pw.confirm) return setPwMsg("The passwords do not match.");
-    const { error: err } = await createClient().auth.updateUser({ password: pw.next });
-    if (err) return setPwMsg(err.message || "Could not change the password.");
-    setPw(null);
-    setPwMsg("Password changed.");
-  }
 
-  const view = useMemo(() => {
-    if (!data) return null;
-    const upcoming = data.schedule.filter((s) => Date.parse(s.ends_at) >= now);
-    const open = data.shifts.find((s) => !s.ended_at);
-    const closed = data.shifts.filter((s) => s.ended_at);
-    const workedMs = data.shifts.reduce((sum, s) => sum + elapsedMs(s, now), 0);
-    const pay = closed.map(estimateCents);
-    const known = pay.filter((c) => c !== null).reduce((a, b) => a + b, 0);
-    const weekAhead = upcoming
-      .filter((s) => Date.parse(s.starts_at) < now + 7 * 86400000)
-      .reduce((sum, s) => sum + Date.parse(s.ends_at) - Math.max(now, Date.parse(s.starts_at)), 0);
-    return { upcoming, open, closed, workedMs, known, missing: pay.filter((c) => c === null).length, weekAhead };
-  }, [data, now]);
+  const pendingCount = data ? data.requests.filter((r) => r.status === "pending").length : 0;
+  const tabs = [
+    ["schedule", "Schedule"],
+    ["timesheet", "Timesheet"],
+    ["requests", pendingCount ? `Requests (${pendingCount})` : "Requests"],
+    ["account", "Account"],
+  ];
 
   return (
     <Frame owner>
       <div className="emp">
-        <div className="between ownerhead">
+        <div className="emp-head">
           <div>
-            <span className="eyebrow">STARDUST GARAGE / STAFF HUB</span>
+            <span className="eyebrow">Stardust Garage · Staff</span>
             <h1>{data ? data.worker.name : "My schedule"}</h1>
-            <p className="sub">Your schedule, hours and pay. Clock in and out on the front-room iPad.</p>
           </div>
-          <div className="row">
-            <button onClick={() => setPw(pw ? null : { next: "", confirm: "" })}>Change password</button>
-            <button onClick={signOut}>Sign out</button>
-          </div>
+          <button className="textbtn" onClick={signOut}>Sign out</button>
         </div>
-        {pwMsg && <div className="notice" role="status">{pwMsg}</div>}
-        {pw && (
-          <form className="panel tc-form" onSubmit={changePassword}>
-            <h2>Change password</h2>
-            <label>
-              New password
-              <input type="password" autoComplete="new-password" minLength={10} maxLength={72} required
-                value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} />
-            </label>
-            <label>
-              Confirm new password
-              <input type="password" autoComplete="new-password" minLength={10} maxLength={72} required
-                value={pw.confirm} onChange={(e) => setPw({ ...pw, confirm: e.target.value })} />
-            </label>
-            <div className="row wrap">
-              <button className="primary">Save password</button>
-              <button type="button" onClick={() => setPw(null)}>Cancel</button>
-            </div>
-          </form>
-        )}
+        <nav className="tabs emp-tabs" aria-label="Employee sections">
+          {tabs.map(([id, label]) => (
+            <button key={id} className={tab === id ? "active" : ""} aria-current={tab === id ? "page" : undefined}
+              onClick={() => setTab(id)}>
+              {label}
+            </button>
+          ))}
+        </nav>
+
         {!enabled ? (
-          <div className="notice">Timekeeping is not enabled yet.</div>
+          <div className="notice">Staff tools are not enabled yet.</div>
         ) : error ? (
           <div className="notice tc-error" role="alert">
             {error}
             <button onClick={load}>Retry</button>
           </div>
-        ) : !view ? (
-          <div className="empty" role="status">Loading your schedule…</div>
+        ) : !data ? (
+          <div className="empty" role="status">Loading…</div>
+        ) : data.profile && !data.profile.complete ? (
+          <CompleteProfile data={data} onDone={(message) => { setToast(message); load(); }} />
+        ) : tab === "schedule" ? (
+          <ScheduleTab data={data} now={now} today={today} onTimeOff={() => setModal({ kind: "time_off" })} />
+        ) : tab === "timesheet" ? (
+          <TimesheetTab data={data} now={now} week={week} today={today} setWeek={setWeek}
+            onFix={(shift) => setModal({ kind: "edit_shift", shift })}
+            onMissed={() => setModal({ kind: "missed_shift" })} />
+        ) : tab === "requests" ? (
+          <RequestsTab data={data} onNew={(kind) => {
+              if (kind !== "edit_shift") return setModal({ kind });
+              setTab("timesheet");
+              setToast("Choose the shift to fix, then tap Request fix.");
+            }}
+            onCancel={async (r) => {
+              if (!window.confirm("Cancel this request?")) return;
+              try {
+                await request("/api/employee/requests", { action: "cancel", id: r.id });
+                setToast("Request cancelled.");
+                load();
+              } catch (e) {
+                setToast(e.message);
+              }
+            }} />
+        ) : (
+          <AccountTab data={data} onSignOut={signOut} />
+        )}
+
+        {modal && data && (
+          <RequestForm modal={modal} data={data} today={today} onClose={() => setModal(null)}
+            onSent={(message) => { setModal(null); setToast(message); setTab("requests"); load(); }} />
+        )}
+        {toast && <div className="emp-toast" role="status">{toast}</div>}
+      </div>
+    </Frame>
+  );
+}
+
+function ScheduleTab({ data, now, today, onTimeOff }) {
+  const upcoming = data.schedule.filter((s) => Date.parse(s.ends_at) >= now);
+  const next = upcoming[0];
+  const open = data.shifts.find((s) => !s.ended_at);
+  const timeOff = data.requests.filter((r) => r.kind === "time_off" && r.status === "approved" && Date.parse(r.applied_end) > now);
+  const thisWeek = weekStart(today);
+  const days = Array.from({ length: 7 }, (_, i) => addDays(thisWeek, i));
+  const dayOf = (iso) => chicagoYmd(iso);
+  const weekAheadMs = upcoming
+    .filter((s) => Date.parse(s.starts_at) < now + 7 * 86400000)
+    .reduce((sum, s) => sum + Date.parse(s.ends_at) - Math.max(now, Date.parse(s.starts_at)), 0);
+
+  // Group upcoming shifts by their Monday week.
+  const groups = [];
+  for (const s of upcoming) {
+    const key = weekStart(dayOf(s.starts_at));
+    if (!groups.length || groups.at(-1).key !== key) groups.push({ key, items: [] });
+    groups.at(-1).items.push(s);
+  }
+
+  return (
+    <>
+      <div className="emp-next">
+        <section className="panel emp-hero">
+          <span className="eyebrow">{open ? "On the clock" : "Next shift"}</span>
+          {open ? (
+            <>
+              <p className="emp-big"><span className="pill live">Since {time(open.started_at)}</span></p>
+              <p>{duration(elapsedMs(open, now))} so far{open.segments.at(-1) && ` · ${open.segments.at(-1).role_name}`}</p>
+              <p className="sub">Clock out on the front-room iPad.</p>
+            </>
+          ) : next ? (
+            <>
+              <p className="emp-big">{dayLong(next.starts_at)}</p>
+              <p className="emp-time mono">{span(next.starts_at, next.ends_at)}</p>
+              <p><b>{next.role_name}</b> · {duration(Date.parse(next.ends_at) - Date.parse(next.starts_at))}</p>
+              {next.note && <p className="sub tc-preserve">{next.note}</p>}
+              {next.crew.length > 0 && (
+                <p className="sub">Working with {next.crew.map((c) => `${c.name} (${c.role_name})`).join(", ")}</p>
+              )}
+            </>
+          ) : (
+            <p className="emp-big">No upcoming shifts</p>
+          )}
+        </section>
+        <section className="panel">
+          <span className="eyebrow">Next 7 days</span>
+          <p className="emp-big mono">{hours(weekAheadMs)} h</p>
+          <p className="sub">{upcoming.filter((s) => Date.parse(s.starts_at) < now + 7 * 86400000).length} scheduled shifts</p>
+          <button className="wide" onClick={onTimeOff}>Request time off</button>
+        </section>
+      </div>
+
+      <section className="emp-section">
+        <h2>This week</h2>
+        <div className="emp-week" role="list">
+          {days.map((d) => {
+            const items = data.schedule.filter((s) => dayOf(s.starts_at) === d);
+            const off = timeOff.some((r) => dayOf(r.applied_start) <= d && d < dayOf(r.applied_end));
+            return (
+              <div key={d} role="listitem" className={`emp-day${d === today ? " today" : ""}${items.length ? " has" : ""}`}>
+                <span className="emp-dow">{ymdLabel(d, { weekday: "short" })}</span>
+                <span className="emp-dom mono">{ymdLabel(d, { day: "numeric" })}</span>
+                {items.map((s) => (
+                  <span key={s.id} className="emp-chip">
+                    <b>{shortTime(s.starts_at)}</b>
+                    <span>{s.role_name}</span>
+                  </span>
+                ))}
+                {off && <span className="emp-chip off">Time off</span>}
+                {!items.length && !off && <span className="emp-none">Off</span>}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="emp-section">
+        <h2>Upcoming</h2>
+        {!groups.length && !timeOff.length ? (
+          <div className="panel empty">No shifts scheduled yet. Your manager will post them here.</div>
         ) : (
           <>
-            <div className="emp-next">
-              <section className="panel">
-                <span className="eyebrow">Next shift</span>
-                {view.upcoming[0] ? (
-                  <>
-                    <p className="emp-big">{weekday(view.upcoming[0].starts_at)}</p>
-                    <p>
-                      {time(view.upcoming[0].starts_at)} – {time(view.upcoming[0].ends_at)} ·{" "}
-                      <b>{view.upcoming[0].role_name}</b>
-                    </p>
-                    {view.upcoming[0].note && <p className="sub tc-preserve">{view.upcoming[0].note}</p>}
-                    {view.upcoming[0].crew.length > 0 && (
-                      <p className="sub">
-                        Working with: {view.upcoming[0].crew.map((c) => `${c.name} (${c.role_name})`).join(", ")}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <p className="emp-big">No upcoming shifts</p>
-                )}
-              </section>
-              <section className="panel">
-                <span className="eyebrow">Time clock</span>
-                {view.open ? (
-                  <>
-                    <p className="emp-big">
-                      <span className="pill live">On the clock</span>
-                    </p>
-                    <p>
-                      Since {time(view.open.started_at)} · {duration(elapsedMs(view.open, now))}
-                      {view.open.segments.at(-1) && ` · ${view.open.segments.at(-1).role_name}`}
-                    </p>
-                  </>
-                ) : (
-                  <p className="emp-big">Off the clock</p>
-                )}
-                <p className="sub">Scheduled next 7 days: {hours(view.weekAhead)} h</p>
-              </section>
-            </div>
-
-            <div className="between wrap">
-              <h2>My hours</h2>
-              <label className="row sub">
-                Period
-                <select value={days} onChange={(e) => setDays(e.target.value)}>
-                  <option value="7">Last 7 days</option>
-                  <option value="14">Last 14 days</option>
-                  <option value="31">Last 31 days</option>
-                  <option value="93">Last 93 days</option>
-                </select>
-              </label>
-            </div>
-            <div className="metrics">
-              <div className="metric">
-                <span className="sub">Hours worked</span>
-                <b className="mono">{hours(view.workedMs)}</b>
-              </div>
-              <div className="metric">
-                <span className="sub">Shifts</span>
-                <b className="mono">{data.shifts.length}</b>
-              </div>
-              <div className="metric">
-                <span className="sub">Estimated pay</span>
-                <b className="mono">{money(view.known)}</b>
-              </div>
-              <div className="metric">
-                <span className="sub">Pay rates</span>
-                <div className="emp-rates">
-                  {data.worker.pay_basis === "flat" ? (
-                    <span className="pill">{money(data.worker.flat_cents)} / shift</span>
-                  ) : data.worker.pay_basis === "hourly" ? (
-                    data.roles.map((r) => (
-                      <span className="pill" key={r.id}>
-                        {r.name} · {r.rate_cents === null ? "not set" : `${money(r.rate_cents)}/hr`}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="sub">Not set yet</span>
-                  )}
+            {timeOff.map((r) => (
+              <div key={r.id} className="panel emp-row">
+                <div>
+                  <b>Time off</b>
+                  <span className="cellsub">{dayShort(r.applied_start)} – {dayShort(new Date(Date.parse(r.applied_end) - 1).toISOString())}</span>
                 </div>
+                <span className="pill">Approved</span>
               </div>
-            </div>
-            <p className="tablefoot">
-              Base pay before tips, taxes and deductions.
-              {view.missing > 0 && ` ${view.missing} shift${view.missing === 1 ? "" : "s"} without a rate not included.`}
-            </p>
-
-            <section className="emp-section">
-              <h2>Upcoming schedule</h2>
-              {!view.upcoming.length ? (
-                <div className="panel empty">No shifts scheduled yet.</div>
-              ) : (
+            ))}
+            {groups.map((g) => (
+              <div key={g.key} className="emp-group">
+                <span className="eyebrow">Week of {ymdLabel(g.key, { month: "short", day: "numeric" })}</span>
                 <div className="panel">
                   <ul className="emp-list">
-                    {view.upcoming.map((s) => (
+                    {g.items.map((s) => (
                       <li key={s.id}>
                         <div>
-                          <b>{weekday(s.starts_at)}</b>
+                          <b>{dayLong(s.starts_at)}</b>
                           <span className="cellsub">
                             {s.role_name}
                             {s.crew.length > 0 && ` · with ${s.crew.map((c) => c.name).join(", ")}`}
                           </span>
                           {s.note && <span className="cellsub tc-preserve">{s.note}</span>}
                         </div>
-                        <span className="mono">
-                          {time(s.starts_at)} – {time(s.ends_at)} · {duration(Date.parse(s.ends_at) - Date.parse(s.starts_at))}
+                        <span className="mono emp-right">
+                          {span(s.starts_at, s.ends_at)}
+                          <span className="cellsub">{duration(Date.parse(s.ends_at) - Date.parse(s.starts_at))}</span>
                         </span>
                       </li>
                     ))}
                   </ul>
                 </div>
-              )}
-            </section>
-
-            <section className="emp-section">
-              <h2>Worked shifts</h2>
-              {!data.shifts.length ? (
-                <div className="panel empty">No shifts in this period.</div>
-              ) : (
-                <div className="tablewrap">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>Role</th>
-                        <th>Clock in → out</th>
-                        <th>Hours</th>
-                        <th>Est. pay</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.shifts.map((s) => {
-                        const cents = estimateCents(s);
-                        return (
-                          <tr key={s.id}>
-                            <td>{date(s.started_at)}</td>
-                            <td>{[...new Set(s.segments.map((g) => g.role_name))].join(" / ")}</td>
-                            <td className="mono">
-                              {time(s.started_at)} → {s.ended_at ? time(s.ended_at) : "now"}
-                            </td>
-                            <td className="mono">{hours(elapsedMs(s, now))}</td>
-                            <td className="mono">{s.ended_at ? (cents === null ? "—" : money(cents)) : "In progress"}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
+              </div>
+            ))}
           </>
         )}
+      </section>
+    </>
+  );
+}
+
+function TimesheetTab({ data, now, week, today, setWeek, onFix, onMissed }) {
+  const days = Array.from({ length: 7 }, (_, i) => addDays(week, i));
+  const shifts = data.shifts.filter((s) => {
+    const d = chicagoYmd(s.started_at);
+    return d >= week && d <= days[6];
+  });
+  const pendingFix = new Set(data.requests.filter((r) => r.kind === "edit_shift" && r.status === "pending").map((r) => r.shift_id));
+  const workedMs = shifts.reduce((sum, s) => sum + elapsedMs(s, now), 0);
+  const scheduledMs = data.schedule
+    .filter((s) => { const d = chicagoYmd(s.starts_at); return d >= week && d <= days[6]; })
+    .reduce((sum, s) => sum + Date.parse(s.ends_at) - Date.parse(s.starts_at), 0);
+  const pay = shifts.filter((s) => s.ended_at).map(estimateCents);
+  const known = pay.filter((c) => c !== null).reduce((a, b) => a + b, 0);
+  const missing = pay.filter((c) => c === null).length;
+  const approved = shifts.filter((s) => s.status === "approved").length;
+  const isCurrent = week === weekStart(today);
+
+  return (
+    <>
+      <div className="emp-period">
+        <button aria-label="Previous week" onClick={() => setWeek(addDays(week, -7))}>‹</button>
+        <div>
+          <span className="eyebrow">{isCurrent ? "This week" : "Pay week"}</span>
+          <b>{ymdLabel(week, { month: "short", day: "numeric" })} – {ymdLabel(days[6], { month: "short", day: "numeric", year: "numeric" })}</b>
+        </div>
+        <button aria-label="Next week" disabled={isCurrent} onClick={() => setWeek(addDays(week, 7))}>›</button>
       </div>
-    </Frame>
+
+      <div className="metrics">
+        <div className="metric"><span className="sub">Hours worked</span><b className="mono">{hours(workedMs)}</b></div>
+        <div className="metric"><span className="sub">Scheduled</span><b className="mono">{hours(scheduledMs)}</b></div>
+        <div className="metric"><span className="sub">Est. base pay</span><b className="mono">{money(known)}</b></div>
+        <div className="metric"><span className="sub">Approved</span><b className="mono">{approved}/{shifts.length}</b></div>
+      </div>
+
+      <div className="emp-sheet" role="table" aria-label="Timesheet">
+        <div className="emp-sheet-head" role="row">
+          <span role="columnheader">Day</span><span role="columnheader">Role</span>
+          <span role="columnheader">In → Out</span><span role="columnheader">Hours</span>
+          <span role="columnheader">Est. pay</span><span role="columnheader">Status</span><span role="columnheader" />
+        </div>
+        {days.map((d) => {
+          const dayShifts = shifts.filter((s) => chicagoYmd(s.started_at) === d);
+          if (!dayShifts.length)
+            return (
+              <div key={d} role="row" className={`emp-sheet-row empty-day${d === today ? " today" : ""}`}>
+                <span role="cell"><b>{ymdLabel(d, { weekday: "short" })}</b> {ymdLabel(d, { month: "short", day: "numeric" })}</span>
+                <span role="cell" className="sub">—</span>
+              </div>
+            );
+          return dayShifts.map((s) => {
+            const cents = estimateCents(s);
+            const flagged = pendingFix.has(s.id);
+            return (
+              <div key={s.id} role="row" className={`emp-sheet-row${d === today ? " today" : ""}`}>
+                <span role="cell"><b>{ymdLabel(d, { weekday: "short" })}</b> {ymdLabel(d, { month: "short", day: "numeric" })}</span>
+                <span role="cell">{[...new Set(s.segments.map((g) => g.role_name))].join(" / ")}
+                  {s.breaks.length > 0 && <span className="cellsub">{s.breaks.length} break{s.breaks.length === 1 ? "" : "s"} (paid)</span>}
+                  {s.source === "manager" && <span className="cellsub">Added by manager</span>}
+                </span>
+                <span role="cell" className="mono">{time(s.started_at)} → {s.ended_at ? time(s.ended_at) : "now"}</span>
+                <span role="cell" className="mono">{hours(elapsedMs(s, now))}</span>
+                <span role="cell" className="mono">{s.ended_at ? (cents === null ? "—" : money(cents)) : "—"}</span>
+                <span role="cell">
+                  <span className={`pill${s.status === "approved" ? "" : s.status === "open" ? " live" : " warning"}`}>
+                    {flagged ? "Fix requested" : SHIFT_STATUS[s.status]}
+                  </span>
+                </span>
+                <span role="cell" className="emp-act">
+                  {s.ended_at && !flagged && <button onClick={() => onFix(s)}>Request fix</button>}
+                </span>
+              </div>
+            );
+          });
+        })}
+      </div>
+      <div className="between wrap emp-sheet-foot">
+        <p className="tablefoot">
+          Base pay estimate before tips, taxes and deductions. Final pay comes from payroll.
+          {missing > 0 && ` ${missing} shift${missing === 1 ? "" : "s"} without a rate not included.`}
+        </p>
+        <button onClick={onMissed}>Add a missed shift</button>
+      </div>
+    </>
+  );
+}
+
+function RequestsTab({ data, onNew, onCancel }) {
+  const list = data.requests;
+  return (
+    <>
+      <div className="emp-actions">
+        <button onClick={() => onNew("edit_shift")}><b>Fix my hours</b><span className="cellsub">Wrong clock-in or clock-out</span></button>
+        <button onClick={() => onNew("missed_shift")}><b>Add a missed shift</b><span className="cellsub">Worked but did not clock in</span></button>
+        <button onClick={() => onNew("time_off")}><b>Request time off</b><span className="cellsub">Days you can&rsquo;t work</span></button>
+      </div>
+      <section className="emp-section">
+        <h2>My requests</h2>
+        {!list.length ? (
+          <div className="panel empty">No requests yet.</div>
+        ) : (
+          list.map((r) => (
+            <div key={r.id} className="panel emp-req">
+              <div className="between">
+                <b>{KIND_LABEL[r.kind]}</b>
+                <span className={`pill${r.status === "pending" ? " warning" : ""}`}>{STATUS_LABEL[r.status]}</span>
+              </div>
+              <RequestSummary r={r} />
+              <p className="sub tc-preserve">&ldquo;{r.reason}&rdquo;</p>
+              {r.manager_note && <p className="emp-note tc-preserve"><span className="eyebrow">Manager</span> {r.manager_note}</p>}
+              <div className="between">
+                <span className="cellsub">Sent {dayShort(r.created_at)}</span>
+                {r.status === "pending" && <button className="textbtn" onClick={() => onCancel(r)}>Cancel request</button>}
+              </div>
+            </div>
+          ))
+        )}
+      </section>
+    </>
+  );
+}
+
+function RequestSummary({ r }) {
+  const start = r.applied_start || r.requested_start;
+  const end = r.applied_end || r.requested_end;
+  if (r.kind === "time_off")
+    return <p className="mono">{dayShort(start)} – {dayShort(new Date(Date.parse(end) - 1).toISOString())}</p>;
+  if (r.kind === "missed_shift")
+    return <p className="mono">{dayShort(start)} · {span(start, end)} · {r.role_name}</p>;
+  return (
+    <p className="mono">
+      {dayShort(r.original_start)}: <s>{span(r.original_start, r.original_end)}</s> → {span(start, end)}
+    </p>
+  );
+}
+
+function AccountTab({ data, onSignOut }) {
+  const [settings, setSettings] = useState(false);
+  const [pw, setPw] = useState(null);
+  const [pinForm, setPinForm] = useState(null);
+  const [msg, setMsg] = useState("");
+  const w = data.worker;
+  const classification = w.category === "contractor" ? "Contractor" : "Employee";
+  async function changePassword(e) {
+    e.preventDefault();
+    setMsg("");
+    if (pw.next.length < 10) return setMsg("Use at least 10 characters.");
+    if (pw.next !== pw.confirm) return setMsg("The passwords do not match.");
+    const { error: err } = await createClient().auth.updateUser({ password: pw.next });
+    if (err) return setMsg(err.message || "Could not change the password.");
+    setPw(null);
+    setMsg("Password changed.");
+  }
+  async function changePin(e) {
+    e.preventDefault();
+    setMsg("");
+    const problem = pinProblem(pinForm.pin, pinForm.confirm);
+    if (problem) return setMsg(problem);
+    try {
+      const r = await request("/api/employee/profile", { action: "set_pin", pin: pinForm.pin, pin_confirm: pinForm.confirm });
+      setPinForm(null);
+      setMsg(r.text || "New PIN saved.");
+    } catch (err) {
+      setMsg(err.message);
+    }
+  }
+  function closeSettings() {
+    setSettings(false);
+    setPw(null);
+    setPinForm(null);
+  }
+  return (
+    <div className="emp-profile">
+      <div className="emp-profile-top">
+        <h2>Profile</h2>
+        <button type="button" className="emp-gear" aria-label="Profile settings" title="Profile settings" onClick={() => setSettings(true)}>
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 8.9 4.6 1.7 1.7 0 0 0 9.97 3.04V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 8.9a1.7 1.7 0 0 0 1.56 1.03H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1.07z" />
+          </svg>
+        </button>
+      </div>
+      <div className="emp-identity">
+        <ProfileAvatar src={data.profile?.photo_url || undefined} nameOrEmail={w.name} size={88} radius={18}
+          alt={data.profile?.photo_url ? `${w.name} photo` : `${w.name} initials`} />
+        <div className="emp-identity-text">
+          <p className="emp-identity-name">{w.name}</p>
+          {w.username && <p>{w.username}</p>}
+          <p>{classification}</p>
+        </div>
+      </div>
+      {msg && !settings && <div className="notice" role="status">{msg}</div>}
+      <section className="panel">
+        <span className="eyebrow">Pay</span>
+        <div className="emp-rates">
+          {w.pay_basis === "flat" ? (
+            <span className="pill">{money(w.flat_cents)} / shift</span>
+          ) : w.pay_basis === "hourly" ? (
+            data.roles.map((r) => (
+              <span className="pill" key={r.id}>{r.name} · {r.rate_cents === null ? "not set" : `${money(r.rate_cents)}/hr`}</span>
+            ))
+          ) : (
+            <span className="sub">Not set yet</span>
+          )}
+        </div>
+        <p className="sub">Clock in and out on the front-room iPad with your PIN. Ask a manager to change your rate or roles.</p>
+      </section>
+      {settings && (
+        <div className="tc-confirm" role="dialog" aria-modal="true" aria-labelledby="emp-settings-title"
+          onKeyDown={(e) => e.key === "Escape" && closeSettings()}>
+          <div className="panel emp-settings">
+            <div className="between">
+              <h2 id="emp-settings-title">Profile settings</h2>
+              <button type="button" className="textbtn" onClick={closeSettings}>Close</button>
+            </div>
+            <span className="eyebrow">Login &amp; Security</span>
+            {msg && <div className="notice" role="status">{msg}</div>}
+            {pw ? (
+              <form className="tc-form" onSubmit={changePassword}>
+                <label>New password
+                  <input type="password" autoComplete="new-password" minLength={10} maxLength={72} required autoFocus
+                    value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} />
+                </label>
+                <label>Confirm new password
+                  <input type="password" autoComplete="new-password" minLength={10} maxLength={72} required
+                    value={pw.confirm} onChange={(e) => setPw({ ...pw, confirm: e.target.value })} />
+                </label>
+                <div className="row wrap">
+                  <button className="primary">Save password</button>
+                  <button type="button" onClick={() => setPw(null)}>Cancel</button>
+                </div>
+              </form>
+            ) : (
+              <button type="button" className="wide" onClick={() => { setMsg(""); setPw({ next: "", confirm: "" }); }}>Change password</button>
+            )}
+            <span className="eyebrow">iPad clock-in PIN</span>
+            {pinForm ? (
+              <form className="tc-form" onSubmit={changePin}>
+                <label>New PIN
+                  <input type="password" inputMode="numeric" autoComplete="off" pattern="[0-9]{4}" maxLength={4} required autoFocus
+                    value={pinForm.pin} onChange={(e) => setPinForm({ ...pinForm, pin: e.target.value.replace(/\D/g, "") })} />
+                </label>
+                <label>Confirm new PIN
+                  <input type="password" inputMode="numeric" autoComplete="off" pattern="[0-9]{4}" maxLength={4} required
+                    value={pinForm.confirm} onChange={(e) => setPinForm({ ...pinForm, confirm: e.target.value.replace(/\D/g, "") })} />
+                </label>
+                <p className="sub">Four digits. Easy PINs like 1234 or 0000 aren&apos;t allowed.</p>
+                <div className="row wrap">
+                  <button className="primary">Save PIN</button>
+                  <button type="button" onClick={() => setPinForm(null)}>Cancel</button>
+                </div>
+              </form>
+            ) : (
+              <button type="button" className="wide" onClick={() => { setMsg(""); setPinForm({ pin: "", confirm: "" }); }}>Change iPad PIN</button>
+            )}
+            <button type="button" className="wide emp-signout" onClick={onSignOut}>Sign out</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Staff who had a login before email invites add the birthday and private
+// photo the invite now requires (and a PIN if they never had one) before the
+// rest of the portal opens.
+function CompleteProfile({ data, onDone }) {
+  const p = data.profile;
+  const [birthdate, setBirthdate] = useState("");
+  const [photo, setPhoto] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [pin, setPin] = useState({ pin: "", confirm: "" });
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const needPhoto = !p.photo_url;
+  useEffect(() => {
+    if (!photo) return setPreview(null);
+    const url = URL.createObjectURL(photo);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [photo]);
+  async function submit(e) {
+    e.preventDefault();
+    setMsg("");
+    const problem =
+      (!p.has_birthdate && birthdateProblem(birthdate, chicagoYmd())) ||
+      (needPhoto && !photo && "Add a photo of yourself.") ||
+      (!p.has_pin && pinProblem(pin.pin, pin.confirm));
+    if (problem) return setMsg(problem);
+    setBusy(true);
+    try {
+      if (!p.has_pin)
+        await request("/api/employee/profile", { action: "set_pin", pin: pin.pin, pin_confirm: pin.confirm });
+      const form = new FormData();
+      if (!p.has_birthdate) form.append("birthdate", birthdate);
+      if (photo) {
+        const prepared = await preparePhoto(photo);
+        form.append("photo", prepared, prepared.name || "photo.jpg");
+      }
+      if (!p.has_birthdate || photo) {
+        const res = await fetch("/api/employee/profile", { method: "POST", credentials: "same-origin", body: form });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || "Could not save your profile.");
+      }
+      onDone("Profile complete.");
+    } catch (err) {
+      setMsg(err.message);
+      setBusy(false);
+    }
+  }
+  return (
+    <form className="panel tc-form emp-complete" onSubmit={submit} noValidate>
+      <h2>Complete your profile</h2>
+      <p className="sub">Add the details below to keep using the staff portal.</p>
+      {!p.has_birthdate && (
+        <label>Birthday
+          <input type="date" required max={chicagoYmd()} value={birthdate} disabled={busy}
+            onChange={(e) => setBirthdate(e.target.value)} />
+        </label>
+      )}
+      {needPhoto && (
+        <div>
+          <span className="emp-complete-label">Private photo</span>
+          <div className="emp-photo-pick">
+            <label className="emp-photo-box">
+              {preview ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={preview} alt="Your photo" />
+              ) : (
+                <span>Take or upload photo</span>
+              )}
+              <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" className="sr-only"
+                disabled={busy} onChange={(e) => setPhoto(e.target.files?.[0] || null)} />
+            </label>
+            <p className="sub">Clear photo of your face. Only managers can see this photo.</p>
+          </div>
+        </div>
+      )}
+      {!p.has_pin && (
+        <>
+          <label>iPad clock-in PIN
+            <input type="password" inputMode="numeric" autoComplete="off" maxLength={4} value={pin.pin} disabled={busy}
+              onChange={(e) => setPin({ ...pin, pin: e.target.value.replace(/\D/g, "") })} />
+          </label>
+          <label>Confirm PIN
+            <input type="password" inputMode="numeric" autoComplete="off" maxLength={4} value={pin.confirm} disabled={busy}
+              onChange={(e) => setPin({ ...pin, confirm: e.target.value.replace(/\D/g, "") })} />
+          </label>
+        </>
+      )}
+      {msg && <p className="tc-error" role="alert">{msg}</p>}
+      <div className="row wrap">
+        <button className="primary" disabled={busy}>{busy ? "Saving…" : "Save and continue"}</button>
+      </div>
+    </form>
+  );
+}
+
+function RequestForm({ modal, data, today, onClose, onSent }) {
+  const { kind, shift } = modal;
+  const [form, setForm] = useState(() =>
+    kind === "edit_shift"
+      ? { start: localValue(shift.started_at), end: localValue(shift.ended_at), reason: "" }
+      : kind === "missed_shift"
+        ? { day: today, from: "20:00", to: "02:00", role_id: data.roles[0]?.id || "", reason: "" }
+        : { first: addDays(today, 1), last: addDays(today, 1), reason: "" },
+  );
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  const preview = useMemo(() => {
+    try {
+      if (kind === "edit_shift") {
+        const a = austinIso(form.start), b = austinIso(form.end);
+        return Date.parse(b) > Date.parse(a) ? duration(Date.parse(b) - Date.parse(a)) : null;
+      }
+      if (kind === "missed_shift") {
+        const endDay = form.to <= form.from ? addDays(form.day, 1) : form.day;
+        const a = austinIso(`${form.day}T${form.from}`), b = austinIso(`${endDay}T${form.to}`);
+        return duration(Date.parse(b) - Date.parse(a));
+      }
+      if (form.last < form.first) return null;
+      const n = Math.round((Date.parse(`${form.last}T00:00:00Z`) - Date.parse(`${form.first}T00:00:00Z`)) / 86400000) + 1;
+      return `${n} day${n === 1 ? "" : "s"}`;
+    } catch {
+      return null;
+    }
+  }, [form, kind]);
+
+  async function submit(e) {
+    e.preventDefault();
+    setErr("");
+    let payload;
+    try {
+      if (kind === "edit_shift") {
+        payload = { kind, shift_id: shift.id, starts_at: austinIso(form.start), ends_at: austinIso(form.end) };
+      } else if (kind === "missed_shift") {
+        const endDay = form.to <= form.from ? addDays(form.day, 1) : form.day;
+        payload = { kind, role_id: form.role_id, starts_at: austinIso(`${form.day}T${form.from}`), ends_at: austinIso(`${endDay}T${form.to}`) };
+      } else {
+        if (form.last < form.first) throw new Error("The last day must be on or after the first day.");
+        payload = { kind, starts_at: dayStartIso(form.first), ends_at: dayStartIso(addDays(form.last, 1)) };
+      }
+    } catch (x) {
+      return setErr(x.message);
+    }
+    setBusy(true);
+    try {
+      await request("/api/employee/requests", { action: "create", ...payload, reason: form.reason });
+      onSent(kind === "time_off" ? "Time-off request sent to your manager." : "Request sent to your manager.");
+    } catch (x) {
+      setErr(x.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const title = kind === "edit_shift" ? "Fix my hours" : kind === "missed_shift" ? "Add a missed shift" : "Request time off";
+  return (
+    <div className="tc-confirm" role="dialog" aria-modal="true" aria-labelledby="emp-form-title"
+      onKeyDown={(e) => e.key === "Escape" && onClose()}>
+      <form className="panel tc-form emp-form" onSubmit={submit}>
+        <h2 id="emp-form-title">{title}</h2>
+        {kind === "edit_shift" && (
+          <>
+            <p className="sub">Recorded: {dayShort(shift.started_at)}, {span(shift.started_at, shift.ended_at)}</p>
+            <label>Correct clock-in
+              <input type="datetime-local" required value={form.start} onChange={set("start")} />
+            </label>
+            <label>Correct clock-out
+              <input type="datetime-local" required value={form.end} onChange={set("end")} />
+            </label>
+          </>
+        )}
+        {kind === "missed_shift" && (
+          <>
+            <label>Role
+              <select required value={form.role_id} onChange={set("role_id")}>
+                {data.roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </select>
+            </label>
+            <label>Date you started
+              <input type="date" required max={today} value={form.day} onChange={set("day")} />
+            </label>
+            <div className="emp-two">
+              <label>Start<input type="time" required value={form.from} onChange={set("from")} /></label>
+              <label>End<input type="time" required value={form.to} onChange={set("to")} /></label>
+            </div>
+            {form.to <= form.from && <p className="sub">Ends the next morning.</p>}
+          </>
+        )}
+        {kind === "time_off" && (
+          <div className="emp-two">
+            <label>First day off<input type="date" required min={today} value={form.first} onChange={set("first")} /></label>
+            <label>Last day off<input type="date" required min={form.first} value={form.last} onChange={set("last")} /></label>
+          </div>
+        )}
+        {preview && <p className="emp-preview mono">{preview}</p>}
+        <label>Reason for your manager
+          <textarea required minLength={3} maxLength={500} value={form.reason} onChange={set("reason")}
+            placeholder={kind === "time_off" ? "e.g. Family trip" : "e.g. The iPad was offline when I arrived"} />
+        </label>
+        {err && <div className="notice tc-error" role="alert">{err}</div>}
+        <div className="row wrap">
+          <button className="primary" disabled={busy}>{busy ? "Sending…" : "Send request"}</button>
+          <button type="button" onClick={onClose}>Cancel</button>
+        </div>
+      </form>
+    </div>
   );
 }

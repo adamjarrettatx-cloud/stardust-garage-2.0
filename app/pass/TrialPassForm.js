@@ -4,6 +4,7 @@ import { useState } from 'react';
 import ProfilePhotoUploader from '@/components/profile-photo/ProfilePhotoUploader';
 import LegalNameInput from '@/app/components/LegalNameInput';
 import { validateLegalName } from '@/lib/legal-name';
+import { formatPhone } from '@/lib/phone';
 
 // The three-question intake form behind the printed QR codes in the venue,
 // the SMS-verification step it turns into, and the success state after that.
@@ -310,8 +311,8 @@ export default function TrialPassForm() {
           </h1>
           <p className="text-[14px] leading-[1.6]" style={{ color: 'rgba(255,255,255,0.65)' }}>
             {isCall
-              ? `We're calling ${values.phone} with a 6-digit code.`
-              : `We just texted a 6-digit code to ${values.phone}.`}
+              ? `We're calling ${formatPhone(values.phone)} with a 6-digit code.`
+              : `We just texted a 6-digit code to ${formatPhone(values.phone)}.`}
             {existing ? ' Welcome back — enter the code to pull up your pass.' : ''}
           </p>
         </div>

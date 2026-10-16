@@ -76,7 +76,7 @@ test('every group listed in ADMIN_TAB_GROUPS is actually used', () => {
 test('non-owners do not see owner-only tabs', () => {
   const forStaff = visibleAdminTabs(false).map((t) => t.id);
   assert.ok(forStaff.includes('tasks'));
-  assert.ok(!forStaff.includes('analytics'), 'staff must not see Analytics');
+  assert.ok(!forStaff.includes('finances'), 'staff must not see Finances');
   assert.ok(!forStaff.includes('settings'), 'staff must not see Settings');
 });
 
@@ -84,34 +84,30 @@ test('owners see every tab', () => {
   assert.equal(visibleAdminTabs(true).length, ADMIN_TABS.length);
 });
 
-test('timekeeping managers see staff management without owner-only financial tools', () => {
+test('staff managers see staff management without owner-only financial tools', () => {
   const tabs = visibleAdminTabs(false, true).map(t => t.id);
-  assert.ok(tabs.includes('timekeeping'));
-  for (const id of ['analytics', 'artist-pay', 'settings', 'view-portal']) {
+  assert.ok(tabs.includes('staff'));
+  for (const id of ['finances', 'artist-pay', 'settings']) {
     assert.ok(!tabs.includes(id));
-    assert.equal(resolveAdminTab(id, { canManageTimekeeping: true }), DEFAULT_ADMIN_TAB);
+    assert.equal(resolveAdminTab(id, { canManageStaff: true }), DEFAULT_ADMIN_TAB);
   }
-  assert.ok(!visibleAdminTabs(false).some(t => t.id === 'timekeeping'));
-  assert.equal(resolveAdminTab('timekeeping'), DEFAULT_ADMIN_TAB);
-  assert.equal(resolveAdminTab('timekeeping', { canManageTimekeeping: true }), 'timekeeping');
-  assert.match(fs.readFileSync(path.join(REPO_ROOT, 'app/bananas/timekeeping/page.js'), 'utf8'), /timekeepingPageGate/);
+  assert.ok(!visibleAdminTabs(false).some(t => t.id === 'staff'));
+  assert.equal(resolveAdminTab('staff'), DEFAULT_ADMIN_TAB);
+  assert.equal(resolveAdminTab('staff', { canManageStaff: true }), 'staff');
+  assert.match(fs.readFileSync(path.join(REPO_ROOT, 'app/bananas/staff/page.js'), 'utf8'), /staffPageGate/);
 });
 
-test('View Portal is a direct owner-only destination under ADMIN', () => {
-  const tab = adminTabById('view-portal');
-  assert.equal(tab.label, 'View Portal');
-  assert.equal(tab.group, 'ADMIN');
-  assert.equal(tab.ownerOnly, true);
-  assert.equal(tab.rendersOwnContent, true);
-  assert.equal(adminTabHref(tab), '/bananas/view-portal');
-  assert.ok(visibleAdminTabGroups(true).find((group) => group.group === 'ADMIN')
-    .tabs.some((item) => item.id === 'view-portal'));
-  assert.ok(!visibleAdminTabs(false).some((item) => item.id === 'view-portal'));
-  assert.equal(resolveAdminTab('view-portal', { isOwner: false }), DEFAULT_ADMIN_TAB);
-  assert.equal(resolveRootAdminTab('view-portal', { isOwner: true }), DEFAULT_ADMIN_TAB);
-  assert.equal(tabForPath('/bananas/view-portal'), 'view-portal');
-  assert.equal(tabForPath('/bananas/view-portal/'), 'view-portal');
-  assert.equal(crumbForPath('/bananas/view-portal'), null);
+test('View Portal is an owner-locked tile under Settings, not a sidebar tab', () => {
+  assert.equal(adminTabById('view-portal'), null);
+  assert.ok(!ADMIN_TABS.some((item) => item.id === 'view-portal'));
+  const tile = ADMIN_TILES.settings.find((t) => t.href === '/bananas/view-portal');
+  assert.ok(tile, 'Settings must contain a View Portal tile');
+  assert.equal(tile.title, 'View Portal');
+  assert.equal(tile.restricted, 'owner');
+  assert.equal(resolveAdminTab('view-portal', { isOwner: true }), DEFAULT_ADMIN_TAB);
+  assert.equal(tabForPath('/bananas/view-portal'), 'settings');
+  assert.equal(tabForPath('/bananas/view-portal/'), 'settings');
+  assert.deepEqual(crumbForPath('/bananas/view-portal'), { title: 'View Portal', tabId: 'settings' });
   const page = read('app/bananas/view-portal/page.js');
   assert.match(page, /ownerPageGate\(\)/);
   assert.match(page, /VIEW_PORTAL_OWNER_USER_ID/);
@@ -168,10 +164,10 @@ test('tab ids are case-sensitive', () => {
 });
 
 test('a non-owner deep-linking an owner-only tab lands on the default', () => {
-  assert.equal(resolveAdminTab('analytics', { isOwner: false }), DEFAULT_ADMIN_TAB);
+  assert.equal(resolveAdminTab('finances', { isOwner: false }), DEFAULT_ADMIN_TAB);
   assert.equal(resolveAdminTab('settings', { isOwner: false }), DEFAULT_ADMIN_TAB);
   // ...but the owner gets what they asked for.
-  assert.equal(resolveAdminTab('analytics', { isOwner: true }), 'analytics');
+  assert.equal(resolveAdminTab('finances', { isOwner: true }), 'finances');
   assert.equal(resolveAdminTab('settings', { isOwner: true }), 'settings');
 });
 
@@ -309,8 +305,8 @@ test('the type scale keeps a readable hierarchy', () => {
     return Number(m[1]);
   };
   const heading = size(/text-\[([\d.]+)px\] font-bold -tracking-\[0\.02em\] mb-\[4px\]/);
-  const tileTitle = size(/text-\[([\d.]+)px\] font-bold -tracking-\[0\.015em\]"/);
-  const tileSub = size(/text-\[([\d.]+)px\] mt-\[6px\]/);
+  const tileTitle = size(/text-\[([\d.]+)px\] font-bold -tracking-\[0\.015em\] whitespace-nowrap"/);
+  const tileSub = size(/text-\[([\d.]+)px\] leading-\[1\.45\] truncate"/);
   assert.ok(heading > tileTitle, `heading ${heading}px must exceed tile title ${tileTitle}px`);
   assert.ok(tileTitle > tileSub, `tile title ${tileTitle}px must exceed subtitle ${tileSub}px`);
   // Body copy should stay in comfortable reading range.
@@ -327,7 +323,11 @@ test('Memberships retains analytics but no duplicate manual issuance tile', () =
     '/bananas/applications',
     '/bananas/members',
     '/team/trial-pass/analytics',
+    '/bananas/membership',
   ]);
+  const journey = memberships.find((t) => t.href === '/bananas/membership');
+  assert.equal(journey.title, 'Membership Journey');
+  assert.equal(journey.restricted, 'owner', 'Membership Journey must stay owner-locked');
   const analytics = memberships.find((t) => t.href === '/team/trial-pass/analytics');
   assert.equal(analytics.title, 'Trial Passes');
   assert.ok(!Object.values(ADMIN_TILES).flat().some((tile) => tile.href === '/team/trial-pass/manual'));
@@ -565,8 +565,8 @@ test('the duplicated back link is gone from destination pages', () => {
 test('owner-only sections are still resolved away for non-owners', () => {
   // The layout gate is admin-level, so the shell must not surface owner
   // sections to a plain admin even via a crafted ?tab=.
-  assert.equal(resolveAdminTab('analytics', { isOwner: false }), DEFAULT_ADMIN_TAB);
-  assert.equal(resolveAdminTab('analytics', { isOwner: true }), 'analytics');
+  assert.equal(resolveAdminTab('finances', { isOwner: false }), DEFAULT_ADMIN_TAB);
+  assert.equal(resolveAdminTab('finances', { isOwner: true }), 'finances');
 });
 
 test('the tile grid filters owner-only tiles as a second line of defence', () => {
@@ -1013,7 +1013,7 @@ test('EventsTabPanel resolves the active section with the viewer\u2019s isOwner'
 
   // The resolver itself: an owner on ?tab=analytics stays on analytics, and
   // the events section only wins when the URL actually asks for it.
-  assert.equal(resolveRootAdminTab('analytics', { isOwner: true }), 'analytics');
+  assert.equal(resolveRootAdminTab('finances', { isOwner: true }), 'finances');
   assert.equal(resolveRootAdminTab('settings', { isOwner: true }), 'settings');
   assert.equal(resolveRootAdminTab('events', { isOwner: true }), 'events');
   assert.equal(resolveRootAdminTab(undefined, { isOwner: true }), DEFAULT_ADMIN_TAB);
@@ -1032,4 +1032,32 @@ test('Team Chat renders its own title only outside the admin shell', () => {
     assert.ok(header.includes(needle), `"${needle}" left the standalone-only header`);
     assert.ok(!src.slice(conversation).includes(needle), `"${needle}" escaped the header`);
   }
+});
+
+test('Finances is an owner-only MONEY section holding the four money reports', () => {
+  const finances = adminTabById('finances');
+  assert.ok(finances, 'Finances tab missing');
+  assert.equal(finances.group, 'MONEY');
+  assert.equal(finances.ownerOnly, true);
+  assert.ok(!finances.href, 'Finances renders the list view, not a direct link');
+  const moneyIds = ADMIN_TABS.filter((t) => t.group === 'MONEY').map((t) => t.id);
+  assert.deepEqual(moneyIds, ['finances', 'artist-pay']);
+
+  const reports = ['/bananas/sales', '/bananas/financials', '/bananas/cash-flow', '/bananas/tax-report'];
+  assert.deepEqual(adminTilesFor('finances').map((t) => t.href), reports);
+  for (const tile of adminTilesFor('finances')) assert.equal(tile.restricted, 'owner');
+  // Analytics was removed once Membership Journey moved under Memberships.
+  assert.ok(!adminTabById('analytics'), 'empty Analytics section came back');
+  assert.deepEqual(adminTilesFor('analytics'), []);
+  assert.equal(resolveAdminTab('analytics', { isOwner: true }), DEFAULT_ADMIN_TAB);
+  assert.equal(tabForPath('/bananas/membership'), 'memberships');
+  assert.equal(crumbForPath('/bananas/membership').tabId, 'memberships');
+
+  assert.ok(!visibleAdminTabs(false).some((t) => t.id === 'finances'));
+  assert.ok(!visibleAdminTabs(false, true).some((t) => t.id === 'finances'));
+  assert.equal(resolveAdminTab('finances', { isOwner: false }), DEFAULT_ADMIN_TAB);
+  assert.equal(resolveRootAdminTab('finances', { isOwner: true }), 'finances');
+  for (const href of reports) assert.equal(tabForPath(href), 'finances');
+  assert.equal(tabForPath('/bananas/financials/some-sub'), 'finances');
+  assert.equal(crumbForPath('/bananas/tax-report').tabId, 'finances');
 });

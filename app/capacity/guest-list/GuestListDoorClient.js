@@ -321,7 +321,7 @@ function EntryRow({ entry, busy, confirmingNoShow, onCheckIn, onNoShow }) {
             </div>
           </div>
           <span
-            className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-[0.1em] uppercase"
+            className="shrink-0 rounded-[6px] px-2.5 py-1 text-[10px] font-bold tracking-[0.1em] uppercase"
             style={{ background: meta.bg, color: meta.color }}
           >
             {meta.label}

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { isExistingUserError } from '@/lib/auth-errors';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/stub';
 import { validateTrialPassIntake } from '@/lib/trial-pass';
@@ -68,8 +69,7 @@ export async function POST(request) {
 
   let userId = created?.user?.id || null;
   if (createError) {
-    const existingUser = createError.code === 'user_already_exists'
-      || createError.message?.toLowerCase().includes('already registered');
+    const existingUser = isExistingUserError(createError);
     if (!existingUser) {
       console.error('[free-account.create-no-verify.create-user]', createError);
       return NextResponse.json({ error: 'Could not create account.' }, { status: 500 });

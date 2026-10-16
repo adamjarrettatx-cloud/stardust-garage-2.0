@@ -28,7 +28,7 @@ const venues = [
     slug: 'entire-space',
     icon: 'building',
     features: [
-      'Weekends only',
+      'Friday only',
       'Turn-key',
       'Work with SDG team to curate your event',
     ],

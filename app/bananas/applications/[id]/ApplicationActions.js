@@ -77,7 +77,7 @@ export default function ApplicationActions({
             type="button"
             onClick={handleApprove}
             disabled={actionBusy}
-            className="px-5 py-2.5 rounded-full text-[12px] font-semibold tracking-[0.12em] transition-all hover:-translate-y-0.5 disabled:opacity-50 auth-theme-solid-button"
+            className="px-5 py-2.5 rounded-[8px] text-[12px] font-semibold tracking-[0.12em] transition-all hover:-translate-y-0.5 disabled:opacity-50 auth-theme-solid-button"
           >
             CREATE MEMBER ACCOUNT
           </button>

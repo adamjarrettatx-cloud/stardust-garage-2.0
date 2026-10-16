@@ -6,6 +6,8 @@ import SubmissionStatusBadge from '@/app/bananas/components/SubmissionStatusBadg
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import { WhatsAppButton } from '@/app/bananas/components/ContactButtons';
 import ReplyPanel from '@/app/bananas/components/ReplyPanel';
+import TeamNotes from '@/app/bananas/components/TeamNotes';
+import Conversation from '@/app/bananas/components/Conversation';
 import {
   ProfileHeader,
   ContactChip,
@@ -14,6 +16,7 @@ import {
   DetailGrid,
   DetailItem,
 } from '@/app/bananas/components/SubmissionDetail';
+import { formatPhone, phoneHref } from '@/lib/phone';
 
 export const revalidate = 0;
 
@@ -82,8 +85,8 @@ export default async function CollaborationDetail({ params }) {
             </ContactChip>
             {c.phone && (
               <ContactChip label="PHONE">
-                <a href={`tel:${c.phone}`} className="text-[13px] hover:underline" style={{ color: 'var(--auth-text)' }}>
-                  {c.phone}
+                <a href={phoneHref(c.phone)} className="text-[13px] hover:underline" style={{ color: 'var(--auth-text)' }}>
+                  {formatPhone(c.phone)}
                 </a>
                 <WhatsAppButton phone={c.phone} />
               </ContactChip>
@@ -93,6 +96,10 @@ export default async function CollaborationDetail({ params }) {
       />
 
       <CollaborationActions collaborationId={c.id} currentStatus={c.status || 'new'} />
+
+      <Conversation submissionType="collaborations" submissionId={c.id} />
+
+      <TeamNotes submissionType="collaborations" submissionId={c.id} />
 
       <div className="mt-4">
         <DetailSection title="ABOUT" className="mb-0">

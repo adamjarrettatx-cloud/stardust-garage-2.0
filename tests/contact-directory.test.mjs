@@ -22,7 +22,7 @@ const source = fs.readFileSync(path.join(ROOT, 'app/bananas/contacts/ContactsLis
 test('the directory combines organizers and collectives into Organizations', () => {
   const expected = ['Persons', 'Organizations', 'Venue Renter', 'Vendor'];
   assert.deepEqual(CONTACT_DIRECTORY_SECTIONS.map(section => section.label), expected);
-  assert.deepEqual(CONTACT_TYPE_OPTIONS.map(option => option.label), ['Artist', 'Organization', 'Venue Renter', 'Vendor', 'Promoter', 'Person']);
+  assert.deepEqual(CONTACT_TYPE_OPTIONS.map(option => option.label), ['Artist', 'Organization', 'Venue Renter', 'Vendor', 'Promoter', 'Programmer', 'Person']);
 });
 
 test('contact statuses exclude Inactive while legacy records stay in the normal directory', () => {
@@ -119,15 +119,29 @@ test('Persons includes artists, promoters and people once without changing their
   assert.deepEqual(filterArchivedContacts([{ contact_type: ['promoter'], status: 'archived' }], 'person').length, 1);
 });
 
-test('the page opens on section cards and does not render an All tab', () => {
+test('the page opens straight onto a section list with counted tabs and no All tab', () => {
   assert.match(source, /CONTACT_DIRECTORY_SECTIONS\.map/);
-  assert.ok(!/UnderlineTabs/.test(source));
+  assert.match(source, /UnderlineTabs/);
+  assert.match(source, /const DEFAULT_SECTION = CONTACT_DIRECTORY_SECTIONS\[0\]/);
+  assert.match(source, /count: filterDirectoryContacts\(contacts, value\)\.length/);
   assert.ok(!/label:\s*['"]All['"]/.test(source));
+  assert.ok(!/styles\.category\b/.test(source), 'the oversized category cards are gone');
 });
 
-test('contact rows use a full-height rounded container with a square left image', () => {
+test('contact rows are a compact list with a square image and aligned columns', () => {
   const css = fs.readFileSync(path.join(ROOT, 'app/bananas/contacts/contacts.module.css'), 'utf8');
-  assert.match(css, /\.row\{[^}]*height:104px[^}]*border-radius:16px[^}]*overflow:hidden/);
-  assert.match(css, /\.image\{width:104px;height:104px;flex:0 0 104px/);
+  assert.match(css, /\.table\{[^}]*border-radius:12px[^}]*overflow:hidden/);
+  assert.match(css, /\.row\{min-height:60px/);
+  assert.match(css, /\.image\{width:40px;height:40px;flex:0 0 40px;border-radius:8px/);
+  assert.match(source, /role="list"/);
   assert.ok(!/rounded-full/.test(source));
+});
+
+test('directory columns sort ascending and descending with blanks last', () => {
+  for (const key of ['name', 'type', 'email', 'phone', 'instagram']) assert.match(source, new RegExp(`key: '${key}'`));
+  assert.match(source, /const nextDir = active && sort\.dir === 'asc' \? 'desc' : 'asc'/);
+  assert.match(source, /if \(!av !== !bv\) return av \? -1 : 1;/);
+  assert.match(source, /aria-label="Sort contacts"/);
+  // Sort state sits above the keyed section views so tab changes keep it.
+  assert.match(source, /const \[sort, setSort\] = useState\(\{ key: 'name', dir: 'asc' \}\)/);
 });

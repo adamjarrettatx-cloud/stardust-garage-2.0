@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { adminFetch } from '@/lib/admin-fetch';
-import { STATION_ROLE_LABELS } from '@/lib/station-policy';
+import { CREATABLE_STATION_ROLES, STATION_ROLE_LABELS } from '@/lib/station-policy';
 
 export default function StationManagement() {
   const [stations, setStations] = useState(null);
@@ -71,9 +71,9 @@ export default function StationManagement() {
           <label className="text-sm">Station name<input className={`${field} mt-2`} style={inputStyle} value={label} onChange={e => setLabel(e.target.value)} maxLength={80} placeholder="Security" required disabled={busy} /></label>
           <label className="text-sm">Username<input className={`${field} mt-2`} style={inputStyle} value={username} onChange={e => setUsername(e.target.value)} autoCapitalize="none" spellCheck={false} pattern="[A-Za-z][A-Za-z0-9-]{2,31}" maxLength={32} placeholder="security" required disabled={busy} /></label>
           <label className="text-sm">Role<select aria-label="Role" className={`${field} mt-2`} style={inputStyle} value={role} onChange={e => setRole(e.target.value)} disabled={busy}>
-            {Object.entries(STATION_ROLE_LABELS).map(([value, title]) => <option key={value} value={value}>{title}</option>)}</select></label>
+            {CREATABLE_STATION_ROLES.map((value) => <option key={value} value={value}>{STATION_ROLE_LABELS[value]}</option>)}</select></label>
         </div>
-        <p className="text-sm" style={{ color: 'var(--auth-muted)' }}>A strong password is generated automatically. Sessions last up to 12 hours. No staff email address is required. Calendar Availability shows only open and unavailable dates, with no event details or other backend access.</p>
+        <p className="text-sm" style={{ color: 'var(--auth-muted)' }}>A strong password is generated automatically. Sessions last up to 12 hours. No staff email address is required.</p>
         <button className={button} disabled={busy || !!credential}>{busy ? 'Working…' : 'Create station and generate password'}</button>
       </form>
       <p className="text-sm mt-5">Station sign-in address: <a className="underline" href="/staff/login">/staff/login</a>. History identifies the shared station, not the person using it.</p>

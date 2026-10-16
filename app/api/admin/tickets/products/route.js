@@ -84,6 +84,22 @@ export async function POST(request) {
 
   let body;
   try { body = await request.json(); } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
+
+  // Restore the permanent Left Door on an event that does not have one
+  // (events created before it became automatic). Idempotent.
+  if (body?.ensure_left_door === true) {
+    if (!body.event_id) return NextResponse.json({ error: 'Missing event_id' }, { status: 400 });
+    const supabaseAdmin = admin();
+    const { error: ensureErr } = await supabaseAdmin.rpc('ensure_left_door_private_space', { p_event_id: body.event_id });
+    if (ensureErr) return NextResponse.json({ error: ensureErr.message }, { status: 400 });
+    await supabaseAdmin.from('ticket_audit_log').insert({
+      event_id: body.event_id, actor_user_id: gate.user.id, actor_role: 'admin',
+      action: 'product.left_door_ensure',
+      detail: {},
+    });
+    return NextResponse.json({ ok: true });
+  }
+
   const {
     id, event_id, name, description = null,
     kind = 'tickets',
@@ -109,16 +125,39 @@ export async function POST(request) {
 
   const supabaseAdmin = admin();
 
+  // The permanent Left Door row keeps its identity and fixed shape: one room
+  // per event, one per order, always a private space. Only the photo,
+  // description, price and selling on/off change per event.
+  let isLeftDoor = false;
+  if (id) {
+    const { data: current } = await supabaseAdmin
+      .from('ticket_products')
+      .select('system_key, event_id')
+      .eq('id', id)
+      .maybeSingle();
+    if (!current) return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    if (current.event_id !== event_id) return NextResponse.json({ error: 'Product belongs to another event' }, { status: 400 });
+    isLeftDoor = current.system_key === 'left_door';
+  }
+  if (isLeftDoor) {
+    if (kind !== 'private_space') return NextResponse.json({ error: 'The Left Door is always a private space' }, { status: 400 });
+    const sellable = (tiers || []).filter((t) => t && t.status !== 'hidden' && t.is_active !== false);
+    if (is_active && sellable.some((t) => !Number.isInteger(t.price_cents) || t.price_cents <= 0)) {
+      return NextResponse.json({ error: 'Set a price above $0 for The Left Door' }, { status: 400 });
+    }
+  }
+
   // Upsert product.
   const productRow = {
     event_id,
-    name,
+    name: isLeftDoor ? 'The Left Door' : name,
     description,
     kind,
     image_url: typeof image_url === 'string' && /^https:\/\//.test(image_url.trim()) ? image_url.trim() : null,
-    member_only,
-    min_per_order,
-    max_per_order,
+    // Private spaces are always public (Insider 20% off is applied at checkout).
+    member_only: kind === 'private_space' ? false : Boolean(member_only),
+    min_per_order: isLeftDoor ? 1 : min_per_order,
+    max_per_order: isLeftDoor ? 1 : max_per_order,
     display_order,
     is_active,
     tier_reveal_threshold,
@@ -142,7 +181,9 @@ export async function POST(request) {
   // finite caps are stored as an integer. sold/reserved default to 0 on
   // first insert and are otherwise left alone.
   let capValue = null;
-  if (capacity !== null && capacity !== undefined) {
+  if (isLeftDoor) {
+    capValue = 1;
+  } else if (capacity !== null && capacity !== undefined) {
     const cap = Number(capacity);
     if (Number.isFinite(cap) && cap >= 0) capValue = cap;
   }
@@ -231,6 +272,17 @@ export async function DELETE(request) {
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
   const supabaseAdmin = admin();
+  const { data: target } = await supabaseAdmin
+    .from('ticket_products')
+    .select('system_key')
+    .eq('id', id)
+    .maybeSingle();
+  if (target?.system_key === 'left_door') {
+    return NextResponse.json(
+      { error: "The Left Door can't be deleted. Turn off \"Sell at this event\" instead." },
+      { status: 400 },
+    );
+  }
   const { count } = await supabaseAdmin
     .from('order_items')
     .select('id', { count: 'exact', head: true })

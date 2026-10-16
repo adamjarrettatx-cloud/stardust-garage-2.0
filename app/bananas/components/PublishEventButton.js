@@ -12,7 +12,7 @@ import { adminFetch } from '@/lib/admin-fetch';
 //
 // The publish itself runs in /api/admin/events/:id/tt-publish (admin + MFA
 // gated). The TICKETTAILOR_API_KEY is never exposed to the browser.
-export default function PublishEventButton({ eventId, slug, status, ttEventSeriesId }) {
+export default function PublishEventButton({ eventId, slug, status, ttEventSeriesId, visibility = 'public', embedded = false, header = false, controls = null }) {
   const router = useRouter();
   const [publishing, setPublishing] = useState(false);
   const [msg, setMsg] = useState('');
@@ -20,6 +20,9 @@ export default function PublishEventButton({ eventId, slug, status, ttEventSerie
   const [current, setCurrent] = useState(status || 'draft');
 
   const isDraft = current === 'draft';
+  // Visibility 'internal' is labelled "Draft" in the editor: team-only, never
+  // public. It cannot go live until Visibility is changed to Public or Secret.
+  const isTeamOnly = visibility === 'internal';
 
   async function publish() {
     setPublishing(true);
@@ -48,55 +51,54 @@ export default function PublishEventButton({ eventId, slug, status, ttEventSerie
     }
   }
 
-  return (
-    <div
-      className="rounded-[12px] border p-5 mb-6"
-      style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}
-    >
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
-          <span className="text-[12px] font-semibold tracking-[0.14em]" style={{ color: 'var(--auth-muted)' }}>
-            STATUS
-          </span>
-          <span
-            className="text-[11px] font-semibold tracking-[0.12em] px-2.5 py-1 rounded-full"
-            style={{
-              color: isDraft ? 'var(--auth-accent-text)' : 'var(--auth-strong-surface-text)',
-              background: isDraft ? 'var(--auth-accent)' : 'var(--auth-success)',
-            }}
-          >
-            {isDraft ? 'DRAFT' : 'PUBLISHED'}
-          </span>
+  // Matches the 8px-radius, 36px-tall .sdg-row-btn used on the Events list.
+  const buttonBase = 'sdg-row-btn';
+  const labelCls = 'block text-[11px] font-semibold tracking-[0.14em] mb-1.5';
+
+  // One row: Status | (Visibility passed in as `controls`) | actions.
+  // Every group is a small label over a 38px-tall control so the row lines up
+  // on a shared baseline and wraps cleanly on narrow screens.
+  const content = (
+    <>
+      <div className="flex items-end gap-x-7 gap-y-4 flex-wrap">
+        <div>
+          <label className={labelCls} style={{ color: 'var(--auth-muted)' }}>Status</label>
+          <div className="h-[36px] flex items-center">
+            <span
+              className="h-[28px] inline-flex items-center text-[10px] font-semibold tracking-[0.12em] px-2.5 rounded-[6px]"
+              style={{
+                color: isDraft ? 'var(--auth-accent-text)' : 'var(--auth-strong-surface-text)',
+                background: isDraft ? 'var(--auth-accent)' : 'var(--auth-success)',
+              }}
+            >
+              {isDraft ? 'DRAFT' : 'PUBLISHED'}
+            </span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-wrap">
+        {controls}
+
+        <div className="ml-auto h-[36px] flex items-center gap-2">
           {/* Preview opens the exact public event page in a new tab, gated to
-              admins by /events/[slug]/preview. Useful before GO LIVE to sanity
-              check the layout, and after publish as a quick "how does it look
-              live" shortcut. Slug is required — a brand-new event without one
-              yet can't be previewed. */}
+              admins by /events/[slug]/preview. */}
           {slug && (
             <a
               href={`/events/${slug}/preview`}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-5 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 border"
-              style={{
-                color: 'var(--auth-accent)',
-                borderColor: 'var(--auth-card-border)',
-                background: 'transparent',
-              }}
+              className={`auth-theme-border-button ${buttonBase}`}
             >
               PREVIEW
             </a>
           )}
-          {isDraft && (
+          {isDraft && !isTeamOnly && (
             <button
               type="button"
               onClick={publish}
               disabled={publishing}
-              className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-40"
-              style={{ background: 'var(--auth-success)', color: 'var(--auth-strong-surface-text)' }}
+              title={ttEventSeriesId ? 'Also puts the linked ticket series on sale.' : undefined}
+              className={`${buttonBase} disabled:opacity-40`}
+              style={{ background: 'var(--auth-success)', borderColor: 'var(--auth-success)', color: 'var(--auth-strong-surface-text)' }}
             >
               {publishing ? 'GOING LIVE…' : 'GO LIVE'}
             </button>
@@ -104,25 +106,82 @@ export default function PublishEventButton({ eventId, slug, status, ttEventSerie
         </div>
       </div>
 
-      <p className="text-[11px] mt-3" style={{ color: 'var(--auth-muted)' }}>
-        {isDraft
-          ? ttEventSeriesId
-            // Legacy TicketTailor-linked event.
-            ? 'This event is a draft. Going live puts it on the public events page and sets its linked ticket series on sale.'
-            : 'This event is a draft. Going live puts it on the public events page.'
-          : 'This event is live on the public events page.'}
-      </p>
-
       {msg && (
-        <p className="text-[13px] mt-3" style={{ color: 'var(--auth-success-strong)' }}>
+        <p className="text-[12px] mt-2.5" style={{ color: 'var(--auth-success-strong)' }}>
           {msg}
         </p>
       )}
       {error && (
-        <p className="text-[13px] mt-3" style={{ color: 'var(--auth-danger)' }}>
+        <p className="text-[12px] mt-2.5" style={{ color: 'var(--auth-danger)' }}>
           {error}
         </p>
       )}
+    </>
+  );
+
+  // Header: Status badge, Preview and Go Live sit inline with the page-header
+  // action buttons (Attendees & Orders, Financials). Same 38px pill height as
+  // those links so the whole row lines up. Feedback text floats under the row
+  // so it never pushes the header buttons out of line.
+  if (header) {
+    const pill = 'px-4 py-2.5 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border transition-colors';
+    return (
+      <>
+        <span
+          className={`${pill} inline-flex items-center`}
+          title="Status"
+          style={{
+            color: isDraft ? 'var(--auth-accent-text)' : 'var(--auth-strong-surface-text)',
+            background: isDraft ? 'var(--auth-accent)' : 'var(--auth-success)',
+            borderColor: isDraft ? 'var(--auth-accent)' : 'var(--auth-success)',
+          }}
+        >
+          {isDraft ? 'DRAFT' : 'PUBLISHED'}
+        </span>
+        {slug && (
+          <a
+            href={`/events/${slug}/preview`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`auth-theme-border-button ${pill}`}
+          >
+            PREVIEW
+          </a>
+        )}
+        {isDraft && !isTeamOnly && (
+          <button
+            type="button"
+            onClick={publish}
+            disabled={publishing}
+            title={ttEventSeriesId ? 'Also puts the linked ticket series on sale.' : undefined}
+            className={`${pill} disabled:opacity-40`}
+            style={{ background: 'var(--auth-success)', borderColor: 'var(--auth-success)', color: 'var(--auth-strong-surface-text)' }}
+          >
+            {publishing ? 'GOING LIVE…' : 'GO LIVE'}
+          </button>
+        )}
+        {(msg || error) && (
+          <p
+            className="basis-full text-right text-[12px]"
+            style={{ color: error ? 'var(--auth-danger)' : 'var(--auth-success-strong)' }}
+          >
+            {error || msg}
+          </p>
+        )}
+      </>
+    );
+  }
+
+  // Embedded: rendered as the header strip of the editor's top control card,
+  // which owns the surrounding border and padding.
+  if (embedded) return content;
+
+  return (
+    <div
+      className="rounded-[12px] border p-5 mb-6"
+      style={{ background: 'var(--auth-card-bg)', borderColor: 'var(--auth-card-border)' }}
+    >
+      {content}
     </div>
   );
 }

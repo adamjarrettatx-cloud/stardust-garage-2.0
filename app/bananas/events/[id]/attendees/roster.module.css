@@ -15,11 +15,6 @@
 .button:disabled { opacity: .5; cursor: default; }
 .button:focus-visible, .filters input:focus-visible, .filters select:focus-visible, .tableWrap:focus-visible { outline: 2px solid var(--auth-text-strong, #191919); outline-offset: 3px; }
 .notice { background: var(--auth-card-bg-alt, #f5f5f5); border: 1px solid var(--roster-border); border-radius: 8px; padding: 16px; margin-bottom: 24px; line-height: 1.6; }
-.metrics { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--roster-border); border-radius: 12px; background: var(--roster-bg); margin-bottom: 24px; }
-.metrics > div { padding: 20px 24px; border-right: 1px solid var(--roster-border); }
-.metrics > div:last-child { border: none; }
-.metrics span { color: var(--roster-muted); display: block; font-size: 13px; }
-.metrics strong { display: block; font-size: 28px; font-weight: 650; margin-top: 4px; font-variant-numeric: tabular-nums; }
 .panel { border: 1px solid var(--roster-border); border-radius: 12px; background: var(--roster-bg); overflow: hidden; }
 .toolbar { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; padding: 16px; border-bottom: 1px solid var(--roster-border); }
 .tabs { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -29,10 +24,18 @@
 .filters label > span { font-size: 12px; font-weight: 600; color: var(--roster-muted); }
 .search { flex: 1; }
 .filters input, .filters select { width: 100%; min-height: 44px; border: 1px solid var(--roster-border); border-radius: 8px; padding: 8px 12px; color: inherit; background: var(--roster-bg); font-size: 16px; }
+.summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 20px; margin: 4px 16px 16px; padding-top: 12px; border-top: 1px solid var(--roster-border); color: var(--roster-muted); font-size: 13px; }
+.summaryScope { color: var(--auth-text-strong, #191919); font-weight: 600; overflow-wrap: anywhere; }
+.summaryItem strong { color: var(--auth-text-strong, #191919); font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; }
 .explanation { color: var(--roster-muted); padding: 0 16px 16px; margin: 0; font-size: 13px; line-height: 1.6; }
 .tableWrap { width: 100%; overflow-x: auto; }
 .tableWrap table { border-collapse: collapse; width: 100%; min-width: 780px; text-align: left; }
 .tableWrap th { background: var(--auth-card-bg-alt, #f6f6f6); color: var(--roster-muted); font-size: 12px; font-weight: 600; padding: 12px 16px; white-space: nowrap; }
+.tableWrap .sortButton { display: inline-flex; align-items: center; gap: 6px; padding: 0; margin: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; white-space: nowrap; }
+.tableWrap .sortButton:hover, .tableWrap .sortButton[data-active="true"] { color: var(--auth-text-strong, #191919); }
+.tableWrap .sortButton:focus-visible { outline: 2px solid var(--auth-text-strong, #191919); outline-offset: 3px; border-radius: 4px; }
+.tableWrap .sortIcon { font-size: 10px; opacity: 0.45; }
+.tableWrap .sortButton[data-active="true"] .sortIcon { opacity: 1; }
 .tableWrap td { padding: 16px; border-top: 1px solid var(--roster-border); vertical-align: top; font-variant-numeric: tabular-nums; }
 .tableWrap .personCell { min-width: 220px; max-width: 320px; overflow-wrap: anywhere; }
 .tableWrap .checkCell { width: 40px; min-width: 40px; padding-right: 0; }
@@ -54,7 +57,7 @@
 .refundDialog p { margin: 12px 0; }
 .dialogHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .dialogField { display: grid; gap: 8px; font-size: 13px; font-weight: 600; margin: 16px 0; }
-.dialogField input, .dialogField textarea { width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid var(--auth-card-border, #d7d7d7); border-radius: 8px; background: var(--auth-card-bg, #fff); color: inherit; font-family: inherit; font-size: 16px; font-weight: 400; }
+.dialogField input, .dialogField textarea, .dialogField select { width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid var(--auth-card-border, #d7d7d7); border-radius: 8px; background: var(--auth-card-bg, #fff); color: inherit; font-family: inherit; font-size: 16px; font-weight: 400; }
 .refundOptions { border: 1px solid var(--auth-card-border, #d7d7d7); border-radius: 8px; padding: 12px 16px; margin: 16px 0; }
 .refundOptions label { display: flex; gap: 8px; align-items: center; padding: 8px 0; }
 .reviewList { max-height: 340px; overflow-y: auto; border: 1px solid var(--auth-card-border, #d7d7d7); border-radius: 8px; }
@@ -66,14 +69,13 @@
 .activity { border: 1px solid var(--roster-border); border-radius: 12px; margin: 24px 0; background: var(--roster-bg); }
 .activity summary { padding: 16px; font-size: 14px; font-weight: 600; cursor: pointer; }
 @media (max-width: 640px) {
-  .metrics { grid-template-columns: repeat(2, 1fr); }
-  .metrics > div { padding: 16px; }
-  .metrics > div:nth-child(2) { border-right: none; }
-  .metrics > div:nth-child(-n+2) { border-bottom: 1px solid var(--roster-border); }
-  .filters { flex-direction: column; align-items: stretch; }
+          .filters { flex-direction: column; align-items: stretch; }
   .header h1 { font-size: 22px; }
 }
 
 .sendCell { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; align-items: flex-start; }
 .sentNote { font-size: 12px; font-weight: 600; color: #1f7a3a; }
 .failedNote { font-size: 12px; font-weight: 600; color: #b42318; }
+
+.checkboxField { display: flex; gap: 8px; align-items: center; margin: 16px 0; font-size: 14px; }
+.checkboxField input { width: 18px; height: 18px; accent-color: var(--auth-text-strong, #191919); }

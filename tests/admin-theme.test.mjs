@@ -95,9 +95,10 @@ test('light mode uses a solid cream panel; dark mode is transparent', () => {
 });
 
 test('authenticated shared shell keeps the outer starfield visible in light mode and moves the cream treatment to the inner frame', () => {
+  // Admin/Team website shell: midnight slate. Everything else keeps the classic dark.
   assert.equal(AUTH_THEMES.dark.rootBg, 'transparent');
   assert.equal(AUTH_THEMES.light.rootBg, 'transparent');
-  assert.equal(AUTH_THEMES.dark.panelBg, null);
+  assert.equal(AUTH_THEMES.dark.panelBg, '#181A20');
   assert.equal(AUTH_THEMES.light.panelBg, '#faf9f6');
   assert.equal(AUTH_THEMES.light.panelBorder, 'rgba(255,255,255,0.16)');
 });

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { adminFetch } from '@/lib/admin-fetch';
 import EventContactFields from './EventContactFields';
+import RichTextEditor from './RichTextEditor';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import { CONTACT_REQUIRED_MESSAGE } from '@/lib/contact-helpers';
 import { uploadEventImage } from '@/lib/event-image-upload';
@@ -59,6 +60,7 @@ export default function TtEventCreator() {
   const [eventTime, setEventTime] = useState('');
   const [eventEndTime, setEventEndTime] = useState('');
   const [description, setDescription] = useState('');
+  const [descriptionHtml, setDescriptionHtml] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [category, setCategory] = useState('day_party');
   // Defaults to "has an outside partner" so the team opts into SDG-only rather
@@ -119,6 +121,7 @@ export default function TtEventCreator() {
       event_time: eventTime.trim() || null,
       event_end_time: eventEndTime.trim() || null,
       description: description.trim() || null,
+      description_html: description.trim() && descriptionHtml ? descriptionHtml : null,
       image_url: imageUrl.trim() || null,
       category,
       is_sdg_only: isSdgOnly,
@@ -215,7 +218,14 @@ export default function TtEventCreator() {
 
         <div>
           <label className={labelClass} style={labelStyle}>DESCRIPTION</label>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={6} className={inputClass + ' resize-y'} style={inputStyle} />
+          <RichTextEditor
+            onChange={({ html, text }) => {
+              setDescriptionHtml(html);
+              setDescription(text);
+            }}
+            minHeight={150}
+            style={inputStyle}
+          />
         </div>
 
         <div>
@@ -272,7 +282,7 @@ export default function TtEventCreator() {
               accept="image/*"
               onChange={handleImageUpload}
               disabled={uploading}
-              className="text-[13px] file:mr-4 file:px-5 file:py-2.5 file:rounded-full file:border-0 file:text-[12px] file:font-semibold file:tracking-[0.12em] file:bg-white file:text-black file:cursor-pointer hover:file:bg-gray-200"
+              className="text-[13px] file:mr-4 file:px-5 file:py-2.5 file:rounded-[8px] file:border-0 file:text-[12px] file:font-semibold file:tracking-[0.12em] file:bg-white file:text-black file:cursor-pointer hover:file:bg-gray-200"
               style={{ color: '#8a8a8a' }}
             />
             {uploading && <p className="text-[13px]" style={{ color: '#8a8a8a' }}>Uploading...</p>}
@@ -307,14 +317,14 @@ export default function TtEventCreator() {
           <button
             type="submit"
             disabled={saving || uploading}
-            className="flex-1 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
+            className="flex-1 py-4 rounded-[8px] text-[12px] font-semibold tracking-[0.16em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
             style={{ background: '#ffffff', color: '#0a0a0a' }}
           >
             {saving ? 'SAVING…' : 'SAVE & CONFIGURE TICKETS'}
           </button>
           <Link
             href="/bananas?tab=events"
-            className="px-8 py-4 rounded-full text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5 flex items-center"
+            className="px-8 py-4 rounded-[8px] text-[12px] font-semibold tracking-[0.16em] border transition-colors hover:bg-white/5 flex items-center"
             style={{ borderColor: 'rgba(255,255,255,0.15)', color: '#f5f5f5' }}
           >
             CANCEL

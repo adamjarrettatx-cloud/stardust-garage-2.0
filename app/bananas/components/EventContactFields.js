@@ -6,7 +6,7 @@ import ContactSelect from './ContactSelect';
 // is intentionally broader than just event_organizer so a collective, promoter
 // or venue renter can still be picked — EventForm tags them event_organizer on
 // save, so the profile always matches the role by the time a contract is drawn.
-const ORGANIZER_CONTACT_TYPES = [
+export const ORGANIZER_CONTACT_TYPES = [
   // Base profile kinds from the Persons / Organizations directory. Profiles
   // created there carry only one of these until a role is added, so they must
   // be listed here or a brand-new organization never appears in the picker.
@@ -15,6 +15,7 @@ const ORGANIZER_CONTACT_TYPES = [
   'event_organizer',
   'collective',
   'promoter',
+  'programmer',
   'venue_renter',
   'artist',
   'dj',

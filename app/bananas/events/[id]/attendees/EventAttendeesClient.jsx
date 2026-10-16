@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { matchesRosterSearch, rosterCsv, rosterTickets } from '@/lib/tickets/event-roster';
+import { matchesRosterSearch, rosterCsv, rosterTickets, sortRoster } from '@/lib/tickets/event-roster';
 import RefundDialog from '@/components/ticketing/RefundDialog';
 import RefundActivity from '@/components/ticketing/RefundActivity';
+import CompDialog from '@/components/ticketing/CompDialog';
 import styles from './roster.module.css';
 
 function money(cents, currency = 'usd') {
@@ -36,6 +37,8 @@ export default function EventAttendeesClient({ event, deskMode = false }) {
   const [selected, setSelected] = useState(new Set());
   const [refundOrders, setRefundOrders] = useState(null);
   const [emailState, setEmailState] = useState({});
+  const [compOpen, setCompOpen] = useState(false);
+  const [sort, setSort] = useState({ key: null, dir: 'asc' });
   const eventId = event?.id;
 
   useEffect(() => {
@@ -79,13 +82,19 @@ export default function EventAttendeesClient({ event, deskMode = false }) {
 
   // Filter changes intentionally clear selection. No invisible orders are
   // carried into a batch after switching event, view, or search.
-  useEffect(() => { setSelected(new Set()); }, [search, status, tab, eventFilter, reload]);
+  useEffect(() => { setSelected(new Set()); }, [search, status, tab, eventFilter, reload, sort]);
 
   const tickets = useMemo(() => rosterTickets(orders), [orders]);
-  const rows = useMemo(() => (tab === 'purchasers' ? orders : tickets)
+  const filteredRows = useMemo(() => (tab === 'purchasers' ? orders : tickets)
     .filter((row) => (eventFilter === 'all' || row.event_id === eventFilter)
       && (status === 'all' || row.status === status) && matchesRosterSearch(row, search)),
   [orders, tickets, tab, status, search, eventFilter]);
+  const rows = useMemo(() => sortRoster(filteredRows, tab, sort.key, sort.dir), [filteredRows, tab, sort]);
+  // First click sorts ascending, the next click on the same column flips it.
+  function sortBy(key) {
+    setSort((current) => ({ key, dir: current.key === key && current.dir === 'asc' ? 'desc' : 'asc' }));
+    setPage(0);
+  }
   const events = useMemo(() => [...new Map(orders.map((o) => [o.event_id,
     { id: o.event_id, title: o.event_title, date: o.event_date }])).values()]
     .sort((a, b) => (b.date || '').localeCompare(a.date || '')), [orders]);
@@ -93,9 +102,25 @@ export default function EventAttendeesClient({ event, deskMode = false }) {
   const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
   const currentPage = Math.min(page, pageCount - 1);
   const visible = rows.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
-  const validTickets = tickets.filter((t) => ['valid', 'used'].includes(t.status));
-  const uniquePurchasers = new Set(orders.filter((o) => ['paid', 'partial_refund'].includes(o.status))
-    .map((o) => o.buyer_email?.trim().toLowerCase() || o.id)).size;
+  // Event counts are shown only for one event: the event page, or the
+  // Orders & Refunds page after a specific event is picked. They follow the
+  // Event filter only, never search or status, and are hidden for All events.
+  const scopedEvent = event
+    ? { id: event.id, title: event.title }
+    : eventFilter !== 'all' ? events.find((item) => item.id === eventFilter) : null;
+  const eventCounts = useMemo(() => {
+    if (!scopedEvent) return null;
+    const inEvent = (row) => !!event || row.event_id === scopedEvent.id;
+    const scopedOrders = orders.filter(inEvent);
+    const scopedTickets = tickets.filter(inEvent);
+    return [
+      ['purchasers', new Set(scopedOrders.filter((o) => ['paid', 'partial_refund'].includes(o.status))
+        .map((o) => o.buyer_email?.trim().toLowerCase() || o.id)).size],
+      ['active tickets', scopedTickets.filter((t) => ['valid', 'used'].includes(t.status)).length],
+      ['checked in', scopedTickets.filter((t) => t.status === 'used').length],
+      ['not checked in', scopedTickets.filter((t) => t.status === 'valid').length],
+    ];
+  }, [scopedEvent?.id, event, orders, tickets]);
   const eligible = tab === 'purchasers' ? rows.filter((row) => row.can_refund) : [];
   const pageEligible = visible.filter((row) => row.can_refund);
   function toggleOrder(id) {
@@ -168,7 +193,7 @@ export default function EventAttendeesClient({ event, deskMode = false }) {
           {event ? <>
             <a className={styles.button} href="/bananas/orders">Search all orders</a>
             <a className={styles.button} href={`/bananas/events/${event.id}`}>Edit event</a>
-            <a className={styles.button} href={`/admin/tickets/${event.id}`}>Ticket tools</a>
+            {!deskMode && <button className={styles.button} onClick={() => setCompOpen(true)}>Issue comp</button>}
           </> : deskMode ? <a className={styles.button} href="/capacity/front-desk">Back to front desk</a>
             : <a className={styles.button} href="/bananas?tab=events">Events</a>}
           <button className={styles.button} disabled={busy} onClick={() => setReload((n) => n + 1)}>
@@ -181,21 +206,12 @@ export default function EventAttendeesClient({ event, deskMode = false }) {
         <p className={styles.notice}>This list contains SDG checkout purchases only. Ticket Tailor and other external ticket purchases are not included. Complimentary guest lists and trial-pass visits are separate.</p>
       )}
 
-      <div className={styles.metrics}>
-        {[
-          ['Purchasers', uniquePurchasers],
-          ['Active tickets', validTickets.length],
-          ['Checked in', tickets.filter((t) => t.status === 'used').length],
-          ['Not checked in', tickets.filter((t) => t.status === 'valid').length],
-        ].map(([label, value]) => <div key={label}><span>{label}</span><strong>{busy || error ? '—' : value}</strong></div>)}
-      </div>
-
       <div className={styles.panel}>
         <div className={styles.toolbar}>
           <div className={styles.tabs} role="group" aria-label="Roster view">
             {['purchasers', 'tickets'].map((value) => (
               <button key={value} className={styles.button} aria-pressed={tab === value}
-                onClick={() => { setTab(value); setStatus('all'); setPage(0); }}>
+                onClick={() => { setTab(value); setStatus('all'); setSort({ key: null, dir: 'asc' }); setPage(0); }}>
                 {value === 'purchasers' ? 'Purchasers' : 'Tickets & check-ins'}
               </button>
             ))}
@@ -229,6 +245,16 @@ export default function EventAttendeesClient({ event, deskMode = false }) {
             </select>
           </label>
         </div>
+        {eventCounts && (
+          <p className={styles.summary} aria-live="polite">
+            <span className={styles.summaryScope}>{scopedEvent.title || 'Selected event'}</span>
+            {eventCounts.map(([label, value]) => (
+              <span key={label} className={styles.summaryItem}>
+                <strong>{busy || error ? '—' : value}</strong> {label}
+              </span>
+            ))}
+          </p>
+        )}
         <p className={styles.explanation}>
           {tab === 'purchasers'
             ? 'One row per order. Select orders for full remaining-balance refunds, or use Refund on a row for a partial amount. Maximum 100 orders per batch.'
@@ -261,9 +287,23 @@ export default function EventAttendeesClient({ event, deskMode = false }) {
                     checked={pageEligible.length > 0 && pageEligible.every((row) => selected.has(row.id))}
                     disabled={!pageEligible.length} onChange={togglePage} /></th>}
                   {(tab === 'purchasers'
-                  ? ['Purchaser', ...(!event ? ['Event'] : []), 'Order status', 'Tickets', 'Checked in', 'Total / refunded', 'Actions']
-                  : ['Attendee / purchaser', ...(!event ? ['Event'] : []), 'Ticket type', 'Ticket status', 'Checked in (Austin)', 'Order']
-                ).map((label) => <th key={label} scope="col">{label}</th>)}</tr></thead>
+                  ? [['Purchaser', 'purchaser'], ...(!event ? [['Event', 'event']] : []), ['Order status', 'status'], ['Tickets', 'tickets'],
+                    ['Checked in', 'checked_in'], ['Total / refunded', 'total'], ['Actions']]
+                  : [['Attendee / purchaser', 'attendee'], ...(!event ? [['Event', 'event']] : []), ['Ticket type', 'type'],
+                    ['Ticket status', 'status'], ['Checked in (Austin)', 'checked_in'], ['Order', 'order']]
+                ).map(([label, key]) => {
+                  if (!key) return <th key={label} scope="col">{label}</th>;
+                  const active = sort.key === key;
+                  return (
+                    <th key={label} scope="col" aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                      <button type="button" className={styles.sortButton} data-active={active} onClick={() => sortBy(key)}
+                        title={active && sort.dir === 'asc' ? `Sort ${label} descending` : `Sort ${label} ascending`}>
+                        {label}
+                        <span className={styles.sortIcon} aria-hidden="true">{active ? (sort.dir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                      </button>
+                    </th>
+                  );
+                })}</tr></thead>
                 <tbody>
                   {visible.map((row) => tab === 'purchasers' ? (
                     <tr key={row.id}>
@@ -276,7 +316,7 @@ export default function EventAttendeesClient({ event, deskMode = false }) {
                       <td><Status value={row.status} /></td>
                       <td>{row.tickets.length}</td>
                       <td>{row.tickets.filter((t) => t.status === 'used').length} / {row.tickets.length}</td>
-                      <td>{money(row.total_cents, row.currency)}{row.refunded_cents > 0 && <span className={styles.secondary}>{money(row.refunded_cents, row.currency)} refunded</span>}</td>
+                      <td>{money(row.total_cents, row.currency)}{row.is_comp && <span className={styles.secondary}>Comp</span>}{row.refunded_cents > 0 && <span className={styles.secondary}>{money(row.refunded_cents, row.currency)} refunded</span>}</td>
                       <td>
                         {['paid', 'partial_refund'].includes(row.status) && row.buyer_email && (() => {
                           const st = emailState[row.id] || {};
@@ -289,7 +329,7 @@ export default function EventAttendeesClient({ event, deskMode = false }) {
                           </div>;
                         })()}
                         {row.can_refund ? <button className={styles.button} onClick={() => setRefundOrders([row])}>Refund</button>
-                        : <span className={styles.secondary}>{row.status === 'refunded' ? 'Fully refunded' : 'Not refundable'}</span>}</td>
+                        : <span className={styles.secondary}>{row.status === 'refunded' ? 'Fully refunded' : row.is_comp ? 'Comp · no payment' : 'Not refundable'}</span>}</td>
                     </tr>
                   ) : (
                     <tr key={row.id}>
@@ -324,6 +364,7 @@ export default function EventAttendeesClient({ event, deskMode = false }) {
       </div>
       <RefundActivity eventId={eventId} refresh={reload} onChange={refreshed} />
       {!event && <p className={styles.explanation}>SDG checkout orders only. Ticket Tailor purchases, memberships, guest-list allocations, and trial passes are not included.</p>}
+      {compOpen && event && <CompDialog event={event} onClose={() => setCompOpen(false)} onDone={refreshed} />}
       {refundOrders && <RefundDialog orders={refundOrders} onClose={() => setRefundOrders(null)} onDone={refreshed} />}
     </section>
   );

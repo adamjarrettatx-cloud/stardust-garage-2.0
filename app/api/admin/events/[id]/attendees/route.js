@@ -33,7 +33,7 @@ export async function GET(request, { params }) {
     if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404, headers });
 
     const { data: orders, error } = await db.from('orders')
-      .select('id, event_id, buyer_name, buyer_email, member_profile_id, user_id, status, total_cents, refunded_cents, currency, paid_at, created_at, stripe_payment_intent_id, events(title, event_date)')
+      .select('id, event_id, buyer_name, buyer_email, member_profile_id, user_id, status, total_cents, refunded_cents, currency, paid_at, created_at, stripe_payment_intent_id, checkout_kind, events(title, event_date)')
       .eq('event_id', id).order('created_at', { ascending: false }).order('id')
       .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
     if (error) throw error;
@@ -41,7 +41,7 @@ export async function GET(request, { params }) {
     const orderIds = rows.map((o) => o.id);
     const profileIds = [...new Set(rows.filter((o) => !o.buyer_name?.trim()).map((o) => o.member_profile_id).filter(Boolean))];
     const userIds = [...new Set(rows.filter((o) => !o.buyer_name?.trim()).map((o) => o.user_id).filter(Boolean))];
-    const [tickets, attendees, items, profilesById, profilesByUser] = await Promise.all([
+    const [tickets, attendees, items, profilesById, profilesByUser, accountNames] = await Promise.all([
       orderIds.length ? readRosterRows(() => db.from('tickets')
         .select('id, order_id, order_item_id, attendee_id, status, used_at')
         .eq('event_id', id).in('order_id', orderIds).order('id')) : [],
@@ -53,10 +53,12 @@ export async function GET(request, { params }) {
         .select('id, user_id, full_name').in('id', profileIds).order('id')) : [],
       userIds.length ? readRosterRows(() => db.from('member_profiles')
         .select('id, user_id, full_name').in('user_id', userIds).order('id')) : [],
+      userIds.length ? readRosterRows(() => db.from('free_accounts')
+        .select('user_id, full_name').in('user_id', userIds).order('user_id')) : [],
     ]);
     return NextResponse.json({
       event,
-      orders: assembleRoster(rows, tickets, attendees, items, [...profilesById, ...profilesByUser]),
+      orders: assembleRoster(rows, tickets, attendees, items, [...profilesById, ...profilesByUser, ...accountNames]),
       next_page: rows.length === PAGE_SIZE ? page + 1 : null,
     }, { headers });
   } catch (error) {

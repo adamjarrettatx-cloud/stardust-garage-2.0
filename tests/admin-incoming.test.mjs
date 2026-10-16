@@ -6,6 +6,8 @@ import {
 } from '../lib/admin-tabs.js';
 
 const destinations = [
+  ['Conversations', '/bananas/conversations', 'conversationsAwaitingTeam', 'REVIEW'],
+  ['Date Pitches', '/bananas/date-pitches', 'datePitches', 'REVIEW'],
   ['Collaborations', '/bananas/collaborations', 'collaborations', 'REVIEW'],
   ['Signups', '/bananas/signups', 'newSignups', 'VIEW'],
   ['Venue Inquiries', '/bananas/venue-inquiries', 'venueInquiries', 'REVIEW'],
@@ -23,7 +25,7 @@ test('Incoming replaces People and Rentals under Operations for owners and admin
     const operations = visibleAdminTabGroups(isOwner).find(g => g.group === 'OPERATIONS');
     assert.deepEqual(operations.tabs.map(t => t.id), [
       'tasks', 'events', 'chat', 'memberships', 'incoming',
-      ...(isOwner ? ['timekeeping'] : []),
+      ...(isOwner ? ['staff'] : []),
     ]);
   }
 });
@@ -56,6 +58,7 @@ test('Incoming badge combines both old queues without unrelated or duplicate cou
   assert.equal(adminTabBadge('incoming', counts), 28);
   assert.equal(adminTabBadge('incoming'), 0);
   assert.equal(adminTabBadge('incoming', { venueInquiries: 5 }), 5);
+  assert.equal(adminTabBadge('incoming', { datePitches: 2, venueInquiries: 5 }), 7);
   const badges = adminTabBadges(counts);
   assert.equal(badges.incoming, 28);
   assert.equal(badges.people, undefined);

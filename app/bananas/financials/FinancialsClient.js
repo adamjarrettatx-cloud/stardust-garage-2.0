@@ -11,7 +11,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { centsToUsd } from '@/lib/event-analytics';
-import { ENTRY_STATE, entriesInMonth, summarizeIncome } from '@/lib/financial-calendar';
+import { ENTRY_STATE, TICKET_SOURCE_LABEL, entriesInMonth, summarizeIncome } from '@/lib/financial-calendar';
 import { entryNetCents, buildDailyRevenue, rollupDailyRevenue } from '@/lib/financial-overview';
 import { MANUAL_CATEGORIES } from '@/lib/manual-income';
 import { adminFetch } from '@/lib/admin-fetch';
@@ -63,10 +63,10 @@ const MANUAL_CATEGORY_LABEL = Object.fromEntries(MANUAL_CATEGORIES.map((c) => [c
 // Per-state presentation for non-revenue entries. `label` shows in the detail
 // panel; `chip` is the short marker rendered on the calendar cell.
 const STATE_META = {
-  [ENTRY_STATE.PENDING]:        { chip: 'Not synced',     note: 'Linked to TicketTailor but not refreshed yet.' },
-  [ENTRY_STATE.UNLINKED]:       { chip: 'No TT link',     note: 'Not linked to a TicketTailor series — link it to track income.' },
+  [ENTRY_STATE.PENDING]:        { chip: 'Not synced',     note: 'Ticket sales have not been refreshed yet.' },
+  [ENTRY_STATE.UNLINKED]:       { chip: 'No tickets',     note: 'No online ticket sales on sdgatx.com or Ticket Tailor.' },
   [ENTRY_STATE.NOT_CONFIGURED]: { chip: 'Not configured', note: 'TICKETTAILOR_API_KEY is not configured in this environment.' },
-  [ENTRY_STATE.ERROR]:          { chip: 'Sync error',     note: 'The last TicketTailor refresh failed. Try refreshing again.' },
+  [ENTRY_STATE.ERROR]:          { chip: 'Sync error',     note: 'The last ticket sales refresh failed. Try refreshing again.' },
   [ENTRY_STATE.ZERO]:           { chip: '$0 so far',      note: 'Refreshed — no sales recorded yet.' },
 };
 
@@ -264,8 +264,8 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
         </div>
       </div>
       <p className="mb-6 text-[14px]" style={{ color: t.muted }}>
-        Every income source in one place, mapped to the calendar day it landed on — TicketTailor sales (linked
-        events and TT-only events), SpotOn point-of-sale revenue (including days with no event on the books),
+        Every income source in one place, mapped to the calendar day it landed on — online ticket sales (sdgatx.com,
+        plus the final Ticket Tailor record for Mar 1 – Sept 19, 2026), SpotOn point-of-sale revenue (including days with no event on the books),
         member-code engagement, and owner-entered manual income (e.g. venue rentals). Revenue figures come from the
         read-only metrics cache, refreshed on a daily cron or on demand below. Income only; expenses aren&apos;t
         tracked yet.
@@ -345,12 +345,12 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
 
           {/* Month nav */}
           <div className="flex items-center gap-4 mb-4">
-            <button onClick={prevMonth} aria-label="Previous month" className="w-9 h-9 rounded-full border flex items-center justify-center transition-colors text-[16px]" style={{ borderColor: t.border, color: t.text, background: 'transparent' }} onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>‹</button>
+            <button onClick={prevMonth} aria-label="Previous month" className="w-9 h-9 rounded-[8px] border flex items-center justify-center transition-colors text-[16px]" style={{ borderColor: t.border, color: t.text, background: 'transparent' }} onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>‹</button>
             <h2 data-testid="fin-month-label" className="text-[22px] font-extrabold -tracking-[0.01em] min-w-[220px] text-center" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: t.textStrong }}>
               {MONTHS[month]} {year}
             </h2>
-            <button onClick={nextMonth} aria-label="Next month" className="w-9 h-9 rounded-full border flex items-center justify-center transition-colors text-[16px]" style={{ borderColor: t.border, color: t.text, background: 'transparent' }} onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>›</button>
-            <button onClick={goToday} className="ml-2 px-4 py-1.5 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors" style={{ borderColor: t.border, color: t.mutedStrong, background: 'transparent' }} onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>TODAY</button>
+            <button onClick={nextMonth} aria-label="Next month" className="w-9 h-9 rounded-[8px] border flex items-center justify-center transition-colors text-[16px]" style={{ borderColor: t.border, color: t.text, background: 'transparent' }} onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>›</button>
+            <button onClick={goToday} className="ml-2 px-4 py-1.5 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border transition-colors" style={{ borderColor: t.border, color: t.mutedStrong, background: 'transparent' }} onMouseEnter={(e) => { e.currentTarget.style.background = t.hoverBg; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>TODAY</button>
           </div>
 
           <div className="flex flex-col lg:flex-row gap-5">
@@ -482,7 +482,7 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
                         <div className="flex items-center gap-2 mb-1 min-w-0">
                           <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: CATEGORY_COLOR[entry.category] || t.muted }} />
                           {entry.isManual || entry.hasLocalEvent === false ? (
-                            <span className="text-[14px] font-bold truncate min-w-0" style={{ color: t.textStrong }} title={entry.isManual ? 'Manual income entry' : 'TicketTailor-only event (no website record)'}>{entry.title}</span>
+                            <span className="text-[14px] font-bold truncate min-w-0" style={{ color: t.textStrong }} title={entry.isManual ? 'Manual income entry' : 'Ticket Tailor-only event (no website record)'}>{entry.title}</span>
                           ) : (
                             <Link href={`/bananas/events/${entry.id}`} className="text-[14px] font-bold hover:underline truncate min-w-0" style={{ color: t.textStrong }}>{entry.title}</Link>
                           )}
@@ -490,11 +490,11 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
 
                         <div className="flex items-center gap-2 mb-2 text-[10px] tracking-[0.08em] uppercase" style={{ color: t.muted }}>
                           {entry.isManual && (
-                            <span className="px-1.5 py-0.5 rounded-full" style={{ background: t.revChipBg, color: t.rev }}>Manual</span>
+                            <span className="px-1.5 py-0.5 rounded-[6px]" style={{ background: t.revChipBg, color: t.rev }}>Manual</span>
                           )}
                           {entry.eventStatus && <span>{entry.eventStatus}</span>}
                           {entry.isFuture && (
-                            <span className="px-1.5 py-0.5 rounded-full" style={{ background: t.warnBadgeBg, color: t.warn }}>Upcoming</span>
+                            <span className="px-1.5 py-0.5 rounded-[6px]" style={{ background: t.warnBadgeBg, color: t.warn }}>Upcoming</span>
                           )}
                         </div>
 
@@ -528,9 +528,9 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
                             </div>
                             <div className="text-[10px] mb-2" style={{ color: t.muted }}>Combined income</div>
                             <div className="space-y-1 text-[11px]" data-testid="fin-event-breakdown">
-                              {entry.ttLinked && (
+                              {entry.ticketSource && (
                                 <div className="flex items-center justify-between">
-                                  <span style={{ color: t.muted }}>TicketTailor{entry.isFuture ? ' (to date)' : ''}</span>
+                                  <span style={{ color: t.muted }}>{TICKET_SOURCE_LABEL[entry.ticketSource]}{entry.isFuture ? ' (to date)' : ''}</span>
                                   <span style={{ color: t.mutedStrong }}>
                                     {hasMoney || entry.state === ENTRY_STATE.ZERO
                                       ? centsToUsd(entry.ttGrossCents)
@@ -554,7 +554,9 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
                               {centsToUsd(entry.grossCents)}
                             </div>
                             <div className="text-[10px] mb-2" style={{ color: t.muted }}>
-                              {entry.isFuture ? 'Gross TicketTailor sales-to-date (not a forecast)' : 'Gross TicketTailor income'}
+                              {entry.isFuture
+                                ? `Gross ${TICKET_SOURCE_LABEL[entry.ticketSource] || 'ticket'} sales-to-date (not a forecast)`
+                                : `Gross ${TICKET_SOURCE_LABEL[entry.ticketSource] || 'ticket'} income`}
                             </div>
                             <div className="grid grid-cols-3 gap-2 text-[11px]">
                               <div>
@@ -663,8 +665,8 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
           </div>
 
           <p className="mt-6 text-[12px]" style={{ color: t.faint }}>
-            TicketTailor figures come from the read-only metrics cache, refreshed on a daily cron or on demand
-            above (upcoming events show real sales-to-date, not a forecast). Entries tagged <span style={{ color: t.rev }}>Manual</span> are
+            sdgatx.com ticket figures refresh nightly or on demand above; Ticket Tailor figures are the final record
+            and no longer change (upcoming events show real sales-to-date, not a forecast). Entries tagged <span style={{ color: t.rev }}>Manual</span> are
             owner-entered income (e.g. venue rentals) with no ticketing record. Days marked <span style={{ color: t.pos }}>POS</span> include
             SpotOn point-of-sale income imported from CSV, even on days with no event on the books — see the Trends tab for
             day/week/month rollups across every revenue source.
@@ -688,7 +690,7 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
               <div className="overflow-x-auto">
               <div className="min-w-[720px]">
               <div className={`grid ${gridCols} gap-2 px-4 py-2.5 text-[11px] font-semibold tracking-[0.08em] uppercase`} style={{ color: t.muted, borderBottom: `1px solid ${t.tableBorder}` }}>
-                <span>Event</span><span>Date</span><span>Gross</span><span>Net</span><span>Sold</span><span>Codes</span><span>TT</span>
+                <span>Event</span><span>Date</span><span>Gross</span><span>Net</span><span>Sold</span><span>Codes</span><span>Source</span>
               </div>
               {performanceRows.map((r) => {
                 // A row shows real figures once TicketTailor has been refreshed
@@ -702,7 +704,7 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
                       <Link href={`/bananas/events/${r.id}`} className="truncate min-w-0 hover:underline" style={{ color: t.text }}>{r.title}</Link>
                       {r.hasManualIncome && (
                         <span
-                          className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                          className="text-[9px] font-semibold px-1.5 py-0.5 rounded-[6px] flex-shrink-0"
                           style={{ background: t.revChipBg, color: t.rev }}
                           title={`Includes ${centsToUsd(r.manualGrossCents)} manual income`}
                         >
@@ -717,20 +719,15 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
                     <span style={{ color: t.text }} title={`${r.memberCodes.sent} sent / ${r.memberCodes.total} total`}>
                       {r.memberCodes.sent}/{r.memberCodes.total}
                     </span>
-                    {r.ttLinked ? (
+                    {r.ticketSource === 'sdgatx' ? (
                       <span className="flex items-center gap-1.5">
-                        <span style={{ color: t.rev }}>linked</span>
+                        <span style={{ color: t.rev }}>sdgatx.com</span>
                         <RowRefreshButton eventId={r.id} />
                       </span>
+                    ) : r.ticketSource === 'tickettailor' ? (
+                      <span style={{ color: t.mutedStrong }} title="Final Ticket Tailor record">Ticket Tailor</span>
                     ) : (
-                      <Link
-                        href={`/bananas/events/${r.id}`}
-                        className="hover:underline"
-                        style={{ color: t.warn }}
-                        title="Link this event to a TicketTailor series"
-                      >
-                        Link →
-                      </Link>
+                      <span style={{ color: t.faint }}>—</span>
                     )}
                   </div>
                 );
@@ -754,14 +751,14 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
             <h2 className="text-[14px] font-semibold tracking-[0.10em] uppercase" style={{ color: t.muted }}>
               Revenue over time — every source, every day
             </h2>
-            <div className="flex items-center gap-1 rounded-full border p-1" style={{ borderColor: t.border }} data-testid="fin-trend-granularity">
+            <div className="flex items-center gap-1 rounded-[8px] border p-1" style={{ borderColor: t.border }} data-testid="fin-trend-granularity">
               {GRANULARITIES.map((g) => (
                 <button
                   key={g.id}
                   type="button"
                   onClick={() => setTrendGranularity(g.id)}
                   data-testid={`fin-trend-granularity-${g.id}`}
-                  className="px-3.5 py-1.5 rounded-full text-[11px] font-semibold tracking-[0.08em] uppercase transition-colors"
+                  className="px-3.5 py-1.5 rounded-[6px] text-[11px] font-semibold tracking-[0.08em] uppercase transition-colors"
                   style={{
                     background: trendGranularity === g.id ? t.rev : 'transparent',
                     color: trendGranularity === g.id ? t.addBtnText : t.mutedStrong,
@@ -775,14 +772,18 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
 
           {(() => {
             const rangeEventGross = trendBuckets.reduce((sum, b) => sum + b.eventGrossCents, 0);
+            const rangeTtGross = trendBuckets.reduce((sum, b) => sum + (b.ticketTailorGrossCents || 0), 0);
+            const rangeSdgatxGross = trendBuckets.reduce((sum, b) => sum + (b.sdgatxGrossCents || 0), 0);
             const rangePosRevenue = trendBuckets.reduce((sum, b) => sum + b.posRevenueCents, 0);
             const rangePosRefund = trendBuckets.reduce((sum, b) => sum + b.posRefundCents, 0);
             const rangeTotalGross = trendBuckets.reduce((sum, b) => sum + b.totalGrossCents, 0);
             const rangeTotalNet = trendBuckets.reduce((sum, b) => sum + b.totalNetCents, 0);
             return (
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6" data-testid="fin-trend-summary">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" data-testid="fin-trend-summary">
                 {[
                   { label: 'Event revenue', value: centsToUsd(rangeEventGross), accent: true },
+                  { label: 'sdgatx.com tickets', value: centsToUsd(rangeSdgatxGross) },
+                  { label: 'Ticket Tailor tickets (final)', value: centsToUsd(rangeTtGross) },
                   { label: 'POS revenue (SpotOn)', value: centsToUsd(rangePosRevenue), pos: true },
                   { label: 'POS refunds', value: centsToUsd(rangePosRefund) },
                   { label: 'Total gross (all sources)', value: centsToUsd(rangeTotalGross), accent: true },
@@ -833,8 +834,8 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
           )}
 
           <p className="mt-6 text-[12px]" style={{ color: t.faint }}>
-            Every calendar day is counted once, whether or not it has a named event — “Event revenue” is TicketTailor +
-            manual income tied to an event, “POS revenue” is SpotOn point-of-sale totals for that day (event days and
+            Every calendar day is counted once, whether or not it has a named event — “Event revenue” is online ticket sales
+            (sdgatx.com and the final Ticket Tailor record) plus manual income tied to an event, “POS revenue” is SpotOn point-of-sale totals for that day (event days and
             plain weekdays alike). Totals are gross before refunds/fees except where noted as net.
           </p>
         </>

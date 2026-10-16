@@ -50,7 +50,7 @@ export default function MercuryPayoutRow({ req, enabled, environment, busy, onQu
             {environment === 'sandbox' ? ' Sandbox' : ''}? This requires approval inside Mercury and does not mark the artist paid.
           </p>
           <div className="flex flex-wrap gap-3 mt-3">
-            <button type="button" disabled={busy || Boolean(blocked)} className="px-5 py-2.5 rounded-full text-[12px] font-semibold disabled:opacity-40"
+            <button type="button" disabled={busy || Boolean(blocked)} className="px-5 py-2.5 rounded-[8px] text-[12px] font-semibold disabled:opacity-40"
               style={buttonStyle}
               onClick={async () => { await onQueue(req.id, recipientId, amount); setConfirming(false); }}>
               {busy ? 'QUEUEING...' : 'CONFIRM QUEUE'}
@@ -62,12 +62,12 @@ export default function MercuryPayoutRow({ req, enabled, environment, busy, onQu
         <div className="mt-4">
           {hasRequest ? (
             <button type="button" disabled={busy || !enabled} onClick={() => onRefresh(req.id)}
-              className="px-5 py-2.5 rounded-full border text-[12px] font-semibold disabled:opacity-40" style={{ borderColor: 'var(--auth-card-border)' }}>
+              className="px-5 py-2.5 rounded-[8px] border text-[12px] font-semibold disabled:opacity-40" style={{ borderColor: 'var(--auth-card-border)' }}>
               {busy ? 'CHECKING...' : 'REFRESH MERCURY STATUS'}
             </button>
           ) : (
             <button type="button" disabled={busy || Boolean(blocked)} onClick={() => setConfirming(true)}
-              className="px-5 py-2.5 rounded-full text-[12px] font-semibold disabled:opacity-40" style={buttonStyle}>
+              className="px-5 py-2.5 rounded-[8px] text-[12px] font-semibold disabled:opacity-40" style={buttonStyle}>
               {payout ? 'RETRY SAME REQUEST' : 'QUEUE IN MERCURY'}
             </button>
           )}

@@ -7,7 +7,7 @@ import { rateLimit, keyFromRequest } from '@/lib/rate-limit';
 import { selectActiveTier, isProductOnSale, computeHoldSnapshot } from '@/lib/tickets/pricing';
 import { discountedCheckoutLines } from '@/lib/tickets/checkout-lines';
 import { resolveBuyerEntitlement } from '@/lib/tickets/entitlement-lookup';
-import { resolveEntitlementPercent, entitlementLabel } from '@/lib/tickets/entitlement';
+import { resolveEntitlementPercent, resolveRentalEntitlementPercent, entitlementLabel } from '@/lib/tickets/entitlement';
 import { generateHoldToken } from '@/lib/tickets/codes';
 import { createTicketCheckoutSession } from '@/lib/tickets/stripe';
 import { findOrCreateStripeCustomer } from '@/lib/stripe/client';
@@ -226,7 +226,11 @@ export async function POST(request) {
   // tier gate above). Historically it accepted any row in member_profiles,
   // including inactive / lapsed accounts, so a cancelled member could
   // still buy Insider-only tickets.
-  const hasMemberOnlyProduct = products.some((p) => p.member_only);
+  //
+  // Private-space rentals are always public (owner's rule, 2026-10-09), so a
+  // stale member_only flag on a rental row never gates a buyer.
+  const isMemberGated = (p) => p.member_only && p.kind !== 'private_space';
+  const hasMemberOnlyProduct = products.some(isMemberGated);
   let teamMemberForMemberOnly = null;
   if (hasMemberOnlyProduct) {
     const { data: teamRow } = await supabaseAdmin
@@ -242,7 +246,7 @@ export async function POST(request) {
     if (!isProductOnSale(p, now)) {
       return NextResponse.json({ error: `Product not on sale: ${p.name}` }, { status: 400 });
     }
-    if (p.member_only && !isActiveMemberForGate && !teamMemberForMemberOnly) {
+    if (isMemberGated(p) && !isActiveMemberForGate && !teamMemberForMemberOnly) {
       return NextResponse.json({ error: `Members only: ${p.name}` }, { status: 403 });
     }
   }
@@ -287,9 +291,11 @@ export async function POST(request) {
   // passed through because it was already loaded above for the access gates.
   let entitlement = null;
   let entitlementPercent = 0;
+  let rentalEntitlementPercent = 0;
   try {
     entitlement = await resolveBuyerEntitlement(supabaseAdmin, user.id, { memberProfile });
     entitlementPercent = resolveEntitlementPercent(event, entitlement);
+    rentalEntitlementPercent = resolveRentalEntitlementPercent(entitlement);
   } catch (err) {
     // Do not silently overcharge a member when an entitlement lookup fails.
     console.error('[tickets.hold.entitlement]', err?.message || err);
@@ -307,6 +313,7 @@ export async function POST(request) {
       event,
       discountCode,
       entitlementPercent,
+      rentalEntitlementPercent,
     });
     discountedItems = discountedCheckoutLines(snapshot, productsById, discountCode);
   } catch (err) {
@@ -544,7 +551,12 @@ export async function POST(request) {
       discount_cents: snapshot.discountCents,
       discount_source: snapshot.discountSource,
       entitlement_percent: snapshot.entitlementPercent,
-      entitlement_label: entitlementLabel(entitlement, snapshot.entitlementPercent),
+      rental_entitlement_percent: snapshot.rentalEntitlementDiscountCents ? snapshot.rentalEntitlementPercent : 0,
+      entitlement_label: entitlementLabel(
+        entitlement,
+        snapshot.ticketEntitlementDiscountCents ? snapshot.entitlementPercent : 0,
+        snapshot.rentalEntitlementDiscountCents ? snapshot.rentalEntitlementPercent : 0,
+      ),
       booking_fee_cents: snapshot.bookingFeeCents,
       tax_cents: snapshot.taxCents,
       tax_rate_bps: snapshot.taxRateBps,

@@ -14,7 +14,7 @@ export function StatusBadge({ value }) {
   const s = STATUS_MAP[value] || { color: '#8a8a8a', label: value };
   return (
     <span
-      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
+      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-[11px] font-semibold"
       style={{ background: `${s.color}22`, color: s.color }}
     >
       <span className="w-1.5 h-1.5 rounded-full" style={{ background: s.color }} />
@@ -68,7 +68,7 @@ export function AttentionFlags({ flags }) {
       {items.map((it) => (
         <span
           key={it.label}
-          className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
+          className="inline-flex items-center px-2 py-0.5 rounded-[6px] text-[10px] font-bold"
           style={{ background: `${it.color}22`, color: it.color }}
         >
           {it.label}

@@ -51,6 +51,24 @@ body {
   color-scheme: dark;
 }
 
+.auth-theme-root[data-auth-theme='light'] .vp-bar {
+  background: color-mix(in srgb, var(--auth-panel-bg) 94%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.auth-theme-root[data-auth-theme='dark'] .vp-bar {
+  background: rgba(10, 10, 10, 0.94);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] .vp-bar {
+  background: rgba(24, 26, 32, 0.94);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
 .auth-theme-page {
   color: var(--auth-text);
 }
@@ -278,6 +296,103 @@ select optgroup {
   color: var(--auth-strong-surface-text) !important;
 }
 
+/* Admin/Team dark theme: content sits in a #181A20 frame (like light mode's
+   cream frame) with the starfield visible around it. Hardcoded near-black
+   inline surfaces are lifted so they don't sit darker than the frame. */
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#141414'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #141414'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(20, 20, 20)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#141414'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #141414'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(20, 20, 20)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#171717'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #171717'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(23, 23, 23)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#171717'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #171717'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(23, 23, 23)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#191919'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #191919'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(25, 25, 25)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#191919'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #191919'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(25, 25, 25)'] {
+  background: var(--auth-card-bg) !important;
+}
+
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#1a1a1a'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #1a1a1a'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(26, 26, 26)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#1a1a1a'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #1a1a1a'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(26, 26, 26)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#1a1a1d'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #1a1a1d'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(26, 26, 29)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#1a1a1d'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #1a1a1d'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(26, 26, 29)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#1e1e1e'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #1e1e1e'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(30, 30, 30)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#1e1e1e'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #1e1e1e'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(30, 30, 30)'] {
+  background: #2A2D36 !important;
+}
+
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#0a0a0a'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #0a0a0a'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(10, 10, 10)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#0a0a0a'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #0a0a0a'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(10, 10, 10)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#0d0d0d'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #0d0d0d'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(13, 13, 13)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#0d0d0d'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #0d0d0d'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(13, 13, 13)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#0f0f0f'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #0f0f0f'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(15, 15, 15)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#0f0f0f'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #0f0f0f'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(15, 15, 15)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#101010'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #101010'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(16, 16, 16)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#101010'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #101010'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(16, 16, 16)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#111'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #111'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(17, 17, 17)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#111'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #111'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(17, 17, 17)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background:#121212'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: #121212'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background: rgb(18, 18, 18)'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color:#121212'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: #121212'],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] [style*='background-color: rgb(18, 18, 18)'] {
+  background: var(--auth-input-bg) !important;
+}
+
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] .bg-\[\#111\],
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] .bg-neutral-900 {
+  background: var(--auth-input-bg) !important;
+}
+
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] .bg-\[\#1a1a1a\] {
+  background: #2A2D36 !important;
+}
+
+.auth-theme-root[data-auth-surface='slate'][data-auth-theme='dark'] .tc-root[data-theme=dark] {
+  --bg:#181A20;--panel:#22252D;--raised:#2A2D36;--border:#363A44;--inverse:#181A20;--warnbg:#3F3F3F;
+}
+
 /* Prevent long URLs / strings from blowing out the layout on mobile. */
 p, a, span, h1, h2, h3, h4, h5, h6, li {
   overflow-wrap: break-word;
@@ -421,4 +536,68 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   ::view-transition-new(portal-studio) {
     animation-duration: 0.001ms;
   }
+}
+
+/* ── Events list row actions ──────────────────────────────────────────
+   Square-cornered (8px) buttons matching the Orders & Refunds page, plus a
+   joined Edit/Delete icon control. Heights are shared (36px) so labelled
+   and icon buttons sit on one baseline. */
+.sdg-row-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 14px;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+.sdg-row-btn:focus-visible,
+.sdg-row-icon-btn:focus-visible {
+  outline: 2px solid var(--auth-text-strong, #191919);
+  outline-offset: 2px;
+}
+.sdg-row-icon-group {
+  display: inline-flex;
+  align-items: stretch;
+  height: 36px;
+  border: 1px solid var(--auth-ghost-border, #d7d7d7);
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.sdg-row-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  color: var(--auth-ghost-text, #191919);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.sdg-row-icon-btn + .sdg-row-icon-btn {
+  border-left: 1px solid var(--auth-ghost-border, #d7d7d7);
+}
+.sdg-row-icon-btn:hover {
+  background: var(--auth-hover-bg, rgba(0, 0, 0, 0.04));
+}
+.sdg-row-icon-btn:focus-visible {
+  outline-offset: -2px;
+  border-radius: 7px;
+}
+.sdg-row-icon-btn--danger:hover,
+.sdg-row-icon-btn--danger:focus-visible {
+  background: var(--auth-danger-bg, rgba(220, 38, 38, 0.08));
+  color: var(--auth-danger, #b91c1c);
+}
+.sdg-row-icon-btn:disabled {
+  opacity: 0.5;
+  cursor: progress;
 }

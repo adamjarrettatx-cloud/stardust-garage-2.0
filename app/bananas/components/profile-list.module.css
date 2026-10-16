@@ -1,0 +1,114 @@
+/* Large-photo profile list — shared by Membership Journey and Membership
+   Applications. One bordered list, one row per person. The photo stays large (144px) so
+   faces are recognisable at a glance; everything else is read left to right:
+   who they are and where they stand, how to reach them, and the detail link
+   (with the applied date on Applications). */
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--auth-card-border);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--auth-card-bg);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.list > li + li { border-top: 1px solid var(--auth-card-border); }
+
+.row {
+  display: grid;
+  grid-template-columns: 144px minmax(0, 1.1fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 28px;
+  padding: 18px 24px 18px 18px;
+  color: var(--auth-text);
+  transition: background-color 150ms;
+}
+.row:hover { background: var(--auth-hover-bg); }
+.row:focus-visible { outline: 2px solid var(--auth-accent-strong); outline-offset: -2px; }
+.readOnly:hover { background: transparent; }
+
+.photo {
+  position: relative;
+  width: 144px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--auth-card-border);
+  background: var(--auth-card-bg-alt);
+  color: var(--auth-muted);
+}
+.photo img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+.photo > span { font-size: 40px; font-weight: 600; letter-spacing: -.04em; }
+
+.identity { min-width: 0; }
+.stage {
+  display: inline-block;
+  border: 1px solid var(--auth-card-border-strong);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: .12em;
+  background: var(--auth-card-bg-alt);
+  margin-bottom: 10px;
+}
+.identity h2 {
+  font-size: 19px;
+  font-weight: 750;
+  letter-spacing: -.025em;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  color: var(--auth-text-strong);
+}
+.context {
+  margin-top: 10px;
+  color: var(--auth-muted);
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.context > span { font-size: 11px; }
+.context p { margin-top: 2px; }
+
+.details { display: grid; gap: 10px; min-width: 0; }
+.details > div { display: grid; grid-template-columns: 45px minmax(0, 1fr); align-items: baseline; gap: 14px; }
+.details dt { font-size: 12px; line-height: 1.5; color: var(--auth-muted); }
+.details dd { font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+
+.action { justify-self: end; display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
+.date { display: flex; flex-direction: column; gap: 2px; font-size: 11px; line-height: 1.6; color: var(--auth-muted); text-align: right; }
+.preferred { font-size: 12px; color: var(--auth-muted); line-height: 1.5; margin-top: 3px; overflow-wrap: anywhere; }
+.open { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.open > span { font-size: 17px; line-height: 1; }
+
+/* Content width, not viewport width: the admin sidebar shares the screen.
+   Narrower: contact details move under the name; the photo stays large. */
+@container (max-width: 760px) {
+  .row {
+    grid-template-columns: 120px minmax(0, 1fr);
+    grid-template-areas: 'photo identity' 'photo details' 'photo action';
+    align-items: start;
+    gap: 12px 20px;
+    padding: 16px;
+  }
+  .photo { grid-area: photo; width: 120px; }
+  .identity { grid-area: identity; }
+  .details { grid-area: details; }
+  .action { grid-area: action; justify-self: start; flex-direction: row; flex-wrap: wrap; align-items: flex-end; gap: 10px 24px; }
+  .date { text-align: left; }
+  .action:empty { display: none; }
+}
+@container (max-width: 420px) {
+  .row {
+    grid-template-columns: 96px minmax(0, 1fr);
+    grid-template-areas: 'photo identity' 'details details' 'action action';
+    gap: 14px 14px;
+  }
+  .photo { width: 96px; }
+  .photo > span { font-size: 30px; }
+}
+@media (prefers-reduced-motion: reduce) { .row { transition: none; } }

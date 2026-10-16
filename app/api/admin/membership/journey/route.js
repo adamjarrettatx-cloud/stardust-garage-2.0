@@ -21,12 +21,29 @@ import { NextResponse } from 'next/server';
 import { requireOwner } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { STRIPE_PRICES, PLAN_DISPLAY } from '@/lib/stripe-prices';
-import { resolveMemberPhotoUrls } from '@/lib/member-photo';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Page through a query until an empty page. A short page is not treated as
+// the last one, because the server cap can return fewer rows than requested.
+// `query(from, to)` must apply a total order (a unique tiebreaker) so offset
+// pages never repeat or skip rows. A failed page throws rather than returning
+// a partial list that would show wrong counts.
+const PAGE_SIZE = 1000;
+const MAX_PAGES = 100;
+async function fetchAllRows(query) {
+  const rows = [];
+  for (let page = 0; page < MAX_PAGES; page += 1) {
+    const { data, error } = await query(rows.length, rows.length + PAGE_SIZE - 1);
+    if (error) throw new Error(error.message || 'Journey query failed');
+    if (!data?.length) break;
+    rows.push(...data);
+  }
+  return rows;
+}
 
 // The six tabs in journey order. Order here is order rendered.
 const TAB_ORDER = [
@@ -95,39 +112,41 @@ export async function GET() {
 
   const admin = createAdminClient();
 
-  // Parallel fan-out over the four sources we cross-link.
-  const [passesRes, checkinsRes, membersRes, accountsRes] = await Promise.all([
-    admin
+  // Parallel fan-out over the four sources we cross-link. Every source is
+  // read in full: PostgREST clamps each response to the project's max-rows
+  // (1000) and silently ignores a larger .limit(), which previously cut the
+  // trial tabs to the newest 1000 passes and undercounted them.
+  const [passes, checkins, members, accounts] = await Promise.all([
+    fetchAllRows((from, to) => admin
       .from('trial_passes')
       .select(
         'id, full_name, email, phone, status, signup_source, issued_at, expires_at, extended_until, activated_at, signup_expires_at, applied_at, converted_at, member_profile_id, application_id, profile_photo_path, user_id'
       )
       .order('issued_at', { ascending: false })
-      .limit(2000),
-    admin
+      .order('id', { ascending: true })
+      .range(from, to)),
+    fetchAllRows((from, to) => admin
       .from('trial_pass_checkins')
-      .select('trial_pass_id, result, checked_in_at')
+      .select('id, trial_pass_id, result, checked_in_at')
       .eq('result', 'allowed')
       .order('checked_in_at', { ascending: false })
-      .limit(5000),
-    admin
+      .order('id', { ascending: true })
+      .range(from, to)),
+    fetchAllRows((from, to) => admin
       .from('member_profiles')
       .select(
         'id, full_name, email, is_active, created_at, stripe_customer_id, stripe_subscription_id, subscription_status, subscription_plan, subscription_period, current_period_end, cancel_at_period_end, photo_url, profile_photo_path, application_id, user_id'
       )
       .order('created_at', { ascending: false })
-      .limit(2000),
-    admin
+      .order('id', { ascending: true })
+      .range(from, to)),
+    fetchAllRows((from, to) => admin
       .from('free_accounts')
       .select('id, user_id, full_name, email, phone, phone_verified_at, created_at, profile_photo_path')
       .order('created_at', { ascending: false })
-      .limit(2000),
+      .order('id', { ascending: true })
+      .range(from, to)),
   ]);
-
-  const passes    = passesRes?.data    || [];
-  const checkins  = checkinsRes?.data  || [];
-  const members   = membersRes?.data   || [];
-  const accounts  = accountsRes?.data  || [];
 
   // Per-pass check-in counts + first visit. Used both to detect activation
   // and to render a "visited N× · last …" line on trial cards.
@@ -198,17 +217,15 @@ export async function GET() {
     tabs[t].sort((a, b) => new Date(b.member_since) - new Date(a.member_since));
   }
 
-  // Resolve private photos only after authorization. Never send storage keys
-  // to the browser; each card receives a short-lived URL string or null.
-  const photos = await resolveMemberPhotoUrls(admin, Object.values(tabs).flat().map((row) => ({
-    id: `${row.kind}:${row.id}`,
-    profile_photo_path: row.photo_path,
-    photo_url: row.photo_url,
-  })));
+  // Photos are NOT signed here. Signing every photo across all six tabs
+  // (1,400+ in production) made this endpoint take tens of seconds. Each row
+  // carries only `has_photo`; the client asks
+  // /api/admin/membership/journey/photos for the cards actually on screen.
+  // Never send storage keys to the browser.
   for (const tab of TAB_ORDER) {
-    tabs[tab] = tabs[tab].map(({ photo_path, ...row }) => ({
+    tabs[tab] = tabs[tab].map(({ photo_path, photo_url, ...row }) => ({
       ...row,
-      photo_url: photos.get(`${row.kind}:${row.id}`) || null,
+      has_photo: Boolean(photo_path || photo_url),
     }));
   }
 

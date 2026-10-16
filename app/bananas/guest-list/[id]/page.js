@@ -61,7 +61,7 @@ export default async function EventGuestListPage({ params }) {
             lives inside that form. */}
         <Link
           href={`/bananas/events/${event.id}`}
-          className="auth-theme-border-button px-4 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors"
+          className="auth-theme-border-button px-4 py-2.5 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border transition-colors"
           style={{ color: 'var(--auth-accent)' }}
         >
           EVENT DETAILS

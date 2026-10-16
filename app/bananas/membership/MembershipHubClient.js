@@ -6,7 +6,8 @@
 //
 //   Guest · Trial Ready · Trial Activated · The Weekender · The Builder · The Insider
 //
-// Each tab is a clean, scannable card grid of profiles currently in that state.
+// Each tab is a clean, scannable list of profiles currently in that state,
+// with large square photos so faces are easy to recognise.
 // No funnel chart, no timeseries, no KPI clutter. The counts on the tabs
 // are the funnel. Selecting a tab reveals a search box, the tab's hint line,
 // and the profile list; nothing else.
@@ -16,14 +17,15 @@
 // /bananas/applications and /bananas/members surfaces. This hub is
 // "who is at each state right now".
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useAuthenticatedTheme } from '@/app/components/AuthenticatedThemeProvider';
 import { ANALYTICS_THEMES, FINANCIAL_THEMES } from '@/lib/admin-theme';
 import { centsToUsd } from '@/lib/event-analytics';
 import UnderlineTabs from '../components/UnderlineTabs';
 import cardStyles from '../applications/applications.module.css';
-import styles from './membership.module.css';
+import styles from '../components/profile-list.module.css';
+import { formatPhone } from '@/lib/phone';
 
 const THEMES = {
   dark:  { ...ANALYTICS_THEMES.dark,  ...FINANCIAL_THEMES.dark },
@@ -50,20 +52,21 @@ function fmtCents(cents) {
 }
 
 // -----------------------------------------------------------------------
-// Avatar (photo or initials fallback)
+// Photo (photo or initials fallback) — a large square thumbnail at the start
+// of each list row, sized so faces stay recognisable.
 // -----------------------------------------------------------------------
 
-function ProfilePhoto({ name, photoUrl }) {
+function ProfilePhoto({ name, photoUrl, onPhotoError }) {
   const [failedUrl, setFailedUrl] = useState(null);
   const initials = (name || '').trim().split(/\s+/).map((p) => p[0] || '').slice(0, 2).join('').toUpperCase() || '?';
   return (
     <div
-      className={cardStyles.photo}
+      className={styles.photo}
       style={{ aspectRatio: '1 / 1' }}
     >
       {photoUrl && photoUrl !== failedUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={photoUrl} alt={name || ''} loading="lazy" decoding="async" onError={() => setFailedUrl(photoUrl)} />
+        <img src={photoUrl} alt={name || ''} loading="lazy" decoding="async" onError={() => { setFailedUrl(photoUrl); onPhotoError?.(); }} />
       ) : <span aria-hidden="true">{initials}</span>}
     </div>
   );
@@ -91,34 +94,32 @@ function contextLine(row) {
 }
 
 // -----------------------------------------------------------------------
-// Profile card — shared application-card styling for all six lifecycle tabs.
+// Profile row — one large-thumbnail list row, shared by all six tabs.
 // Only members have detail destinations; guests/trials remain read-only.
 // -----------------------------------------------------------------------
 
-function ProfileCard({ row, stageLabel }) {
+function ProfileRow({ row, stageLabel, photoUrl, photoRef, onPhotoError }) {
   const name = row.full_name || row.email || 'Unnamed';
   const contextLabel = row.kind === 'account' ? 'Account'
     : row.kind === 'trial' ? 'Trial activity' : 'Membership';
   const inner = (
     <>
-      <ProfilePhoto name={name} photoUrl={row.photo_url} />
-      <div className={cardStyles.body}>
-        <div className={cardStyles.identity}>
-          <div className={cardStyles.plan}>{stageLabel}</div>
-          <h2>{name}</h2>
-        </div>
-        <dl className={cardStyles.details}>
-          <div><dt>Email</dt><dd>{row.email || 'Not provided'}</dd></div>
-          <div><dt>Phone</dt><dd>{row.phone || 'Not provided'}</dd></div>
-        </dl>
-      </div>
-      <div className={`${cardStyles.footer} ${styles.footer}`}>
+      <ProfilePhoto name={name} photoUrl={photoUrl} onPhotoError={onPhotoError} />
+      <div className={styles.identity}>
+        <div className={styles.stage}>{stageLabel}</div>
+        <h2>{name}</h2>
         <div className={styles.context}>
           <span>{contextLabel}</span>
           <p>{contextLine(row)}</p>
         </div>
+      </div>
+      <dl className={styles.details}>
+        <div><dt>Email</dt><dd>{row.email || 'Not provided'}</dd></div>
+        <div><dt>Phone</dt><dd>{formatPhone(row.phone) || 'Not provided'}</dd></div>
+      </dl>
+      <div className={styles.action}>
         {row.href ? (
-          <span className={`${cardStyles.open} ${styles.open}`}>
+          <span className={styles.open}>
             View member <span aria-hidden="true">↗</span>
           </span>
         ) : null}
@@ -126,11 +127,13 @@ function ProfileCard({ row, stageLabel }) {
     </>
   );
 
-  if (!row.href) return <article className={`${cardStyles.card} ${styles.readOnly}`}>{inner}</article>;
+  if (!row.href) return <li><article ref={photoRef} className={`${styles.row} ${styles.readOnly}`}>{inner}</article></li>;
   return (
-    <Link href={row.href} className={cardStyles.card} aria-label={`View member ${name}`}>
-      {inner}
-    </Link>
+    <li>
+      <Link href={row.href} ref={photoRef} className={styles.row} aria-label={`View member ${name}`}>
+        {inner}
+      </Link>
+    </li>
   );
 }
 
@@ -139,6 +142,16 @@ function ProfileCard({ row, stageLabel }) {
 // -----------------------------------------------------------------------
 
 const DEFAULT_TAB = 'guest';
+
+// Photo loading. The list endpoint returns only `has_photo`; signed URLs are
+// requested in batches for cards that are on (or near) the screen. Links
+// last five minutes, so a cached link is reused until shortly before expiry.
+const PHOTO_BATCH_MAX = 200;
+const PHOTO_BATCH_DELAY_MS = 50;
+const PHOTO_EXPIRY_MARGIN_MS = 30 * 1000;
+const PHOTO_PRELOAD_MARGIN = '800px 0px';
+
+const photoKey = (row) => `${row.kind}:${row.id}`;
 
 export default function MembershipHubClient() {
   const { theme: mode } = useAuthenticatedTheme();
@@ -149,6 +162,111 @@ export default function MembershipHubClient() {
   const [error, setError]     = useState(null);
   const [active, setActive]   = useState(DEFAULT_TAB);
   const [q, setQ]             = useState('');
+  const [photos, setPhotos]   = useState({}); // key → { url, expiresAt }
+
+  // Photo batching state lives in refs so the IntersectionObserver callback
+  // and in-flight requests never see stale closures.
+  const photosRef   = useRef(photos);
+  const pendingRef  = useRef(new Set());
+  const inflightRef = useRef(new Set());
+  const timerRef    = useRef(null);
+  const observerRef = useRef(null);
+  const callbacksRef = useRef(new Map()); // key → { ref, onError }, stable per card
+  useEffect(() => { photosRef.current = photos; }, [photos]);
+
+  const flushPhotos = useCallback(function flush() {
+    timerRef.current = null;
+    const keys = [...pendingRef.current].slice(0, PHOTO_BATCH_MAX);
+    if (keys.length === 0) return;
+    for (const k of keys) { pendingRef.current.delete(k); inflightRef.current.add(k); }
+    fetch('/api/admin/membership/journey/photos', {
+      method: 'POST',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keys }),
+    })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((json) => {
+        const expiresAt = json?.expires_at ? new Date(json.expires_at).getTime() : Date.now() + 5 * 60 * 1000;
+        setPhotos((prev) => {
+          const next = { ...prev };
+          for (const k of keys) next[k] = { url: json?.photos?.[k] || null, expiresAt };
+          return next;
+        });
+      })
+      .catch(() => { /* Cards keep their initials; the next scroll or tab change retries. */ })
+      .finally(() => {
+        for (const k of keys) inflightRef.current.delete(k);
+        if (pendingRef.current.size && !timerRef.current) {
+          timerRef.current = window.setTimeout(flush, PHOTO_BATCH_DELAY_MS);
+        }
+      });
+    if (pendingRef.current.size) timerRef.current = window.setTimeout(flush, PHOTO_BATCH_DELAY_MS);
+  }, []);
+
+  const requestPhotos = useCallback((keys) => {
+    let added = false;
+    const now = Date.now();
+    for (const k of keys) {
+      const cached = photosRef.current[k];
+      const fresh = Boolean(cached) && cached.expiresAt - PHOTO_EXPIRY_MARGIN_MS > now;
+      if (fresh || inflightRef.current.has(k) || pendingRef.current.has(k)) continue;
+      pendingRef.current.add(k);
+      added = true;
+    }
+    if (added && !timerRef.current) timerRef.current = window.setTimeout(flushPhotos, PHOTO_BATCH_DELAY_MS);
+  }, [flushPhotos]);
+
+  // One shared observer for every card. Created lazily inside ref callbacks,
+  // which only run in the browser.
+  const getObserver = useCallback(() => {
+    if (!observerRef.current && typeof IntersectionObserver !== 'undefined') {
+      observerRef.current = new IntersectionObserver((entries) => {
+        const keys = [];
+        for (const entry of entries) {
+          if (entry.isIntersecting && entry.target.dataset.photoKey) keys.push(entry.target.dataset.photoKey);
+        }
+        if (keys.length) requestPhotos(keys);
+      }, { rootMargin: PHOTO_PRELOAD_MARGIN });
+    }
+    return observerRef.current;
+  }, [requestPhotos]);
+
+  // Stable per-card callbacks, cached by key so photo updates re-render
+  // cards without detaching and re-observing every one of them.
+  //   ref     — observes the card; React 19 runs the returned cleanup on unmount.
+  //   onError — an expired link (e.g. a card remounted after a tab switch) is
+  //             re-signed; a fresh link that fails just shows initials.
+  const callbacksFor = useCallback((key) => {
+    let cb = callbacksRef.current.get(key);
+    if (cb) return cb;
+    cb = {
+      ref: (el) => {
+        if (!el) return undefined;
+        const observer = getObserver();
+        if (!observer) { requestPhotos([key]); return undefined; }
+        el.dataset.photoKey = key;
+        observer.observe(el);
+        return () => observer.unobserve(el);
+      },
+      onError: () => {
+        const entry = photosRef.current[key];
+        if (entry && entry.expiresAt - PHOTO_EXPIRY_MARGIN_MS <= Date.now()) requestPhotos([key]);
+      },
+    };
+    callbacksRef.current.set(key, cb);
+    return cb;
+  }, [getObserver, requestPhotos]);
+
+  useEffect(() => () => {
+    if (timerRef.current) window.clearTimeout(timerRef.current);
+    observerRef.current?.disconnect();
+    observerRef.current = null;
+    timerRef.current = null;
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -163,8 +281,9 @@ export default function MembershipHubClient() {
       .catch((e) => { if (!cancelled) setError(e.message || 'Failed to load'); })
       .finally(() => { if (!cancelled) setLoading(false); });
     load();
-    // Signed photos expire after five minutes. Refresh before expiry and
-    // when returning to a tab that may have been suspended by the browser.
+    // Keep the lists current while the page stays open. This refresh no
+    // longer signs photos — those are requested per visible card and reused
+    // until shortly before their five-minute expiry.
     const refresh = () => { if (document.visibilityState === 'visible') load(); };
     const timer = window.setInterval(refresh, 4 * 60 * 1000);
     document.addEventListener('visibilitychange', refresh);
@@ -193,7 +312,7 @@ export default function MembershipHubClient() {
     const query = q.trim().toLowerCase();
     if (!query) return rows;
     return rows.filter((r) => {
-      const hay = `${r.full_name || ''} ${r.email || ''} ${r.phone || ''}`.toLowerCase();
+      const hay = `${r.full_name || ''} ${r.email || ''} ${r.phone || ''} ${formatPhone(r.phone)}`.toLowerCase();
       return hay.includes(query);
     });
   }, [rows, q]);
@@ -266,6 +385,7 @@ export default function MembershipHubClient() {
             onChange={setActive}
             ariaLabel="Filter accounts by lifecycle state"
             testId="membership-journey"
+            exactCounts
           />
         ) : null}
 
@@ -285,7 +405,7 @@ export default function MembershipHubClient() {
           ) : null}
         </div>
 
-        {/* Every tab uses the same responsive profile cards. */}
+        {/* Every tab uses the same large-thumbnail list rows. */}
         <div>
           {loading && !payload ? (
             <div className={cardStyles.empty} role="status">Loading…</div>
@@ -296,11 +416,18 @@ export default function MembershipHubClient() {
                 : 'No matches for your search.'}
             </div>
           ) : (
-            <div className={cardStyles.grid} data-testid="membership-journey-cards">
+            <ul className={styles.list} data-testid="membership-journey-list">
               {filtered.map((row) => (
-                <ProfileCard key={`${row.kind}-${row.id}`} row={row} stageLabel={activeMeta?.label} />
+                <ProfileRow
+                  key={`${row.kind}-${row.id}`}
+                  row={row}
+                  stageLabel={activeMeta?.label}
+                  photoUrl={row.has_photo ? photos[photoKey(row)]?.url || null : null}
+                  photoRef={row.has_photo ? callbacksFor(photoKey(row)).ref : undefined}
+                  onPhotoError={row.has_photo ? callbacksFor(photoKey(row)).onError : undefined}
+                />
               ))}
-            </div>
+            </ul>
           )}
         </div>
       </div>

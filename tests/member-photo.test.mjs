@@ -8,9 +8,10 @@ import { readFileSync } from 'node:fs';
 
 const src = readFileSync(new URL('../lib/member-photo.js', import.meta.url), 'utf8');
 
-test('imports the shared signed-URL helper from profile-photo', () => {
+test('imports the shared signed-URL helpers from profile-photo', () => {
   assert.match(src, /from\s+'@\/lib\/profile-photo'/);
-  assert.match(src, /createProfilePhotoSignedUrl/);
+  assert.match(src, /createProfilePhotoSignedUrl\b/);
+  assert.match(src, /createProfilePhotoSignedUrls/);
 });
 
 test('prefers profile_photo_path over photo_url', () => {
@@ -31,10 +32,11 @@ test('falls back to photo_url when signing throws', () => {
   assert.match(singleFn, /return row\.photo_url\s*\|\|\s*null/);
 });
 
-test('bulk helper runs in parallel via Promise.all', () => {
+test('bulk helper signs through the batched Storage helper, not one call per row', () => {
   const bulk = sliceBetween(src, 'export async function resolveMemberPhotoUrls', '$$END$$');
-  assert.match(bulk, /Promise\.all/);
-  assert.match(bulk, /rows\.slice\(offset, offset \+ 25\)\.map/);
+  assert.match(bulk, /createProfilePhotoSignedUrls\(admin, paths\)/);
+  assert.doesNotMatch(bulk, /resolveMemberPhotoUrl\(admin, row\)/);
+  assert.match(bulk, /row\.photo_url \|\| null/);
 });
 
 test('bulk helper returns a Map keyed by row.id', () => {

@@ -15,20 +15,27 @@ const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8');
 
 const ROUTE = read('app/api/admin/refresh-event-metrics/route.js');
 
-test('the route imports the internal snapshot builder alongside the TT one', () => {
+test('the route imports the internal snapshot builder and never pulls Ticket Tailor', () => {
   assert.match(ROUTE, /buildInternalMetricsSnapshot/);
-  assert.match(ROUTE, /buildMetricsSnapshot/);
   assert.match(ROUTE, /buildPlaceholderMetricsRow/);
+  assert.doesNotMatch(ROUTE, /buildMetricsSnapshot\b/);
+  assert.doesNotMatch(ROUTE, /lib\/tickettailor/);
+  assert.doesNotMatch(ROUTE, /listOrders|listIssuedTickets/);
+});
+
+test('Ticket Tailor-linked events are frozen, never refreshed or overwritten', () => {
+  assert.match(ROUTE, /ticketing_mode === 'internal' && !event\.tt_event_series_id/);
 });
 
 test('the events query pulls ticketing_mode so the provider branch can decide', () => {
-  assert.match(ROUTE, /'events'\)\.select\('id, title, tt_event_series_id, ticketing_mode'\)/);
+  assert.match(ROUTE, /'events'\)\.select\('id, title, event_date, tt_event_series_id, ticketing_mode'\)/);
 });
 
 test('internal-ticketing events are aggregated from orders and tickets locally', () => {
   // The helper reads paid-like columns from orders and status from tickets;
   // both selects are essential to the widget's math.
   assert.match(ROUTE, /ticketing_mode === 'internal'/);
+
   assert.match(ROUTE, /from\('orders'\)/);
   assert.match(ROUTE, /from\('tickets'\)/);
   assert.match(ROUTE, /total_cents, fees_cents, refunded_cents/);

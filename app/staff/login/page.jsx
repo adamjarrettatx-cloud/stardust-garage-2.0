@@ -34,7 +34,7 @@ export default function StationLogin() {
           <input id="station-password" name="password" type="password" autoComplete="current-password" maxLength={128}
             value={password} onChange={e => setPassword(e.target.value)} required className={input} disabled={busy} /></div>
         {error && <p className="text-sm text-red-300" role="alert">{error}</p>}
-        <button type="submit" disabled={busy} className="w-full rounded-full bg-white text-black py-3.5 font-semibold disabled:opacity-50">
+        <button type="submit" disabled={busy} className="w-full rounded-[8px] bg-white text-black py-3.5 font-semibold disabled:opacity-50">
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
       </form>

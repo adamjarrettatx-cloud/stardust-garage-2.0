@@ -3,6 +3,7 @@ import { getRequestUser } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { parseBearerToken } from '@/lib/request-auth';
 import { validateLegalName } from '@/lib/legal-name';
+import { normalizeStoredPhone } from '@/lib/phone';
 
 export const runtime = 'nodejs';
 
@@ -29,11 +30,13 @@ export async function PATCH(request) {
     const admin = createAdminClient();
     const { data: previous, error: readError } = await admin.from('free_accounts').select('phone,phone_verified_at').eq('user_id', user.id).maybeSingle();
     if (readError) throw readError;
-    const phoneChanged = (previous?.phone || '').replace(/\D/g, '') !== phone.replace(/\D/g, '');
+    // Compare canonical forms so re-saving "+1 (512) 555-1234" over a stored
+    // +15125551234 keeps its verification.
+    const phoneChanged = normalizeStoredPhone(previous?.phone || '') !== normalizeStoredPhone(phone);
     const { error } = await admin.from('free_accounts').upsert({
       // The established free_accounts schema stores absent phones as an empty
       // string (phone is NOT NULL); do not require a schema migration for edits.
-      user_id: user.id, email: user.email, full_name: fullName, phone,
+      user_id: user.id, email: user.email, full_name: fullName, phone: normalizeStoredPhone(phone),
       // An unchanged number keeps verification; never accept a verification claim from the browser.
       phone_verified_at: phoneChanged ? null : previous?.phone_verified_at || null,
       updated_at: new Date().toISOString(),

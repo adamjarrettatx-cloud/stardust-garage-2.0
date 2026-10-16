@@ -53,7 +53,7 @@ export default function InvitePartnerButton({ contactId, email, contactType, par
     return (
       <div className="text-[13px]" style={{ color: 'var(--auth-muted)' }}>
         <span
-          className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-full mr-3"
+          className="inline-block text-[10px] font-semibold tracking-[0.14em] px-3 py-1 rounded-[6px] mr-3"
           style={
             partnerProfile.is_active
               ? {
@@ -83,7 +83,7 @@ export default function InvitePartnerButton({ contactId, email, contactType, par
         type="button"
         onClick={handleInvite}
         disabled={sending || !email}
-        className="px-5 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5 disabled:opacity-40"
+        className="px-5 py-2.5 rounded-[8px] text-[11px] font-semibold tracking-[0.12em] border transition-colors hover:bg-white/5 disabled:opacity-40"
         style={{ borderColor: 'var(--auth-card-border-strong)', color: 'var(--auth-text)' }}
       >
         {sending ? 'SENDING INVITE...' : `INVITE THIS ${roleUpper}`}

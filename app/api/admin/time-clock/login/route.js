@@ -38,7 +38,7 @@ async function workerRow(client, id) {
     .select("id,name,active,user_id,username,login_enabled,login_managed")
     .eq("id", id)
     .maybeSingle();
-  if (error) throw new ClockError("Timekeeping is temporarily unavailable.", 503);
+  if (error) throw new ClockError("Staff tools are temporarily unavailable.", 503);
   if (!data) throw new ClockError("Worker not found.", 404);
   return data;
 }
@@ -76,7 +76,7 @@ export async function POST(request) {
       if (username) {
         const { data: taken, error } = await client
           .from("tc_workers").select("id").eq("username", username).maybeSingle();
-        if (error) throw new ClockError("Timekeeping is temporarily unavailable.", 503);
+        if (error) throw new ClockError("Staff tools are temporarily unavailable.", 503);
         if (taken) throw new ClockError("That username is already in use.", 409);
       }
       if (email) {
@@ -84,10 +84,25 @@ export async function POST(request) {
         if (existing?.id) {
           if (existing.station)
             throw new ClockError("That email belongs to a shared station account.", 409);
+          // Team/admin/partner accounts keep their own workspaces; an
+          // employee login would lock them out of those. Use a username.
+          if (existing.team || existing.partner)
+            throw new ClockError(
+              "That email belongs to a team or partner account. Create a username login for this person instead.",
+              409,
+            );
           await audit("link_login", { user_id: existing.id, username, managed: false });
+          // Linked accounts become employee-only while linked (see middleware).
+          const { error: flagError } = await client.auth.admin.updateUserById(existing.id, {
+            app_metadata: { employee_account: true },
+          });
+          if (flagError) {
+            await audit("unlink_login").catch(() => {});
+            throw new ClockError("Could not link the account. Nothing was changed. Try again.", 503);
+          }
           return json({
             linked_existing: true,
-            text: `${email} already has a Stardust Garage account. It is now linked to ${w.name}. They sign in with their existing password (or use Forgot password on the login page).`,
+            text: `${email} already has a Stardust Garage account. It is now linked to ${w.name} and will open only the employee portal on the website and app while linked. They sign in with their existing password (or use Forgot password on the login page).`,
           });
         }
       }
@@ -140,6 +155,12 @@ export async function POST(request) {
       if (!w.user_id) throw new ClockError("This profile has no employee login.", 409);
       if (w.login_managed) {
         const { error } = await client.auth.admin.updateUserById(w.user_id, { ban_duration: BANNED });
+        if (error) throw new ClockError("Could not remove the login. Try again.", 503);
+      } else {
+        // A linked personal account returns to its normal customer access.
+        const { error } = await client.auth.admin.updateUserById(w.user_id, {
+          app_metadata: { employee_account: false },
+        });
         if (error) throw new ClockError("Could not remove the login. Try again.", 503);
       }
       await audit("unlink_login");

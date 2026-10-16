@@ -46,6 +46,10 @@ export default function UnderlineTabs({
   // far better than filters the user cannot see. Strips that fit (six or fewer)
   // stay on the default single scrolling row.
   wrap = false,
+  // Show the real number instead of capping at "99+". Pages where the count
+  // itself is the information (Membership Journey) opt in; queue badges
+  // elsewhere keep the compact cap.
+  exactCounts = false,
 }) {
   return (
     <div
@@ -100,7 +104,7 @@ export default function UnderlineTabs({
                   color: isActive ? '#0a0a0a' : 'var(--auth-muted)',
                 }}
               >
-                {count > 99 ? '99+' : count}
+                {exactCounts || count <= 99 ? count.toLocaleString('en-US') : '99+'}
               </span>
             )}
           </button>

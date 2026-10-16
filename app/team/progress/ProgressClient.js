@@ -84,12 +84,12 @@ const ADMIN_THEMES = {
     muted: '#8a8a8a',
     mutedStrong: '#c0c0c0',
     pageBg: 'transparent',
-    cardBg: '#141414',
+    cardBg: '#22252D',
     cardBorder: 'rgba(255,255,255,0.05)',
     tableBorder: 'rgba(255,255,255,0.06)',
     rowBorder: 'rgba(255,255,255,0.05)',
-    theadBg: '#161616',
-    inputBg: '#0a0a0a',
+    theadBg: '#2A2D36',
+    inputBg: '#121419',
     inputBorder: 'rgba(255,255,255,0.1)',
     inputText: '#e5e5e5',
     ghostBorder: 'rgba(255,255,255,0.15)',
@@ -325,11 +325,11 @@ function AdminProgressView({ initialTasks, assignees, isOwner, currentTeamMember
             value={quickAddText}
             onChange={(e) => { setQuickAddText(e.target.value); setQuickAddMsg(null); }}
             placeholder='e.g. “We need 3 members by Friday” or “@Jake fix the printer by Monday”'
-            className="flex-1 min-w-[240px] rounded-full px-4 text-[13px]"
+            className="flex-1 min-w-[240px] rounded-[8px] px-4 text-[13px]"
             style={selectStyle}
           />
           <button type="submit" disabled={quickAdding || !quickAddText.trim()}
-            className="px-6 py-3 rounded-full text-[12px] font-semibold tracking-[0.12em] disabled:opacity-40 hover:-translate-y-0.5 transition-transform"
+            className="px-6 py-3 rounded-[8px] text-[12px] font-semibold tracking-[0.12em] disabled:opacity-40 hover:-translate-y-0.5 transition-transform"
             style={{ minHeight: '44px', background: '#ffb84d', color: '#0a0a0a', border: 'none', cursor: quickAdding || !quickAddText.trim() ? 'not-allowed' : 'pointer' }}>
             {quickAdding ? 'ADDING…' : 'ADD'}
           </button>
@@ -475,7 +475,7 @@ const TEAM_THEMES = {
     text: '#f0f0f0',
     muted: '#8a8a8a',
     pageBg: 'transparent',
-    cardBg: '#141414',
+    cardBg: '#22252D',
     emptyBorder: 'rgba(255,255,255,0.05)',
     cardBorder: 'rgba(255,255,255,0.06)',
     attentionBorder: 'rgba(239,68,68,0.3)',

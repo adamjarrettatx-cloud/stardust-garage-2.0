@@ -13,16 +13,40 @@ import { UUID, shiftsCsv } from "@/lib/time-clock/core.mjs";
 import { isValidPin } from "@/lib/time-clock/pin.mjs";
 import { isInternalEmployeeEmail } from "@/lib/time-clock/employee.mjs";
 import { NextResponse } from "next/server";
+import { staffPhotoUrls } from "@/lib/time-clock/invites";
+import { birthdateProblem } from "@/lib/time-clock/profile.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const safeWorkerColumns =
-  "id,name,category,active,pay_basis,flat_cents,created_at,user_id,username,login_enabled,login_managed";
+  "id,name,category,active,pay_basis,flat_cents,created_at,user_id,username,login_enabled,login_managed,pin_lookup,birthdate,photo_path,pin_set_by_employee_at";
 // Display-only email for linked employee logins. Internal placeholder
 // addresses for username-only logins are never shown.
+// pin_lookup and photo_path never leave the server: they become has_pin and
+// a short-lived signed photo_url. Open invites are summarized per profile.
 async function withLoginEmails(client, workers) {
+  const { data: invites } = await client
+    .from("tc_invites")
+    .select("worker_id,kind,email,created_at,expires_at")
+    .is("used_at", null)
+    .is("revoked_at", null)
+    .order("created_at", { ascending: false });
+  const inviteFor = new Map();
+  for (const i of invites || []) {
+    const key = `${i.worker_id}:${i.kind}`;
+    if (!inviteFor.has(key)) inviteFor.set(key, i);
+  }
+  const photos = await staffPhotoUrls(client, workers.map((w) => w.photo_path));
   return Promise.all(
-    workers.map(async ({ user_id, ...w }) => {
+    workers.map(async ({ user_id, pin_lookup, photo_path, ...w }) => {
+      const invite = inviteFor.get(`${w.id}:setup`);
+      const pinInvite = inviteFor.get(`${w.id}:pin`);
+      w.has_pin = Boolean(pin_lookup);
+      w.photo_url = photo_path ? photos.get(photo_path) || null : null;
+      w.invite = invite && !user_id
+        ? { email: invite.email, sent_at: invite.created_at, expires_at: invite.expires_at }
+        : null;
+      w.pin_invite = pinInvite ? { sent_at: pinInvite.created_at, expires_at: pinInvite.expires_at } : null;
       let login_email = null;
       if (user_id) {
         const { data } = await client.auth.admin.getUserById(user_id).catch(() => ({}));
@@ -43,7 +67,7 @@ function assignedPin(value) {
 }
 function checked(result) {
   if (result.error)
-    throw new ClockError("Timekeeping is temporarily unavailable.", 503);
+    throw new ClockError("Staff tools are temporarily unavailable.", 503);
   return result.data;
 }
 export async function GET(request) {
@@ -94,7 +118,7 @@ export async function GET(request) {
           await client
             .from("tc_shifts")
             .select(
-              "id,worker_id,started_at,ended_at,status,version,pay_basis,flat_cents,note,tc_workers(name,category),tc_segments(*),tc_tasks(*),tc_breaks(*)",
+              "id,worker_id,started_at,ended_at,status,version,source,pay_basis,flat_cents,note,tc_workers(name,category),tc_segments(*),tc_tasks(*),tc_breaks(*)",
             )
             .in("id", ids)
             .order("started_at", { ascending: false }),
@@ -123,7 +147,7 @@ export async function GET(request) {
       return new NextResponse(shiftsCsv(filtered), {
         headers: {
           "Content-Type": "text/csv; charset=utf-8",
-          "Content-Disposition": 'attachment; filename="sdg-timekeeping.csv"',
+          "Content-Disposition": 'attachment; filename="sdg-staff.csv"',
           "Cache-Control": "private, no-store",
           "X-Content-Type-Options": "nosniff",
         },
@@ -180,6 +204,7 @@ export async function POST(request) {
     const action = input.action,
       p = input.payload || {};
     let payload,
+      birthdate = null,
       disclosure = {};
     if (action === "save_role") {
       if (
@@ -245,6 +270,13 @@ export async function POST(request) {
           p.flat_cents > 100000000)
       )
         throw new ClockError("Enter a valid flat shift fee.");
+      // Optional manager correction. The photo stays employee-owned.
+      if (p.birthdate !== undefined && p.birthdate !== null && p.birthdate !== "") {
+        const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date());
+        if (typeof p.birthdate !== "string" || birthdateProblem(p.birthdate, today))
+          throw new ClockError("Enter a valid birthday (age 14 to 100).");
+        birthdate = p.birthdate;
+      }
       payload = {
         id: p.id || null,
         name: p.name.trim(),
@@ -254,7 +286,9 @@ export async function POST(request) {
         flat_cents: p.pay_basis === "flat" ? p.flat_cents : null,
         roles,
       };
-      if (!p.id) {
+      if (!p.id && p.pin !== undefined && p.pin !== "") {
+        // Optional. Left blank, the profile has no PIN until the employee
+        // chooses one from their email invite (or a manager sets one).
         const pin = assignedPin(p.pin);
         payload.pin_lookup = hash("pin-lookup", pin);
         payload.pin_verifier = await hashPin(
@@ -262,6 +296,9 @@ export async function POST(request) {
           process.env.TIME_CLOCK_SECRET,
         );
         disclosure = { pin }; // Returned once to the gated manager; never persisted plaintext.
+      } else if (!p.id) {
+        payload.pin_lookup = null;
+        payload.pin_verifier = null;
       } else if (p.pin !== undefined && p.pin !== "") {
         throw new ClockError(
           "Use Reset PIN to change an existing profile's PIN.",
@@ -316,6 +353,12 @@ export async function POST(request) {
       p_action: action,
       p_payload: payload,
     });
+    if (birthdate && result?.id)
+      await rpc(client, "tc_worker_birthdate", {
+        p_actor: actor.id,
+        p_worker: result.id,
+        p_birthdate: birthdate,
+      });
     return json({ ...result, ...disclosure });
   });
 }

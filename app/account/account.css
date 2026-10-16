@@ -1,13 +1,19 @@
 .account-hub{--hub-bg:#090909;--hub-surface:#111;--hub-raised:#191919;--hub-line:#2a2a2a;--hub-text:#f3f2ef;--hub-muted:#aaa7a0;--hub-gold:#d9bd79;--hub-selected:#241f14;color-scheme:dark;background:var(--hub-bg);color:var(--hub-text);min-height:100vh;font-family:Inter,sans-serif;font-size:14px}
-.account-hub[data-theme=light]{--hub-bg:#f6f5f2;--hub-surface:#fff;--hub-raised:#f1efea;--hub-line:#dcd8ce;--hub-text:#22211f;--hub-muted:#67645e;--hub-gold:#745620;--hub-selected:#eee7d8;color-scheme:light}
 .account-hub *{box-sizing:border-box}
 .account-hub-shell{max-width:1180px;margin:auto;padding:28px 24px 80px}
-.account-hub-topline{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:28px;font-size:12px;color:var(--hub-muted)}
-.account-hub-topline button,.account-hub-text-button{background:transparent;border:0;color:var(--hub-gold);min-height:44px;padding:8px;cursor:pointer;font:inherit}
-.account-hub-hero{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:24px;padding-bottom:28px;border-bottom:1px solid var(--hub-line)}
-.account-hub-portrait{display:flex;flex-direction:column;align-items:center}.account-hub-portrait button{font-size:12px}
-.account-hub-identity h1{font:800 clamp(24px,3vw,32px)/1.2 'Plus Jakarta Sans',sans-serif;margin:0;overflow-wrap:anywhere}
-.account-hub-identity>p:last-child{color:var(--hub-muted);margin:10px 0 0;overflow-wrap:anywhere}
+.account-hub-topline{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:24px}
+.account-hub-topline h1{font:800 30px/1.25 'Plus Jakarta Sans',sans-serif;margin:0}
+.account-hub-gear{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;margin-right:-10px;padding:0;border:0;border-radius:10px;background:transparent;color:var(--hub-muted);cursor:pointer}.account-hub-gear:hover{color:var(--hub-text);background:var(--hub-raised)}
+.account-hub-text-button{background:transparent;border:0;color:var(--hub-gold);min-height:44px;padding:8px;cursor:pointer;font:inherit}
+.account-hub-hero{display:flex;align-items:center;gap:16px;padding-bottom:24px;border-bottom:1px solid var(--hub-line)}
+.account-hub-portrait{position:relative;flex:0 0 auto;display:block;padding:0;border:0;background:transparent;border-radius:18px;cursor:pointer;line-height:0}.account-hub-portrait:hover{opacity:.88}
+.account-hub-photo-badge{position:absolute;right:-4px;bottom:-4px;display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--hub-gold);color:var(--hub-bg);border:2px solid var(--hub-bg);font:700 17px/1 Inter,sans-serif}
+.account-hub-identity{min-width:0;flex:1;display:flex;flex-direction:column;gap:5px}
+.account-hub-identity p{margin:0;color:var(--hub-muted);font-size:13px;line-height:1.55;overflow-wrap:anywhere}
+.account-hub-identity .account-hub-name{font:700 19px/1.4 'Plus Jakarta Sans',sans-serif;color:var(--hub-text)}
+.account-hub-phone{display:flex;align-items:center;flex-wrap:wrap;column-gap:7px;color:var(--hub-muted);font-size:13px;line-height:1.55}
+.account-hub-verified{display:inline-flex;color:#75c49a}
+.account-hub-verify-tag{min-height:24px;padding:1px 7px;border:1px solid #494337;border-radius:5px;background:#25221b;color:#ddcda9;font:500 11px/1.4 Inter,sans-serif;cursor:pointer}.account-hub-verify-tag:hover{border-color:var(--hub-gold)}
 .account-hub-eyebrow{font-size:12px;line-height:1.6;color:var(--hub-gold);margin:0 0 8px;font-weight:600}
 .account-hub-button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 18px;border:1px solid var(--hub-line);border-radius:8px;background:var(--hub-text);color:var(--hub-bg);font:600 14px/1.4 Inter,sans-serif;text-decoration:none;cursor:pointer}
 .account-hub-button.secondary{background:transparent;color:var(--hub-text)}.account-hub button:disabled{opacity:.55;cursor:wait}
@@ -53,10 +59,46 @@
 .ticket-detail-qr svg{display:block;width:100%;height:auto}
 .ticket-detail-code{font:13px/1.6 ui-monospace,monospace;overflow-wrap:anywhere}
 .ticket-order-receipt{border-top:1px solid var(--hub-line);margin-top:20px;padding-top:12px;color:var(--hub-muted);font-size:12px;overflow-wrap:anywhere;line-height:1.7}
-@media(max-width:760px){.account-hub-shell{padding:20px 16px 48px}.account-hub-topline{margin-bottom:20px}.account-hub-hero{grid-template-columns:88px minmax(0,1fr);gap:16px;align-items:start}.account-hub-hero>.account-hub-button{grid-column:1/-1;width:100%}.account-hub-panel-heading{padding:16px}.account-hub-row{grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;padding:16px}.account-hub-row dt{grid-column:1/-1;font-size:12px}.account-hub-form,.account-hub-padded{padding:16px}.account-settings-body{padding:12px}.ticket-event-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.account-workspaces nav{grid-template-columns:1fr}.portal-section-navigation nav{display:none}.portal-section-navigation select{display:block;width:100%;min-height:48px;background:#191919;color:#fff;border:1px solid #333;border-radius:8px;padding:10px}.ticket-artwork-fallback{padding:12px;font-size:15px}}
+@media(max-width:760px){.account-hub-shell{padding:20px 16px 48px}.account-hub-topline{margin-bottom:18px}.account-hub-panel-heading{padding:16px}.account-hub-row{grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;padding:16px}.account-hub-row dt{grid-column:1/-1;font-size:12px}.account-hub-form,.account-hub-padded{padding:16px}.account-settings-body{padding:12px}.ticket-event-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.account-workspaces nav{grid-template-columns:1fr}.portal-section-navigation nav{display:none}.portal-section-navigation select{display:block;width:100%;min-height:48px;background:#191919;color:#fff;border:1px solid #333;border-radius:8px;padding:10px}.ticket-artwork-fallback{padding:12px;font-size:15px}}
 .profile-door-pass-body{display:flex;align-items:center;gap:28px;padding:24px}
 .profile-door-pass-qr{flex:0 0 auto;width:min(100%,280px);background:#fff;border-radius:10px;padding:12px}
 .profile-door-pass-qr svg{display:block;width:100%;height:auto}
 .profile-door-pass-copy{min-width:0}.profile-door-pass-copy .account-hub-note:first-of-type{margin-top:6px}
 .profile-door-pass-lead{font:700 18px/1.4 'Plus Jakarta Sans',sans-serif;margin:0}
 @media(max-width:760px){.profile-door-pass-body{flex-direction:column;align-items:stretch;text-align:center;padding:16px;gap:16px}.profile-door-pass-qr{margin:0 auto}}
+/* Messages: conversations with the SDG team about a submission. */
+.account-messages-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}
+.account-messages-list{list-style:none;margin:0;padding:0;border:1px solid var(--hub-line);border-radius:12px;overflow:hidden;background:var(--hub-surface)}
+.account-messages-list li+li{border-top:1px solid var(--hub-line)}
+.account-messages-list a{display:flex;align-items:center;gap:14px;padding:16px 20px;color:var(--hub-text);text-decoration:none;min-height:68px}
+.account-messages-list a:hover{background:var(--hub-raised)}
+.account-messages-dot{flex:0 0 8px;width:8px;height:8px;border-radius:50%;background:transparent}
+.account-messages-list a.is-unread .account-messages-dot{background:var(--hub-gold)}
+.account-messages-list a.is-unread .account-messages-subject{color:#fff}
+.account-messages-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.account-messages-subject{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.account-messages-meta,.account-messages-date{color:var(--hub-muted);font-size:12px}
+.account-messages-preview{color:var(--hub-muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.account-messages-side{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.account-messages-badge{padding:2px 8px;border-radius:6px;background:var(--hub-selected);border:1px solid #4a3f24;color:var(--hub-gold);font-size:11px;font-weight:600}
+.conversation-back{display:inline-block;padding-left:0;margin-bottom:8px}
+.conversation-header{margin-bottom:20px}.conversation-header h2{font-size:22px}
+.conversation-questions{border-color:#4a3f24}
+.conversation-questions ul{list-style:none;margin:0;padding:0}
+.conversation-question{padding:18px 24px;border-bottom:1px solid var(--hub-line)}.conversation-question:last-child{border-bottom:0}
+.conversation-question-from{margin:0 0 6px;color:var(--hub-gold);font-size:12px;font-weight:600}
+.conversation textarea{display:block;width:100%;min-height:88px;margin-top:12px;padding:10px 12px;border:1px solid var(--hub-line);border-radius:8px;background:var(--hub-bg);color:var(--hub-text);font:inherit;font-size:16px;line-height:1.55;resize:vertical}
+.conversation textarea:focus{border-color:var(--hub-gold);outline:none}
+.conversation-actions{display:flex;justify-content:flex-end;margin-top:10px}
+.conversation-thread{list-style:none;margin:0;padding:16px 24px;display:flex;flex-direction:column;gap:12px;max-height:60vh;overflow-y:auto}
+.conversation-message{max-width:85%;padding:12px 14px;border:1px solid var(--hub-line);border-radius:10px;background:var(--hub-raised)}
+.conversation-message.is-mine{align-self:flex-end;background:var(--hub-selected);border-color:#3a3322}
+.conversation-message.is-team{align-self:flex-start}
+.conversation-message.is-question{border-color:var(--hub-gold)}
+.conversation-message-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 6px;color:var(--hub-muted);font-size:12px}
+.conversation-message-meta span:first-child{color:var(--hub-text);font-weight:600}
+.conversation-tag{padding:1px 7px;border-radius:6px;background:var(--hub-gold);color:var(--hub-bg);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.conversation-quote{margin:0 0 6px;padding-left:8px;border-left:2px solid var(--hub-gold);color:var(--hub-muted);font-size:12px;line-height:1.5}
+.conversation-body{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}
+.conversation-composer{padding:4px 24px 20px;border-top:1px solid var(--hub-line)}
+@media(max-width:760px){.account-messages-list a{padding:14px 16px}.conversation-thread{padding:12px 16px}.conversation-message{max-width:92%}.conversation-question{padding:16px}.conversation-composer{padding:4px 16px 16px}}

@@ -61,9 +61,9 @@ export default async function EventPreviewPage({ params }) {
               {isDraft
                 ? 'Draft — only admins can see this.'
                 : isInternal
-                  ? 'Internal event — only admins can see this.'
+                  ? 'Draft (team only) — only admins can see this.'
                   : isUnlisted
-                    ? 'Unlisted event — anyone with the link can see this, but it is not on the public events page.'
+                    ? 'Secret event — anyone with the secret link can see this, but it is not on the public events page.'
                     : 'Live event — this is how it looks to visitors.'}
             </span>
           </div>

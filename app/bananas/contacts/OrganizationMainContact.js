@@ -4,6 +4,7 @@ import { useEffect, useId, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import styles from './profile.module.css';
+import { formatPhone } from '@/lib/phone';
 
 export default function OrganizationMainContact({ contactId, legacyName, isAdmin, disabled }) {
   const uid = useId();
@@ -69,7 +70,7 @@ export default function OrganizationMainContact({ contactId, legacyName, isAdmin
       <p className={styles.hint}>The person to reach about this organization. Linking them does not grant portal access or signing authority.</p>
       {!record && !error && <p role="status">Loading main contact…</p>}
       {person ? <div className={styles.mainContactSummary}>
-        <div><h3>{person.name}</h3><p>{[person.email, person.phone].filter(Boolean).join(' · ') || 'No email or phone on file'}</p>
+        <div><h3>{person.name}</h3><p>{[person.email, formatPhone(person.phone)].filter(Boolean).join(' · ') || 'No email or phone on file'}</p>
           <p className={styles.hint}>{person.source === 'account' ? 'Existing account' : 'Contact profile'}{person.status !== 'active' ? ` · ${person.status}` : ''}</p></div>
         {profileHref && <Link className={styles.textButton} href={profileHref}>Open profile →</Link>}
       </div> : record && <p>No main contact linked yet.{legacyName && <> Previously recorded name: <strong>{legacyName}</strong>. Select their profile to link it.</>}</p>}
@@ -92,7 +93,7 @@ export default function OrganizationMainContact({ contactId, legacyName, isAdmin
           {searched && !candidates.length && <p role="status">No matching people. Try another search or create a new person.</p>}
           <div className={styles.contactCandidates}>{candidates.map((candidate) => <button type="button" className={styles.contactCandidate}
             key={`${candidate.source}:${candidate.id}`} onClick={() => save(candidate.source, candidate)}>
-            <span><strong>{candidate.name}</strong><span>{candidate.email || candidate.phone || 'No contact details'}</span></span>
+            <span><strong>{candidate.name}</strong><span>{candidate.email || formatPhone(candidate.phone) || 'No contact details'}</span></span>
             <span>{candidate.source === 'account' ? 'Account' : 'Contact'} · Select</span>
           </button>)}</div>
           {candidates.length === 50 && <p className={styles.hint}>Showing 50 matches. Refine your search to find the right person.</p>}

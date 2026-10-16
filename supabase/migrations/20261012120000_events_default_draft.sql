@@ -1,0 +1,11 @@
+-- New events always start as drafts.
+--
+-- 20260616_event_publish_status.sql added events.status with DEFAULT
+-- 'published' so pre-existing rows stayed visible. That default meant any
+-- insert that omitted status (the admin event form did) went straight onto
+-- the public site before tickets or details were set up.
+--
+-- From now on a row is only public after an explicit publish (GO LIVE in the
+-- event editor, or the audited series auto-publish cron). Existing rows are
+-- not changed.
+alter table public.events alter column status set default 'draft';

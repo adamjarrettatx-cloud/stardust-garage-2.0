@@ -18,7 +18,7 @@ export default function AuthenticatedRouteShell({ navbar = null, children }) {
   }
 
   return (
-    <AuthenticatedThemeProvider scope={scope}>
+    <AuthenticatedThemeProvider scope={scope} slate>
       <div className="relative z-10">
         {navbar}
         <div className="auth-theme-frame-shell">

@@ -1,10 +1,10 @@
 # Contacts directory
 
-The directory opens on four category cards in this order: Persons, Organizations, Venue Renter, Vendor. No All category or list appears on the initial screen. Artists, Promoters, and individual contacts are consolidated into Persons. Event Organizer and Collective are consolidated into Organizations; old category links still resolve to their consolidated category.
+The directory opens directly on a list. Four section tabs with live counts sit under the heading in this order: Persons, Organizations, Venue Renter, Vendor. There is no All tab; a bare `/bananas/contacts` URL shows Persons. Artists, Promoters, and individual contacts are consolidated into Persons. Event Organizer and Collective are consolidated into Organizations; old category links still resolve to their consolidated category.
 
-Each category opens a bookmarkable `?category=` list with search, status filtering, a contact count, and a link back to the category dashboard. New Contact preselects the current category. Detail and cancel links retain the originating category.
+Each tab is a bookmarkable `?category=` URL (tab changes replace the URL without scrolling). The toolbar has search (press `/` to focus), a status filter, and a filtered/total count. New Contact preselects the current section. Detail and cancel links retain the originating category. Archived Contacts sits beside New Contact on desktop and under the list on phones.
 
-Contact rows use a full-height square image at the left edge of the rounded container. Missing or broken images use initials in the same square footprint. The rest of the contact information appears to the right. Light/dark theme tokens, visible keyboard focus, and mobile layouts are supported. Do Not Book is explicitly labeled in addition to its warning border.
+Contacts render as one bordered list with hairline dividers and aligned Name, Type, Email, Phone and Instagram columns. Clicking a column header sorts by it; clicking again flips ascending/descending. Blank values always sort last, ties fall back to name, phones sort by digits, and the chosen sort persists across tabs. Below 860px, where headers are hidden, a Sort menu offers the same options. Each row has a 40px square image (or initials) with the name and a secondary line for the point of contact and company, skipping values that repeat the name. Instagram values stored as URLs, bare names or `@handles` all display as `@handle`. Instagram hides below 1200px; below 860px rows collapse to image, name and one contact detail. Do Not Book shows a labeled badge plus a red left edge. Light/dark theme tokens, visible keyboard focus, and reduced motion are supported.
 
 ## Historical data
 

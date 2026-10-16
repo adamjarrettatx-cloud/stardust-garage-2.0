@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getRequestUser } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { resolveBuyerEntitlement } from '@/lib/tickets/entitlement-lookup';
-import { resolveEntitlementPercent, entitlementLabel } from '@/lib/tickets/entitlement';
+import { resolveEntitlementPercent, resolveRentalEntitlementPercent, entitlementLabel } from '@/lib/tickets/entitlement';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
 // under, so a tampered response here cannot move money.
 export async function GET(request) {
   const eventId = new URL(request.url).searchParams.get('event_id');
-  const none = { entitled: false, percent: 0, label: null, kind: null };
+  const none = { entitled: false, percent: 0, rental_percent: 0, label: null, kind: null };
   if (!eventId) {
     return NextResponse.json({ error: 'Missing event_id' }, { status: 400 });
   }
@@ -45,12 +45,17 @@ export async function GET(request) {
   }
 
   const percent = resolveEntitlementPercent(event, entitlement);
-  if (!percent) return NextResponse.json(none);
+  // Private-space rental benefit (The Insider: 20%), separate from tickets.
+  const rentalPercent = resolveRentalEntitlementPercent(entitlement);
+  if (!percent && !rentalPercent) return NextResponse.json(none);
 
   return NextResponse.json({
     entitled: true,
     percent,
+    rental_percent: rentalPercent,
     kind: entitlement?.kind || null,
+    plan_key: entitlement?.planKey || null,
     label: entitlementLabel(entitlement, percent),
+    rental_label: rentalPercent ? entitlementLabel(entitlement, 0, rentalPercent) : null,
   });
 }

@@ -1,11 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { cloneElement, isValidElement, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import TtLinkPanel from './TtLinkPanel';
-import EventContactFields from './EventContactFields';
+import RichTextEditor from './RichTextEditor';
+import { plainTextToEditorHtml } from '@/lib/rich-text-plain';
+import ContactSelect from './ContactSelect';
+import { ORGANIZER_CONTACT_TYPES } from './EventContactFields';
 import AuthenticatedPageHeader from '@/app/components/AuthenticatedPageHeader';
 import { CONTACT_REQUIRED_MESSAGE, ensureContactTaggedEventOrganizer } from '@/lib/contact-helpers';
 import { uploadEventImage } from '@/lib/event-image-upload';
@@ -50,6 +53,38 @@ function slugify(text) {
     .replace(/^-+|-+$/g, '');
 }
 
+// Read-only secret link with a one-click copy, shown in the Secret callout.
+function SecretLinkRow({ url }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setCopied(false);
+    }
+  };
+  return (
+    <div
+      className="mt-2.5 flex items-center gap-2 rounded-[8px] border pl-3 pr-[3px] py-[3px]"
+      style={{ background: 'var(--auth-input-bg)', borderColor: 'var(--auth-input-border)' }}
+    >
+      <span className="flex-1 min-w-0 truncate select-all text-[12px]" style={{ color: 'var(--auth-text-strong)' }} title={url}>
+        {url}
+      </span>
+      <button
+        type="button"
+        onClick={copy}
+        className="shrink-0 h-[30px] px-3 rounded-[6px] text-[10px] font-semibold tracking-[0.14em]"
+        style={{ background: 'var(--auth-text-strong)', color: 'var(--auth-strong-surface-text)' }}
+      >
+        {copied ? 'COPIED' : 'COPY LINK'}
+      </button>
+    </div>
+  );
+}
+
 export default function EventForm({
   event,
   metrics = null,
@@ -67,18 +102,14 @@ export default function EventForm({
   const [eventDate, setEventDate] = useState(event?.event_date || '');
   const [eventTime, setEventTime] = useState(event?.event_time || '');
   const [description, setDescription] = useState(event?.description || '');
+  // Formatted copy for the website; `description` stays plain text for the
+  // app, team schedule and TicketTailor. Legacy plain descriptions seed the
+  // editor line-for-line.
+  const [descriptionHtml, setDescriptionHtml] = useState(
+    event?.description_html || plainTextToEditorHtml(event?.description || '')
+  );
   const [imageUrl, setImageUrl] = useState(event?.image_url || '');
   const [slug, setSlug] = useState(event?.slug || '');
-  // Event type: 'public' (Ticketed — sells tickets through internal checkout)
-  // or 'private' (Private Rental — venue rental with no ticket sales).
-  //
-  // Default is always 'public' (Ticketed) unless the event was explicitly
-  // marked as a private rental. There is no dedicated DB flag for private
-  // rental yet, so we only fall to 'private' when a stored hint says so;
-  // otherwise every event — new or existing — opens on Ticketed.
-  const [eventType, setEventType] = useState(
-    event?.event_type === 'private_rental' ? 'private' : 'public'
-  );
   // Visibility has three tiers (see lib/event-visibility.js):
   //   * 'public'   — shown on the public /events page and member surfaces.
   //   * 'unlisted' — hidden from every listing, but /events/[slug] renders for
@@ -202,9 +233,10 @@ export default function EventForm({
       event_date: eventDate,
       event_time: eventTime.trim() || null,
       description: description.trim() || null,
+      description_html: description.trim() && descriptionHtml ? descriptionHtml : null,
       image_url: imageUrl.trim() || null,
       slug: slug.trim() || slugify(title),
-      ticket_url: eventType === 'public' ? (ticketUrl.trim() || null) : null,
+      ticket_url: ticketUrl.trim() || null,
       category,
       // Internal micro-party events are hidden from the public /events page and
       // member surfaces but keep all internal capabilities (contracts, SignNow,
@@ -227,6 +259,10 @@ export default function EventForm({
     // link the panel just set, so only include it when creating a new event.
     if (!isEditing) {
       payload.tt_event_series_id = ttEventSeriesId.trim() || null;
+      // Every new event starts as a DRAFT. It stays off the public site until
+      // an admin presses GO LIVE on the event editor. Edits never send status,
+      // so saving an existing event can't publish or unpublish it.
+      payload.status = 'draft';
     }
 
     const { data: saved, error: saveError } = isEditing
@@ -290,8 +326,8 @@ export default function EventForm({
     // Editing: stay on this screen so the admin can keep working (e.g. Ticketing
     // panel, contract panel). Just refresh the server data and flash a brief
     // 'Saved' hint on the save button via the setSaving cycle + saveOk flag.
-    // Creating: no id in the URL yet, so we DO route to the events list —
-    // that's the only way to hand off to the newly-created event's edit page.
+    // Creating: hand off to the new draft's editor so tickets and details can
+    // be added before it goes live.
     if (isEditing) {
       setSaving(false);
       setSaveOk(true);
@@ -299,7 +335,7 @@ export default function EventForm({
       router.refresh();
       return;
     }
-    router.push('/bananas?tab=events');
+    router.push(saved?.id ? `/bananas/events/${saved.id}` : '/bananas?tab=events');
     router.refresh();
   };
 
@@ -367,7 +403,7 @@ export default function EventForm({
   function Segmented({ value, options, onChange }) {
     return (
       <div
-        className="inline-flex rounded-full p-1 border"
+        className="inline-flex h-[36px] rounded-[8px] p-[3px] border"
         style={{ background: 'var(--auth-input-bg)', borderColor: 'var(--auth-input-border)' }}
       >
         {options.map((opt) => {
@@ -377,7 +413,7 @@ export default function EventForm({
               key={opt.value}
               type="button"
               onClick={() => onChange(opt.value)}
-              className="px-4 py-1.5 rounded-full text-[12px] font-semibold tracking-[0.08em] transition-all"
+              className="h-full px-3.5 rounded-[6px] text-[12px] font-semibold tracking-[0.06em] transition-colors whitespace-nowrap"
               style={{
                 background: active ? 'var(--auth-text-strong)' : 'transparent',
                 color: active ? 'var(--auth-strong-surface-text)' : 'var(--auth-muted)',
@@ -407,66 +443,116 @@ export default function EventForm({
         {headerActions}
       </AuthenticatedPageHeader>
 
-      {statusPanel}
+      {/* TOP CONTROL CARD — Status, Visibility, Organizer and the Preview /
+          Go Live actions share one row. On edit, PublishEventButton owns the
+          row and slots these controls in; on create there is no status yet, so
+          the controls render on their own. Wired into the same form state;
+          saved with the form. */}
+      {(() => {
+        const visibilityHint = isInternal
+          ? 'Team only. Never shown on the public site, even by link.'
+          : isUnlisted
+            ? 'Only people with the secret link can open it once live.'
+            : 'Shown on the public events page once live.';
+        const controls = (
+          <>
+            <div title={visibilityHint}>
+              <label className={labelClass} style={labelStyle}>Visibility</label>
+              <Segmented
+                value={visibility}
+                onChange={setVisibility}
+                options={[
+                  { value: 'public', label: 'Public' },
+                  { value: 'unlisted', label: 'Secret' },
+                  { value: 'internal', label: 'Draft' },
+                ]}
+              />
+            </div>
+            <div>
+              <label className={labelClass} style={labelStyle}>Organizer</label>
+              <Segmented
+                value={isSdgOnly ? 'sdg' : 'organizer'}
+                onChange={(v) => setIsSdgOnly(v === 'sdg')}
+                options={[
+                  { value: 'organizer', label: 'Event Organizer' },
+                  { value: 'sdg', label: 'SDG Only' },
+                ]}
+              />
+            </div>
+            {/* Member tier gate — only meaningful on SDG-only events. Sits in
+                the top row beside Organizer; hidden for organizer events, and
+                cleared on save when SDG Only is off. */}
+            {isSdgOnly && (
+              <div title="Restrict this event to a single membership tier. Leave as All members for a normal SDG-only drop.">
+                <label className={labelClass} style={labelStyle}>Member Tier</label>
+                <Segmented
+                  value={requiredTier}
+                  onChange={setRequiredTier}
+                  options={[
+                    { value: '', label: 'All Members' },
+                    { value: 'iykyk', label: 'Insider Only' },
+                    { value: 'cowork', label: 'Builder Only' },
+                  ]}
+                />
+              </div>
+            )}
+          </>
+        );
+        return (
+      <section className="rounded-[14px] border mb-4 px-5 py-4" style={cardStyle}>
+          {statusPanel && isValidElement(statusPanel)
+            ? cloneElement(statusPanel, { controls })
+            : <div className="flex items-end gap-x-7 gap-y-4 flex-wrap">{controls}</div>}
 
-      {/* VISIBILITY + EVENT TYPE strip — lives above the details cards so
-          the top-of-page controls (STATUS → how it's shown / what it is)
-          read as one contiguous decision bar before you get into details.
-          Wired into the same form state; saved with the form. */}
-      <section className="rounded-[14px] border p-5 mb-4" style={cardStyle}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <div>
-            <label className={labelClass} style={labelStyle}>Visibility</label>
-            <Segmented
-              value={visibility}
-              onChange={setVisibility}
-              options={[
-                { value: 'public', label: 'Public' },
-                { value: 'unlisted', label: 'Unlisted' },
-                { value: 'internal', label: 'Internal' },
-              ]}
-            />
-            <p className="text-[11px] mt-2" style={helperStyle}>
-              {isInternal
-                ? 'Hidden from every public surface — team calendar only.'
-                : isUnlisted
-                  ? 'Reachable only by the direct link. Not on /events, /home, or the public calendar.'
-                  : 'Shown on the public events page and member surfaces.'}
-            </p>
-          </div>
-          <div>
-            <label className={labelClass} style={labelStyle}>Event Type</label>
-            <Segmented
-              value={eventType}
-              onChange={setEventType}
-              options={[
-                { value: 'public', label: 'Ticketed' },
-                { value: 'private', label: 'Private Rental' },
-              ]}
-            />
-            <p className="text-[11px] mt-2" style={helperStyle}>
-              {eventType === 'private'
-                ? 'Venue rental — no ticket sales for this event.'
-                : 'Sells tickets through the internal checkout below.'}
-            </p>
-          </div>
-        </div>
-        {isInternal && (
-          <p className="text-[11px] mt-4" style={{ color: '#f59e0b' }}>
-            Internal event: never appears on the public events page or member surfaces. It still
-            supports contracts, SignNow, financials, and POS imports, and shows on the team calendar.
-          </p>
-        )}
-        {isUnlisted && (
-          <p className="text-[11px] mt-4" style={{ color: '#f59e0b' }}>
-            Unlisted event: not on /events, /home, or the public calendar, and search engines are
-            told not to index it. Anyone with the /events/{slug || '[slug]'} link can open the page
-            and buy tickets, so only share the link with people you want at the event.
-          </p>
-        )}
+          {/* Event Organizer picker — only when the event has an outside
+              counterparty. SDG Only events need no contact. */}
+          {!isSdgOnly && (
+            <div className="mt-4">
+              <label className={labelClass} style={labelStyle}>
+                Event Organizer <span style={{ color: '#ff8080' }}>*</span>
+              </label>
+              <ContactSelect
+                requireApprovedW9
+                value={contactId}
+                onChange={setContactId}
+                required
+                contactTypeIn={ORGANIZER_CONTACT_TYPES}
+              />
+            </div>
+          )}
+
+          {(isInternal || isUnlisted) && (
+            <div
+              className="mt-4 rounded-[10px] border px-3.5 py-2.5 text-[12px] leading-[1.5]"
+              style={{ background: 'var(--auth-warn-bg)', borderColor: 'var(--auth-warn-border)', color: 'var(--auth-warn)' }}
+            >
+              {isInternal ? (
+                <>
+                  Draft events can&apos;t go live until Visibility is Public or Secret. Contracts,
+                  SignNow, financials and POS imports still work, and it shows on the team calendar.
+                </>
+              ) : (
+                <>
+                  Not listed on /events, /home or the public calendar, and hidden from search engines.
+                  Anyone with the secret link can open the page and buy tickets once it&apos;s live.
+                  {isEditing && event?.share_token && event?.slug === slug && (
+                    <SecretLinkRow url={`https://sdgatx.com/events/${slug}?t=${event.share_token}`} />
+                  )}
+                </>
+              )}
+            </div>
+          )}
       </section>
+        );
+      })()}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="text-[13px] text-red-400 p-3 rounded-[10px] border border-red-500/30 bg-red-500/10">
+            {error}
+          </div>
+        )}
+
         {/* IDENTITY HERO — profile-style header with square thumbnail + title/slug. */}
         <section className="rounded-[14px] border p-5" style={cardStyle}>
           <div className="flex gap-5 items-start">
@@ -511,19 +597,39 @@ export default function EventForm({
             </label>
 
             <div className="flex-1 min-w-0 space-y-3">
-              <div>
+              <div className="flex items-end gap-3">
                 <input
                   type="text"
                   value={title}
                   onChange={handleTitleChange}
                   required
                   placeholder="Event title"
-                  className="w-full bg-transparent border-0 border-b outline-none text-[22px] font-bold pb-2 focus:border-white/40 transition-colors"
+                  className="flex-1 min-w-0 bg-transparent border-0 border-b outline-none text-[22px] font-bold pb-2 focus:border-white/40 transition-colors"
                   style={{
                     borderColor: 'var(--auth-card-border)',
                     color: 'var(--auth-text)',
                   }}
                 />
+                <div className="shrink-0 flex items-center gap-2 pb-1">
+                  <Link
+                    href="/bananas?tab=events"
+                    className="px-4 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.14em] transition-colors hover:bg-black/5"
+                    style={{ color: 'var(--auth-muted)' }}
+                  >
+                    CANCEL
+                  </Link>
+                  <button
+                    type="submit"
+                    disabled={saving || uploading}
+                    className="px-5 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.14em] transition-all disabled:opacity-50 whitespace-nowrap"
+                    style={{
+                      background: 'var(--auth-text-strong)',
+                      color: 'var(--auth-strong-surface-text)',
+                    }}
+                  >
+                    {saving ? 'SAVING…' : saveOk ? 'SAVED' : isEditing ? 'SAVE EVENT DETAILS' : 'CREATE EVENT'}
+                  </button>
+                </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap text-[12px]" style={helperStyle}>
                 <span>sdgatx.com/events/</span>
@@ -551,7 +657,7 @@ export default function EventForm({
                   <button
                     type="button"
                     onClick={() => setImageUrl('')}
-                    className="text-[11px] font-semibold tracking-[0.1em] px-3 py-1.5 rounded-full border transition-colors hover:bg-white/5"
+                    className="text-[11px] font-semibold tracking-[0.1em] px-3 py-1.5 rounded-[8px] border transition-colors hover:bg-white/5"
                     style={{ borderColor: 'var(--auth-card-border)', color: 'var(--auth-muted)' }}
                   >
                     CLEAR
@@ -609,7 +715,7 @@ export default function EventForm({
             </div>
           </div>
           <p className="text-[11px] mt-4" style={helperStyle}>
-            Membership pricing \u2014 including whether this is a Weekend Music Experience \u2014 is set in
+            Membership pricing — including whether this is a Weekend Music Experience — is set in
             the Member pricing panel below.
           </p>
         </section>
@@ -646,53 +752,16 @@ export default function EventForm({
         {/* DESCRIPTION */}
         <section className="rounded-[14px] border p-5" style={cardStyle}>
           <h3 className={sectionTitle} style={labelStyle}>Description</h3>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={4}
+          <RichTextEditor
+            initialHtml={descriptionHtml}
+            onChange={({ html, text }) => {
+              setDescriptionHtml(html);
+              setDescription(text);
+            }}
             placeholder="What is this event? Who's it for?"
-            className={inputClass + ' resize-y'}
             style={inputStyle}
           />
         </section>
-
-        {/* CONTACT / SDG-ONLY — required unless the event is fully internal. */}
-        <section className="rounded-[14px] border p-5" style={cardStyle}>
-          <h3 className={sectionTitle} style={labelStyle}>Organizer</h3>
-          <EventContactFields
-            isSdgOnly={isSdgOnly}
-            onSdgOnlyChange={setIsSdgOnly}
-            contactId={contactId}
-            onContactIdChange={setContactId}
-          />
-        </section>
-
-        {/* TIER GATE — only meaningful on SDG-only events. Controls who
-            gets the event_published notification (and, downstream, who can
-            RSVP once tier-check is wired into ticket routes). */}
-        {isSdgOnly ? (
-          <section className="rounded-[14px] border p-5" style={cardStyle}>
-            <h3 className={sectionTitle} style={labelStyle}>Member tier gate</h3>
-            <p className="text-[12px] mb-3" style={{ color: 'rgba(255,255,255,0.6)' }}>
-              Restrict this event to a single membership tier. Leave as
-              “All members” for a normal SDG-only drop.
-            </p>
-            <select
-              value={requiredTier}
-              onChange={(e) => setRequiredTier(e.target.value)}
-              className="w-full rounded-[10px] border px-3 py-2 text-[14px]"
-              style={{
-                background: 'rgba(0,0,0,0.35)',
-                borderColor: 'rgba(255,255,255,0.12)',
-                color: '#e6e6e6',
-              }}
-            >
-              <option value="">All members (any tier)</option>
-              <option value="iykyk">The Insider only</option>
-              <option value="cowork">The Builder only</option>
-            </select>
-          </section>
-        ) : null}
 
         {/* LEGACY TICKETTAILOR EVENT SERIES — only rendered for the two legacy
             events that still have a linked series. New events never see this. */}
@@ -702,55 +771,20 @@ export default function EventForm({
           </section>
         ) : null}
 
-        {error && (
-          <div className="text-[13px] text-red-400 p-3 rounded-[10px] border border-red-500/30 bg-red-500/10">
-            {error}
-          </div>
-        )}
-
-        {/* Sticky action bar: matches the section cards above (same card bg,
-            same border, same radius) so it reads as an extension of the form,
-            not a random plank slapped on top. Buttons use the site's canonical
-            primary style (auth-text-strong on auth-strong-surface-text) — the
-            same pattern used across the admin. */}
-        <div
-          className="sticky bottom-4 z-10 flex items-center justify-end gap-2 px-4 py-3 rounded-[14px] border shadow-lg"
-          style={{
-            background: 'var(--auth-card-bg)',
-            borderColor: 'var(--auth-card-border)',
-          }}
-        >
-          <Link
-            href="/bananas?tab=events"
-            className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.14em] transition-colors hover:bg-black/5"
-            style={{ color: 'var(--auth-muted)' }}
-          >
-            CANCEL
-          </Link>
-          {canGenerateCodes && (
+        {canGenerateCodes && (
+          <div className="flex justify-end">
             <button
               type="button"
               onClick={handleGenerateCodes}
               disabled={generating}
-              className="px-4 py-2 rounded-full text-[11px] font-semibold tracking-[0.14em] border transition-colors hover:bg-black/5 disabled:opacity-50 whitespace-nowrap"
+              className="px-4 py-2 rounded-[8px] text-[11px] font-semibold tracking-[0.14em] border transition-colors hover:bg-black/5 disabled:opacity-50 whitespace-nowrap"
               style={{ color: '#c17800', borderColor: 'rgba(193, 120, 0, 0.35)' }}
               title="Generate member ticket codes for this event"
             >
               {generating ? 'GENERATING…' : 'MEMBER CODES'}
             </button>
-          )}
-          <button
-            type="submit"
-            disabled={saving || uploading}
-            className="px-6 py-2.5 rounded-full text-[11px] font-semibold tracking-[0.14em] transition-all hover:-translate-y-0.5 disabled:opacity-50"
-            style={{
-              background: 'var(--auth-text-strong)',
-              color: 'var(--auth-strong-surface-text)',
-            }}
-          >
-            {saving ? 'SAVING…' : saveOk ? 'SAVED' : isEditing ? 'SAVE EVENT DETAILS' : 'CREATE EVENT'}
-          </button>
-        </div>
+          </div>
+        )}
 
         {generateMessage && (
           <p className="text-[12px] text-right" style={{ color: '#ffb84d' }}>
