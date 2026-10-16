@@ -69,6 +69,32 @@ describe('live access checks', () => {
     expect((await restrictionGuard(db, subject)).status).toBe(403);
   });
 });
+describe('similar names and overrides', () => {
+  const jade = { ...restriction, full_name: 'Jade Gonzalez', match_keys: ['name:jade gonzalez'], photo_path: null };
+  function named(name, opts = {}) {
+    const db = database({ rows: [jade], ...opts });
+    const from = db.from.bind(db);
+    db.from = table => {
+      const b = from(table);
+      if (table === 'member_profiles') b.single = async () => ({ data: { id: subject.id, full_name: name, email: null, user_id: null } });
+      return b;
+    };
+    return db;
+  }
+  it('holds entry for a similar name and explains why', async () => {
+    const result = await accessStatus(named('Jada Maria Gonzalez'), subject);
+    expect(result.status).toBe('verify');
+    expect(result.matches[0].match).toBe('possible');
+    expect(result.matches[0].match_reason).toMatch(/similar/);
+    expect((await restrictionGuard(named('Jada Maria Gonzalez'), subject)).status).toBe(403);
+  });
+  it('does not flag unrelated names', async () => {
+    expect((await accessStatus(named('Maria Gonzalez'), subject)).status).toBe('clear');
+  });
+  it('a recorded override clears the similar-name hold', async () => {
+    expect((await accessStatus(named('Jada Maria Gonzalez', { exclusions: [jade.id] }), subject)).status).toBe('clear');
+  });
+});
 describe('mutation API', () => {
   const request = body => new Request('https://example.invalid/api/capacity/access-restrictions', { method: 'POST', body: JSON.stringify(body) });
   it('rejects unauthenticated callers before touching storage', async () => {
@@ -111,5 +137,14 @@ describe('mutation API', () => {
   it('does not allow dismissing an unrelated restriction', async () => {
     expect((await POST(request({ action: 'different_person', id: restriction.id, subject, comment: 'Reason' }))).status).toBe(400);
     expect(auth.client.rpc).not.toHaveBeenCalled();
+  });
+  it('edits are staff-only and append name keys', async () => {
+    const response = await POST(request({ action: 'update', id: restriction.id, full_name: 'Jada Gonzalez', aliases: ['Jade G'] }));
+    expect(response.status).toBe(200);
+    const [fn, args] = auth.client.rpc.mock.calls[0];
+    expect(fn).toBe('update_access_restriction');
+    expect(args.p_data.match_keys).toEqual(expect.arrayContaining(['name:jada gonzalez', 'name:jade g']));
+    auth.gate = { ...auth.gate, station: { role: 'front_desk' } };
+    expect((await POST(request({ action: 'update', id: restriction.id, full_name: 'X Y' }))).status).toBe(403);
   });
 });

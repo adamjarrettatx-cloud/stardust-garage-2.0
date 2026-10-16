@@ -28,3 +28,22 @@ test('manual record requires no account; bounded reason and future temporary exp
   assert.throws(() => validateRestriction({ ...body, kind: 'temporary', expires_at: '2000-01-01' }));
   assert.throws(() => validateRestriction({ ...body, aliases: [1] }));
 });
+import { namesSimilar, similarNameMatch, matchReason, sniffImageType } from '../lib/capacity/access-policy.js';
+test('similar names are flagged as possible matches, unrelated names are not', () => {
+  for (const [a, b] of [['Jade Gonzalez', 'Jada Maria Gonzalez'], ['Jada Gonzalez', 'Jada Gonzales'], ['Jada Gonzalez', 'Jada Gonzalez-Smith'],
+    ['Jada Gonzalez', 'JADA GONZÁLEZ'], ['Chris Lee', 'Christopher Lee'], ['Jada Gonzalez Smith', 'Jada Gonzalez']]) assert.equal(namesSimilar(a, b), true, `${a} ~ ${b}`);
+  for (const [a, b] of [['Jada Gonzalez', 'Maria Gonzalez'], ['Jada Gonzalez', 'Jada Lopez'], ['Jada Maria Gonzalez', 'Jada Maria Lopez'], ['Jo Li', 'Joe Li'], ['Jada', 'Jade']]) {
+    assert.equal(namesSimilar(a, b), false, `${a} !~ ${b}`);
+  }
+  const restriction = { full_name: 'Jade Gonzalez', identity_keys: [], match_keys: ['name:jade gonzalez'] };
+  const identity = { full_name: 'Jada Maria Gonzalez', identity_keys: ['user:1'], match_keys: ['name:jada maria gonzalez'] };
+  assert.ok(similarNameMatch(restriction, identity));
+  assert.match(matchReason(restriction, identity), /similar/);
+  assert.match(matchReason({ ...restriction, identity_keys: ['user:1'] }, identity), /linked/);
+});
+test('restriction photos accept only real JPG/PNG/WebP bytes', () => {
+  assert.equal(sniffImageType(new Uint8Array([0xff, 0xd8, 0xff, 0xe0])), 'image/jpeg');
+  assert.equal(sniffImageType(new Uint8Array([0x89, 0x50, 0x4e, 0x47])), 'image/png');
+  assert.equal(sniffImageType(new TextEncoder().encode('RIFF0000WEBPVP8 ')), 'image/webp');
+  assert.equal(sniffImageType(new TextEncoder().encode('<svg onload=1>')), null);
+});

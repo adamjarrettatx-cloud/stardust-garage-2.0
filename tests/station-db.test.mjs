@@ -35,7 +35,8 @@ test('station SQL enforces owner control, scoped operations, revocation, expiry,
     for (const file of ['20260922000000_access_restrictions.sql', '20260922010000_restriction_lift_allowlist.sql',
       '20260929190000_security_incidents.sql', '20260929202000_security_incident_privileges.sql',
       '20260924170000_front_desk_arrivals.sql', '20260930190000_shared_station_accounts.sql',
-      '20260930220000_station_calendar_availability.sql', '20261005210000_front_desk_station_persistent_session.sql']) {
+      '20260930220000_station_calendar_availability.sql', '20261005210000_front_desk_station_persistent_session.sql',
+      '20261016120000_restriction_photos_and_edits.sql']) {
       await db.exec(await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
     }
     const create = async (n, role, username) => {

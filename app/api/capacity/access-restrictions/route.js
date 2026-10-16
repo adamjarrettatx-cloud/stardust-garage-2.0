@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requireFrontDeskOrTeam } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { accessStatus, resolveAccessSubject, resolveAccessIdentity } from '@/lib/capacity/access-restrictions';
-import { UUID, contactKeys, validateRestriction } from '@/lib/capacity/access-policy';
+import { accessStatus, resolveAccessSubject, resolveAccessIdentity, restrictionPhotoUrl } from '@/lib/capacity/access-restrictions';
+import { UUID, contactKeys, validateRestriction, validateRestrictionEdit } from '@/lib/capacity/access-policy';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -46,7 +46,8 @@ export async function GET(request) {
       staff = people.data.map(p => ({ ...p, authorized: managers.data.some(m => m.user_id === p.user_id),
         permissionOwner: managers.data.some(m => m.user_id === p.user_id && m.can_manage_permissions) }));
     }
-    return reply({ rows: rows.map(r => ({ ...r, events: events.filter(e => e.restriction_id === r.id) })),
+    const photos = await Promise.all(rows.map(r => restrictionPhotoUrl(admin, r.photo_path)));
+    return reply({ rows: rows.map((r, i) => ({ ...r, photo_url: photos[i], events: events.filter(e => e.restriction_id === r.id) })),
       canLift: Boolean(manager), canManagePermissions: Boolean(manager?.can_manage_permissions), staff, page });
   } catch {
     return reply({ error: 'Could not load access restrictions. Hold entry until the check is available.' }, 503);
@@ -62,7 +63,7 @@ export async function POST(request) {
   if (gate.station && !['check', 'acknowledge', 'note', 'same_person', 'different_person'].includes(action)) {
     return reply({ error: 'This station cannot perform that action.' }, 403);
   }
-  if (!['check', 'acknowledge', 'create', 'note', 'lift', 'same_person', 'different_person', 'manager'].includes(action)) return reply({ error: 'Invalid action' }, 400);
+  if (!['check', 'acknowledge', 'create', 'update', 'note', 'lift', 'same_person', 'different_person', 'manager'].includes(action)) return reply({ error: 'Invalid action' }, 400);
   const admin = createAdminClient();
   if (action === 'check') {
     try { return reply(await accessStatus(admin, body.subject, body.extra)); }
@@ -99,7 +100,19 @@ export async function POST(request) {
         expires_at: body.kind === 'temporary' ? new Date(body.expires_at).toISOString() : null,
         match_keys: [...new Set([...contactKeys(body), ...(identity?.match_keys || [])])],
         identity_keys: identity?.identity_keys || [],
+        aliases: (body.aliases || []).map(a => a.trim()).filter(Boolean),
+        email: body.email?.trim() || '', phone: body.phone?.trim() || '',
       };
+    } else if (action === 'update') {
+      if (!UUID.test(body.id || '')) throw new Error('Choose a restriction.');
+      validateRestrictionEdit(body);
+      payload = { id: body.id, comment: typeof body.comment === 'string' ? body.comment.trim().slice(0, 1800) : '' };
+      for (const key of ['full_name', 'email', 'phone', 'identifying_details']) {
+        if (typeof body[key] === 'string') payload[key] = body[key].trim();
+      }
+      if (Array.isArray(body.aliases)) payload.aliases = body.aliases.map(a => a.trim()).filter(Boolean);
+      // Append-only: new names/contacts start matching; earlier ones keep matching.
+      payload.match_keys = contactKeys({ full_name: payload.full_name || '', email: payload.email, phone: payload.phone, aliases: payload.aliases || [] });
     } else {
       if (!UUID.test(body.id || '') || typeof body.comment !== 'string' || !body.comment.trim() || body.comment.length > 2000) {
         throw new Error('A restriction and a note of up to 2,000 characters are required.');
@@ -110,13 +123,19 @@ export async function POST(request) {
         if (!status.matches.some(r => r.id === body.id)) throw new Error('No current match for this guest. Refresh first.');
         const identity = await resolveAccessIdentity(admin, body.subject, body.extra);
         payload.identity_keys = identity.identity_keys;
-        payload.subject_key = identity.subject_key;
+        // An override clears the person's account, not just this one pass, so
+        // they are not stopped again on every visit. Same-person linking uses
+        // the same key so it reverses any earlier override for that account.
+        payload.subject_key = identity.identity_keys.find(k => k.startsWith('user:')) || identity.subject_key;
       }
     }
   } catch (error) {
     return reply({ error: error.message || 'Invalid request' }, 400);
   }
-  const { data, error } = await admin.rpc('manage_access_restriction', { p_actor: gate.user.id, p_action: action, p_data: payload });
+  const { data, error } = action === 'update'
+    ? await admin.rpc('update_access_restriction', { p_actor: gate.user.id, p_data: payload })
+    : await admin.rpc('manage_access_restriction', { p_actor: gate.user.id, p_action: action, p_data: payload });
+  if (error && action === 'update' && /No changes|no longer active|name of up to/.test(error.message || '')) return reply({ error: error.message }, 400);
   if (error) return reply({ error: error.code === '42501' ? 'Only the owner or an authorized manager can perform this action.' : 'Could not save. Refresh and try again.' }, error.code === '42501' ? 403 : 409);
   return reply({ ok: true, id: data });
 }
