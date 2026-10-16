@@ -147,4 +147,11 @@ describe('mutation API', () => {
     auth.gate = { ...auth.gate, station: { role: 'front_desk' } };
     expect((await POST(request({ action: 'update', id: restriction.id, full_name: 'X Y' }))).status).toBe(403);
   });
+  it('delete requires a reason, blocks stations, and reports owner-only denial', async () => {
+    expect((await POST(request({ action: 'delete', id: restriction.id, comment: ' ' }))).status).toBe(400);
+    auth.client.rpc.mockResolvedValue({ error: { code: '42501' } });
+    expect((await POST(request({ action: 'delete', id: restriction.id, comment: 'Mistake' }))).status).toBe(403);
+    auth.gate = { ...auth.gate, station: { role: 'front_desk' } };
+    expect((await POST(request({ action: 'delete', id: restriction.id, comment: 'Mistake' }))).status).toBe(403);
+  });
 });

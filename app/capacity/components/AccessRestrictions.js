@@ -217,13 +217,15 @@ export default function AccessRestrictions({ allowCreate = true }) {
   const [confirmLift, setConfirmLift] = useState(false);
   const [confirmManager, setConfirmManager] = useState(null);
   const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteReason, setDeleteReason] = useState('');
   const dialog = useRef(null);
   useEffect(() => {
     function show(event) {
       setSubject(event.detail?.subject || null);
       setName(event.detail?.name || '');
       setCreating(Boolean(event.detail?.subject));
-      setSelected(null); setError(''); setComment(''); setConfirmLift(false); setConfirmManager(null); setEditing(false); setOpen(true);
+      setSelected(null); setError(''); setComment(''); setConfirmLift(false); setConfirmManager(null); setEditing(false); setConfirmDelete(false); setDeleteReason(''); setOpen(true);
     }
     window.addEventListener('sdg:restrictions-open', show);
     return () => window.removeEventListener('sdg:restrictions-open', show);
@@ -271,6 +273,15 @@ export default function AccessRestrictions({ allowCreate = true }) {
     await mutate({ ...fields, action: 'create', subject, aliases: values.aliases.split(',').map(s => s.trim()).filter(Boolean),
       expires_at: values.kind === 'temporary' ? new Date(Date.now() + Number(values.duration) * 3600000).toISOString() : null },
     photo?.size ? photo : null);
+  }
+  async function remove(current) {
+    setBusy(true); setError('');
+    try {
+      await save({ action: 'delete', id: current.id, comment: deleteReason });
+      setConfirmDelete(false); setDeleteReason(''); setSelected(null); setEditing(false);
+      await load();
+    } catch (err) { setError(err.message); }
+    finally { setBusy(false); }
   }
   async function edit(event, current) {
     event.preventDefault();
@@ -330,7 +341,7 @@ export default function AccessRestrictions({ allowCreate = true }) {
           <p className="text-xs text-neutral-400">No account is required. Anyone checking in with the same or a similar name, email or phone is held at the door, and staff compare this photo before admitting.</p>
           <button type="submit" disabled={busy} className={`${button} bg-red-950`}>{busy ? 'Saving…' : 'Save restriction'}</button>
         </form> : row ? <div className="space-y-3">
-          <button type="button" className={button} onClick={() => { setSelected(null); setEditing(false); }}>Back to list</button>
+          <button type="button" className={button} onClick={() => { setSelected(null); setEditing(false); setConfirmDelete(false); }}>Back to list</button>
           <div className="flex gap-4 items-start">
             <div className="w-32 shrink-0"><Photo url={row.photo_url} label="Photo" empty="No photo yet" size="h-32" /></div>
             <div className="min-w-0">
@@ -369,10 +380,21 @@ export default function AccessRestrictions({ allowCreate = true }) {
             <button type="button" className={`${button} ml-2`} onClick={() => setConfirmLift(false)}>Cancel lift</button>
           </div>}
           {!data.canLift && <p className="text-xs text-neutral-400">Only the owner or authorized managers can lift restrictions. Notes remain in the audit history.</p>}
+          {data.canDelete && <div className="border-t border-white/15 pt-3 space-y-2">
+            {!confirmDelete ? <button type="button" className={`${button} border-red-400/60 text-red-200`} disabled={busy} onClick={() => { setConfirmDelete(true); setDeleteReason(''); }}>Delete entry (owner only)</button>
+              : <div className="border border-red-500/50 rounded-lg p-3 space-y-2">
+                <p className="text-sm">Permanently delete {row.full_name} from the banned list? Their photo, notes and door overrides are removed and cannot be restored. Use Lift restriction instead if the ban was real but has ended.</p>
+                <label className="block text-xs">Reason for deleting (required)<textarea className={field} rows={2} maxLength={2000} value={deleteReason} onChange={e => setDeleteReason(e.target.value)} placeholder="e.g. Added by mistake: wrong person" /></label>
+                <div className="flex gap-2">
+                  <button type="button" className={`${button} bg-red-950`} disabled={busy || !deleteReason.trim()} onClick={() => remove(row)}>{busy ? 'Deleting…' : 'Permanently delete'}</button>
+                  <button type="button" className={button} disabled={busy} onClick={() => setConfirmDelete(false)}>Cancel</button>
+                </div>
+              </div>}
+          </div>}
         </div> : <>
           <label className="block text-sm">Search restricted guests<input className={field} value={query} onChange={e => { setQuery(e.target.value); setPage(0); }} placeholder="Search name" /></label>
           <label className="flex gap-2 text-sm"><input type="checkbox" checked={history} onChange={e => { setHistory(e.target.checked); setPage(0); }} />Include lifted / expired</label>
-          {!data ? <p>Loading…</p> : data.rows.length === 0 ? <p className="text-sm text-neutral-400">No restrictions found.</p> : data.rows.map(r => <button type="button" key={r.id} className="w-full text-left p-3 border border-white/15 rounded-xl flex gap-3 items-start" onClick={() => { setSelected(r.id); setComment(''); setEditing(false); }}>
+          {!data ? <p>Loading…</p> : data.rows.length === 0 ? <p className="text-sm text-neutral-400">No restrictions found.</p> : data.rows.map(r => <button type="button" key={r.id} className="w-full text-left p-3 border border-white/15 rounded-xl flex gap-3 items-start" onClick={() => { setSelected(r.id); setComment(''); setEditing(false); setConfirmDelete(false); }}>
             {r.photo_url ? <img src={r.photo_url} alt="" className="h-14 w-14 shrink-0 rounded-md object-cover border border-white/20" />
               : <span className="h-14 w-14 shrink-0 rounded-md border border-dashed border-white/20 flex items-center justify-center text-[10px] text-neutral-500">No photo</span>}
             <span className="min-w-0 flex-1">
