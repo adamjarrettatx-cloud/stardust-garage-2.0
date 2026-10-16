@@ -36,3 +36,27 @@
 .contactCandidate:focus-visible,.contactSearch input:focus-visible{outline:2px solid var(--auth-accent);outline-offset:3px}
 .contactCandidate:hover{border-color:var(--auth-accent)}
 @media(max-width:520px){.mainContactSummary{align-items:flex-start;flex-direction:column}.contactCandidate{align-items:flex-start;flex-direction:column;gap:8px}.contactActions{gap:12px}}
+.peopleList{list-style:none;margin:16px 0;padding:0;display:grid;gap:0}
+.peopleItem{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:16px 0;border-top:1px solid var(--auth-card-border);overflow-wrap:anywhere}
+.peopleItem:first-child{border-top:0;padding-top:0}
+.peopleText{min-width:0;flex:1}
+.peopleText h3{font-size:16px;font-weight:600;margin:0 0 4px}
+.peopleText p{margin:0;font-size:13px;color:var(--auth-muted)}
+.peopleText form{margin-top:12px}
+.peopleRole{font-weight:400;color:var(--auth-muted)}
+.peopleActions{display:flex;gap:16px;align-items:center;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:520px){.peopleItem{flex-direction:column}.peopleActions{justify-content:flex-start}}
+.peopleForm{display:grid;gap:16px;margin-top:20px;padding-top:20px;border-top:1px solid var(--auth-card-border)}.peopleForm h3{font-size:14px;font-weight:600;margin:0}.peopleForm .hint{margin-top:4px}
+.salesAccess{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:12px;font-size:13px}
+.switchLabel{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;color:var(--auth-text-strong);position:relative}
+.switchLabel:has(input:disabled){cursor:default}
+.switchInput{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.switchTrack{width:36px;height:20px;border-radius:999px;background:var(--auth-card-border-strong);position:relative;flex-shrink:0;transition:background .15s}
+.switchThumb{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .15s}
+.switchInput:checked+.switchTrack{background:var(--auth-success)}
+.switchInput:checked+.switchTrack .switchThumb{transform:translateX(16px)}
+.switchInput:focus-visible+.switchTrack{outline:2px solid var(--auth-text-strong);outline-offset:2px}
+.switchInput:disabled+.switchTrack{opacity:.55}
+.salesOn{color:var(--auth-success);font-size:12px}
+.salesWarn{color:var(--auth-warn);font-size:12px}
+.salesOff{color:var(--auth-muted);font-size:12px}
