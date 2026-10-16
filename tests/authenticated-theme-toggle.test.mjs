@@ -123,7 +123,7 @@ test('representative authenticated routes render inline headers and avoid navbar
     'app/bananas/AdminShell.js',
     'app/bananas/applications/page.js',
     'app/bananas/documents/page.js',
-    'app/bananas/events/[id]/financials/page.js',
+    'app/bananas/events/[id]/writeup/page.js',
     'app/bananas/team/TeamManagementClient.js',
     'app/bananas/components/EventForm.js',
     'app/bananas/components/TtEventCreator.js',

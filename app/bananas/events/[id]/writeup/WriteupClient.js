@@ -88,7 +88,7 @@ export default function WriteupClient({ eventId, initial }) {
   const [showPreview, setShowPreview] = useState(false);
   const fileRef = useRef(null);
   const online = data.writeup.online;
-  const isTicketTailor = data.event.ticketing_mode && data.event.ticketing_mode !== 'internal' && online.transactions === 0;
+  const isTicketTailor = online.source === 'tickettailor';
 
   const [doorGross, setDoorGross] = useState(centsToInput(data.config.door_gross_cents));
   const [orgPct, setOrgPct] = useState(data.config.organizer_percent == null ? '' : String(data.config.organizer_percent));
@@ -231,13 +231,21 @@ export default function WriteupClient({ eventId, initial }) {
     const lines = [
       `${data.event.title} — Financial Write-Up`,
       '',
-      `sdgatx.com tickets (${o.ticketsSold} sold)`,
-      `  Gross revenue: ${usd(o.grossCents)}`,
-      ...(o.refundsCents ? [`  Refunds: ${minus(o.refundsCents)}`] : []),
-      `  Sales tax (8.25%): ${minus(o.salesTaxCents)}`,
-      `  Stripe fees (${pct(o.stripePctBps)} + ${o.stripeFixedCents}¢ × ${o.transactions} transactions): ${minus(o.stripeFeesCents)}`,
-      `  Booking fees (100% Stardust Garage): ${minus(o.bookingFeesCents)}`,
-      `  Net: ${usd(o.netCents)}`,
+      ...(o.source === 'tickettailor' ? [
+        `Ticket Tailor tickets (${o.ticketsSold} sold)`,
+        `  Gross revenue: ${usd(o.grossCents)}`,
+        `  Ticket Tailor fees: ${minus(o.ticketTailorFeesCents)}`,
+        `  Per-ticket fee (${usd(o.perTicketFeeCents)} × ${o.ticketsSold}): ${minus(o.perTicketFeesTotalCents)}`,
+        `  Net: ${usd(o.netCents)}`,
+      ] : [
+        `sdgatx.com tickets (${o.ticketsSold} sold)`,
+        `  Gross revenue: ${usd(o.grossCents)}`,
+        ...(o.refundsCents ? [`  Refunds: ${minus(o.refundsCents)}`] : []),
+        `  Sales tax (8.25%): ${minus(o.salesTaxCents)}`,
+        `  Stripe fees (${pct(o.stripePctBps)} + ${o.stripeFixedCents}¢ × ${o.transactions} transactions): ${minus(o.stripeFeesCents)}`,
+        `  Booking fees (100% Stardust Garage): ${minus(o.bookingFeesCents)}`,
+        `  Net: ${usd(o.netCents)}`,
+      ]),
       '',
       'Door sales',
       `  Gross revenue: ${usd(d.grossCents)}`,
@@ -270,17 +278,34 @@ export default function WriteupClient({ eventId, initial }) {
   return (
     <div className="space-y-5">
       <div className="grid gap-5 md:grid-cols-2">
-        <Card
-          title={`sdgatx.com tickets · ${o.ticketsSold} sold`}
-          subtitle={isTicketTailor ? 'This event sold through Ticket Tailor, so there are no sdgatx.com orders to total.' : `${o.transactions} transactions · totaled live from orders`}
-        >
-          <Row top={false} label="Gross revenue" value={usd(o.grossCents)} />
-          {o.refundsCents ? <Row label="Refunds" value={minus(o.refundsCents)} /> : null}
-          <Row label="Sales tax (8.25%, as collected)" value={minus(o.salesTaxCents)} />
-          <Row label={`Stripe fees (${pct(o.stripePctBps)} + ${o.stripeFixedCents}¢ per transaction)`} value={minus(o.stripeFeesCents)} />
-          <Row label="Booking fees (100% Stardust Garage)" value={minus(o.bookingFeesCents)} />
-          <Row bold label="Net online" value={usd(o.netCents)} />
-        </Card>
+        {isTicketTailor ? (
+          <Card
+            title={`Ticket Tailor tickets · ${o.ticketsSold} sold`}
+            subtitle={`Final Ticket Tailor record${o.frozenAt ? ` as of ${new Date(o.frozenAt).toLocaleDateString('en-US', { dateStyle: 'medium' })}` : ''} · no longer synced`}
+          >
+            <Row top={false} label="Gross revenue" value={usd(o.grossCents)} />
+            <Row label="Ticket Tailor fees" value={minus(o.ticketTailorFeesCents)} />
+            <Row label={`Per-ticket fee (${usd(o.perTicketFeeCents)} × ${o.ticketsSold})`} value={minus(o.perTicketFeesTotalCents)} />
+            <Row bold label="Net online" value={usd(o.netCents)} />
+            {o.snapshotStatus && o.snapshotStatus !== 'ok' ? (
+              <p className="text-[12px] mt-2" style={{ color: 'var(--auth-pink)' }}>
+                The last Ticket Tailor sync did not finish cleanly. Check these numbers against Ticket Tailor.
+              </p>
+            ) : null}
+          </Card>
+        ) : (
+          <Card
+            title={`sdgatx.com tickets · ${o.ticketsSold} sold`}
+            subtitle={`${o.transactions} transactions · totaled live from orders`}
+          >
+            <Row top={false} label="Gross revenue" value={usd(o.grossCents)} />
+            {o.refundsCents ? <Row label="Refunds" value={minus(o.refundsCents)} /> : null}
+            <Row label="Sales tax (8.25%, as collected)" value={minus(o.salesTaxCents)} />
+            <Row label={`Stripe fees (${pct(o.stripePctBps)} + ${o.stripeFixedCents}¢ per transaction)`} value={minus(o.stripeFeesCents)} />
+            <Row label="Booking fees (100% Stardust Garage)" value={minus(o.bookingFeesCents)} />
+            <Row bold label="Net online" value={usd(o.netCents)} />
+          </Card>
+        )}
 
         <Card title="Door sales" subtitle="Enter gross door sales from the POS dashboard.">
           <label className="flex items-center justify-between gap-4 pb-2 text-[13px]">
@@ -434,7 +459,7 @@ export default function WriteupClient({ eventId, initial }) {
 
       <Card title="Stardust Garage keeps" subtitle="Admin only. Never shown to the organizer.">
         <Row top={false} label="Net ticket revenue after organizer payout" value={usd(live.netTicketRevenueCents - live.netPayoutCents)} />
-        <Row label="Booking fees" value={usd(o.bookingFeesCents)} />
+        {isTicketTailor ? null : <Row label="Booking fees" value={usd(o.bookingFeesCents)} />}
         <Row bold label="Total to Stardust Garage" value={usd(live.stardustKeepsCents)} />
       </Card>
 

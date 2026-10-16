@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdminMfa } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { listOrders, listIssuedTickets } from '@/lib/tickettailor';
 import {
-  buildMetricsSnapshot,
   buildInternalMetricsSnapshot,
   buildPlaceholderMetricsRow,
 } from '@/lib/event-analytics';
@@ -11,10 +9,9 @@ import { classifyCronAuth } from '@/lib/event-metrics-auth';
 
 export const runtime = 'nodejs';
 
-// Core refresh routine. Two providers feed the same public.event_ticket_metrics
-// cache:
-//   * TicketTailor — READ-ONLY external API pull via lib/tickettailor.js
-//   * Internal ticketing — local aggregation over public.orders / public.tickets
+// Core refresh routine. Internal ticketing rows in public.event_ticket_metrics
+// are re-aggregated from public.orders / public.tickets. Ticket Tailor rows are
+// frozen historical records and are never re-pulled or overwritten.
 // The Events list on /bananas reads that cache, so both providers surface the
 // live sold/gross widget in the same spot. Events with neither provider are
 // recorded as `not_configured` so a real zero is never confused with a guess.
@@ -44,9 +41,9 @@ async function buildInternalRow(supabase, event, fetchedAt) {
 }
 
 async function refreshMetrics(supabase, { eventId = null } = {}) {
-  // ticketing_mode drives the source choice below: 'internal' events roll up
-  // from our own orders/tickets, everything else falls through to the existing
-  // TicketTailor pull (or a placeholder when the event is not TT-linked).
+  // Only internal-ticketing events are refreshed. Events still linked to a
+  // Ticket Tailor series keep their frozen Ticket Tailor row even if their
+  // ticketing mode is later changed.
   let query = supabase.from('events').select('id, title, tt_event_series_id, ticketing_mode');
   // Optional single-event scope. Used by the per-event "Refresh metrics" button
   // so an admin can update one row without re-pulling the whole portfolio.
@@ -56,7 +53,6 @@ async function refreshMetrics(supabase, { eventId = null } = {}) {
   const { data: events, error } = await query;
   if (error) throw new Error('Failed to load events: ' + error.message);
 
-  const ttConfigured = Boolean(process.env.TICKETTAILOR_API_KEY);
   const fetchedAt = new Date().toISOString();
   const rows = [];
   let refreshed = 0;
@@ -68,7 +64,7 @@ async function refreshMetrics(supabase, { eventId = null } = {}) {
     // public.orders / public.tickets. No external API call, so this always
     // works even without a TicketTailor key, and there is no rate limit to
     // worry about on the per-row refresh button.
-    if (event.ticketing_mode === 'internal') {
+    if (event.ticketing_mode === 'internal' && !event.tt_event_series_id) {
       try {
         rows.push(await buildInternalRow(supabase, event, fetchedAt));
         refreshed++;
@@ -88,64 +84,11 @@ async function refreshMetrics(supabase, { eventId = null } = {}) {
       continue;
     }
 
-    // No TT series → we cannot pull real numbers. Record a clear, honest
-    // placeholder rather than guessing.
-    if (!event.tt_event_series_id) {
-      rows.push(
-        buildPlaceholderMetricsRow({
-          eventId: event.id,
-          ttEventSeriesId: null,
-          errorDetail: 'Event is not linked to a TicketTailor event series.',
-          fetchedAt,
-        }),
-      );
-      skipped++;
-      continue;
-    }
-
-    // API key missing → cannot make read calls; record not_configured so the
-    // dashboard explains *why* there are no numbers instead of showing zeros.
-    if (!ttConfigured) {
-      rows.push(
-        buildPlaceholderMetricsRow({
-          eventId: event.id,
-          ttEventSeriesId: event.tt_event_series_id,
-          errorDetail: 'TICKETTAILOR_API_KEY is not configured in this environment.',
-          fetchedAt,
-        }),
-      );
-      skipped++;
-      continue;
-    }
-
-    try {
-      const [orders, issuedTickets] = await Promise.all([
-        listOrders({ eventSeriesId: event.tt_event_series_id }),
-        listIssuedTickets({ eventSeriesId: event.tt_event_series_id }),
-      ]);
-      rows.push(
-        buildMetricsSnapshot({
-          eventId: event.id,
-          ttEventSeriesId: event.tt_event_series_id,
-          orders,
-          issuedTickets,
-          fetchedAt,
-        }),
-      );
-      refreshed++;
-    } catch (err) {
-      rows.push(
-        buildPlaceholderMetricsRow({
-          eventId: event.id,
-          ttEventSeriesId: event.tt_event_series_id,
-          status: 'error',
-          source: 'tickettailor',
-          errorDetail: String(err?.message || err).slice(0, 500),
-          fetchedAt,
-        }),
-      );
-      failed++;
-    }
+    // Ticket Tailor is retired and its cached rows are frozen. Anything that is
+    // not internal ticketing is left exactly as it is: no external pull, no
+    // placeholder overwrite. Past Ticket Tailor sales stay in the cache as the
+    // permanent record for those events.
+    skipped++;
   }
 
   if (rows.length) {
@@ -155,13 +98,13 @@ async function refreshMetrics(supabase, { eventId = null } = {}) {
     if (upsertError) throw new Error('Failed to cache metrics: ' + upsertError.message);
   }
 
-  return { refreshed, skipped, failed, total: rows.length, ttConfigured, fetchedAt };
+  return { refreshed, skipped, failed, total: rows.length, ticketTailorFrozen: true, fetchedAt };
 }
 
 const UUID = /^[0-9a-f-]{36}$/i;
 
 // POST /api/admin/refresh-event-metrics
-// Manual refresh by a signed-in admin. Read-only against TicketTailor.
+// Manual refresh by a signed-in admin. Internal ticketing only.
 // Optional body { eventId } scopes the refresh to a single event.
 export async function POST(request) {
   try {

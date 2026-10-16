@@ -228,7 +228,6 @@ test('every normalizeContractDateTime caller unwraps the { ok, value } envelope'
   const repoRoot = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), '..');
   const callers = [
     'app/api/admin/documents/from-template/route.js',
-    'app/api/admin/events/[id]/pos-import/route.js',
   ];
   for (const rel of callers) {
     const src = fs.readFileSync(path.join(repoRoot, rel), 'utf8');
