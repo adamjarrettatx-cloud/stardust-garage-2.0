@@ -44,6 +44,10 @@ export default function TimesheetCalendar({ workers, roles = [], assignments = [
   const [selected, setSelected] = useState(today);
   const [person, setPerson] = useState("all");
   const [error, setError] = useState("");
+  // Errors from actions in the day panel are shown in the panel, next to the
+  // button that caused them, not at the top of the page.
+  const [actionError, setActionError] = useState("");
+  const [conflict, setConflict] = useState(null);
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [edit, setEdit] = useState(null);
@@ -144,6 +148,8 @@ export default function TimesheetCalendar({ workers, roles = [], assignments = [
     setSelected(d);
     setEdit(null);
     setAdd(null);
+    setActionError("");
+    setConflict(null);
     setNotice("");
     requestAnimationFrame(() => panel.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
@@ -158,7 +164,8 @@ export default function TimesheetCalendar({ workers, roles = [], assignments = [
   async function act(fn, message) {
     if (busy) return;
     setBusy(true);
-    setError("");
+    setActionError("");
+    setConflict(null);
     setNotice("");
     try {
       await fn();
@@ -166,7 +173,7 @@ export default function TimesheetCalendar({ workers, roles = [], assignments = [
       await load();
       onChanged?.();
     } catch (e) {
-      setError(e.message);
+      setActionError(e.message);
       await load().catch(() => {});
     } finally {
       setBusy(false);
@@ -203,7 +210,8 @@ export default function TimesheetCalendar({ workers, roles = [], assignments = [
   function openAdd(from) {
     setEdit(null);
     setNotice("");
-    setError("");
+    setActionError("");
+    setConflict(null);
     const worker_id = from?.worker_id || "";
     setAdd({
       worker_id,
@@ -228,6 +236,17 @@ export default function TimesheetCalendar({ workers, roles = [], assignments = [
       if (!add.role_id) throw new Error("Choose a role.");
       const start = austinIso(add.start), end = austinIso(add.end);
       if (Date.parse(end) <= Date.parse(start)) throw new Error("Clock-out must be after clock-in.");
+      // Name the punch that blocks these hours instead of a generic overlap error.
+      const clash = (shifts || []).find(
+        (x) => x.worker_id === add.worker_id &&
+          overlaps(Date.parse(start), Date.parse(end), Date.parse(x.started_at), x.ended_at ? Date.parse(x.ended_at) : Infinity),
+      );
+      if (clash) {
+        setConflict(clash);
+        throw new Error(
+          `${who} already has a punch from ${ymdLabel(chicagoYmd(clash.started_at), { weekday: "short", month: "short", day: "numeric" })} ${time(clash.started_at)} to ${clash.ended_at ? `${ymdLabel(chicagoYmd(clash.ended_at), { weekday: "short", month: "short", day: "numeric" })} ${time(clash.ended_at)}` : "now (still clocked in)"} that covers these hours. Correct that shift's clock-out first, then add these hours.`,
+        );
+      }
       await request(endpoint, {
         action: "add_shift",
         payload: {
@@ -385,6 +404,7 @@ export default function TimesheetCalendar({ workers, roles = [], assignments = [
           </div>
         </div>
         {notice && <div className="notice" role="status">{notice}</div>}
+        {actionError && !add && <div className="notice tc-error" role="alert">{actionError}</div>}
 
         {add && (
           <form className="tcal-edit tcal-add" ref={addRef} onSubmit={saveAdd} aria-label="Add hours">
@@ -444,6 +464,21 @@ export default function TimesheetCalendar({ workers, roles = [], assignments = [
                     placeholder="e.g. Forgot to clock in; confirmed with door lead"
                     onChange={(e) => setAdd({ ...add, reason: e.target.value })} />
                 </label>
+                {actionError && (
+                  <div className="notice tc-error tcal-adderror" role="alert">
+                    {actionError}
+                    {conflict && (
+                      <button type="button" onClick={() => {
+                        const s0 = conflict;
+                        pick(chicagoYmd(s0.started_at));
+                        setEdit({ shift: s0, start: chicagoInput(s0.started_at).slice(0, 16),
+                          end: s0.ended_at ? chicagoInput(s0.ended_at).slice(0, 16) : "", reason: "" });
+                      }}>
+                        Fix that shift
+                      </button>
+                    )}
+                  </div>
+                )}
                 <div className="row">
                   <button className="primary" disabled={busy || !add.worker_id}>Add hours</button>
                   <button type="button" onClick={() => setAdd(null)}>Cancel</button>
