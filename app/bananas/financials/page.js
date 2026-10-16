@@ -33,7 +33,7 @@ export default async function FinancialsPage() {
   // whole months once the catalog grows past the cap.
   const { data: events } = await supabase
     .from('events')
-    .select('id, title, event_date, category, status, tt_event_series_id, member_discount_percent, discount_codes_generated')
+    .select('id, title, event_date, category, status, ticketing_mode, tt_event_series_id, member_discount_percent, discount_codes_generated')
     .order('event_date', { ascending: true });
 
   // Local member-discount-code rows power the engagement metrics.

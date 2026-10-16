@@ -6,6 +6,9 @@ import {
   buildPlaceholderMetricsRow,
 } from '@/lib/event-analytics';
 import { classifyCronAuth } from '@/lib/event-metrics-auth';
+import { ACCOUNT_NAMES, TICKET_SOURCES, buildSdgatxLedgerRows } from '@/lib/financial-ledger';
+import { resolveAccountId } from '@/lib/financial-ledger-db';
+import { writeLedgerRows } from '@/lib/financial-ledger-write';
 
 export const runtime = 'nodejs';
 
@@ -44,7 +47,7 @@ async function refreshMetrics(supabase, { eventId = null } = {}) {
   // Only internal-ticketing events are refreshed. Events still linked to a
   // Ticket Tailor series keep their frozen Ticket Tailor row even if their
   // ticketing mode is later changed.
-  let query = supabase.from('events').select('id, title, tt_event_series_id, ticketing_mode');
+  let query = supabase.from('events').select('id, title, event_date, tt_event_series_id, ticketing_mode');
   // Optional single-event scope. Used by the per-event "Refresh metrics" button
   // so an admin can update one row without re-pulling the whole portfolio.
   query = eventId
@@ -98,7 +101,37 @@ async function refreshMetrics(supabase, { eventId = null } = {}) {
     if (upsertError) throw new Error('Failed to cache metrics: ' + upsertError.message);
   }
 
-  return { refreshed, skipped, failed, total: rows.length, ticketTailorFrozen: true, fetchedAt };
+  // Mirror sdgatx.com ticket revenue into the Cash Flow ledger so it stays
+  // current without a manual sync. A ledger failure is reported but never
+  // blocks the metrics refresh itself.
+  let ledger = null;
+  try {
+    ledger = await mirrorSdgatxLedger(supabase, events || [], rows);
+  } catch (err) {
+    console.error('refresh-event-metrics ledger mirror failed:', err);
+    ledger = { error: String(err?.message || err).slice(0, 300) };
+  }
+
+  return { refreshed, skipped, failed, total: rows.length, ticketTailorFrozen: true, ledger, fetchedAt };
+}
+
+async function mirrorSdgatxLedger(supabase, events, metricsRows) {
+  const internalIds = metricsRows.filter((r) => r.source === 'internal').map((r) => r.event_id);
+  if (internalIds.length === 0) return { written: 0 };
+  const accountId = await resolveAccountId(supabase, ACCOUNT_NAMES.sdgatx);
+  const existingRefs = new Set();
+  for (let i = 0; i < internalIds.length; i += 200) {
+    const { data, error } = await supabase
+      .from('financial_transactions')
+      .select('external_ref')
+      .eq('source', TICKET_SOURCES.sdgatx)
+      .in('external_ref', internalIds.slice(i, i + 200));
+    if (error) throw new Error('Could not read ledger: ' + error.message);
+    for (const r of data || []) existingRefs.add(r.external_ref);
+  }
+  const ledgerRows = buildSdgatxLedgerRows({ events, metrics: metricsRows, accountId, existingRefs });
+  const written = await writeLedgerRows(supabase, ledgerRows);
+  return { written: ledgerRows.length, ...written };
 }
 
 const UUID = /^[0-9a-f-]{36}$/i;

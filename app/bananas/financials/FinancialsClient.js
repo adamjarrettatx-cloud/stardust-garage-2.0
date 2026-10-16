@@ -11,7 +11,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { centsToUsd } from '@/lib/event-analytics';
-import { ENTRY_STATE, entriesInMonth, summarizeIncome } from '@/lib/financial-calendar';
+import { ENTRY_STATE, TICKET_SOURCE_LABEL, entriesInMonth, summarizeIncome } from '@/lib/financial-calendar';
 import { entryNetCents, buildDailyRevenue, rollupDailyRevenue } from '@/lib/financial-overview';
 import { MANUAL_CATEGORIES } from '@/lib/manual-income';
 import { adminFetch } from '@/lib/admin-fetch';
@@ -63,10 +63,10 @@ const MANUAL_CATEGORY_LABEL = Object.fromEntries(MANUAL_CATEGORIES.map((c) => [c
 // Per-state presentation for non-revenue entries. `label` shows in the detail
 // panel; `chip` is the short marker rendered on the calendar cell.
 const STATE_META = {
-  [ENTRY_STATE.PENDING]:        { chip: 'Not synced',     note: 'Linked to TicketTailor but not refreshed yet.' },
-  [ENTRY_STATE.UNLINKED]:       { chip: 'No TT link',     note: 'Not linked to a TicketTailor series — link it to track income.' },
+  [ENTRY_STATE.PENDING]:        { chip: 'Not synced',     note: 'Ticket sales have not been refreshed yet.' },
+  [ENTRY_STATE.UNLINKED]:       { chip: 'No tickets',     note: 'No online ticket sales on sdgatx.com or Ticket Tailor.' },
   [ENTRY_STATE.NOT_CONFIGURED]: { chip: 'Not configured', note: 'TICKETTAILOR_API_KEY is not configured in this environment.' },
-  [ENTRY_STATE.ERROR]:          { chip: 'Sync error',     note: 'The last TicketTailor refresh failed. Try refreshing again.' },
+  [ENTRY_STATE.ERROR]:          { chip: 'Sync error',     note: 'The last ticket sales refresh failed. Try refreshing again.' },
   [ENTRY_STATE.ZERO]:           { chip: '$0 so far',      note: 'Refreshed — no sales recorded yet.' },
 };
 
@@ -264,8 +264,8 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
         </div>
       </div>
       <p className="mb-6 text-[14px]" style={{ color: t.muted }}>
-        Every income source in one place, mapped to the calendar day it landed on — TicketTailor sales (linked
-        events and TT-only events), SpotOn point-of-sale revenue (including days with no event on the books),
+        Every income source in one place, mapped to the calendar day it landed on — online ticket sales (sdgatx.com,
+        plus the final Ticket Tailor record for Mar 1 – Sept 19, 2026), SpotOn point-of-sale revenue (including days with no event on the books),
         member-code engagement, and owner-entered manual income (e.g. venue rentals). Revenue figures come from the
         read-only metrics cache, refreshed on a daily cron or on demand below. Income only; expenses aren&apos;t
         tracked yet.
@@ -482,7 +482,7 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
                         <div className="flex items-center gap-2 mb-1 min-w-0">
                           <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: CATEGORY_COLOR[entry.category] || t.muted }} />
                           {entry.isManual || entry.hasLocalEvent === false ? (
-                            <span className="text-[14px] font-bold truncate min-w-0" style={{ color: t.textStrong }} title={entry.isManual ? 'Manual income entry' : 'TicketTailor-only event (no website record)'}>{entry.title}</span>
+                            <span className="text-[14px] font-bold truncate min-w-0" style={{ color: t.textStrong }} title={entry.isManual ? 'Manual income entry' : 'Ticket Tailor-only event (no website record)'}>{entry.title}</span>
                           ) : (
                             <Link href={`/bananas/events/${entry.id}`} className="text-[14px] font-bold hover:underline truncate min-w-0" style={{ color: t.textStrong }}>{entry.title}</Link>
                           )}
@@ -528,9 +528,9 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
                             </div>
                             <div className="text-[10px] mb-2" style={{ color: t.muted }}>Combined income</div>
                             <div className="space-y-1 text-[11px]" data-testid="fin-event-breakdown">
-                              {entry.ttLinked && (
+                              {entry.ticketSource && (
                                 <div className="flex items-center justify-between">
-                                  <span style={{ color: t.muted }}>TicketTailor{entry.isFuture ? ' (to date)' : ''}</span>
+                                  <span style={{ color: t.muted }}>{TICKET_SOURCE_LABEL[entry.ticketSource]}{entry.isFuture ? ' (to date)' : ''}</span>
                                   <span style={{ color: t.mutedStrong }}>
                                     {hasMoney || entry.state === ENTRY_STATE.ZERO
                                       ? centsToUsd(entry.ttGrossCents)
@@ -554,7 +554,9 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
                               {centsToUsd(entry.grossCents)}
                             </div>
                             <div className="text-[10px] mb-2" style={{ color: t.muted }}>
-                              {entry.isFuture ? 'Gross TicketTailor sales-to-date (not a forecast)' : 'Gross TicketTailor income'}
+                              {entry.isFuture
+                                ? `Gross ${TICKET_SOURCE_LABEL[entry.ticketSource] || 'ticket'} sales-to-date (not a forecast)`
+                                : `Gross ${TICKET_SOURCE_LABEL[entry.ticketSource] || 'ticket'} income`}
                             </div>
                             <div className="grid grid-cols-3 gap-2 text-[11px]">
                               <div>
@@ -663,8 +665,8 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
           </div>
 
           <p className="mt-6 text-[12px]" style={{ color: t.faint }}>
-            TicketTailor figures come from the read-only metrics cache, refreshed on a daily cron or on demand
-            above (upcoming events show real sales-to-date, not a forecast). Entries tagged <span style={{ color: t.rev }}>Manual</span> are
+            sdgatx.com ticket figures refresh nightly or on demand above; Ticket Tailor figures are the final record
+            and no longer change (upcoming events show real sales-to-date, not a forecast). Entries tagged <span style={{ color: t.rev }}>Manual</span> are
             owner-entered income (e.g. venue rentals) with no ticketing record. Days marked <span style={{ color: t.pos }}>POS</span> include
             SpotOn point-of-sale income imported from CSV, even on days with no event on the books — see the Trends tab for
             day/week/month rollups across every revenue source.
@@ -688,7 +690,7 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
               <div className="overflow-x-auto">
               <div className="min-w-[720px]">
               <div className={`grid ${gridCols} gap-2 px-4 py-2.5 text-[11px] font-semibold tracking-[0.08em] uppercase`} style={{ color: t.muted, borderBottom: `1px solid ${t.tableBorder}` }}>
-                <span>Event</span><span>Date</span><span>Gross</span><span>Net</span><span>Sold</span><span>Codes</span><span>TT</span>
+                <span>Event</span><span>Date</span><span>Gross</span><span>Net</span><span>Sold</span><span>Codes</span><span>Source</span>
               </div>
               {performanceRows.map((r) => {
                 // A row shows real figures once TicketTailor has been refreshed
@@ -717,20 +719,15 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
                     <span style={{ color: t.text }} title={`${r.memberCodes.sent} sent / ${r.memberCodes.total} total`}>
                       {r.memberCodes.sent}/{r.memberCodes.total}
                     </span>
-                    {r.ttLinked ? (
+                    {r.ticketSource === 'sdgatx' ? (
                       <span className="flex items-center gap-1.5">
-                        <span style={{ color: t.rev }}>linked</span>
+                        <span style={{ color: t.rev }}>sdgatx.com</span>
                         <RowRefreshButton eventId={r.id} />
                       </span>
+                    ) : r.ticketSource === 'tickettailor' ? (
+                      <span style={{ color: t.mutedStrong }} title="Final Ticket Tailor record">Ticket Tailor</span>
                     ) : (
-                      <Link
-                        href={`/bananas/events/${r.id}`}
-                        className="hover:underline"
-                        style={{ color: t.warn }}
-                        title="Link this event to a TicketTailor series"
-                      >
-                        Link →
-                      </Link>
+                      <span style={{ color: t.faint }}>—</span>
                     )}
                   </div>
                 );
@@ -775,14 +772,18 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
 
           {(() => {
             const rangeEventGross = trendBuckets.reduce((sum, b) => sum + b.eventGrossCents, 0);
+            const rangeTtGross = trendBuckets.reduce((sum, b) => sum + (b.ticketTailorGrossCents || 0), 0);
+            const rangeSdgatxGross = trendBuckets.reduce((sum, b) => sum + (b.sdgatxGrossCents || 0), 0);
             const rangePosRevenue = trendBuckets.reduce((sum, b) => sum + b.posRevenueCents, 0);
             const rangePosRefund = trendBuckets.reduce((sum, b) => sum + b.posRefundCents, 0);
             const rangeTotalGross = trendBuckets.reduce((sum, b) => sum + b.totalGrossCents, 0);
             const rangeTotalNet = trendBuckets.reduce((sum, b) => sum + b.totalNetCents, 0);
             return (
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6" data-testid="fin-trend-summary">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" data-testid="fin-trend-summary">
                 {[
                   { label: 'Event revenue', value: centsToUsd(rangeEventGross), accent: true },
+                  { label: 'sdgatx.com tickets', value: centsToUsd(rangeSdgatxGross) },
+                  { label: 'Ticket Tailor tickets (final)', value: centsToUsd(rangeTtGross) },
                   { label: 'POS revenue (SpotOn)', value: centsToUsd(rangePosRevenue), pos: true },
                   { label: 'POS refunds', value: centsToUsd(rangePosRefund) },
                   { label: 'Total gross (all sources)', value: centsToUsd(rangeTotalGross), accent: true },
@@ -833,8 +834,8 @@ export default function FinancialsClient({ entries, performanceRows, totals, tod
           )}
 
           <p className="mt-6 text-[12px]" style={{ color: t.faint }}>
-            Every calendar day is counted once, whether or not it has a named event — “Event revenue” is TicketTailor +
-            manual income tied to an event, “POS revenue” is SpotOn point-of-sale totals for that day (event days and
+            Every calendar day is counted once, whether or not it has a named event — “Event revenue” is online ticket sales
+            (sdgatx.com and the final Ticket Tailor record) plus manual income tied to an event, “POS revenue” is SpotOn point-of-sale totals for that day (event days and
             plain weekdays alike). Totals are gross before refunds/fees except where noted as net.
           </p>
         </>
