@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { isViewPortalSandbox, PREVIEW_ONLY_MESSAGE } from '@/lib/view-portal/preview-only';
 import { createRequestScopedClient, requirePartner } from '@/lib/auth-helpers';
 import { profileCapabilities } from '@/lib/profile-capabilities';
 import { attendanceLabel, longDateLabel, parsePitchInput, pitchErrorResponse, timeRangeLabel } from '@/lib/date-pitches';
@@ -29,6 +30,7 @@ export async function GET(request) {
 // re-checks that the date is open and within the next 12 months. A pitch never
 // holds the date.
 export async function POST(request) {
+  if (isViewPortalSandbox()) return NextResponse.json({ error: PREVIEW_ONLY_MESSAGE }, { status: 403 });
   const { partner, unauthorized } = await requirePartner(request);
   if (unauthorized) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!gate(partner)) return NextResponse.json({ error: 'Date pitches are not available for this profile.' }, { status: 403 });

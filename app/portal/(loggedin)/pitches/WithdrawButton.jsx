@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function WithdrawButton({ id }) {
+export default function WithdrawButton({ id, disabled = false }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -19,7 +19,7 @@ export default function WithdrawButton({ id }) {
   return (
     <>
       {error && <span className="pg-error" role="alert" style={{ margin: 0 }}>{error}</span>}
-      <button type="button" className="pg-btn" style={{ minHeight: 32, padding: '4px 10px', fontSize: 12 }} onClick={withdraw} disabled={busy}>
+      <button type="button" className="pg-btn" style={{ minHeight: 32, padding: '4px 10px', fontSize: 12 }} onClick={withdraw} disabled={busy || disabled} title={disabled ? 'View-only in View Portal' : undefined}>
         {busy ? 'Withdrawing…' : 'Withdraw'}
       </button>
     </>

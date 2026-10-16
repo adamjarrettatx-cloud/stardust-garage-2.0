@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   ATTENDANCE_OPTIONS, groupCalendarMonths, longDateLabel, timeLabel,
 } from '@/lib/date-pitches';
+import { PREVIEW_ONLY_MESSAGE } from '@/lib/view-portal/preview-only';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
@@ -37,7 +38,7 @@ function CloseButton({ onClose }) {
   return <button type="button" className="pg-ibtn" onClick={onClose} aria-label="Close">&#10005;</button>;
 }
 
-function PitchForm({ date, onClose, onSent }) {
+function PitchForm({ date, onClose, onSent, previewOnly }) {
   const [form, setForm] = useState({ title: '', concept: '', lineup: '', startTime: '22:00', endTime: '02:00', expectedAttendance: '100_250', notes: '' });
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
@@ -45,7 +46,7 @@ function PitchForm({ date, onClose, onSent }) {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (sending) return;
+    if (sending || previewOnly) return;
     setError('');
     setSending(true);
     try {
@@ -86,10 +87,11 @@ function PitchForm({ date, onClose, onSent }) {
         <div className="pg-field"><label htmlFor="pg-f7">Anything else (optional)</label>
           <textarea id="pg-f7" style={{ minHeight: 70 }} maxLength={2000} value={form.notes} onChange={set('notes')} placeholder="Ticket price idea, production needs, links" /></div>
         <div className="pg-note">Pitching doesn&apos;t hold the date. It stays open until SDG approves a pitch for it.</div>
+        {previewOnly && <div className="pg-note pg-preview" role="status">{PREVIEW_ONLY_MESSAGE}</div>}
         {error && <p className="pg-error" role="alert">{error}</p>}
         <div className="pg-actions">
           <button type="button" className="pg-btn" onClick={onClose}>Cancel</button>
-          <button type="submit" className="pg-btn primary" disabled={sending}>{sending ? 'Sending…' : 'Send pitch'}</button>
+          <button type="submit" className="pg-btn primary" disabled={sending || previewOnly} title={previewOnly ? 'View-only in View Portal' : undefined}>{sending ? 'Sending…' : 'Send pitch'}</button>
         </div>
       </form>
     </Drawer>
@@ -112,10 +114,11 @@ function PublicEvent({ day, onClose }) {
   );
 }
 
-function MyPitch({ pitch, onClose, onWithdrawn }) {
+function MyPitch({ pitch, onClose, onWithdrawn, previewOnly }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const withdraw = async () => {
+    if (previewOnly) return;
     setBusy(true); setError('');
     const res = await fetch(`/api/portal/pitches/${pitch.id}/withdraw`, { method: 'POST' });
     const json = await res.json().catch(() => ({}));
@@ -131,13 +134,14 @@ function MyPitch({ pitch, onClose, onWithdrawn }) {
       <dl><dt>Date</dt><dd>{longDateLabel(pitch.pitch_date)}</dd><dt>Sent</dt><dd>{new Date(pitch.created_at).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' })}</dd></dl>
       {error && <p className="pg-error" role="alert">{error}</p>}
       <div className="pg-actions" style={{ justifyContent: 'flex-start' }}>
-        <button type="button" className="pg-btn" onClick={withdraw} disabled={busy}>{busy ? 'Withdrawing…' : 'Withdraw pitch'}</button>
+        <button type="button" className="pg-btn" onClick={withdraw} disabled={busy || previewOnly}>{busy ? 'Withdrawing…' : 'Withdraw pitch'}</button>
       </div>
+      {previewOnly && <div className="pg-note pg-preview" role="status" style={{ marginTop: 18 }}>{PREVIEW_ONLY_MESSAGE}</div>}
     </Drawer>
   );
 }
 
-export default function ProgrammingCalendar({ days, pitches }) {
+export default function ProgrammingCalendar({ days, pitches, previewOnly = false }) {
   const router = useRouter();
   const months = useMemo(() => groupCalendarMonths(days), [days]);
   const [index, setIndex] = useState(0);
@@ -213,9 +217,9 @@ export default function ProgrammingCalendar({ days, pitches }) {
         </div>
         <div className="pg-foot"><span>Dates in Austin time. Showing the next 12 months.</span><span>An open date is not reserved until SDG approves your pitch.</span></div>
       </div>
-      {drawer?.kind === 'pitch' && <PitchForm date={drawer.date} onClose={() => setDrawer(null)} onSent={() => done('Pitch sent. SDG will review it.')} />}
+      {drawer?.kind === 'pitch' && <PitchForm date={drawer.date} previewOnly={previewOnly} onClose={() => setDrawer(null)} onSent={() => done('Pitch sent. SDG will review it.')} />}
       {drawer?.kind === 'public' && <PublicEvent day={drawer.day} onClose={() => setDrawer(null)} />}
-      {drawer?.kind === 'mine' && <MyPitch pitch={drawer.pitch} onClose={() => setDrawer(null)} onWithdrawn={() => done('Pitch withdrawn.')} />}
+      {drawer?.kind === 'mine' && <MyPitch pitch={drawer.pitch} previewOnly={previewOnly} onClose={() => setDrawer(null)} onWithdrawn={() => done('Pitch withdrawn.')} />}
       {toast && <div className="pg-toast" role="status">{toast}</div>}
     </>
   );

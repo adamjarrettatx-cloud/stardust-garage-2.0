@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import Link from 'next/link';
 import { formatPhone } from '@/lib/phone';
-import { CONTACT_TYPE_OPTIONS, CONTACT_STATUS_OPTIONS, isContactTypeSelected, toggleContactType, contactDirectoryHref } from '@/lib/contact-helpers';
+import { CONTACT_TYPE_OPTIONS, CONTACT_STATUS_OPTIONS, isContactTypeSelected, toggleContactType, contactDirectoryHref, isProgrammerContact } from '@/lib/contact-helpers';
 import { ENTITY_TYPE_OPTIONS } from '@/lib/event-organizer';
 import styles from './profile.module.css';
 import OrganizationMainContact from './OrganizationMainContact';
@@ -156,9 +156,21 @@ export default function ContactProfileLayout({
             <option value="person">Person</option><option value="organization">Organization</option>
           </select>
         </div>
-        <div className={styles.tags}>{CONTACT_TYPE_OPTIONS.filter((opt) => isContactTypeSelected(values.contact_type, opt.value)).map((opt) => <span key={opt.value} className={styles.tag}>{opt.label}</span>)}</div>
+        {profile.createMode ? (
+          // New contacts pick types inline so type-dependent saves (such as
+          // Save and invite as Programmer) are available before the first save.
+          <fieldset className={styles.checks} aria-label="Relationship types">
+            {CONTACT_TYPE_OPTIONS.map((opt) => <label key={opt.value}>
+              <input type="checkbox" checked={isContactTypeSelected(values.contact_type, opt.value)}
+                onChange={() => setField('contact_type', toggleContactType(values.contact_type, opt.value))} />{opt.label}
+            </label>)}
+          </fieldset>
+        ) : (
+          <div className={styles.tags}>{CONTACT_TYPE_OPTIONS.filter((opt) => isContactTypeSelected(values.contact_type, opt.value)).map((opt) => <span key={opt.value} className={styles.tag}>{opt.label}</span>)}</div>
+        )}
         {profile.createMode && values.contact_type.length === 0 && <p className={styles.hint}>Choose at least one type.</p>}
-        <button type="button" className={styles.textButton} onClick={openTypes}>{profile.createMode && values.contact_type.length === 0 ? 'Select relationship types' : 'Edit relationship types'}</button>
+        {profile.createMode && isProgrammerContact(values.contact_type) && <p className={styles.hint}>An email address is required. Saving creates the contact and emails a Programmer Portal invitation.</p>}
+        {!profile.createMode && <button type="button" className={styles.textButton} onClick={openTypes}>Edit relationship types</button>}
       </div>
     </section>
   );
@@ -186,7 +198,7 @@ export default function ContactProfileLayout({
         <div className={styles.headerActions}>
           <span className={styles.saveState} role="status">{saving ? 'Saving…' : profile.createMode ? (dirty ? 'Unsaved new contact' : 'Ready for details') : dirty ? 'Unsaved changes' : success ? 'Saved' : 'No unsaved changes'}</span>
           {dirty && <button type="button" className={styles.button} onClick={onDiscard} disabled={saving}>{profile.createMode ? 'Clear' : 'Discard'}</button>}
-          <button type="submit" form={formId} className={`${styles.button} ${styles.primaryButton}`} disabled={saving || (!profile.createMode && !dirty)}>{saving ? 'Saving…' : profile.createMode ? 'Create contact' : 'Save changes'}</button>
+          <button type="submit" form={formId} className={`${styles.button} ${styles.primaryButton}`} disabled={saving || (!profile.createMode && !dirty)}>{saving ? 'Saving…' : profile.createMode ? (isProgrammerContact(values.contact_type) ? 'Save and invite as Programmer' : 'Create contact') : 'Save changes'}</button>
           {profile.canArchive && (
             <details className={styles.more} ref={moreMenu}>
               <summary aria-label="More contact actions" title="More contact actions">⋯</summary>
@@ -232,7 +244,7 @@ export default function ContactProfileLayout({
                       {input('display_name', organization ? 'Organization name' : 'Display name', { required: true })}
                       {input('company', 'Company / organization')}
                       {!organization && input('primary_contact_name', 'Primary contact')}
-                      {input('email', 'Email address', { type: 'email' })}
+                      {input('email', 'Email address', { type: 'email', required: profile.createMode && isProgrammerContact(values.contact_type) })}
                       {input('phone', 'Phone number', { type: 'tel' })}
                       {input('instagram_handle', 'Instagram', { placeholder: '@username' })}
                       {input('website', 'Website', { placeholder: 'https://', full: true })}

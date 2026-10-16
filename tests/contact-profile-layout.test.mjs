@@ -23,7 +23,7 @@ test('New Contact uses the compact layout with creation-specific controls', () =
   assert.ok(!/AuthenticatedPageHeader/.test(page));
   assert.match(form, /profile \|\| !isEditing/);
   assert.match(form, /createMode: true/);
-  assert.match(layout, /profile\.createMode \? 'Create contact' : 'Save changes'/);
+  assert.match(layout, /profile\.createMode \? \(isProgrammerContact\(values\.contact_type\) \? 'Save and invite as Programmer' : 'Create contact'\) : 'Save changes'/);
   assert.match(layout, /!profile\.createMode \? \[\{ id: 'activity'/);
   assert.match(layout, /profile\.createMode && !profile\.isOrganizer/);
 });
@@ -99,4 +99,17 @@ test('responsive theme-aware layout avoids a second theme toggle', () => {
   assert.match(css, /@media\(max-width:520px\)/);
   assert.match(css, /prefers-reduced-motion/);
   assert.ok(!/AuthenticatedPageThemeToggle|AuthenticatedThemeToggleControl/.test(layout + detail));
+});
+
+test('New Contact picks relationship types inline before the first save', () => {
+  const relationship = layout.slice(layout.indexOf('const relationship = ('), layout.indexOf('return (\n    <div className={styles.profile}>'));
+  // Create mode renders the type checkboxes in place; the dialog is edit-only.
+  assert.match(relationship, /profile\.createMode \? \(/);
+  assert.match(relationship, /CONTACT_TYPE_OPTIONS\.map\(\(opt\) => <label key=\{opt\.value\}>/);
+  assert.match(relationship, /setField\('contact_type', toggleContactType\(values\.contact_type, opt\.value\)\)/);
+  assert.match(relationship, /!profile\.createMode && <button type="button" className=\{styles\.textButton\} onClick=\{openTypes\}>/);
+  // Programmer requires an email and invites on the first save.
+  assert.match(layout, /required: profile\.createMode && isProgrammerContact\(values\.contact_type\)/);
+  assert.match(form, /!isEditing && \(isContractorContact\(payload\.contact_type\) \|\| isProgrammerContact\(payload\.contact_type\)\)/);
+  assert.match(form, /\/api\/admin\/invite-partner/);
 });
