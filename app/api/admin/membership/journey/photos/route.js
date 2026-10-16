@@ -65,7 +65,7 @@ export async function POST(request) {
   );
 
   const rows = lookups.flat();
-  const resolved = await resolveMemberPhotoUrls(admin, rows);
+  const resolved = await resolveMemberPhotoUrls(admin, rows, { size: 'thumb' });
 
   // Every requested key gets an answer so the client never re-asks for a
   // row that simply has no photo.

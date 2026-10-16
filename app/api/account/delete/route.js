@@ -1,3 +1,4 @@
+import { thumbPathsFor } from '@/lib/profile-photo-thumbs';
 import { NextResponse } from 'next/server';
 import { getRequestUser } from '@/lib/auth-helpers';
 import { sendAccountDeletionConfirmation } from '@/lib/email';
@@ -226,7 +227,11 @@ export async function POST(request) {
       ...(trialPasses || []).map((pass) => pass.profile_photo_path),
     ].filter(Boolean);
     if (profilePhotoPaths.length) {
-      await required('profile photo deletion', admin.storage.from('profile-photos').remove(profilePhotoPaths));
+      await required('profile photo deletion', admin.storage.from('profile-photos').remove([
+        ...profilePhotoPaths,
+        // List-size copies (lib/profile-photo-thumbs.js) go with the originals.
+        ...thumbPathsFor(profilePhotoPaths),
+      ]));
     }
 
     // Legacy partner profile photos use the member-photos bucket and are

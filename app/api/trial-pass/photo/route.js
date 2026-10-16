@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
+import { refreshProfilePhotoThumb, removeProfilePhotoThumbs } from '@/lib/profile-photo-thumbs';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/stub';
 import { hashPassToken, isWellFormedPassToken, isPassLive } from '@/lib/trial-pass';
@@ -128,7 +129,10 @@ export async function POST(request) {
       const stale = existing
         .filter((entry) => entry?.name && `trial-pass/${pass.id}/${entry.name}` !== path)
         .map((entry) => `trial-pass/${pass.id}/${entry.name}`);
-      if (stale.length) await admin.storage.from(PROFILE_PHOTO_BUCKET).remove(stale);
+      if (stale.length) {
+        await admin.storage.from(PROFILE_PHOTO_BUCKET).remove(stale);
+        await removeProfilePhotoThumbs(admin, stale);
+      }
     }
   } catch { /* noop */ }
 
@@ -146,6 +150,11 @@ export async function POST(request) {
       { status: 500 },
     );
   }
+
+  // Rebuild the small list-size copy from the bytes we just stored, after
+  // the response so the upload stays fast (see lib/profile-photo-thumbs.js).
+  const thumbSource = Buffer.from(arrayBuffer);
+  after(() => refreshProfilePhotoThumb(admin, path, thumbSource));
 
   const nowIso = new Date().toISOString();
   const { error: dbError } = await admin

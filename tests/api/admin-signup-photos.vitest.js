@@ -50,6 +50,7 @@ beforeEach(() => {
         order: vi.fn(() => query),
         eq: vi.fn(() => query),
         limit: vi.fn(async () => ({ data: tables[table] || [], error: null })),
+        range: vi.fn(async () => ({ data: tables[table] || [], error: null })),
         in: vi.fn(async (_col, ids) => ({ data: (tables[table] || []).filter((r) => ids.includes(r.id)), error: null })),
       };
       return query;
@@ -151,13 +152,15 @@ it('signs only the requested Journey cards, using server-side paths', async () =
   expect(Object.keys(payload.photos).sort()).toEqual(
     ['account:guest', 'member:weekender', 'trial:missing', 'trial:ready', 'trial:unknown-id'],
   );
-  expect(payload.photos['trial:ready']).toBe('https://images.example.test/private/ready.jpg?signed=temporary');
-  expect(payload.photos['account:guest']).toBe('https://images.example.test/private/guest.jpg?signed=temporary');
-  expect(payload.photos['member:weekender']).toBe('https://images.example.test/private/weekender.jpg?signed=temporary');
+  expect(payload.photos['trial:ready']).toBe('https://images.example.test/_thumbs/private/ready.jpg.webp?signed=temporary');
+  expect(payload.photos['account:guest']).toBe('https://images.example.test/_thumbs/private/guest.jpg.webp?signed=temporary');
+  expect(payload.photos['member:weekender']).toBe('https://images.example.test/_thumbs/private/weekender.jpg.webp?signed=temporary');
   expect(payload.photos['trial:missing']).toBeNull();
   expect(payload.photos['trial:unknown-id']).toBeNull();
+  // List cards get the small thumbnail copies; originals are not signed
+  // when every thumbnail already exists.
   expect(signMany).toHaveBeenCalledTimes(1);
-  expect(signMany.mock.calls[0][0].sort()).toEqual(['private/guest.jpg', 'private/ready.jpg', 'private/weekender.jpg']);
+  expect(signMany.mock.calls[0][0].sort()).toEqual(['_thumbs/private/guest.jpg.webp', '_thumbs/private/ready.jpg.webp', '_thumbs/private/weekender.jpg.webp']);
   expect(JSON.stringify(payload)).not.toMatch(/"private\//);
 });
 

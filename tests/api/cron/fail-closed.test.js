@@ -15,6 +15,7 @@ vi.mock('@/lib/discountCodeUtils', () => ({
 }));
 vi.mock('@/lib/tickets/fulfillment', () => ({ sweepExpiredHolds: vi.fn() }));
 vi.mock('@/lib/trial-pass-account-sweep', () => ({ sweepUnlinkedTrialPasses: vi.fn() }));
+vi.mock('@/lib/profile-photo-thumbs', () => ({ backfillProfilePhotoThumbs: vi.fn() }));
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: vi.fn() }));
 vi.mock('@/lib/supabase/stub', () => ({ isSupabaseConfigured: vi.fn() }));
 vi.mock('@/lib/site-url', () => ({ resolveSiteUrl: vi.fn() }));
@@ -36,6 +37,7 @@ const routes = await Promise.all([
   import('../../../app/api/cron/publish-due-series-drafts/route.js'),
   import('../../../app/api/cron/reconcile-ticket-refunds/route.js'),
   import('../../../app/api/cron/trial-pass-accounts/route.js'),
+  import('../../../app/api/cron/profile-photo-thumbs/route.js'),
 ]);
 
 function attackerRequest() {
@@ -58,6 +60,7 @@ describe('cron routes fail closed without CRON_SECRET', () => {
     ['publish-due-series-drafts', routes[4].GET],
     ['reconcile-ticket-refunds', routes[5].GET],
     ['trial-pass-accounts', routes[6].GET],
+    ['profile-photo-thumbs', routes[7].GET],
   ])('%s rejects Bearer undefined', async (_name, handler) => {
     delete process.env.CRON_SECRET;
 

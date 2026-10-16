@@ -28,7 +28,7 @@ export default async function AdminMembersPage() {
   // MemberAvatar a dumb client component that just renders whatever URL it's
   // handed — no admin client, no async work in a client component.
   const admin = createAdminClient();
-  const photoMap = await resolveMemberPhotoUrls(admin, members || []);
+  const photoMap = await resolveMemberPhotoUrls(admin, members || [], { size: 'thumb' });
   const membersWithPhotos = (members || []).map((m) => ({
     ...m,
     display_photo_url: photoMap.get(m.id) || null,

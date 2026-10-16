@@ -20,6 +20,8 @@ export default function MemberAvatar({ member, size = 'w-11 h-11', textClass = '
       <img
         src={src}
         alt=""
+        loading="lazy"
+        decoding="async"
         className={`${shared} object-cover`}
         style={{ borderColor: 'var(--auth-card-border-strong)' }}
       />

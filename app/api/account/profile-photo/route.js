@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
+import { refreshProfilePhotoThumb, removeProfilePhotoThumbs } from '@/lib/profile-photo-thumbs';
 import { getRequestUser } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSupabaseConfigured } from '@/lib/supabase/stub';
@@ -85,6 +86,7 @@ export async function POST(request) {
         .map((entry) => `${user.id}/${entry.name}`);
       if (stale.length) {
         await admin.storage.from(PROFILE_PHOTO_BUCKET).remove(stale);
+        await removeProfilePhotoThumbs(admin, stale);
       }
     }
   } catch { /* noop — replacement upload below is the important part */ }
@@ -103,6 +105,11 @@ export async function POST(request) {
       { status: 500 },
     );
   }
+
+  // Rebuild the small list-size copy from the bytes we just stored, after
+  // the response so the upload stays fast (see lib/profile-photo-thumbs.js).
+  const thumbSource = Buffer.from(arrayBuffer);
+  after(() => refreshProfilePhotoThumb(admin, path, thumbSource));
 
   // Write the photo pointer to the caller's free_accounts row.
   //
@@ -215,7 +222,10 @@ export async function DELETE(request) {
     .eq('user_id', user.id)
     .maybeSingle();
   if (row?.profile_photo_path && await ownsAccountPhoto(admin, row.profile_photo_path, user.id)) {
-    try { await admin.storage.from(PROFILE_PHOTO_BUCKET).remove([row.profile_photo_path]); }
+    try {
+      await admin.storage.from(PROFILE_PHOTO_BUCKET).remove([row.profile_photo_path]);
+      await removeProfilePhotoThumbs(admin, [row.profile_photo_path]);
+    }
     catch { /* ignore — DB unlink below is what matters */ }
   }
   await admin

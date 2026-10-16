@@ -60,7 +60,7 @@ function SignupIdentity({ row }) {
       >
         {row.photoUrl && row.photoUrl !== failedUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={row.photoUrl} alt="" onError={() => setFailedUrl(row.photoUrl)} className="w-full h-full object-cover" />
+          <img src={row.photoUrl} alt="" loading="lazy" decoding="async" onError={() => setFailedUrl(row.photoUrl)} className="w-full h-full object-cover" />
         ) : initials}
       </div>
       <div>

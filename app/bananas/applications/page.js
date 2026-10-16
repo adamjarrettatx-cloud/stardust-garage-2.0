@@ -24,7 +24,7 @@ export default async function ApplicationsPage() {
   // PR B.3), legacy public photo_url otherwise. resolveMemberPhotoUrls works
   // for either table because it only reads those two columns off the row.
   const admin = createAdminClient();
-  const photoMap = await resolveMemberPhotoUrls(admin, applications || []);
+  const photoMap = await resolveMemberPhotoUrls(admin, applications || [], { size: 'thumb' });
   const appsWithPhotos = (applications || []).map((a) => ({
     ...a,
     display_photo_url: photoMap.get(a.id) || null,
