@@ -37,7 +37,7 @@ describe('mergePeople', () => {
     ]);
     expect(people).toHaveLength(1);
     expect(people[0].full_name).toBe('Maria Hernandez');
-    expect(people[0].href).toBe('/bananas/members/m1');
+    expect(people[0].href).toBe('/bananas/people/member-m1');
     expect(people[0].phone_display).toBe('+1 (512) 555-0142');
     expect(people[0].also.map((c) => c.label)).toEqual(['GUEST ACCOUNT', 'TRIAL · CONVERTED']);
     expect(people[0].categories.sort()).toEqual(['guests', 'members', 'trial']);
@@ -115,7 +115,7 @@ describe('GET /api/admin/people-search', () => {
     expect(marcus.photo_url).toBe('https://img/_thumbs/trial-pass/t1/photo.jpg.webp');
     const mark = results.find((r) => r.full_name === 'Mark Hayes');
     expect(mark.context).toContain('ACL Weekend 1 Closing Party');
-    expect(results.find((r) => r.full_name === 'Mara Hollis').href).toBe('/bananas/applications/app1');
+    expect(results.find((r) => r.full_name === 'Mara Hollis').href).toBe('/bananas/people/application-app1');
     expect(JSON.stringify(results)).not.toMatch(/"(trial-pass|member-app)\//);
     expect(filters).toContainEqual(['trial_passes', 'or', 'full_name.ilike.%mar%,email.ilike.%mar%']);
   });
