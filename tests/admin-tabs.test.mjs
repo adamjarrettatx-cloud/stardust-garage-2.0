@@ -708,7 +708,8 @@ test('Tasks is its own section at the top of OPERATIONS', () => {
   assert.equal(tasks.group, 'OPERATIONS');
   assert.equal(tasks.ownerOnly, false);
   const operations = ADMIN_TABS.filter((t) => t.group === 'OPERATIONS').map((t) => t.id);
-  assert.equal(operations[0], 'tasks', 'Tasks must be the first OPERATIONS section');
+  assert.equal(operations[0], 'totalview', 'TotalView must be the first OPERATIONS section');
+  assert.equal(operations[1], 'tasks', 'Tasks must follow TotalView in OPERATIONS');
 });
 
 test('the Tasks section links straight to the tasks page', () => {
