@@ -445,3 +445,4 @@
 .tc-root .sch-form .qa-grid{grid-template-columns:1fr 1fr}.tc-root .sch-form .qa-grid .qa-wide{grid-column:1/-1}.tc-root .sch-form .qa-person{margin-top:0}
 .tc-root .sch-form{max-height:calc(100vh - 48px);overflow:auto}.tc-root .sch-form .sch-people{flex-shrink:0;min-height:min(160px,30vh)}.tc-root .sch-form .qa-person{flex-shrink:0}
 .tc-root .tcal-adderror{grid-column:1/-1;margin:0;display:flex;gap:var(--s3);align-items:center;justify-content:space-between;flex-wrap:wrap}
+.tc-root .details .sch-danger{margin-left:var(--s2)}
