@@ -52,6 +52,7 @@ export default function Staff({ enabled }) {
     [confirm, setConfirm] = useState(null);
   const [replacementPin, setReplacementPin] = useState("");
   const [correction, setCorrection] = useState(null),
+    [removal, setRemoval] = useState(null),
     [notice, setNotice] = useState(""),
     [now, setNow] = useState(Date.now());
   // Waiting-request badge on the Requests tab; refreshed when tabs change.
@@ -160,6 +161,7 @@ export default function Staff({ enabled }) {
       setDetail(r.shift);
       setReviewNote("");
       setCorrection(null);
+      setRemoval(null);
       requestAnimationFrame(() => detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
     });
   }
@@ -264,6 +266,24 @@ export default function Staff({ enabled }) {
       setNotice(
         "Correction recorded. Original punches retained; approval reset.",
       );
+      await load();
+    });
+  }
+  function deleteShift(e) {
+    e.preventDefault();
+    run(async () => {
+      await request(endpoint, {
+        action: "delete_shift",
+        payload: {
+          id: detail.id,
+          version: detail.version,
+          reason: removal.reason,
+        },
+      });
+      setDetail(null);
+      setCorrection(null);
+      setRemoval(null);
+      setNotice("Shift deleted. The activity log keeps the reason.");
       await load();
     });
   }
@@ -473,6 +493,7 @@ export default function Staff({ enabled }) {
                           onClick={() => {
                             setDetail(null);
                             setCorrection(null);
+                            setRemoval(null);
                           }}
                         >
                           Close
@@ -582,7 +603,8 @@ export default function Staff({ enabled }) {
                           )}
                           <button
                             disabled={busy}
-                            onClick={() =>
+                            onClick={() => {
+                              setRemoval(null);
                               setCorrection({
                                 started_at: chicagoInput(detail.started_at),
                                 ended_at: chicagoInput(
@@ -591,10 +613,21 @@ export default function Staff({ enabled }) {
                                 start_offset: "",
                                 end_offset: "",
                                 reason: "",
-                              })
-                            }
+                              });
+                            }}
                           >
                             Correct shift times
+                          </button>
+                          <button
+                            type="button"
+                            className="sch-danger"
+                            disabled={busy}
+                            onClick={() => {
+                              setCorrection(null);
+                              setRemoval({ reason: "" });
+                            }}
+                          >
+                            Delete shift
                           </button>
                         </div>
                       </div>
@@ -691,6 +724,45 @@ export default function Staff({ enabled }) {
                             type="button"
                             onClick={() => setCorrection(null)}
                           >
+                            Cancel
+                          </button>
+                        </form>
+                      )}
+                      {removal && (
+                        <form className="panel tc-form" onSubmit={deleteShift}>
+                          <h2>Delete this shift</h2>
+                          <p className="sub">
+                            {detail.worker_name} · {date(detail.started_at)}{" "}
+                            {time(detail.started_at)} →{" "}
+                            {detail.ended_at
+                              ? `${date(detail.ended_at)} ${time(detail.ended_at)}`
+                              : "Open"}
+                          </p>
+                          <p className="sub">
+                            The shift is removed from Timesheets, totals, CSV
+                            export, the iPad and the employee portal. This
+                            cannot be undone. The activity log keeps who
+                            deleted it, when, and why.
+                          </p>
+                          <label>
+                            Required reason
+                            <textarea
+                              required
+                              minLength={5}
+                              maxLength={2000}
+                              value={removal.reason}
+                              onChange={(e) =>
+                                setRemoval({ reason: e.target.value })
+                              }
+                            />
+                          </label>
+                          <button
+                            className="primary"
+                            disabled={busy || removal.reason.trim().length < 5}
+                          >
+                            Delete shift permanently
+                          </button>
+                          <button type="button" onClick={() => setRemoval(null)}>
                             Cancel
                           </button>
                         </form>

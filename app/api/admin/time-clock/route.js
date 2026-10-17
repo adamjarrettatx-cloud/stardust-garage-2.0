@@ -387,6 +387,23 @@ export async function POST(request) {
         },
       });
       return json(added);
+    } else if (action === "delete_shift") {
+      // Removes a wrong shift everywhere; the audit log keeps who/when/why
+      // and a snapshot of what was deleted.
+      if (!UUID.test(p.id ?? "")) throw new ClockError("Invalid shift ID.");
+      if (!Number.isInteger(p.version) || p.version < 1)
+        throw new ClockError("Refresh the shift first.");
+      if (
+        typeof p.reason !== "string" ||
+        p.reason.trim().length < 5 ||
+        p.reason.length > 2000
+      )
+        throw new ClockError("Add a reason of at least five characters.");
+      const deleted = await rpc(client, "tc_delete_shift", {
+        p_actor: actor.id,
+        p_payload: { id: p.id, version: p.version, reason: p.reason.trim() },
+      });
+      return json(deleted);
     } else throw new ClockError("Invalid action.");
     const result = await rpc(client, "tc_admin", {
       p_actor: actor.id,
