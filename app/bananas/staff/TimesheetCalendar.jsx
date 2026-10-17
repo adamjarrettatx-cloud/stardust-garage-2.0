@@ -169,7 +169,7 @@ export default function TimesheetCalendar({ workers, roles = [], assignments = [
     setNotice("");
     try {
       await fn();
-      setNotice(message);
+      setNotice(typeof message === "function" ? message() : message);
       await load();
       onChanged?.();
     } catch (e) {
@@ -184,19 +184,45 @@ export default function TimesheetCalendar({ workers, roles = [], assignments = [
       for (const s of list)
         await request(endpoint, { action: "approve", payload: { id: s.id, version: s.version, reason: "" } });
     }, list.length === 1 ? "Shift approved. No payment sent." : `${list.length} shifts approved. No payment sent.`);
+  // Edit form state: times plus the role for each part of the shift (a shift
+  // has more than one part when someone switched roles on the iPad).
+  function openEdit(s) {
+    setAdd(null);
+    setEdit({
+      shift: s,
+      start: chicagoInput(s.started_at).slice(0, 16),
+      end: s.ended_at ? chicagoInput(s.ended_at).slice(0, 16) : "",
+      reason: "",
+      roles: s.segments.map((g) => ({ id: g.id, role_id: g.role_id, rate: "" })),
+    });
+  }
   function saveEdit(e) {
     e.preventDefault();
     const s = edit.shift;
+    let message = "";
     act(async () => {
-      const start = edit.start === chicagoInput(s.started_at).slice(0, 16) ? s.started_at : austinIso(edit.start);
-      const end = edit.end === chicagoInput(s.ended_at).slice(0, 16) ? s.ended_at : austinIso(edit.end);
-      if (Date.parse(end) <= Date.parse(start)) throw new Error("Clock-out must be after clock-in.");
-      await request(endpoint, {
-        action: "correct",
-        payload: { id: s.id, version: s.version, started_at: start, ended_at: end, reason: edit.reason },
-      });
+      const startChanged = edit.start !== chicagoInput(s.started_at).slice(0, 16);
+      const endChanged = s.ended_at ? edit.end !== chicagoInput(s.ended_at).slice(0, 16) : !!edit.end;
+      const timesChanged = startChanged || endChanged;
+      const changedRoles = edit.roles.filter((r, i) => r.role_id !== s.segments[i]?.role_id);
+      if (!timesChanged && !changedRoles.length) throw new Error("Nothing changed. Pick a different role or time.");
+      const payload = { id: s.id, version: s.version, reason: edit.reason };
+      if (timesChanged) {
+        if (!edit.end) throw new Error("Enter a clock-out time.");
+        payload.started_at = startChanged ? austinIso(edit.start) : s.started_at;
+        payload.ended_at = s.ended_at && !endChanged ? s.ended_at : austinIso(edit.end);
+        if (Date.parse(payload.ended_at) <= Date.parse(payload.started_at)) throw new Error("Clock-out must be after clock-in.");
+      }
+      payload.segments = changedRoles.map((r) => ({
+        id: r.id,
+        role_id: r.role_id,
+        rate_cents: needsRate(s, r.role_id) && r.rate.trim() ? dollarsToCents(r.rate.trim().replace(/^\$/, "")) : null,
+      }));
+      await request(endpoint, { action: "correct_shift", payload });
+      const what = [timesChanged && "Times", changedRoles.length && "Role"].filter(Boolean).join(" and ");
+      message = `${what} corrected. The original is kept in the activity log${s.ended_at || timesChanged ? "; approval reopened" : ""}.`;
       setEdit(null);
-    }, "Times corrected. Original punches kept in the activity log; approval reopened.");
+    }, () => message);
   }
 
   const activeWorkers = useMemo(
@@ -223,6 +249,12 @@ export default function TimesheetCalendar({ workers, roles = [], assignments = [
       creating: false,
     });
     requestAnimationFrame(() => addRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
+  }
+  // A corrected role needs a one-off rate only when the profile has none for it.
+  function needsRate(s, roleId) {
+    const w = workers.find((x) => x.id === s.worker_id);
+    const a = assignmentFor(s.worker_id, roleId);
+    return (w?.pay_basis ?? s.pay_basis) !== "flat" && (!a || a.rate_cents === null);
   }
   const addWorker = add && workers.find((w) => w.id === add.worker_id);
   const addAssigned = add && assignmentFor(add.worker_id, add.role_id);
@@ -471,8 +503,7 @@ export default function TimesheetCalendar({ workers, roles = [], assignments = [
                       <button type="button" onClick={() => {
                         const s0 = conflict;
                         pick(chicagoYmd(s0.started_at));
-                        setEdit({ shift: s0, start: chicagoInput(s0.started_at).slice(0, 16),
-                          end: s0.ended_at ? chicagoInput(s0.ended_at).slice(0, 16) : "", reason: "" });
+                        openEdit(s0);
                       }}>
                         Fix that shift
                       </button>
@@ -542,32 +573,53 @@ export default function TimesheetCalendar({ workers, roles = [], assignments = [
                       {s.ended_at && s.status === "pending" && (
                         <button className="primary" disabled={busy} onClick={() => approve([s])}>Approve</button>
                       )}
-                      {s.ended_at && (
-                        <button disabled={busy} onClick={() => setEdit(editing ? null : {
-                          shift: s,
-                          start: chicagoInput(s.started_at).slice(0, 16),
-                          end: chicagoInput(s.ended_at).slice(0, 16),
-                          reason: "",
-                        })}>
-                          {editing ? "Close" : "Edit"}
-                        </button>
-                      )}
+                      <button disabled={busy} onClick={() => (editing ? setEdit(null) : openEdit(s))}>
+                        {editing ? "Close" : "Edit"}
+                      </button>
                       <button className="textbtn" onClick={() => onOpenDetail(s.id)}>Details</button>
                     </span>
                   </div>
                   {editing && (
                     <form className="tcal-edit" onSubmit={saveEdit}>
+                      {edit.roles.map((r, i) => {
+                        const g = s.segments[i];
+                        const mine = activeRoles.filter((x) => assignmentFor(s.worker_id, x.id));
+                        const other = activeRoles.filter((x) => !assignmentFor(s.worker_id, x.id));
+                        const current = !activeRoles.some((x) => x.id === g.role_id);
+                        const setRole = (patch) =>
+                          setEdit({ ...edit, roles: edit.roles.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
+                        return (
+                          <div key={r.id} className="tcal-editrole">
+                            <label>
+                              {s.segments.length > 1
+                                ? `Role · ${time(g.started_at)} → ${g.ended_at ? time(g.ended_at) : "now"}`
+                                : "Role"}
+                              <select value={r.role_id} onChange={(e) => setRole({ role_id: e.target.value, rate: "" })}>
+                                {current && <option value={g.role_id}>{g.role_name} (inactive)</option>}
+                                {mine.length > 0 && <optgroup label="Their roles">{mine.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</optgroup>}
+                                {other.length > 0 && <optgroup label={mine.length ? "Other roles" : "Roles"}>{other.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</optgroup>}
+                              </select>
+                            </label>
+                            {r.role_id !== g.role_id && needsRate(s, r.role_id) && (
+                              <label>Rate for this shift ($/hr)
+                                <input inputMode="decimal" placeholder="Optional" value={r.rate}
+                                  onChange={(e) => setRole({ rate: e.target.value })} />
+                              </label>
+                            )}
+                          </div>
+                        );
+                      })}
                       <label>Clock-in (Austin)
                         <input type="datetime-local" required value={edit.start}
                           onChange={(e) => setEdit({ ...edit, start: e.target.value })} />
                       </label>
-                      <label>Clock-out (Austin)
-                        <input type="datetime-local" required value={edit.end}
+                      <label>{s.ended_at ? "Clock-out (Austin)" : "Clock-out (Austin) — blank keeps them on shift"}
+                        <input type="datetime-local" required={!!s.ended_at} value={edit.end}
                           onChange={(e) => setEdit({ ...edit, end: e.target.value })} />
                       </label>
                       <label className="tcal-reason">Reason (required)
                         <input required minLength={5} maxLength={2000} value={edit.reason}
-                          placeholder="e.g. Forgot to clock out; confirmed with door lead"
+                          placeholder="e.g. Clocked in as Bartender; worked Front Door"
                           onChange={(e) => setEdit({ ...edit, reason: e.target.value })} />
                       </label>
                       <div className="row">
@@ -577,13 +629,14 @@ export default function TimesheetCalendar({ workers, roles = [], assignments = [
                       <p className="sub small">
                         {(() => {
                           try {
+                            if (!edit.end) return "";
                             const ms = Date.parse(austinIso(edit.end)) - Date.parse(austinIso(edit.start));
                             return ms > 0 ? `New length ${duration(ms)}. ` : "";
                           } catch {
                             return "";
                           }
                         })()}
-                        Original punches stay in the activity log. Approval reopens after a correction.
+                        Changing the role uses their pay rate for the new role. Original punches and roles stay in the activity log; approval reopens after a correction.
                       </p>
                     </form>
                   )}

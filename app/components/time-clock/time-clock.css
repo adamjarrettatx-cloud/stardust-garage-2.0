@@ -431,8 +431,10 @@
 /* Add hours (Timesheets) and quick-add person (Timesheets + Schedule) */
 .tc-root .tcal-add{border:1px solid var(--border);border-radius:8px;padding:var(--s4);margin:var(--s3) 0}
 .tc-root .tcal-addtitle{grid-column:1/-1;margin:0;font-size:var(--text-base)}
-.tc-root .tcal-add select{min-height:44px;border:1px solid var(--border);border-radius:6px;background:var(--panel);color:var(--text);padding:var(--s2) var(--s3)}
+.tc-root .tcal-add select,.tc-root .tcal-edit select{min-height:44px;border:1px solid var(--border);border-radius:6px;background:var(--panel);color:var(--text);padding:var(--s2) var(--s3)}
 .tc-root .tcal-addnew{grid-column:1/-1}
+.tc-root .tcal-editrole{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:var(--s3);align-items:end}
+@media (max-width:720px){.tc-root .tcal-editrole{grid-template-columns:1fr}}
 .tc-root .qa-person{display:flex;flex-direction:column;gap:var(--s3);border:1px solid var(--border);border-radius:8px;padding:var(--s3) var(--s4);margin-top:var(--s3);background:var(--panel)}
 .tc-root .qa-grid{display:grid;grid-template-columns:2fr 1fr 1.4fr 1fr 1fr;gap:var(--s3);align-items:end}
 .tc-root .qa-grid label{display:flex;flex-direction:column;gap:var(--s1);font-size:var(--text-xs);color:var(--muted)}
