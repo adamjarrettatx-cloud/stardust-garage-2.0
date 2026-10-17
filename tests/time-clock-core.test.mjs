@@ -93,7 +93,7 @@ test("salted slow PIN verifier, keyed purpose separation and unknown lookups", a
   );
   assert.throws(() => keyedHash("pin", "1234", "short"));
 });
-test("pay-cycle hours CSV: per person, Austin dates, roles split, open shifts left out", async () => {
+test("pay-cycle hours CSV: per shift, Austin clock times as entered, open shifts left out", async () => {
   const { payCycleHoursCsv, chicagoToIso } = await import("../lib/time-clock/core.mjs");
   const at = (v) => chicagoToIso(v);
   const shift = (worker_id, worker_name, start, end, segs) => ({
@@ -117,13 +117,12 @@ test("pay-cycle hours CSV: per person, Austin dates, roles split, open shifts le
     csv,
     [
       `"Employee/Contractor","Dates","Total hours","Hours worked","Role"`,
-      `"Ann Door","09/28/2026 - 10/11/2026","8.75","",""`,
-      `"","09/28/2026","","2.00","Door"`,
-      `"","09/28/2026","","2.50","Security"`,
-      `"","10/11/2026","","4.25","Door"`,
+      `"Ann Door","09/28/2026 - 10/11/2026","","",""`,
+      `"","09/28/2026","4.50","8:00 PM - 12:30 AM","Door / Security"`,
+      `"","10/11/2026","4.25","7:00 PM - 11:15 PM","Door"`,
       ``,
-      `"Zoe Bar","09/28/2026 - 10/11/2026","8.00","",""`,
-      `"","10/02/2026","","8.00","Bartender"`,
+      `"Zoe Bar","09/28/2026 - 10/11/2026","","",""`,
+      `"","10/02/2026","8.00","6:00 PM - 2:00 AM","Bartender"`,
     ].join("\r\n"),
   );
 });
