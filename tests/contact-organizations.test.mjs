@@ -7,7 +7,8 @@ import { needsLegalCounterpartyFields } from '../lib/event-organizer.js';
 test('legacy organization tags merge without duplicate sections or mutation', () => {
   const tags = Object.freeze(['event_organizer','collective','organization']);
   assert.deepEqual(contactDirectoryTypes(tags), ['organization']);
-  assert.deepEqual(toggleContactType(tags, 'organization'), []);
+  assert.deepEqual(toggleContactType(tags, 'organization'), ['event_organizer']);
+  assert.deepEqual(toggleContactType(tags, 'event_organizer'), ['collective','organization']);
   assert.deepEqual(tags, ['event_organizer','collective','organization']);
   assert.equal(needsLegalCounterpartyFields(['organization']), true);
 });
