@@ -73,6 +73,47 @@ function ProfilePhoto({ name, photoUrl, onPhotoError }) {
 }
 
 // -----------------------------------------------------------------------
+// Time left on a trial — shown prominently on both trial tabs.
+// Activated: days until the 30-day window (or extension) ends.
+// Ready: days left to come in and activate the pass.
+// -----------------------------------------------------------------------
+
+function fmtShortDate(iso) {
+  if (!iso) return null;
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function timeLeft(row) {
+  if (row.kind !== 'trial' || !row.expires_at) return null;
+  const end = fmtShortDate(row.expires_at);
+  const activated = Boolean(row.activated_at) || row.visits > 0;
+  if (row.expired) return { text: `Trial ended ${end}`, tone: 'ended' };
+  const d = row.days_left;
+  const days = d === 1 ? '1 day' : `${d} days`;
+  if (!activated) return { text: `${days} left to activate · by ${end}`, tone: d <= 7 ? 'soon' : 'normal' };
+  return { text: `${days} left · ends ${end}`, tone: d <= 7 ? 'soon' : 'normal' };
+}
+
+// Sort options for the trial tabs. Ended trials always go to the bottom, so
+// "least time left" starts with whoever is about to run out.
+const TRIAL_SORTS = [
+  ['recent', 'Recent activity'],
+  ['least', 'Least time left'],
+  ['most', 'Most time left'],
+];
+function sortTrialRows(rows, order) {
+  if (order === 'recent') return rows;
+  const dir = order === 'least' ? 1 : -1;
+  const t = (r) => (r.expires_at ? new Date(r.expires_at).getTime() : null);
+  return [...rows].sort((a, b) => {
+    if (a.expired !== b.expired) return a.expired ? 1 : -1;
+    const ta = t(a); const tb = t(b);
+    if (ta === null || tb === null) return ta === null ? (tb === null ? 0 : 1) : -1;
+    return a.expired ? tb - ta : dir * (ta - tb);
+  });
+}
+
+// -----------------------------------------------------------------------
 // The one context line per row, chosen for the row's kind
 // -----------------------------------------------------------------------
 
@@ -83,9 +124,8 @@ function contextLine(row) {
   }
   if (row.kind === 'trial') {
     if (row.visits > 0) return `Visited ${row.visits}× · last ${fmtWhen(row.last_visit)}`;
-    if (row.activated_at) return `Activated ${fmtDate(row.activated_at)} · ${row.days_left}d left`;
-    const activateHint = row.days_left != null ? ` · ${row.days_left}d to activate` : '';
-    return `Issued ${fmtDate(row.issued_at)}${activateHint}`;
+    if (row.activated_at) return `Activated ${fmtDate(row.activated_at)} · not back yet`;
+    return `Issued ${fmtDate(row.issued_at)}`;
   }
   if (row.kind === 'member') {
     return `${fmtCents(row.monthly_cents)}/mo · member since ${fmtDate(row.member_since)}`;
@@ -102,12 +142,18 @@ function ProfileRow({ row, stageLabel, photoUrl, photoRef, onPhotoError }) {
   const name = row.full_name || row.email || 'Unnamed';
   const contextLabel = row.kind === 'account' ? 'Account'
     : row.kind === 'trial' ? 'Trial activity' : 'Membership';
+  const left = timeLeft(row);
   const inner = (
     <>
       <ProfilePhoto name={name} photoUrl={photoUrl} onPhotoError={onPhotoError} />
       <div className={styles.identity}>
         <div className={styles.stage}>{stageLabel}</div>
         <h2>{name}</h2>
+        {left ? (
+          <div className={`${styles.timeLeft} ${left.tone === 'soon' ? styles.timeLeftSoon : ''} ${left.tone === 'ended' ? styles.timeLeftEnded : ''}`}>
+            {left.text}
+          </div>
+        ) : null}
         <div className={styles.context}>
           <span>{contextLabel}</span>
           <p>{contextLine(row)}</p>
@@ -162,6 +208,7 @@ export default function MembershipHubClient() {
   const [error, setError]     = useState(null);
   const [active, setActive]   = useState(DEFAULT_TAB);
   const [q, setQ]             = useState('');
+  const [trialSort, setTrialSort] = useState('recent');
   const [photos, setPhotos]   = useState({}); // key → { url, expiresAt }
 
   // Photo batching state lives in refs so the IntersectionObserver callback
@@ -308,14 +355,15 @@ export default function MembershipHubClient() {
 
   // Client-side search across name + email + phone. Cheap because each tab
   // is bounded (a few thousand rows at most).
+  const isTrialTab = active === 'trial_ready' || active === 'trial_activated';
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
-    if (!query) return rows;
-    return rows.filter((r) => {
+    const matched = !query ? rows : rows.filter((r) => {
       const hay = `${r.full_name || ''} ${r.email || ''} ${r.phone || ''} ${formatPhone(r.phone)}`.toLowerCase();
       return hay.includes(query);
     });
-  }, [rows, q]);
+    return isTrialTab ? sortTrialRows(matched, trialSort) : matched;
+  }, [rows, q, isTrialTab, trialSort]);
 
   // Reset the search field whenever the active tab changes so a stale query
   // doesn't hide the newly-selected list.
@@ -395,6 +443,20 @@ export default function MembershipHubClient() {
           <div className="text-[13px]" style={{ color: theme.muted }}>
             {activeMeta?.hint}
           </div>
+          {isTrialTab ? (
+            <label className="flex items-center gap-2 text-[13px]" style={{ color: theme.muted }}>
+              Sort
+              <select
+                value={trialSort}
+                onChange={(e) => setTrialSort(e.target.value)}
+                aria-label="Sort trial list"
+                className="px-3 py-2 rounded-[7px] text-[13px] font-semibold border outline-none"
+                style={{ background: theme.neutralChipBg, borderColor: theme.cardBorder, color: theme.text }}
+              >
+                {TRIAL_SORTS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+              </select>
+            </label>
+          ) : null}
           {showMrr ? (
             <div className="text-[13px]" style={{ color: theme.mutedStrong }}>
               <span className="text-[11px] uppercase tracking-[0.14em] mr-2" style={{ color: theme.muted }}>

@@ -112,3 +112,8 @@
   .photo > span { font-size: 30px; }
 }
 @media (prefers-reduced-motion: reduce) { .row { transition: none; } }
+
+/* Trial time left (Membership Journey trial tabs). */
+.timeLeft { margin-top: 6px; font-size: 15px; font-weight: 700; letter-spacing: -.01em; color: var(--auth-text-strong); }
+.timeLeftSoon { color: var(--auth-danger); }
+.timeLeftEnded { color: var(--auth-muted); font-weight: 600; }

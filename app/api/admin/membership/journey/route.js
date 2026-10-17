@@ -152,7 +152,10 @@ export async function GET() {
   // and to render a "visited N× · last …" line on trial cards.
   const allowedByPass = new Map();
   const firstCheckinByPass = new Map();
+  const lastCheckinByPass = new Map();
   for (const c of checkins) {
+    const last = lastCheckinByPass.get(c.trial_pass_id);
+    if (!last || new Date(c.checked_in_at) > new Date(last)) lastCheckinByPass.set(c.trial_pass_id, c.checked_in_at);
     const list = allowedByPass.get(c.trial_pass_id) || [];
     list.push(c.checked_in_at);
     allowedByPass.set(c.trial_pass_id, list);
@@ -193,9 +196,10 @@ export async function GET() {
 
     const allowedCount = (allowedByPass.get(p.id) || []).length;
     const firstCheckin = firstCheckinByPass.get(p.id) || null;
+    const lastCheckin = lastCheckinByPass.get(p.id) || null;
     const activated = Boolean(p.activated_at) || allowedCount > 0;
 
-    const row = shapeTrialPass(p, { allowedCount, firstCheckin });
+    const row = shapeTrialPass(p, { allowedCount, firstCheckin, lastCheckin });
     if (activated) tabs.trial_activated.push(row);
     else tabs.trial_ready.push(row);
   }
@@ -270,11 +274,13 @@ function shapeAccount(acc) {
   };
 }
 
-function shapeTrialPass(p, { allowedCount, firstCheckin }) {
+function shapeTrialPass(p, { allowedCount, firstCheckin, lastCheckin }) {
   const activated = Boolean(p.activated_at);
-  const effectiveExpiry = activated
-    ? (p.extended_until || p.expires_at)
-    : p.signup_expires_at;
+  // Same rule as the door: an activated pass runs to the later of its 30-day
+  // expiry and any extension; an unused pass to its signup window.
+  const later = [p.expires_at, p.extended_until].filter(Boolean)
+    .sort((a, b) => new Date(a) - new Date(b)).pop() || null;
+  const effectiveExpiry = activated ? later : p.signup_expires_at;
   const daysLeft = effectiveExpiry
     ? Math.max(0, Math.ceil((new Date(effectiveExpiry) - Date.now()) / DAY_MS))
     : null;
@@ -290,7 +296,9 @@ function shapeTrialPass(p, { allowedCount, firstCheckin }) {
     signup_source: p.signup_source || 'unknown',
     issued_at: p.issued_at,
     activated_at: p.activated_at || null,
-    last_visit: firstCheckin,
+    first_visit: firstCheckin,
+    last_visit: lastCheckin,
+    expired: effectiveExpiry ? new Date(effectiveExpiry).getTime() <= Date.now() : false,
     visits: allowedCount,
     days_left: daysLeft,
     expires_at: effectiveExpiry,
