@@ -8,7 +8,6 @@ import {
   entitlementLabel,
   clampPercent,
   INSIDER_MAX_DISCOUNT_PERCENT,
-  TRIAL_WEEKEND_MUSIC_DISCOUNT_PERCENT,
   ENTITLEMENT_MEMBER,
   ENTITLEMENT_TRIAL,
 } from '../lib/tickets/entitlement.js';
@@ -19,16 +18,11 @@ const WEEKEND_MUSIC = { id: 'e1', category: 'party', is_weekend_music_experience
 const WEEKNIGHT = { id: 'e2', category: 'party', is_weekend_music_experience: false };
 
 // --- The owner's rule ------------------------------------------------------
-// "All TRIAL PASS accounts are immediately eligible for up to 25% off on
-// Weekend Music Experiences." The number and its boundary are a business
-// decision, so they get a test each.
+// The 25% Weekend Music Experience discount for Trial SDG Pass and The
+// Weekender was retired (2026-10-17). It must not come back by default.
 
-test('a trial pass earns 25% off a Weekend Music Experience', () => {
-  assert.equal(TRIAL_WEEKEND_MUSIC_DISCOUNT_PERCENT, 25);
-  assert.equal(
-    resolveEntitlementPercent(WEEKEND_MUSIC, { kind: ENTITLEMENT_TRIAL }),
-    25,
-  );
+test('a trial pass earns nothing by default on a Weekend Music Experience', () => {
+  assert.equal(resolveEntitlementPercent(WEEKEND_MUSIC, { kind: ENTITLEMENT_TRIAL }), 0);
 });
 
 test('a trial pass earns nothing on an event that is not a Weekend Music Experience', () => {
@@ -43,19 +37,18 @@ test('a guest with no standing earns nothing', () => {
 
 // --- Paid tiers keep the rates they already had ---------------------------
 
-test('Weekender keeps its 25% weekend-music-only deal', () => {
+test('Weekender has no automatic Weekend Music Experience discount', () => {
   const ent = { kind: ENTITLEMENT_MEMBER, planKey: 'weekender' };
-  assert.equal(resolveEntitlementPercent(WEEKEND_MUSIC, ent), 25);
+  assert.equal(resolveEntitlementPercent(WEEKEND_MUSIC, ent), 0);
   assert.equal(resolveEntitlementPercent(WEEKNIGHT, ent), 0);
 });
 
 // --- Every membership has its own per-event box ----------------------------
 
-test('each membership defaults to no discount except the weekend-music pair', () => {
-  // Weekend music ON: Weekender and Trial Pass get their standing 25%; the
-  // others get nothing until someone types a number.
-  assert.equal(resolveEntitlementPercent(WEEKEND_MUSIC, { kind: ENTITLEMENT_TRIAL }), 25);
-  assert.equal(resolveEntitlementPercent(WEEKEND_MUSIC, { kind: ENTITLEMENT_MEMBER, planKey: 'weekender' }), 25);
+test('each membership defaults to no discount, Weekend Music Experience or not', () => {
+  // Weekend music ON: nobody gets anything until someone types a number.
+  assert.equal(resolveEntitlementPercent(WEEKEND_MUSIC, { kind: ENTITLEMENT_TRIAL }), 0);
+  assert.equal(resolveEntitlementPercent(WEEKEND_MUSIC, { kind: ENTITLEMENT_MEMBER, planKey: 'weekender' }), 0);
   assert.equal(resolveEntitlementPercent(WEEKEND_MUSIC, { kind: ENTITLEMENT_MEMBER, planKey: 'cowork' }), 0);
   assert.equal(resolveEntitlementPercent(WEEKEND_MUSIC, { kind: ENTITLEMENT_MEMBER, planKey: 'iykyk' }), 0);
   // Weekend music OFF: nobody gets anything by default.
@@ -83,10 +76,10 @@ test('a per-event percent can be set for any membership, including The Builder',
   assert.equal(resolveEntitlementPercent(event, { kind: ENTITLEMENT_MEMBER, planKey: 'iykyk' }), 30);
 });
 
-test('a per-event percent overrides the weekend-music standard rate, including down to zero', () => {
+test('a per-event percent is honoured on a Weekend Music Experience, including zero', () => {
   const event = { ...WEEKEND_MUSIC, member_discount_percent_weekender: 40, member_discount_percent_trial: 0 };
   assert.equal(resolveEntitlementPercent(event, { kind: ENTITLEMENT_MEMBER, planKey: 'weekender' }), 40);
-  // An explicit 0 is a real answer, not "unset" — it must beat the 25% default.
+  // An explicit 0 is a real answer, not "unset".
   assert.equal(resolveEntitlementPercent(event, { kind: ENTITLEMENT_TRIAL }), 0);
 });
 
@@ -163,8 +156,10 @@ test('an unknown plan key earns nothing rather than guessing', () => {
 // default and handed a trial 60% off a weeknight party.
 test("a member on the 'trial' plan gets trial rates, not the category default", () => {
   const ent = { kind: ENTITLEMENT_MEMBER, planKey: 'trial' };
-  assert.equal(resolveEntitlementPercent(WEEKEND_MUSIC, ent), 25);
+  // Both events are category 'party' (category default 60): still nothing.
+  assert.equal(resolveEntitlementPercent(WEEKEND_MUSIC, ent), 0);
   assert.equal(resolveEntitlementPercent(WEEKNIGHT, ent), 0);
+  assert.equal(resolveEntitlementPercent({ ...WEEKNIGHT, member_discount_percent_trial: 10 }, ent), 10);
 });
 
 test('an admin-entered override cannot exceed 100% or go negative', () => {
@@ -230,16 +225,16 @@ test('a target_total code wins outright even against a bigger entitlement', () =
 // --- Labels ---------------------------------------------------------------
 
 test('the buyer sees which discount they got', () => {
-  assert.equal(entitlementLabel({ kind: ENTITLEMENT_TRIAL }, 25), 'Trial pass — 25% off');
+  assert.equal(entitlementLabel({ kind: ENTITLEMENT_TRIAL }, 10), 'Trial pass — 10% off');
   assert.equal(
     entitlementLabel({ kind: ENTITLEMENT_MEMBER, planKey: 'iykyk' }, 60),
     'The Insider — 60% off',
   );
   assert.equal(
-    entitlementLabel({ kind: ENTITLEMENT_MEMBER, planKey: 'weekender' }, 25),
-    'The Weekender — 25% off',
+    entitlementLabel({ kind: ENTITLEMENT_MEMBER, planKey: 'weekender' }, 15),
+    'The Weekender — 15% off',
   );
-  assert.equal(entitlementLabel({ kind: ENTITLEMENT_MEMBER, planKey: 'trial' }, 25), 'Trial — 25% off');
+  assert.equal(entitlementLabel({ kind: ENTITLEMENT_MEMBER, planKey: 'trial' }, 10), 'Trial — 10% off');
   assert.equal(entitlementLabel(null, 25), null);
   assert.equal(entitlementLabel({ kind: ENTITLEMENT_TRIAL }, 0), null);
 });

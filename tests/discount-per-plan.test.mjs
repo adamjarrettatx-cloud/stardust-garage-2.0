@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { getDiscountPercentForPlan, CATEGORY_DISCOUNT_DEFAULTS, WEEKENDER_WEEKEND_MUSIC_DISCOUNT_PERCENT } from '../lib/discountPercentResolver.js';
+import { getDiscountPercentForPlan, CATEGORY_DISCOUNT_DEFAULTS } from '../lib/discountPercentResolver.js';
 
 test('per-plan override wins', () => {
   const event = {
@@ -58,7 +58,7 @@ test('zero is a valid override (do not fall through)', () => {
   assert.equal(getDiscountPercentForPlan(event, 'iykyk'), 60);
 });
 
-test('Weekender: 25% off Weekend Music Experiences', () => {
+test('Weekender: no automatic discount on Weekend Music Experiences', () => {
   const event = {
     category: 'party',
     is_weekend_music_experience: true,
@@ -66,7 +66,9 @@ test('Weekender: 25% off Weekend Music Experiences', () => {
     member_discount_percent_cowork: 25,
     member_discount_percent_iykyk: 75,
   };
-  assert.equal(getDiscountPercentForPlan(event, 'weekender'), WEEKENDER_WEEKEND_MUSIC_DISCOUNT_PERCENT);
+  assert.equal(getDiscountPercentForPlan(event, 'weekender'), 0);
+  // Only an explicit per-event Weekender value applies.
+  assert.equal(getDiscountPercentForPlan({ ...event, member_discount_percent_weekender: 15 }, 'weekender'), 15);
   // Sanity: the flag doesn't affect other tiers.
   assert.equal(getDiscountPercentForPlan(event, 'cowork'), 25);
   assert.equal(getDiscountPercentForPlan(event, 'iykyk'), 75);

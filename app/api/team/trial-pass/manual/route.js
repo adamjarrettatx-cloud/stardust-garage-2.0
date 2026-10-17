@@ -19,11 +19,10 @@ export const dynamic = 'force-dynamic';
 // row so the admin trial list can distinguish vouched-for-by-staff from
 // SMS-verified.
 //
-// Account creation (createAccount: true) is what makes a staff-issued pass
-// worth anything at checkout. The trial discount on Weekend Music Experiences
-// is granted from a trial_passes lookup keyed on user_id
-// (lib/tickets/entitlement-lookup.js), so a pass with user_id = null gets the
-// guest through the door and nothing else. The self-serve QR path does NOT
+// Account creation (createAccount: true) links a staff-issued pass to the
+// guest's profile. The trial entitlement is resolved from a trial_passes
+// lookup keyed on user_id (lib/tickets/entitlement-lookup.js), so a pass with
+// user_id = null gets the guest through the door and nothing else. The self-serve QR path does NOT
 // opt in — it still expects the guest to redeem their own pass.
 //
 // Uniqueness rules still apply — a manual signup for a phone that is
