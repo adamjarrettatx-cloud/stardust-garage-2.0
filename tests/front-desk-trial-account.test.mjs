@@ -5,7 +5,7 @@ import { sendTrialPassProfileInvite } from '../lib/email.js';
 
 // Front-desk trial-pass issuance now provisions the auth account that makes
 // the pass worth something at checkout: lib/tickets/entitlement-lookup.js
-// grants the up-to-25%-off Weekend Music entitlement from a trial_passes
+// resolves the trial checkout entitlement from a trial_passes
 // lookup keyed on user_id, so a pass with user_id = null is a door QR and
 // nothing more.
 //
@@ -120,7 +120,7 @@ test('the result panel reports account and invite state, including failure', () 
   assert.match(formSrc, /No account linked/);
   assert.match(formSrc, /Sign-in link did not send/);
   assert.match(formSrc, /Account created and linked to this pass/);
-  assert.match(formSrc, /25% off Weekend Music Experience/);
+  assert.doesNotMatch(formSrc, /25%/);
 });
 
 test('nothing in the result panel drops below 12px', () => {
@@ -131,7 +131,7 @@ test('nothing in the result panel drops below 12px', () => {
     formSrc.indexOf('function Field('),
   );
   const sizes = [...panel.matchAll(/text-\[(\d+)px\]/g)].map((m) => Number(m[1]));
-  assert.ok(sizes.length >= 3, 'expected explicit font sizes in the status block');
+  assert.ok(sizes.length >= 2, 'expected explicit font sizes in the status block');
   for (const size of sizes) {
     assert.ok(size >= 12, `found ${size}px in the status block; 12px is the floor`);
   }
@@ -165,7 +165,7 @@ function sentBody(calls) {
   return JSON.parse(calls[0].init.body);
 }
 
-test('the invite email states the pass, the QR, the 25%, and the one-tap link', async () => {
+test('the invite email states the pass, the QR, and the one-tap link, with no retired 25% offer', async () => {
   await withFetchCapture(async (calls) => {
     await sendTrialPassProfileInvite({
       email: 'jane@email.com',
@@ -179,7 +179,7 @@ test('the invite email states the pass, the QR, the 25%, and the one-tap link', 
     assert.match(body.subject, /Finish setting up your Stardust Garage account/);
     assert.match(body.html, /Trial SDG Pass is active/);
     assert.match(body.html, /QR code/);
-    assert.match(body.html, /up to 25% off Weekend Music Experience/);
+    assert.doesNotMatch(body.html, /25%/);
     assert.match(body.html, /one tap, no password/);
     assert.match(body.html, /auth\/callback\?token_hash=abc/);
     assert.match(body.html, /March 4, 2026/);

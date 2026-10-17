@@ -100,33 +100,22 @@ test('memberDiscountCalloutRows returns [] when nothing is set', () => {
   );
 });
 
-test('memberDiscountCalloutRows prepends The Weekender row for Weekend Music Experiences', () => {
+test('memberDiscountCalloutRows never adds a Weekender row from Weekend Music Experience alone', () => {
+  assert.deepEqual(memberDiscountCalloutRows({ is_weekend_music_experience: true }), []);
   const rows = memberDiscountCalloutRows({
     is_weekend_music_experience: true,
     member_discount_percent_cowork: 25,
     member_discount_percent_iykyk: 60,
   });
-  assert.equal(rows.length, 3);
-  assert.equal(rows[0].key, 'weekender');
-  assert.equal(rows[0].label, 'The Weekender');
-  assert.equal(rows[0].percent, 25);
-  assert.equal(rows[1].key, 'cowork');
-  assert.equal(rows[2].key, 'iykyk');
-});
-
-test('memberDiscountCalloutRows shows Weekender row alone when no other tiers set', () => {
-  const rows = memberDiscountCalloutRows({
-    is_weekend_music_experience: true,
-  });
-  assert.deepEqual(rows, [{ key: 'weekender', label: 'The Weekender', percent: 25 }]);
-});
-
-test('memberDiscountCalloutRows omits Weekender when flag is false', () => {
-  const rows = memberDiscountCalloutRows({
-    is_weekend_music_experience: false,
-    member_discount_percent_cowork: 25,
-  });
   assert.equal(rows.find((r) => r.key === 'weekender'), undefined);
+  assert.equal(rows.length, 2);
+});
+
+test('memberDiscountCalloutRows shows Weekender only for an explicit per-event value', () => {
+  assert.deepEqual(
+    memberDiscountCalloutRows({ member_discount_percent_weekender: 15 }),
+    [{ key: 'weekender', label: 'The Weekender', percent: 15 }],
+  );
 });
 
 test('memberDiscountCalloutRows accepts numeric strings for tier columns', () => {

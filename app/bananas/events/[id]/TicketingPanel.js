@@ -28,7 +28,6 @@ import {
   MEMBER_PRICING_ROWS,
   resolveTicketDiscountPercent,
   defaultTicketDiscountPercent,
-  WEEKEND_MUSIC_FIXED_PERCENT,
   WEEKNIGHT_MEMBER_DISCOUNT_PERCENT,
 } from '@/lib/membership-tiers';
 
@@ -150,9 +149,9 @@ export default function TicketingPanel({
   // panel renders whatever rows that file defines and prices them with the same
   // resolver checkout uses, so the number shown here is the number charged.
   //
-  // Blank box = use that membership's default. Turning on Weekend Music
-  // Experience makes the default 25% for The Weekender and Trial SDG Pass;
-  // everything else defaults to nothing.
+  // Blank box = use that membership's default (no discount, except the paid
+  // tiers' 20% minimum on eligible weeknights). Weekend Music Experience only
+  // controls Trial SDG Pass door eligibility; it no longer sets any discount.
   //
   // The toggle used to live on the main event form, a page away from the
   // percents it drives, and had never been switched on for a single event.
@@ -413,8 +412,8 @@ export default function TicketingPanel({
           <span style={{ fontSize: 13 }}>
             <b style={{ fontWeight: 600 }}>Weekend Music Experience</b>
             <span style={{ display: 'block', fontSize: 11.5, opacity: 0.65, marginTop: 3, lineHeight: 1.45 }}>
-              Fri&ndash;Sun music night. Turning this on makes {WEEKEND_MUSIC_FIXED_PERCENT}% the standard rate
-              for The Weekender and Trial SDG Pass holders &mdash; their standing benefit. Any box below still overrides it.
+              Fri&ndash;Sun music night. Trial SDG Pass holders can enter with their pass QR.
+              Does not set any discount.
             </span>
           </span>
         </label>

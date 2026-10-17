@@ -141,10 +141,6 @@ export default function EventForm({
   // membership tier. null = no tier gate (all members if is_sdg_only, else
   // public). Values map to member_profiles.subscription_plan.
   const [requiredTier, setRequiredTier] = useState(event?.required_membership_tier || '');
-  // Weekender-tier flagship benefit: 25% off any event flagged as a Weekend
-  // Music Experience. Admin sets this manually per
-  // event — we don't auto-derive from category+date because a Friday yoga
-  // class isn't a music event and a Wednesday DJ night isn't a weekend one.
   const [contactId, setContactId] = useState(event?.contact_id || null);
   // `ttEventSeriesId` is preserved so the two legacy TicketTailor events
   // (ubiyu 9/18, Groove Therapy 9/19) still round-trip their linked series

@@ -275,9 +275,6 @@ function AccountStatusLines({ result }) {
           {inviteLine}
         </div>
       ) : null}
-      <div className="text-[12px] leading-[1.5] mt-2" style={{ color: 'var(--auth-muted)' }}>
-        Trial accounts get up to 25% off Weekend Music Experience tickets while signed in.
-      </div>
     </div>
   );
 }

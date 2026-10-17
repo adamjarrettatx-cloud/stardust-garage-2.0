@@ -20,12 +20,13 @@ test('no calendar/title/category inference; legacy shared percentage cannot pric
   for (const tier of MEMBERSHIP_TIER_LIST) assert.equal(resolveTicketDiscountPercent(event, tier), 0);
   assert.deepEqual(memberDiscountCalloutRows(event), []);
 });
-test('trial benefit is unchanged and classifications never stack', () => {
+test('trial gets no weeknight benefit and Weekend Music Experience adds no discount', () => {
   const event = { is_weeknight_experience: true };
   assert.equal(resolveTicketDiscountPercent(event, TRIAL_PASS_PRICING), 0);
   event.is_weekend_music_experience = true;
-  assert.equal(resolveTicketDiscountPercent(event, TRIAL_PASS_PRICING), 25);
-  assert.equal(resolveTicketDiscountPercent(event, MEMBERSHIP_TIER_LIST[0]), 25);
+  assert.equal(resolveTicketDiscountPercent(event, TRIAL_PASS_PRICING), 0);
+  // Weekender keeps only the paid weeknight minimum; the retired 25% is gone.
+  assert.equal(resolveTicketDiscountPercent(event, MEMBERSHIP_TIER_LIST[0]), 20);
 });
 test('internal callouts equal checkout resolution; external flags do not invent a 20% provider benefit', () => {
   const event = { ticketing_mode: 'internal', is_weeknight_experience: true, member_discount_percent_iykyk: 90 };
