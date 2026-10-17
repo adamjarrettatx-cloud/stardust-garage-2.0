@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import EventsTabPanel from './EventsTabPanel';
 import { getTodayInAustin } from '@/lib/studio-helpers';
@@ -24,7 +25,13 @@ export const revalidate = 0;
 // (non-owner). Without this prop the panel used the resolver's default
 // non-owner path and the events calendar bled through under owner-only
 // sections. Cheap: the gate itself only reads the current session.
-export default async function AdminDashboard() {
+// A bare /bananas (no ?tab=) opens TotalView, the admin landing page (owner
+// decision 2026-10-17). Section links such as /bananas?tab=events keep
+// rendering here exactly as before.
+export default async function AdminDashboard({ searchParams }) {
+  const params = await searchParams;
+  if (!params?.tab) redirect('/bananas/totalview');
+
   const [supabase, { user }] = await Promise.all([
     createClient(),
     adminPageGate(),

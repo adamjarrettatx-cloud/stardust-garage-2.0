@@ -24,7 +24,7 @@ test('Incoming replaces People and Rentals under Operations for owners and admin
   for (const isOwner of [false, true]) {
     const operations = visibleAdminTabGroups(isOwner).find(g => g.group === 'OPERATIONS');
     assert.deepEqual(operations.tabs.map(t => t.id), [
-      'tasks', 'events', 'chat', 'memberships', 'incoming',
+      'totalview', 'tasks', 'events', 'chat', 'memberships', 'incoming',
       ...(isOwner ? ['staff'] : []),
     ]);
   }
