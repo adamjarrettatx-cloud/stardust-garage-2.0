@@ -22,7 +22,7 @@ const source = fs.readFileSync(path.join(ROOT, 'app/bananas/contacts/ContactsLis
 test('the directory combines organizers and collectives into Organizations', () => {
   const expected = ['Persons', 'Organizations', 'Venue Renter', 'Vendor'];
   assert.deepEqual(CONTACT_DIRECTORY_SECTIONS.map(section => section.label), expected);
-  assert.deepEqual(CONTACT_TYPE_OPTIONS.map(option => option.label), ['Artist', 'Organization', 'Venue Renter', 'Vendor', 'Promoter', 'Programmer', 'Person']);
+  assert.deepEqual(CONTACT_TYPE_OPTIONS.map(option => option.label), ['Artist', 'Organization', 'Event Organizer', 'Venue Renter', 'Vendor', 'Promoter', 'Programmer', 'Person']);
 });
 
 test('contact statuses exclude Inactive while legacy records stay in the normal directory', () => {
@@ -144,4 +144,14 @@ test('directory columns sort ascending and descending with blanks last', () => {
   assert.match(source, /aria-label="Sort contacts"/);
   // Sort state sits above the keyed section views so tab changes keep it.
   assert.match(source, /const \[sort, setSort\] = useState\(\{ key: 'name', dir: 'asc' \}\)/);
+});
+
+test('Event Organizer is an independent relationship checkbox', () => {
+  assert.equal(isContactTypeSelected(['event_organizer'], 'event_organizer'), true);
+  assert.equal(isContactTypeSelected(['event_organizer'], 'organization'), false);
+  assert.equal(isContactTypeSelected(['organization'], 'event_organizer'), false);
+  assert.deepEqual(toggleContactType(['organization'], 'event_organizer'), ['organization', 'event_organizer']);
+  assert.deepEqual(toggleContactType(['organization', 'event_organizer'], 'event_organizer'), ['organization']);
+  assert.deepEqual(toggleContactType(['event_organizer'], 'organization'), ['event_organizer', 'organization']);
+  assert.deepEqual(contactDirectoryTypes(['event_organizer']), ['organization']);
 });
