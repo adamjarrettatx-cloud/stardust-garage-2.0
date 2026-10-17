@@ -526,6 +526,20 @@ export default function Staff({ enabled }) {
                                 {a.details?.reason && (
                                   <p className="sub">{a.details.reason}</p>
                                 )}
+                                {a.action === "correct_role" &&
+                                  (a.details?.changes || []).map((c) => {
+                                    const nameOf = (id) =>
+                                      data.roles.find((r) => r.id === id)?.name || id;
+                                    const rate = (v) =>
+                                      v === null || v === undefined ? "no rate" : `${money(v)}/hr`;
+                                    return (
+                                      <p className="sub" key={c.segment_id}>
+                                        Role: {nameOf(c.from_role)} → {nameOf(c.to_role)}
+                                        {detail.pay_basis !== "flat" &&
+                                          ` (${rate(c.from_rate_cents)} → ${rate(c.to_rate_cents)})`}
+                                      </p>
+                                    );
+                                  })}
                                 {a.action === "correct" && (
                                   <p className="sub">
                                     Before: {date(a.details.before.started_at)}{" "}

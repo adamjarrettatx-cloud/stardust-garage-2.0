@@ -347,6 +347,61 @@ export async function POST(request) {
           payload[key] = new Date(p[key]).toISOString();
         }
       }
+    } else if (action === "correct_shift") {
+      // One Save from the Timesheets Edit form: optional new times and/or the
+      // corrected role for each part of the shift, all in one transaction.
+      if (!UUID.test(p.id ?? "")) throw new ClockError("Invalid record ID.");
+      if (!Number.isInteger(p.version) || p.version < 1)
+        throw new ClockError("Refresh the shift first.");
+      if (
+        typeof p.reason !== "string" ||
+        p.reason.trim().length < 5 ||
+        p.reason.length > 2000
+      )
+        throw new ClockError("Add a reason of at least five characters.");
+      const segments = Array.isArray(p.segments) ? p.segments : [];
+      if (segments.length > 50) throw new ClockError("Too many role changes.");
+      for (const g of segments) {
+        if (!UUID.test(g?.id ?? "")) throw new ClockError("Invalid shift part.");
+        if (!/^[a-z_]{2,40}$/.test(g.role_id ?? "")) throw new ClockError("Choose a role.");
+        if (
+          !(
+            g.rate_cents === undefined ||
+            g.rate_cents === null ||
+            (Number.isInteger(g.rate_cents) &&
+              g.rate_cents >= 0 &&
+              g.rate_cents <= 100000000)
+          )
+        )
+          throw new ClockError("Enter a valid hourly rate.");
+      }
+      const rpcPayload = {
+        id: p.id,
+        version: p.version,
+        reason: p.reason.trim(),
+        segments: segments.map((g) => ({
+          id: g.id,
+          role_id: g.role_id,
+          rate_cents: g.rate_cents ?? null,
+        })),
+      };
+      if (p.started_at !== undefined || p.ended_at !== undefined) {
+        for (const key of ["started_at", "ended_at"]) {
+          if (
+            typeof p[key] !== "string" ||
+            !/(Z|[+-]\d{2}:\d{2})$/.test(p[key]) ||
+            !Number.isFinite(Date.parse(p[key]))
+          )
+            throw new ClockError("Times must include a UTC offset.");
+          rpcPayload[key] = new Date(p[key]).toISOString();
+        }
+      }
+      return json(
+        await rpc(client, "tc_correct_shift", {
+          p_actor: actor.id,
+          p_payload: rpcPayload,
+        }),
+      );
     } else if (action === "add_shift") {
       // Manager-entered hours for someone with no iPad punch that day.
       if (!UUID.test(p.worker_id ?? "")) throw new ClockError("Choose a person.");
