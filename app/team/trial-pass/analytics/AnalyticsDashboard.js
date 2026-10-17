@@ -49,8 +49,59 @@ const TRACK_STYLE = {
   background: 'var(--auth-card-bg-alt)',
 };
 
+// Photos load after the page: each row with a photo asks for its thumbnail,
+// and requests made in the same moment are sent as one batch. Links are kept
+// for the session so switching events or tabs doesn't refetch them.
+const photoCache = new Map(); // passId -> { url, at }
+// Fallback links to full-size originals last 5 minutes; refetch before then.
+const PHOTO_REUSE_MS = 4 * 60 * 1000;
+const cachedPhoto = (id) => { const hit = photoCache.get(id); return hit && Date.now() - hit.at < PHOTO_REUSE_MS ? hit : null; };
+const photoWaiters = new Map(); // passId -> Set<setState>
+let photoQueue = new Set();
+let photoTimer = null;
+
+function flushPhotoQueue() {
+  photoTimer = null;
+  const ids = [...photoQueue].slice(0, 200);
+  photoQueue = new Set([...photoQueue].slice(200));
+  if (photoQueue.size) photoTimer = setTimeout(flushPhotoQueue, 0);
+  if (!ids.length) return;
+  fetch('/api/team/trial-pass/photos', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  })
+    .then((res) => (res.ok ? res.json() : { photos: {} }))
+    .catch(() => ({ photos: {} }))
+    .then(({ photos = {} }) => {
+      for (const id of ids) {
+        const url = photos[id] || null;
+        photoCache.set(id, { url, at: Date.now() });
+        for (const set of photoWaiters.get(id) || []) set(url);
+        photoWaiters.delete(id);
+      }
+    });
+}
+
+function usePassPhoto(id, hasPhoto) {
+  const [url, setUrl] = useState(() => (id ? cachedPhoto(id)?.url || null : null));
+  useEffect(() => {
+    if (!id || !hasPhoto) return undefined;
+    const hit = cachedPhoto(id);
+    if (hit) { setUrl(hit.url); return undefined; }
+    const waiters = photoWaiters.get(id) || new Set();
+    waiters.add(setUrl);
+    photoWaiters.set(id, waiters);
+    photoQueue.add(id);
+    if (!photoTimer) photoTimer = setTimeout(flushPhotoQueue, 30);
+    return () => { photoWaiters.get(id)?.delete(setUrl); };
+  }, [id, hasPhoto]);
+  return url;
+}
+
 function SignupIdentity({ row }) {
   const [failedUrl, setFailedUrl] = useState(null);
+  const photoUrl = usePassPhoto(row.id || row.passId, row.hasPhoto);
   const initials = (row.fullName || '?').trim().split(/\s+/).map((part) => part[0]).slice(0, 2).join('').toUpperCase();
   return (
     <div className="flex items-center gap-3">
@@ -58,9 +109,9 @@ function SignupIdentity({ row }) {
         className="w-11 h-11 shrink-0 rounded-full overflow-hidden flex items-center justify-center text-[14px] font-semibold"
         style={{ background: 'var(--auth-card-bg-alt)', color: 'var(--auth-muted-strong)', border: '1px solid var(--auth-card-border)' }}
       >
-        {row.photoUrl && row.photoUrl !== failedUrl ? (
+        {photoUrl && photoUrl !== failedUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={row.photoUrl} alt="" loading="lazy" decoding="async" onError={() => setFailedUrl(row.photoUrl)} className="w-full h-full object-cover" />
+          <img src={photoUrl} alt="" loading="lazy" decoding="async" onError={() => setFailedUrl(photoUrl)} className="w-full h-full object-cover" />
         ) : initials}
       </div>
       <div>

@@ -5,7 +5,7 @@ vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: vi.fn() }));
 
 import { requireOwner } from '@/lib/auth-helpers';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { resolveMemberPhotoUrl, resolveMemberPhotoUrls } from '@/lib/member-photo';
+import { resolveMemberPhotoUrl, resolveMemberPhotoUrls, clearThumbUrlCache } from '@/lib/member-photo';
 import { loadTrialPassAnalytics } from '@/lib/trial-pass-analytics';
 import { GET } from '../../app/api/admin/membership/journey/route.js';
 import { POST as POST_PHOTOS } from '../../app/api/admin/membership/journey/photos/route.js';
@@ -20,6 +20,7 @@ const date = '2026-09-20T05:00:00Z';
 
 beforeEach(() => {
   vi.clearAllMocks();
+  clearThumbUrlCache();
   requireOwner.mockResolvedValue({ unauthorized: false });
   tables = {
     free_accounts: [{ id: 'guest', user_id: 'guest-user', full_name: 'Guest', created_at: date, profile_photo_path: 'private/guest.jpg' }],
@@ -175,16 +176,16 @@ it('validates Journey photo request bodies', async () => {
   expect([...parsed.member]).toEqual(['b']);
 });
 
-it('includes photos in recent and by-event trial signup rows when opted in', async () => {
+it('marks which trial rows have photos without signing any on the page', async () => {
   const payload = await loadTrialPassAnalytics({ admin, includePhotos: true });
   expect(selected.find((s) => s.table === 'trial_passes').columns).toContain('profile_photo_path');
   for (const row of [...payload.recent, ...payload.byEvent.flatMap((event) => event.signups)]) {
     expect(row).not.toHaveProperty('profile_photo_path');
-    if ((row.id || row.passId) === 'missing') expect(row.photoUrl).toBeNull();
-    else expect(row.photoUrl).toMatch(/^https:\/\/images\.example\.test\//);
+    expect(row).not.toHaveProperty('photoUrl');
+    expect(row.hasPhoto).toBe((row.id || row.passId) !== 'missing');
   }
-  expect(signMany).toHaveBeenCalledTimes(1);
-  expect(signMany.mock.calls[0][0]).toHaveLength(2);
+  expect(sign).not.toHaveBeenCalled();
+  expect(signMany).not.toHaveBeenCalled();
 });
 
 it('keeps CSV and non-visual analytics callers free of photo links and signing requests', async () => {
