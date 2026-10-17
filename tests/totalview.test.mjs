@@ -15,6 +15,7 @@ import {
   initials,
   shiftHourPoints,
   TOTALVIEW_LOOKBACK_MS,
+  eventAdmissionCapacity,
 } from '../lib/totalview.js';
 import { adminTabById, adminTabHref, tabForPath, crumbForPath } from '../lib/admin-tabs.js';
 
@@ -104,4 +105,22 @@ test('TotalView is a sidebar section with its own page', () => {
   assert.equal(adminTabHref(tab), '/bananas/totalview');
   assert.equal(tabForPath('/bananas/totalview'), 'totalview');
   assert.equal(crumbForPath('/bananas/totalview'), null, 'no "TotalView / TotalView" breadcrumb');
+});
+
+test('capacity ignores unlimited events and uses tier quantities', () => {
+  const products = [
+    { id: 'p1', event_id: 'e1' }, // inventory null, tiers 100 + 200
+    { id: 'p2', event_id: 'e2' }, // inventory null, one unlimited tier
+    { id: 'p3', event_id: 'e3' }, // inventory capacity 150
+    { id: 'p4', event_id: 'e4' }, // no tiers, unlimited
+  ];
+  const inv = [{ product_id: 'p1', capacity: null }, { product_id: 'p2', capacity: null }, { product_id: 'p3', capacity: 150 }, { product_id: 'p4', capacity: null }];
+  const tiers = [
+    { product_id: 'p1', quantity: 100, status: 'sold_out', sold_count: 100 },
+    { product_id: 'p1', quantity: 200, status: 'active', sold_count: 3 },
+    { product_id: 'p1', quantity: null, status: 'hidden', sold_count: 0 }, // unused hidden tier ignored
+    { product_id: 'p2', quantity: 50, status: 'active' },
+    { product_id: 'p2', quantity: null, status: 'active' },
+  ];
+  assert.deepEqual(eventAdmissionCapacity(products, inv, tiers), { e1: 300, e2: null, e3: 150, e4: null });
 });
