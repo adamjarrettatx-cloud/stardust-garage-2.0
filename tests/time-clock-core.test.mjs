@@ -117,11 +117,11 @@ test("pay-cycle hours CSV: per shift, Austin clock times as entered, open shifts
     csv,
     [
       `"Employee/Contractor","Dates","Total hours","Hours worked","Role"`,
-      `"Ann Door","09/28/2026 - 10/11/2026","","",""`,
+      `"Ann Door","","","",""`,
       `"","09/28/2026","4.50","8:00 PM - 12:30 AM","Door / Security"`,
       `"","10/11/2026","4.25","7:00 PM - 11:15 PM","Door"`,
       ``,
-      `"Zoe Bar","09/28/2026 - 10/11/2026","","",""`,
+      `"Zoe Bar","","","",""`,
       `"","10/02/2026","8.00","6:00 PM - 2:00 AM","Bartender"`,
     ].join("\r\n"),
   );
