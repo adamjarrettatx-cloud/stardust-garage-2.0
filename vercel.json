@@ -38,7 +38,7 @@
     },
     {
       "path": "/api/cron/profile-photo-thumbs",
-      "schedule": "*/10 * * * *"
+      "schedule": "*/5 * * * *"
     }
   ]
 }

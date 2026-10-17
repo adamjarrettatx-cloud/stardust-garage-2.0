@@ -1,11 +1,12 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import sharp from 'sharp';
 
 vi.mock('next/server', () => ({ after: (fn) => { fn(); } }));
 
 const { thumbPathFor, renderThumb, refreshProfilePhotoThumb, backfillProfilePhotoThumbs, THUMB_SIZE } =
   await import('@/lib/profile-photo-thumbs');
-const { resolveMemberPhotoUrls } = await import('@/lib/member-photo');
+const { resolveMemberPhotoUrls, clearThumbUrlCache } = await import('@/lib/member-photo');
+beforeEach(() => clearThumbUrlCache());
 
 function fakeStorage(initial = {}) {
   const objects = new Map(Object.entries(initial));
@@ -73,6 +74,19 @@ describe('profile photo thumbnails', () => {
     await vi.waitFor(() => expect(s.objects.has('_thumbs/b/photo.jpg.webp')).toBe(true));
   });
 
+  it('reuses a signed thumbnail link across requests so the browser cache hits', async () => {
+    const s = fakeStorage({ 'a/photo.jpg': Buffer.from('x'), '_thumbs/a/photo.jpg.webp': Buffer.from('t') });
+    let n = 0;
+    const bucket = s.admin.storage.from();
+    const orig = bucket.createSignedUrls;
+    bucket.createSignedUrls = async (paths, ttl) => { n += 1; expect(ttl).toBe(3600); return orig(paths); };
+    const rows = [{ id: 1, profile_photo_path: 'a/photo.jpg' }];
+    const first = await resolveMemberPhotoUrls(s.admin, rows, { size: 'thumb' });
+    const second = await resolveMemberPhotoUrls(s.admin, rows, { size: 'thumb' });
+    expect(second.get(1)).toBe(first.get(1));
+    expect(n).toBe(1);
+  });
+
   it('full mode still returns originals', async () => {
     const s = fakeStorage({ 'a/photo.jpg': Buffer.from('x'), '_thumbs/a/photo.jpg.webp': Buffer.from('t') });
     const map = await resolveMemberPhotoUrls(s.admin, [{ id: 1, profile_photo_path: 'a/photo.jpg' }]);
@@ -91,5 +105,15 @@ describe('profile photo thumbnails', () => {
     const result = await backfillProfilePhotoThumbs(s.admin, { signUrls: createProfilePhotoSignedUrls });
     expect(result).toEqual({ photos: 2, missing: 1, made: 1 });
     expect(s.calls.download).toEqual(['b/photo.jpg']);
+  });
+
+  it('backfill stops starting new photos at its time budget', async () => {
+    const s = fakeStorage({ 'b/photo.jpg': await bigPhoto() });
+    s.admin.from = () => ({ select: () => ({ not: () => ({ range: async () => ({ data: [{ profile_photo_path: 'b/photo.jpg' }], error: null }) }) }) });
+    const { createProfilePhotoSignedUrls } = await import('@/lib/profile-photo');
+    const result = await backfillProfilePhotoThumbs(s.admin, { signUrls: createProfilePhotoSignedUrls, budgetMs: -1 });
+    expect(result.made).toBe(0);
+    expect(result.missing).toBe(1);
+    expect(s.calls.download).toEqual([]);
   });
 });

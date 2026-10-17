@@ -9,7 +9,7 @@ export const maxDuration = 60;
 
 // GET /api/cron/profile-photo-thumbs
 //
-// Every-10-minutes Vercel cron. Builds the small list-size copy for profile
+// Every-5-minutes Vercel cron (time-budgeted to ~45s per run). Builds the small list-size copy for profile
 // photos that don't have one yet (see lib/profile-photo-thumbs.js). Reads
 // originals and writes only `_thumbs/…` objects; never touches originals or
 // database rows.
@@ -23,6 +23,8 @@ export async function GET(request) {
   }
   try {
     const result = await backfillProfilePhotoThumbs(createAdminClient());
+    // Progress line for the Vercel logs: photos total / still missing / built.
+    console.log('[cron.profile-photo-thumbs]', JSON.stringify(result));
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     console.error('[cron.profile-photo-thumbs]', err?.message || err);
