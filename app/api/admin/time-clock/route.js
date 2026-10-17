@@ -9,7 +9,12 @@ import {
   ClockError,
 } from "@/lib/time-clock/server";
 import { newPin, pairingCode, hashPin } from "@/lib/time-clock/crypto.mjs";
-import { UUID, shiftsCsv } from "@/lib/time-clock/core.mjs";
+import {
+  UUID,
+  shiftsCsv,
+  payCycleHoursCsv,
+  chicagoInput,
+} from "@/lib/time-clock/core.mjs";
 import { isValidPin } from "@/lib/time-clock/pin.mjs";
 import { isInternalEmployeeEmail } from "@/lib/time-clock/employee.mjs";
 import { NextResponse } from "next/server";
@@ -143,6 +148,24 @@ export async function GET(request) {
         (!status || status === "all" || s.status === status) &&
         s.worker_name.toLowerCase().includes(name),
     );
+    if (url.searchParams.get("format") === "hours") {
+      const start = chicagoInput(new Date(from).toISOString()).slice(0, 10),
+        end = chicagoInput(new Date(to).toISOString()).slice(0, 10);
+      return new NextResponse(
+        payCycleHoursCsv(filtered, {
+          from: new Date(from).toISOString(),
+          to: new Date(to).toISOString(),
+        }),
+        {
+          headers: {
+            "Content-Type": "text/csv; charset=utf-8",
+            "Content-Disposition": `attachment; filename="sdg-hours-${start}-to-${end}.csv"`,
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+          },
+        },
+      );
+    }
     if (url.searchParams.get("format") === "csv") {
       return new NextResponse(shiftsCsv(filtered), {
         headers: {

@@ -93,3 +93,37 @@ test("salted slow PIN verifier, keyed purpose separation and unknown lookups", a
   );
   assert.throws(() => keyedHash("pin", "1234", "short"));
 });
+test("pay-cycle hours CSV: per person, Austin dates, roles split, open shifts left out", async () => {
+  const { payCycleHoursCsv, chicagoToIso } = await import("../lib/time-clock/core.mjs");
+  const at = (v) => chicagoToIso(v);
+  const shift = (worker_id, worker_name, start, end, segs) => ({
+    worker_id, worker_name, started_at: at(start), ended_at: end && at(end),
+    segments: segs.map(([role_name, a, b]) => ({ role_name, started_at: at(a), ended_at: b && at(b) })),
+  });
+  const csv = payCycleHoursCsv(
+    [
+      // Manager typed 6:00 PM - 2:00 AM Austin time: stays on Oct 2, 8 hours.
+      shift("b", "Zoe Bar", "2026-10-02T18:00", "2026-10-03T02:00", [["Bartender", "2026-10-02T18:00", "2026-10-03T02:00"]]),
+      shift("a", "Ann Door", "2026-09-28T20:00", "2026-09-29T00:30", [
+        ["Door", "2026-09-28T20:00", "2026-09-28T22:00"],
+        ["Security", "2026-09-28T22:00", "2026-09-29T00:30"],
+      ]),
+      shift("a", "Ann Door", "2026-10-11T19:00", "2026-10-11T23:15", [["Door", "2026-10-11T19:00", "2026-10-11T23:15"]]),
+      shift("a", "Ann Door", "2026-10-11T23:30", null, [["Door", "2026-10-11T23:30", null]]),
+    ],
+    { from: at("2026-09-28T00:00"), to: new Date(Date.parse(at("2026-10-12T00:00")) - 1).toISOString() },
+  );
+  assert.equal(
+    csv,
+    [
+      `"Employee/Contractor","Dates","Total hours","Hours worked","Role"`,
+      `"Ann Door","09/28/2026 - 10/11/2026","8.75","",""`,
+      `"","09/28/2026","","2.00","Door"`,
+      `"","09/28/2026","","2.50","Security"`,
+      `"","10/11/2026","","4.25","Door"`,
+      ``,
+      `"Zoe Bar","09/28/2026 - 10/11/2026","8.00","",""`,
+      `"","10/02/2026","","8.00","Bartender"`,
+    ].join("\r\n"),
+  );
+});

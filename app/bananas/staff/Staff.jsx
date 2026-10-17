@@ -290,7 +290,8 @@ export default function Staff({ enabled }) {
   const exportCsv = () =>
     run(async () => {
       const query = range();
-      query.set("format", "csv");
+      // Pay-cycle hours: per person, Austin dates, hours by role.
+      query.set("format", "hours");
       query.set("status", "all");
       const response = await fetch(`${endpoint}?${query}`, {
         credentials: "same-origin",
@@ -301,9 +302,17 @@ export default function Staff({ enabled }) {
       const url = URL.createObjectURL(await response.blob()),
         a = document.createElement("a");
       a.href = url;
-      a.download = "sdg-staff.csv";
+      a.download =
+        /filename="([^"]+)"/.exec(
+          response.headers.get("Content-Disposition") || "",
+        )?.[1] || "sdg-hours.csv";
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
+      const open = (data?.shifts || []).filter((s) => !s.ended_at).length;
+      if (open)
+        setNotice(
+          `${open} shift${open === 1 ? " is" : "s are"} still clocked in and ${open === 1 ? "was" : "were"} left out of the export.`,
+        );
     });
   const field = (key, value) => setEditWorker((w) => ({ ...w, [key]: value }));
   return (
@@ -351,12 +360,12 @@ export default function Staff({ enabled }) {
               </svg>
             </a>
           </span>
-          <span className="tc-tip" data-tip="Export CSV">
+          <span className="tc-tip" data-tip="Export pay cycle hours">
             <button
               className="primary tc-iconbtn"
               disabled={!data || busy}
               onClick={exportCsv}
-              aria-label="Export CSV"
+              aria-label="Export pay cycle hours (CSV)"
             >
               {/* Download into tray: export the timesheet file */}
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
