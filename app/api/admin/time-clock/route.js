@@ -152,10 +152,7 @@ export async function GET(request) {
       const start = chicagoInput(new Date(from).toISOString()).slice(0, 10),
         end = chicagoInput(new Date(to).toISOString()).slice(0, 10);
       return new NextResponse(
-        payCycleHoursCsv(filtered, {
-          from: new Date(from).toISOString(),
-          to: new Date(to).toISOString(),
-        }),
+        payCycleHoursCsv(filtered),
         {
           headers: {
             "Content-Type": "text/csv; charset=utf-8",
